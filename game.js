@@ -960,7 +960,7 @@ function playHand() {
           } else if (handsLeft <= 0) {
             setTimeout(() => {
               SFX.fail();
-              const name = nameEntry.trim() || incoming.username || 'Wanderer';
+              const name = playerName || nameEntry.trim() || incoming.username || 'Wanderer';
               saveScore(name, totalFateScore, endless ? 'endless' : 'run');
               loadScores();
               screen = 'scores';
@@ -1071,11 +1071,14 @@ function triggerReturnPortal() {
 // ─── Name entry ───────────────────────────────────────────────────────
 let nameEntry       = '';
 let nameEntryActive = false;
+let playerName      = '';
+let pendingEndless  = false;
 
 function submitScore() {
-  const name = nameEntry.trim() || incoming.username || 'Wanderer';
+  const name = playerName || nameEntry.trim() || incoming.username || 'Wanderer';
   saveScore(name, totalFateScore, endless ? 'endless' : 'run');
   nameEntryActive = false;
+  nameEntry = '';
   loadScores();
   screen = 'scores';
 }
@@ -1131,22 +1134,42 @@ canvas.addEventListener('click', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if (screen === 'name_entry') {
+    if (e.key === 'Backspace') nameEntry = nameEntry.slice(0, -1);
+    else if (e.key === 'Enter') {
+      playerName = nameEntry.trim() || incoming.username || 'Wanderer';
+      nameEntry = '';
+      startRun(pendingEndless);
+    }
+    else if (e.key === 'Escape') { screen = 'title'; nameEntry = ''; }
+    else if (e.key.length === 1 && nameEntry.length < 16) nameEntry += e.key;
+    return;
+  }
   if (nameEntryActive) {
     if (e.key === 'Backspace') nameEntry = nameEntry.slice(0, -1);
     else if (e.key === 'Enter') submitScore();
     else if (e.key.length === 1 && nameEntry.length < 16) nameEntry += e.key;
     return;
   }
-  if (screen === 'title') startRun(false);
+  if (screen === 'title') { pendingEndless = false; nameEntry = ''; screen = 'name_entry'; }
 });
 
 function handleClick(mx, my) {
   if (screen === 'title') {
     const tfy = (H - 360) / 2;
-    if (inRect(mx,my,{x:W/2-130,y:tfy+200,w:260,h:48})) { startRun(false); return; }
-    if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { startRun(true); return; }
+    if (inRect(mx,my,{x:W/2-130,y:tfy+200,w:260,h:48})) { pendingEndless=false; nameEntry=''; screen='name_entry'; return; }
+    if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { pendingEndless=true; nameEntry=''; screen='name_entry'; return; }
     if (inRect(mx,my,{x:W/2-110,y:tfy+304,w:220,h:36})) { loadScores(); screen='scores'; return; }
-    startRun(false);
+    return;
+  }
+  if (screen === 'name_entry') {
+    if (inRect(mx,my,{x:W/2-130,y:H/2+40,w:260,h:48})) {
+      playerName = nameEntry.trim() || incoming.username || 'Wanderer';
+      nameEntry = '';
+      startRun(pendingEndless);
+      return;
+    }
+    if (inRect(mx,my,{x:W/2-80,y:H/2+100,w:160,h:36})) { screen='title'; nameEntry=''; return; }
     return;
   }
   if (screen === 'scores') {
@@ -1157,8 +1180,7 @@ function handleClick(mx, my) {
     // portal clicks
     if (inRect(mx,my,{x:W-94,y:H/2-40,w:68,h:80})) { triggerExitPortal(); return; }
     if (incoming.ref && inRect(mx,my,{x:26,y:H/2-40,w:68,h:80})) { triggerReturnPortal(); return; }
-    if (!nameEntryActive && inRect(mx,my,{x:W/2-130,y:H/2+86,w:260,h:46})) { nameEntryActive=true; return; }
-    if (nameEntryActive) { submitScore(); return; }
+    if (inRect(mx,my,{x:W/2-130,y:H/2+86,w:260,h:46})) { submitScore(); return; }
     return;
   }
   if (screen === 'shop') {
@@ -1735,6 +1757,40 @@ function drawPortalRing(x, y, r, color, pulse, label, active) {
 }
 
 // ─── SCREEN: Title ────────────────────────────────────────────────────
+function drawNameEntry(t) {
+  drawBG(t);
+
+  const fw = 480, fh = 260;
+  const fx = (W - fw) / 2, fy = (H - fh) / 2;
+  ornamentFrame(fx, fy, fw, fh, '#5a2a18', { bg: 'rgba(28,14,8,0.94)', inner: 'rgba(200,153,96,0.45)' });
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#c89960'; ctx.shadowBlur = 8;
+  ctx.fillStyle = '#c89960';
+  ctx.font = `bold 28px ${SERIF}`;
+  ctx.fillText(pendingEndless ? 'Endless Mode' : 'Begin New Run', W/2, fy + 58);
+  ctx.restore();
+
+  txt('Enter your name for the high score board:', W/2, fy + 88, {size:12,color:'rgba(200,170,120,0.65)',align:'center'});
+
+  // Name input box
+  drawRoundRect(W/2-160, fy+104, 320, 46, 8, '#100828', '#c89960', 2);
+  const cursor = Math.floor(t*2) % 2 ? '|' : '';
+  if (nameEntry) {
+    txt(nameEntry + cursor, W/2, fy+133, {size:18,color:'#c89960',align:'center'});
+  } else if (cursor) {
+    txt(cursor, W/2, fy+133, {size:18,color:'#c89960',align:'center'});
+  } else {
+    txt('type your name…', W/2, fy+133, {size:14,color:'rgba(200,153,96,0.3)',align:'center'});
+  }
+
+  drawBtn({x:W/2-130,y:fy+166,w:260,h:48}, '▶  Start', true, true);
+  drawBtn({x:W/2-80,y:fy+222,w:160,h:30}, '← Back', true);
+
+  drawParticles(); drawFloaters();
+}
+
 function drawTitle(t) {
   drawBG(t);
 
@@ -2209,13 +2265,8 @@ function drawWin(t) {
   txt(totalFateScore.toLocaleString(), W/2, H/2+44, {size:38,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
   txt('✦ Endless Mode Unlocked ✦', W/2, H/2+74, {size:14,color:'#b8a874',align:'center',bold:true});
 
-  if (!nameEntryActive) {
-    drawBtn({x:W/2-130,y:H/2+90,w:260,h:46}, '🏆  Save Score', true, true);
-  } else {
-    drawRoundRect(W/2-130, H/2+90, 260, 46, 8, '#100828', '#c89960', 2);
-    txt((nameEntry||'') + (Math.floor(t*2)%2?'|':''), W/2, H/2+120, {size:16,color:'#c89960',align:'center'});
-    txt('Type name + Enter', W/2, H/2+140, {size:10,color:'rgba(200,153,96,0.5)',align:'center'});
-  }
+  txt(playerName || incoming.username || 'Wanderer', W/2, H/2+78, {size:13,color:'rgba(200,170,120,0.65)',align:'center'});
+  drawBtn({x:W/2-130,y:H/2+90,w:260,h:46}, '🏆  Save Score', true, true);
 
   exitPortalPulse += 0.05; returnPortalPulse += 0.05;
   drawPortalRing(W-52, H/2, 32, '#9a3826', exitPortalPulse, epLabel(), true);
@@ -2521,8 +2572,9 @@ function loop(now) {
     ctx.translate(sx, sy);
   }
   switch (screen) {
-    case 'title':  drawTitle(t);  break;
-    case 'game':   drawGame(t);   break;
+    case 'title':      drawTitle(t);      break;
+    case 'name_entry': drawNameEntry(t);  break;
+    case 'game':       drawGame(t);       break;
     case 'shop':   drawShop(t);   break;
     case 'hub':    drawHub(t);    break;
     case 'forge':  drawForge(t);  break;
@@ -2537,6 +2589,6 @@ function loop(now) {
 // ─── Boot ─────────────────────────────────────────────────────────────
 loadScores();
 screen = incoming.fromPortal ? 'game' : 'title';
-if (incoming.fromPortal) startRun(false);
+if (incoming.fromPortal) { playerName = incoming.username || 'Wanderer'; startRun(false); }
 
 requestAnimationFrame(loop);
