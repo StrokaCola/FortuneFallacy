@@ -63,9 +63,22 @@ const SFX = {
     playTone(f * 1.25, 'sine', 0.14, 0.12, 0.06);
     if (tier >= 6) playTone(f * 1.5, 'sine', 0.12, 0.1, 0.12);
   },
-  tick(score) { playTone(300 + Math.min(score / 500, 1) * 600, 'square', 0.03, 0.03); },
-  mult()      { playTone(110, 'sawtooth', 0.22, 0.08); playTone(165, 'sawtooth', 0.18, 0.07, 0.05); },
-  bigScore()  { [523, 659, 784].forEach((f, i) => playTone(f, 'triangle', 0.2, 0.18, i * 0.1)); },
+  tick(chips) {
+    const t = Math.min(chips / 2000, 1);
+    playTone(280 + t * 1000, 'square', 0.03, 0.03 + t * 0.04);
+  },
+  mult(m = 1) {
+    const t = Math.min(1, Math.log2(Math.max(1, m)) / 7);
+    playTone(110 - t * 30, 'sawtooth', 0.22 + t * 0.08, 0.08 + t * 0.1);
+    playTone(165 - t * 20, 'sawtooth', 0.18 + t * 0.06, 0.07 + t * 0.08, 0.05);
+    if (m >= 8) playTone(60 + t * 20, 'sawtooth', 0.3, t * 0.09, 0.1);
+  },
+  bigScore(score = 0) {
+    const tier = score >= 50000 ? 3 : score >= 10000 ? 2 : score >= 2000 ? 1 : 0;
+    const notesets = [[523,659,784],[523,659,784,1047],[392,523,659,784,1047],[330,392,523,659,784,1047]];
+    const g = 0.14 + Math.min(0.12, score / 80000);
+    notesets[tier].forEach((f, i) => playTone(f, 'triangle', 0.2 + i * 0.03, g, i * 0.09));
+  },
   oracle()    { [1047, 1319, 1568].forEach((f, i) => playTone(f, 'sine', 0.18, 0.12, i * 0.06)); },
   clear()     { [392, 494, 587, 698, 784].forEach((f, i) => playTone(f, 'triangle', 0.18, 0.16, i * 0.08)); },
   win()       { [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'triangle', 0.3, 0.18, i * 0.12)); },
@@ -872,7 +885,7 @@ function playHand() {
       const burstN = 8 + Math.min(20, add * 2);
       burst(d.absX, d.absY, txtColor, burstN, 3.5);
       if (add >= 8) burst(d.absX, d.absY, '#ffffff', Math.floor(burstN/2), 5);
-      screenShake(1.2 + Math.min(5, add * 0.4));
+      screenShake(1 + Math.min(4, add * 0.35) + Math.min(5, Math.log10(Math.max(10, chips)) * 0.8));
       SFX.tick(chips);
       setTimeout(() => { d.scoring = false; setTimeout(scoreNext, 60); }, 150);
     }
@@ -934,20 +947,19 @@ function playHand() {
       const handScore = Math.max(chips, 0) * Math.max(mult, 1);
       const newTotal  = roundScore + handScore;
 
-      SFX.mult();
+      SFX.mult(mult);
       floatText(W/2, H/2 + 30, `×${mult} Mult`, '#9a3826', 22);
       burst(W/2, H/2 + 30, '#9a3826', 18, 4);
-      screenShake(5);
+      screenShake(3 + Math.min(16, Math.log2(Math.max(1, mult)) * 2.5));
 
       setTimeout(() => {
         const scoreSize = 24 + Math.min(28, Math.log10(Math.max(1, handScore)) * 6);
         floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize);
         burst(W/2, H/2 + 60, '#c89960', 24, 5);
         burst(W/2, H/2 + 60, '#ffffff', 12, 7);
-        screenShake(7 + Math.min(10, Math.log10(Math.max(1, handScore)) * 2));
-        screenFlash(Math.min(0.55, 0.2 + Math.log10(Math.max(1, handScore)) * 0.08));
-        SFX.bigScore();
-        if (handScore >= 10000) { screenFlash(0.75); screenShake(18); }
+        screenShake(4 + Math.min(20, Math.log10(Math.max(1, handScore)) * 4));
+        screenFlash(Math.min(0.8, 0.1 + Math.log10(Math.max(1, handScore)) * 0.13));
+        SFX.bigScore(handScore);
 
         animateTicker(roundScore, newTotal, 0.7, v => { displayRoundScore = v; }, () => {
           roundScore = newTotal; displayRoundScore = newTotal;
