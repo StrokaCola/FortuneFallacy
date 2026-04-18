@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(git -C /c/Users/lkonj/Game/FortuneFallacy remote -v)",
+      "Bash(python -m http.server 8000)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8000)",
+      "Bash(tasklist /FI \"PID eq 4908\" /FI \"PID eq 22984\" /FI \"PID eq 41244\")",
+      "Bash(tasklist)",
+      "Bash(taskkill /PID 4908 /PID 22984 /PID 41244 /F)",
+      "Bash(cmd.exe /c \"taskkill /PID 4908 /PID 22984 /PID 41244 /F\")",
+      "Bash(cmd.exe /c \"taskkill /PID 4908 /F && taskkill /PID 22984 /F && taskkill /PID 41244 /F\")",
+      "Bash(powershell -Command \"Stop-Process -Id 4908, 22984, 41244 -Force\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(python -m http.server 8001)"
+    ]
+  }
+}
