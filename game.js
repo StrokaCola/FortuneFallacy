@@ -1169,6 +1169,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (screen === 'title') { pendingEndless = false; nameEntry = ''; screen = 'name_entry'; }
+  if (screen === 'howto') { screen = 'title'; }
 });
 
 function handleClick(mx, my) {
@@ -1176,7 +1177,12 @@ function handleClick(mx, my) {
     const tfy = (H - 360) / 2;
     if (inRect(mx,my,{x:W/2-130,y:tfy+200,w:260,h:48})) { pendingEndless=false; nameEntry=''; screen='name_entry'; return; }
     if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { pendingEndless=true; nameEntry=''; screen='name_entry'; return; }
-    if (inRect(mx,my,{x:W/2-110,y:tfy+304,w:220,h:36})) { loadScores(); screen='scores'; return; }
+    if (inRect(mx,my,{x:W/2-235,y:tfy+304,w:210,h:36})) { loadScores(); screen='scores'; return; }
+    if (inRect(mx,my,{x:W/2+25, y:tfy+304,w:210,h:36})) { screen='howto'; return; }
+    return;
+  }
+  if (screen === 'howto') {
+    if (inRect(mx,my,{x:W/2-100,y:H-52,w:200,h:36})) { screen='title'; return; }
     return;
   }
   if (screen === 'name_entry') {
@@ -1774,6 +1780,139 @@ function drawPortalRing(x, y, r, color, pulse, label, active) {
 }
 
 // ─── SCREEN: Title ────────────────────────────────────────────────────
+function drawHowToPlay(t) {
+  drawBG(t);
+
+  const fw = 920, fh = 516;
+  const fx = (W - fw) / 2, fy = (H - fh) / 2;
+  ornamentFrame(fx, fy, fw, fh, '#5a2a18', { bg: 'rgba(28,14,8,0.97)', inner: 'rgba(200,153,96,0.4)' });
+
+  // Title
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#c89960'; ctx.shadowColor = '#c89960'; ctx.shadowBlur = 8;
+  ctx.font = `bold 24px ${SERIF}`;
+  ctx.fillText('✦  HOW TO PLAY  ✦', W/2, fy + 44);
+  ctx.restore();
+
+  // Horizontal rule below title + vertical centre divider
+  ctx.save();
+  ctx.strokeStyle = 'rgba(200,153,96,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(fx + 28, fy + 56); ctx.lineTo(fx + fw - 28, fy + 56);
+  ctx.moveTo(W/2, fy + 60);    ctx.lineTo(W/2, fy + fh - 52);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── LEFT COLUMN ───────────────────────────────────────────────────────
+  const lx = fx + 32;
+  let   ly = fy + 74;
+  const lw = fw / 2 - 50;
+
+  const sectionHeader = (label, y) => {
+    txt(label, lx, y, {size:10, color:'#9a3826', bold:true});
+    ctx.save();
+    ctx.strokeStyle = 'rgba(154,56,38,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const tw = ctx.measureText(label).width + 8;
+    ctx.moveTo(lx + tw, y - 4); ctx.lineTo(lx + lw, y - 4);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const row = (label, desc, y) => {
+    txt(label, lx + 6, y, {size:12, color:'#c89960', bold:true});
+    txt(desc,  lx + 110, y, {size:11, color:'rgba(215,195,145,0.82)'});
+  };
+
+  sectionHeader('THE BASICS', ly);
+  ly += 20;
+  row('Roll',       'Roll all unlocked dice',                                  ly); ly += 21;
+  row('Lock',       'Click a die to hold it for scoring',                      ly); ly += 21;
+  row('Play Hand',  'Score your locked dice and earn points',                  ly); ly += 21;
+  row('Reroll',     'Re-roll unlocked dice (2 per hand)',                       ly); ly += 21;
+  row('Goal',       'Hit the target score to advance (3 hands)',               ly); ly += 28;
+
+  sectionHeader('ORACLES & FORGE', ly);
+  ly += 20;
+  row('Oracle',     'Free powerup granted after each cleared goal',            ly); ly += 21;
+  row('Forge',      'Buy dice upgrades or extra oracles with Shards',          ly); ly += 21;
+  row('Shards',     'Earned by clearing goals — more overshoot = more shards', ly); ly += 21;
+  row('Streak',     'Same combo twice in a row gives a bonus ×3 mult',         ly); ly += 28;
+
+  sectionHeader('TIPS', ly);
+  ly += 20;
+  const tips = [
+    'Beat all 8 goals to unlock Endless Mode',
+    'Oracles stack — build powerful combos',
+    'Score = (die faces + combo chips) × mult',
+  ];
+  for (const tip of tips) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(180,165,110,0.65)';
+    ctx.font = `italic 11px ${SERIF}`;
+    ctx.textAlign = 'left';
+    ctx.fillText('✦  ' + tip, lx + 6, ly);
+    ctx.restore();
+    ly += 19;
+  }
+
+  // ── RIGHT COLUMN ──────────────────────────────────────────────────────
+  const rx = W/2 + 18;
+  let   ry = fy + 74;
+
+  sectionHeader('COMBOS', ry);
+  txt('score = (faces + chips) × mult', rx + 72, ry, {size:10, color:'rgba(200,153,96,0.45)'});
+  ry += 18;
+
+  // Table header
+  ctx.save();
+  ctx.fillStyle = 'rgba(200,153,96,0.45)';
+  ctx.font = 'bold 10px ui-sans-serif,sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('COMBO',  rx + 6,   ry);
+  ctx.fillText('CHIPS',  rx + 248, ry);
+  ctx.fillText('×MULT',  rx + 320, ry);
+  ctx.restore();
+  ry += 5;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(200,153,96,0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + 400, ry); ctx.stroke();
+  ctx.restore();
+  ry += 10;
+
+  const comboRows = [
+    { name:'Five of a Kind',  chips:100, mult:20, tier:8 },
+    { name:'Four of a Kind',  chips:60,  mult:12, tier:7 },
+    { name:'Large Straight',  chips:40,  mult:7,  tier:6 },
+    { name:'Full House',      chips:35,  mult:8,  tier:5 },
+    { name:'Small Straight',  chips:30,  mult:5,  tier:4 },
+    { name:'Three of a Kind', chips:30,  mult:5,  tier:3 },
+    { name:'Two Pair',        chips:20,  mult:3,  tier:2 },
+    { name:'One Pair',        chips:10,  mult:2,  tier:1 },
+    { name:'Chance',          chips:0,   mult:1,  tier:0 },
+  ];
+
+  for (const c of comboRows) {
+    const col = COMBO_COLORS[c.tier] || '#c89960';
+    const bold = c.tier >= 6;
+    if (bold) drawRoundRect(rx - 4, ry - 14, 414, 22, 4, 'rgba(200,153,96,0.05)', col, 0.5);
+    txt(c.name,                     rx + 6,   ry, {size:13, color:col, bold});
+    txt(c.chips > 0 ? `+${c.chips}` : '—', rx + 254, ry, {size:12, color:'rgba(120,190,255,0.85)'});
+    txt(`×${c.mult}`,               rx + 326, ry, {size:12, color:'rgba(255,140,90,0.9)', bold: c.mult >= 8});
+    ry += 22;
+  }
+
+  // Back button
+  drawBtn({x:W/2-100, y:fy + fh - 44, w:200, h:36}, '← Back to Menu', true);
+
+  drawParticles(); drawFloaters();
+}
+
 function drawNameEntry(t) {
   drawBG(t);
 
@@ -1871,7 +2010,8 @@ function drawTitle(t) {
   drawBtn({x:W/2-130,y:fy + 200,w:260,h:48}, '▶  Begin New Run', true, true);
   if (endlessUnlocked())
     drawBtn({x:W/2-130,y:fy + 256,w:260,h:42}, '∞  Endless Mode', true);
-  drawBtn({x:W/2-110,y:fy + 304,w:220,h:36}, '🏆  High Scores', true);
+  drawBtn({x:W/2-235,y:fy + 304,w:210,h:36}, '🏆  High Scores', true);
+  drawBtn({x:W/2+25, y:fy + 304,w:210,h:36}, '?  How to Play', true);
 
   const pulse = 0.5 + 0.4*Math.sin(t*2.3);
   ctx.save();
@@ -2590,6 +2730,7 @@ function loop(now) {
   }
   switch (screen) {
     case 'title':      drawTitle(t);      break;
+    case 'howto':      drawHowToPlay(t);  break;
     case 'name_entry': drawNameEntry(t);  break;
     case 'game':       drawGame(t);       break;
     case 'shop':   drawShop(t);   break;
