@@ -1003,6 +1003,7 @@ function advanceGoal() {
     // Pre-generate free oracle choices for the gift button
     const pool = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id) && o.tier !== 'legendary');
     shopChoices = pool.sort(() => Math.random()-0.5).slice(0, 3);
+    forgeChoices = { upgrades: [], oracles: [] };
     screen = 'hub';
   }, 1800);
 }
@@ -1020,23 +1021,27 @@ function pickOracle(idx) {
 function skipShop() { shopChoices = []; screen = 'hub'; }
 
 function openForge() {
-  forgeChoices.upgrades = [...DICE_UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
-  // Weighted oracle pool: legendaries scarce, rares uncommon; ensure variety by tier
-  const unowned = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id));
-  const weights = { common: 3, uncommon: 2, rare: 1.3, legendary: 0.5 };
-  const weightedPool = [];
-  unowned.forEach(o => {
-    const n = Math.round((weights[o.tier || 'common']) * 2);
-    for (let i = 0; i < n; i++) weightedPool.push(o);
-  });
-  const picked = [];
-  while (picked.length < 3 && weightedPool.length > 0) {
-    const i = Math.floor(Math.random() * weightedPool.length);
-    const o = weightedPool[i];
-    if (!picked.find(p => p.id === o.id)) picked.push(o);
-    weightedPool.splice(i, 1);
+  if (forgeChoices.upgrades.length === 0) {
+    forgeChoices.upgrades = [...DICE_UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
   }
-  forgeChoices.oracles = picked;
+  if (forgeChoices.oracles.length === 0) {
+    // Weighted oracle pool: legendaries scarce, rares uncommon; ensure variety by tier
+    const unowned = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id));
+    const weights = { common: 3, uncommon: 2, rare: 1.3, legendary: 0.5 };
+    const weightedPool = [];
+    unowned.forEach(o => {
+      const n = Math.round((weights[o.tier || 'common']) * 2);
+      for (let i = 0; i < n; i++) weightedPool.push(o);
+    });
+    const picked = [];
+    while (picked.length < 3 && weightedPool.length > 0) {
+      const i = Math.floor(Math.random() * weightedPool.length);
+      const o = weightedPool[i];
+      if (!picked.find(p => p.id === o.id)) picked.push(o);
+      weightedPool.splice(i, 1);
+    }
+    forgeChoices.oracles = picked;
+  }
   forgeTab = 'dice';
   forgeSelectedUpgrade = null;
   screen = 'forge';
