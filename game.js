@@ -10,42 +10,42 @@ const H = canvas.height;  // 540
 const PHYSICS = (()=>{
   const saved = localStorage.getItem('ff_physics');
   const defaults = {
-    throwSpeedX:          620,
-    throwSpeedY:          380,
-    launchBounceBase:      22,
-    launchBounceRand:      10,
-    initSpinXY:            42,
-    initSpinZ:             22,
-    rollDurBase:         0.62,
+    throwSpeedX:          700,
+    throwSpeedY:          400,
+    launchBounceBase:      55,
+    launchBounceRand:      20,
+    initSpinXY:            70,
+    initSpinZ:             40,
+    rollDurBase:         0.65,
     rollDurStagger:     0.055,
-    rollDurRand:         0.12,
-    tumblePhase:         0.62,
-    tumbleRate:         0.045,
-    spinCoupling:        0.22,
-    spinFriction:        0.32,
-    gravity:              150,
-    floorRestitution:    0.42,
-    hopThreshold:          90,
+    rollDurRand:         0.10,
+    tumblePhase:         0.78,
+    tumbleRate:         0.055,
+    spinCoupling:        0.30,
+    spinFriction:        0.25,
+    gravity:              260,
+    floorRestitution:    0.48,
+    hopThreshold:          60,
     maxHops:                4,
-    hopBaseVel:             7,
-    hopRandVel:             5,
-    hopSpeedFactor:     0.008,
-    landingSpinX:           7,
-    landingSpinZ:           5,
-    landingFriction:     0.90,
-    airDrag:             0.62,
-    groundFriction:      0.18,
-    wallRestitution:     0.72,
-    wallSpinY:           0.02,
-    wallSpinZ:          0.015,
-    collisionRestitution: 0.78,
+    hopBaseVel:            12,
+    hopRandVel:             6,
+    hopSpeedFactor:      0.012,
+    landingSpinX:          12,
+    landingSpinZ:          10,
+    landingFriction:     0.84,
+    airDrag:             0.72,
+    groundFriction:      0.12,
+    wallRestitution:     0.78,
+    wallSpinY:           0.03,
+    wallSpinZ:          0.022,
+    collisionRestitution: 0.82,
     collisionGap:           2,
-    collisionSpin:       0.07,
-    collisionHopThreshold: 40,
-    collisionHopBase:       4,
-    collisionHopFactor:  0.018,
-    landBounceVel:          6,
-    glideSpeed:        0.0015,
+    collisionSpin:       0.09,
+    collisionHopThreshold: 35,
+    collisionHopBase:       5,
+    collisionHopFactor:  0.022,
+    landBounceVel:          9,
+    glideSpeed:         0.001,
   };
   if (!saved) return defaults;
   try { return Object.assign({}, defaults, JSON.parse(saved)); } catch { return defaults; }
@@ -62,95 +62,267 @@ function getAudio() {
   return audioCtx;
 }
 
-function playTone(freq, type, duration, gainVal = 0.18, delay = 0) {
+// ─── Volume state ────────────────────────────────────────────────────
+let musicVolume = parseFloat(localStorage.getItem('ff_musicVol') ?? '0.5');
+let sfxVolume   = parseFloat(localStorage.getItem('ff_sfxVol')   ?? '0.8');
+let dragSlider  = null; // 'music' | 'sfx' | null
+
+let _masterNode   = null;
+let _sfxGainNode  = null;
+function getMaster() {
+  if (_masterNode) return _masterNode;
+  const ac   = getAudio();
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -12; comp.knee.value = 8;
+  comp.ratio.value = 6;       comp.attack.value = 0.003; comp.release.value = 0.1;
+  const g = ac.createGain(); g.gain.value = 0.88;
+  _sfxGainNode = ac.createGain(); _sfxGainNode.gain.value = sfxVolume;
+  comp.connect(g); g.connect(_sfxGainNode); _sfxGainNode.connect(ac.destination);
+  _masterNode = comp;
+  return comp;
+}
+
+// ─── Background music ─────────────────────────────────────────────────
+const bgMusic    = new Audio('./bg-music.mp3');
+bgMusic.loop     = true;
+bgMusic.volume   = musicVolume;
+let   bgStarted  = false;
+function ensureBgMusic() {
+  if (bgStarted) return;
+  bgStarted = true;
+  bgMusic.play().catch(() => { bgStarted = false; });
+}
+
+function playTone(freq, type, duration, gainVal = 0.18, delay = 0, pitchEnd = 0) {
   try {
-    const ac  = getAudio();
-    const osc = ac.createOscillator();
-    const g   = ac.createGain();
-    osc.connect(g); g.connect(ac.destination);
+    const ac = getAudio(), t0 = ac.currentTime + delay;
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.connect(g); g.connect(getMaster());
     osc.type = type;
-    osc.frequency.setValueAtTime(freq, ac.currentTime + delay);
-    g.gain.setValueAtTime(0, ac.currentTime + delay);
-    g.gain.linearRampToValueAtTime(gainVal, ac.currentTime + delay + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + delay + duration);
-    osc.start(ac.currentTime + delay);
-    osc.stop(ac.currentTime + delay + duration + 0.05);
+    osc.frequency.setValueAtTime(freq, t0);
+    if (pitchEnd > 0) osc.frequency.exponentialRampToValueAtTime(Math.max(10, pitchEnd), t0 + duration * 0.75);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gainVal, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.start(t0); osc.stop(t0 + duration + 0.05);
   } catch {}
 }
 
-function playNoise(duration, gainVal = 0.12, delay = 0) {
+function playNoise(duration, gainVal = 0.12, delay = 0, filterFreq = 800, filterQ = 0.9) {
   try {
-    const ac  = getAudio();
-    const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * duration), ac.sampleRate);
+    const ac = getAudio(), t0 = ac.currentTime + delay;
+    const len = Math.floor(ac.sampleRate * (duration + 0.05));
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
     const d   = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const src = ac.createBufferSource();
-    const g   = ac.createGain();
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(), g = ac.createGain();
     const flt = ac.createBiquadFilter();
-    flt.type = 'bandpass'; flt.frequency.value = 800;
-    src.buffer = buf;
-    src.connect(flt); flt.connect(g); g.connect(ac.destination);
-    g.gain.setValueAtTime(gainVal, ac.currentTime + delay);
-    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + delay + duration);
-    src.start(ac.currentTime + delay);
+    flt.type = 'bandpass'; flt.frequency.value = filterFreq; flt.Q.value = filterQ;
+    src.buffer = buf; src.connect(flt); flt.connect(g); g.connect(getMaster());
+    g.gain.setValueAtTime(gainVal, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    src.start(t0); src.stop(t0 + duration + 0.05);
   } catch {}
 }
 
 const SFX = {
-  roll()      { playNoise(0.08, 0.15); playTone(180, 'square', 0.06, 0.08); },
-  lock()      { playTone(330, 'sine', 0.1, 0.14); },
-  unlock()    { playTone(220, 'sine', 0.08, 0.1); },
-  playHand()  { playTone(440, 'triangle', 0.1, 0.15); playTone(550, 'triangle', 0.1, 0.12, 0.08); },
+  roll() {
+    playNoise(0.055, 0.22, 0, 1400, 0.8);
+    playNoise(0.10,  0.10, 0.03, 500, 0.9);
+    playTone(100, 'triangle', 0.09, 0.09, 0, 55);
+  },
+  lock() {
+    playTone(900, 'square',   0.035, 0.10);
+    playTone(450, 'sine',     0.13,  0.07, 0.008);
+    playTone(1350,'sine',     0.05,  0.05, 0.004);
+  },
+  unlock() {
+    playTone(675, 'sine', 0.07, 0.07);
+    playTone(450, 'sine', 0.10, 0.05, 0.02);
+  },
+  playHand() {
+    playNoise(0.05, 0.07, 0, 2200);
+    playTone(330, 'triangle', 0.16, 0.11);
+    playTone(494, 'triangle', 0.13, 0.09, 0.04);
+    playTone(659, 'triangle', 0.11, 0.07, 0.08);
+  },
   combo(tier) {
-    const freqs = [330, 392, 494, 587, 659, 784, 880, 1047, 1175];
-    const f = freqs[Math.min(tier, freqs.length - 1)];
-    playTone(f, 'triangle', 0.18, 0.2);
-    playTone(f * 1.25, 'sine', 0.14, 0.12, 0.06);
-    if (tier >= 6) playTone(f * 1.5, 'sine', 0.12, 0.1, 0.12);
+    const roots = [261,294,330,370,392,440,494,523,587];
+    const root  = roots[Math.min(tier, roots.length-1)];
+    const notes = [root, root*1.25, root*1.5];
+    if (tier >= 5) notes.push(root*2);
+    if (tier >= 7) notes.push(root*2.5);
+    notes.forEach((f,i) => {
+      playTone(f,   'triangle', 0.24+i*0.04, 0.13+tier*0.007, i*0.055);
+      if (tier >= 4) playTone(f*2, 'sine', 0.14, 0.04, i*0.055+0.012);
+    });
+    if (tier >= 6) playTone(root*0.5, 'sine', 0.38, 0.16, 0);
   },
-  tick(score) {
-    const si = scoreIntensity(score);
-    playTone(260 + si * 900, 'square', 0.03 + si * 0.03, 0.03 + si * 0.04);
+  tick(score, add=0) {
+    const si    = scoreIntensity(score);
+    const addSI = Math.min(1, Math.log2(Math.max(1, add)) / 4.5);
+    const pent  = [261,294,330,392,440,523,587,659,784,1047];
+    const idx   = Math.min(Math.floor((si*0.55 + addSI*0.45) * (pent.length-1)), pent.length-1);
+    const f     = pent[idx];
+    const vol   = 0.026 + si*0.024 + addSI*0.024;
+    // Core + chorus detune
+    playTone(f,        'triangle', 0.06+addSI*0.04, vol);
+    playTone(f*1.005,  'sine',     0.04+addSI*0.02, vol*0.45, 0.005);
+    // Sub snap
+    playTone(f*0.5,    'sine',     0.022,            vol*0.55, 0,    f*0.06);
+    // Harmonics grow with add size
+    if (addSI > 0.25) playTone(f*2,    'sine', 0.036, vol*0.52, 0.010);
+    if (addSI > 0.50) playTone(f*3,    'sine', 0.026, vol*0.36, 0.018);
+    if (addSI > 0.70) playTone(f*4,    'sine', 0.018, vol*0.26, 0.026);
+    if (addSI > 0.75) playTone(f*0.25, 'sine', 0.038, vol*0.70, 0.000);
+    // Attack transient noise for big hits
+    if (addSI > 0.60) playNoise(0.018, 0.018, 0, 1400);
   },
-  mult(m = 1) {
-    const si = Math.min(1, Math.log2(Math.max(1, m)) / 5);
-    playTone(110 * (1 + si * 0.8), 'sawtooth', 0.22, 0.08 + si * 0.08);
-    playTone(165 * (1 + si * 0.8), 'sawtooth', 0.18, 0.07 + si * 0.06, 0.05);
+  multTick(m=1) {
+    const si   = Math.min(1, Math.log2(Math.max(1, m)) / 4);
+    const base = 220 + si*160;
+    // Warm chord: root + chorus + fifth + octave
+    playTone(base,        'triangle', 0.09, 0.08+si*0.06);
+    playTone(base*1.004,  'sine',     0.06, 0.05+si*0.03, 0.006);
+    playTone(base*1.5,    'sine',     0.07, 0.045,         0.016);
+    if (si > 0.30) playTone(base*2,   'sine', 0.055, 0.030, 0.026);
+    if (si > 0.55) playTone(base*4,   'sine', 0.030, 0.016, 0.040);
+    if (si > 0.50) playTone(base*0.5, 'sine', 0.042, 0.038, 0.000);
   },
-  bigScore(score = 0) {
-    const si = scoreIntensity(score);
-    const base = [523, 659, 784];
-    const gain = 0.14 + si * 0.12;
-    base.forEach((f, i) => playTone(f * (1 + si * 0.6), 'triangle', 0.2 + si * 0.15, gain, i * (0.1 - si * 0.05)));
+  mult(m=1) {
+    const si   = Math.min(1, Math.log2(Math.max(1,m))/4);
+    const base = 110+si*150;
+    // Sub bass foundation
+    playTone(base*0.5,    'sine',     0.36, 0.16+si*0.10, 0.000);
+    // Root + chorus
+    playTone(base,        'sine',     0.38, 0.14+si*0.12, 0.010);
+    playTone(base*1.003,  'triangle', 0.30, 0.09+si*0.06, 0.010);
+    // Fifth
+    playTone(base*1.5,    'triangle', 0.30, 0.09+si*0.07, 0.028);
+    // Octave
+    playTone(base*2,      'sine',     0.26, 0.07+si*0.06, 0.048);
+    // Upper harmonics
+    if (si>0.30) playTone(base*3,    'sine', 0.18, 0.05+si*0.04, 0.065);
+    if (si>0.55) playTone(base*4,    'sine', 0.13, 0.035,          0.080);
+    if (si>0.70) playTone(base*6,    'sine', 0.09, 0.022,          0.095);
+    // Noise body
+    playNoise(0.09+si*0.06, 0.06+si*0.05, 0,     260+si*180);
+    if (si>0.50) playNoise(0.045, 0.035, 0.030, 1800+si*800);
   },
-  oracle()    { [1047, 1319, 1568].forEach((f, i) => playTone(f, 'sine', 0.18, 0.12, i * 0.06)); },
-  clear()     { [392, 494, 587, 698, 784].forEach((f, i) => playTone(f, 'triangle', 0.18, 0.16, i * 0.08)); },
-  win()       { [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'triangle', 0.3, 0.18, i * 0.12)); },
-  fail()      { [440, 330, 220, 165].forEach((f, i) => playTone(f, 'sawtooth', 0.25, 0.14, i * 0.1)); },
-  portal()    { playNoise(0.3, 0.08); [523, 659, 523].forEach((f, i) => playTone(f, 'sine', 0.25, 0.1, i * 0.1)); },
+  bigScore(score=0) {
+    const si   = scoreIntensity(score);
+    const root = 261*(1+si*1.4);
+    // Deep sub bass hits
+    playTone(root*0.25,   'sine',     0.40, 0.22+si*0.12, 0.000);
+    playTone(root*0.5,    'sine',     0.46, 0.20+si*0.10, 0.006);
+    // Main chord arpeggio — triangle + chorus sine for each note
+    [1, 1.25, 1.5, 2, 2.5, 3].forEach((r, i) => {
+      playTone(root*r,        'triangle', 0.42+si*0.18, 0.15+si*0.09, i*0.048);
+      playTone(root*r*1.004,  'sine',     0.24+si*0.08, 0.07+si*0.04, i*0.048+0.009);
+    });
+    // Sparkle bell layer — high bright tones
+    if (si>0.20) playTone(root*4,  'sine', 0.18, 0.05+si*0.04, 0.060);
+    if (si>0.40) playTone(root*5,  'sine', 0.14, 0.035,          0.080);
+    if (si>0.60) playTone(root*6,  'sine', 0.10, 0.025,          0.100);
+    if (si>0.75) playTone(root*8,  'sine', 0.07, 0.016,          0.115);
+    if (si>0.85) playTone(root*10, 'sine', 0.05, 0.010,          0.130);
+    // Noise layers: body + sub thud + air
+    playNoise(0.11+si*0.09, 0.09+si*0.07, 0.000, 900+si*700);
+    if (si>0.30) playNoise(0.07,   0.06,           0.028, 380+si*250);
+    if (si>0.55) playNoise(0.05,   0.04,           0.055, 2400+si*1200);
+    if (si>0.75) playNoise(0.04,   0.025,          0.090, 180);
+  },
+  oracle()  { [523,659,784,1047].forEach((f,i)=>{ playTone(f,'sine',0.24,0.09,i*0.07); playTone(f*1.006,'sine',0.18,0.03,i*0.07+0.01); }); },
+  clear()   {
+    [392,523,659,784,1047].forEach((f,i)=>{ playTone(f,'triangle',0.28,0.13,i*0.07); playTone(f*0.5,'sine',0.22,0.05,i*0.07); });
+    playNoise(0.12, 0.04, 0.22, 650);
+  },
+  win()     { [261,330,392,523,659,784].forEach((f,i)=>{ playTone(f,'triangle',0.42,0.13,i*0.10); playTone(f*2,'sine',0.32,0.04,i*0.10+0.03); }); },
+  fail()    {
+    [440,330,247,185].forEach((f,i)=>{ playTone(f,'sawtooth',0.30,0.11,i*0.09); playTone(f*0.75,'square',0.22,0.05,i*0.09+0.02); });
+    playNoise(0.10, 0.04, 0.28, 200);
+  },
+  portal()  {
+    playNoise(0.4, 0.06, 0, 300);
+    [261,330,523,659].forEach((f,i)=>{ playTone(f,'sine',0.32,0.08,i*0.08); playTone(f*1.01,'sine',0.26,0.03,i*0.08+0.01); });
+  },
 };
 
 // ─── Particles ────────────────────────────────────────────────────────
 const particles = [];
+
+// Ring bursts — expanding hollow circles for impacts
+const rings = [];
+function ring(x, y, color, maxR = 55, duration = 0.4) {
+  rings.push({ x, y, color, maxR, duration, age: 0 });
+}
+function updateRings(dt) {
+  for (let i = rings.length-1; i >= 0; i--) {
+    rings[i].age += dt;
+    if (rings[i].age >= rings[i].duration) rings.splice(i, 1);
+  }
+}
+function drawRings() {
+  for (const r of rings) {
+    const t    = r.age / r.duration;
+    const ease = 1 - Math.pow(1-t, 2);
+    const rad  = r.maxR * ease;
+    const alp  = (1-t) * 0.88;
+    const thick = (r.maxR > 100 ? 4 : 2.5) * (1-t) + 0.5;
+    ctx.save();
+    ctx.globalAlpha  = alp;
+    ctx.strokeStyle  = r.color;
+    ctx.shadowColor  = r.color;
+    ctx.shadowBlur   = (r.maxR > 80 ? 22 : 12) * (1-t);
+    ctx.lineWidth    = thick;
+    ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(1, rad), 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Rapid shockwave: fires `count` rings in quick succession
+function shockwave(x, y, color, count = 3, baseR = 40, gap = 35, dt = 60) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => ring(x, y, color, baseR + i * gap, 0.30 + i * 0.05), i * dt);
+  }
+}
+
+// Sparks — fast thin streaks with gravity
+function spark(x, y, color, n = 6, speed = 9) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = (0.5 + Math.random()*0.5) * speed;
+    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 1.5,
+      r: 1.5, color, alpha: 1,
+      life: 0.38 + Math.random()*0.22 + speed*0.010, age: 0,
+      gravity: true, spark: true, len: 4 + speed*0.55 + Math.random()*5 });
+  }
+}
 
 function burst(x, y, color, n = 10, speed = 4) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = (0.4 + Math.random() * 0.6) * speed;
     particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s,
-      r: 2 + Math.random() * 3, color, alpha: 1,
-      life: 0.6 + Math.random() * 0.5, age: 0 });
+      r: 2.5 + Math.random()*3.5 + speed*0.18, color, alpha: 1,
+      life: 0.65 + Math.random()*0.65 + speed*0.012, age: 0 });
   }
 }
 
 function updateParticles(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
+    if (p.lavaDrop) {
+      p.vy += 0.42;
+      p.vx *= 0.98;
+    } else {
+      if (p.gravity) p.vy += 0.22;
+      p.vx *= 0.88; p.vy *= 0.88;
+    }
     p.x += p.vx; p.y += p.vy;
-    p.vx *= 0.90; p.vy *= 0.90;
     p.age += dt;
     p.alpha = 1 - p.age / p.life;
-    if (p.age >= p.life) particles.splice(i, 1);
+    if (p.age >= p.life || (p.lavaDrop && p.y > H + 30)) particles.splice(i, 1);
   }
 }
 
@@ -158,9 +330,48 @@ function drawParticles() {
   for (const p of particles) {
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.alpha);
-    ctx.fillStyle   = p.color;
-    ctx.shadowColor = p.color; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    if (p.spark) {
+      const spd = Math.hypot(p.vx, p.vy);
+      if (spd > 0.2) {
+        const len = (p.len || 5) * (1 - p.age/p.life);
+        ctx.strokeStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 4;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - (p.vx/spd)*len, p.y - (p.vy/spd)*len);
+        ctx.stroke();
+      }
+    } else if (p.lavaDrop) {
+      const spd    = Math.hypot(p.vx, p.vy);
+      const stretch = Math.max(1.3, 1 + spd * 0.20);
+      const angle  = Math.atan2(p.vy, p.vx) - Math.PI / 2;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      // Outer glow blob
+      ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = p.r * 5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.r * 0.75, p.r * stretch, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pointed teardrop cap (trailing end = top before rotation)
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(-p.r * 0.6, -p.r * stretch * 0.6);
+      ctx.quadraticCurveTo(0, -p.r * stretch * 2.2, p.r * 0.6, -p.r * stretch * 0.6);
+      ctx.fill();
+      // Hot core
+      ctx.globalAlpha = Math.max(0, p.alpha) * 0.75;
+      ctx.fillStyle = '#ffee66'; ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.r * 0.32, p.r * stretch * 0.38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle   = p.color;
+      ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    }
     ctx.restore();
   }
 }
@@ -168,10 +379,12 @@ function drawParticles() {
 // ─── Floating labels ──────────────────────────────────────────────────
 const floaters = [];
 
-function floatText(x, y, text, color, size = 18) {
+function floatText(x, y, text, color, size = 18, opts = {}) {
   floaters.push({
-    x, y, vy: -2.2, text, color, size, alpha: 1, life: 1.5, age: 0,
-    scale: 1, ts: 0, rot: (Math.random()-0.5) * 0.2,
+    x, y, vy: -(opts.vy || 2.2), text, color, size, alpha: 1,
+    life: opts.life || 1.5, age: 0, scale: 1, ts: 0,
+    rot: (Math.random()-0.5) * 0.2,
+    glow: opts.glow || 6, popScale: opts.popScale || 1.8,
   });
 }
 
@@ -181,9 +394,10 @@ function updateFloaters(dt) {
     f.y += f.vy; f.vy *= 0.93;          // spring up and slow
     f.age += dt; f.ts += dt;
     // Bounce-pop: 1.6× → 0.9× → 1× over first 280ms
-    if (f.ts < 0.12)       f.scale = 1 + 0.8 * (f.ts / 0.12);
-    else if (f.ts < 0.28)  f.scale = 1.8 - 0.9 * ((f.ts - 0.12) / 0.16);
-    else                   f.scale = 0.9 + 0.1 * Math.min(1, (f.ts - 0.28) / 0.12);
+    const ps = f.popScale || 1.8;
+    if (f.ts < 0.12)       f.scale = 1 + (ps - 1) * (f.ts / 0.12);
+    else if (f.ts < 0.28)  f.scale = ps - (ps - 0.88) * ((f.ts - 0.12) / 0.16);
+    else                   f.scale = 0.88 + 0.12 * Math.min(1, (f.ts - 0.28) / 0.14);
     f.alpha = f.age > f.life * 0.55 ? 1 - (f.age - f.life*0.55)/(f.life*0.45) : 1;
     if (f.age >= f.life) floaters.splice(i, 1);
   }
@@ -200,7 +414,7 @@ function drawFloaters() {
     ctx.lineWidth = Math.max(2, sz * 0.18);
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
     ctx.strokeText(f.text, 0, 0);
-    ctx.shadowColor = f.color; ctx.shadowBlur = 6;
+    ctx.shadowColor = f.color; ctx.shadowBlur = f.glow || 6;
     ctx.fillStyle = f.color;
     ctx.fillText(f.text, 0, 0);
     ctx.restore();
@@ -772,6 +986,8 @@ const ENDLESS_BASE = 100000;
 
 let roundScore       = 0;
 let displayRoundScore = 0;
+let displayScoreBounce    = 0;   // 0–1, scale-pulse while counter ticks
+let firstHandSpectrumGoal = -1;  // runGoal value when goal was cleared first-hand
 let handsLeft        = HANDS_PER_ROUND;
 let rerollsLeft      = REROLLS_PER_HAND;
 let totalFateScore   = 0;
@@ -806,7 +1022,7 @@ let runeSelSlot     = null;  // {die:i, slot:j} currently selected slot (null = 
 
 // ─── Pause state ─────────────────────────────────────────────────────
 let paused        = false;
-let pauseTab      = 'unlockables'; // 'unlockables' | 'quick'
+let pauseTab      = 'unlockables'; // 'unlockables' | 'quick' | 'audio'
 let forgeOrigin   = 'hub';
 let runeOrigin    = 'hub';
 
@@ -948,8 +1164,10 @@ function confirmPlayerName() {
 
 function startRound() {
   roundScore        = 0;
-  displayRoundScore = 0;
-  handsLeft         = HANDS_PER_ROUND;
+  displayRoundScore     = 0;
+  displayScoreBounce    = 0;
+  firstHandSpectrumGoal = -1;
+  handsLeft             = HANDS_PER_ROUND;
   rerollsLeft       = REROLLS_PER_HAND;
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
@@ -993,9 +1211,13 @@ function rollDice() {
     // Anticipation bounce — stronger launch
     d.bounceY  = 0;
     d.bounceVY = -(PHYSICS.launchBounceBase + Math.random() * PHYSICS.launchBounceRand);
-    // Table bounce velocity
-    d.pvx = (Math.random() - 0.5) * PHYSICS.throwSpeedX;
-    d.pvy = (Math.random() - 0.5) * PHYSICS.throwSpeedY;
+    // Table throw — guaranteed minimum speed so every die travels visibly
+    const throwAngle = Math.random() * Math.PI * 2;
+    const throwMin   = PHYSICS.throwSpeedX * 0.45;
+    const throwMax   = PHYSICS.throwSpeedX * 1.0;
+    const throwMag   = throwMin + Math.random() * (throwMax - throwMin);
+    d.pvx = Math.cos(throwAngle) * throwMag;
+    d.pvy = Math.sin(throwAngle) * throwMag * (PHYSICS.throwSpeedY / PHYSICS.throwSpeedX);
     d.bounceCount = 0;
     // Target rotation
     const [trx, try_, trz] = FACE_ROT[d.face];
@@ -1013,11 +1235,17 @@ function rollDice() {
         const [trx, try_, trz] = FACE_ROT[d.face];
         d.rx = trx; d.ry = try_; d.rz = trz;
         d.landT = 0;
+        d.revealT = 0;   // drives face-reveal flash in drawDie3D
         d.bounceVY = -PHYSICS.landBounceVel;
-        burst(d.absX, d.absY + DICE_SIZE * 0.35, '#c89960', 5, 2.2);
-        burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff', 3, 3);
-        playTone(180 + d.face * 22, 'triangle', 0.08 + scoreIntensity(roundScore) * 0.08, 0.08 + scoreIntensity(roundScore) * 0.06);
-        screenShake(3 + d.face * 0.3 + scoreIntensity(roundScore) * 4);
+        const upgC = diceUpgrades[i] ? diceUpgrades[i].color : '#c89960';
+        burst(d.absX, d.absY + DICE_SIZE * 0.35, upgC,    10, 3.2);
+        burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff',  5, 4.0);
+        spark(d.absX, d.absY + DICE_SIZE * 0.35, upgC, 8, 10);
+        ring(d.absX, d.absY, upgC, 38, 0.32);
+        // Pitched thud: lower pitch = heavier land feel, face note for variety
+        playTone(130 + d.face * 22, 'triangle', 0.15 + scoreIntensity(roundScore) * 0.10, 0.12 + scoreIntensity(roundScore) * 0.06);
+        playTone(260 + d.face * 22, 'sine',     0.06, 0.18);
+        screenShake(6 + d.face * 0.6 + scoreIntensity(roundScore) * 6);
       }, i * 60);
     });
     rolledOnce = true;
@@ -1057,7 +1285,12 @@ function playHand() {
     SFX.combo(combo.tier);
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
-    if (tier >= 6) { screenFlash(0.4); screenShake((tier >= 7 ? 10 : 6) + scoreIntensity(roundScore) * 6); }
+    if (tier >= 6) {
+      screenFlash(0.4);
+      screenShake((tier >= 7 ? 10 : 6) + scoreIntensity(roundScore) * 6);
+      ring(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#c89960', 80 + tier*8, 0.55);
+      spark(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#c89960', 12, 12);
+    }
     const burstN = [4,8,12,16,20,26,34,44,60][tier] || 10;
     const burstSpd = 4 + tier * 0.7;
     burst(W/2, H/2, COMBO_COLORS[tier] || '#c89960', burstN, burstSpd);
@@ -1083,6 +1316,7 @@ function playHand() {
       d.scoring = true;
       d.scoringT = 0;
       let add   = d.face;
+      const multBefore = mult;
       if (upg) {
         if (upg.scoreMin !== undefined)                    add = Math.max(add, upg.scoreMin);
         if (upg.faceRemap && add === upg.faceRemap.from)   add = upg.faceRemap.to;
@@ -1116,14 +1350,70 @@ function playHand() {
       scoringState.chips = chips;
       scoringState.chipPunch = 1;
       if (upg && upg.multPenalty) scoringState.multPunch = 1;
-      const txtSize = 16 + Math.min(24, add * 1.5);
-      const txtColor = upg ? upg.color : (add >= 10 ? '#ffffff' : add >= 6 ? '#ffe066' : '#c89960');
-      floatText(d.absX, d.absY - 40, `+${add}`, txtColor, txtSize);
-      const burstN = 8 + Math.min(20, add * 2);
-      burst(d.absX, d.absY, txtColor, burstN, 3.5);
-      if (add >= 8) burst(d.absX, d.absY, '#ffffff', Math.floor(burstN/2), 5);
-      screenShake(1.2 + Math.min(8, add * 0.4 + scoreIntensity(chips) * 3));
-      SFX.tick(chips);
+
+      const multDelta = mult - multBefore;
+
+      // Progressive bar fill — update display score as chips land
+      displayRoundScore = roundScore + chips;
+      const addSI = Math.min(1, Math.log2(Math.max(1, add)) / 4.5);
+      displayScoreBounce = Math.max(displayScoreBounce, 0.22 + addSI * 0.78);
+
+      // Chip effects
+      if (add > 0) {
+        const txtColor = upg ? upg.color
+          : add >= 25 ? '#ffffff' : add >= 15 ? '#ffe066' : add >= 8 ? '#ffb040' : '#c89960';
+        const txtGlow  = 8 + addSI * 44;
+        const txtPop   = 1.9 + addSI * 1.4;
+        const txtLife  = 1.4 + addSI * 0.7;
+        const txtSize  = 14 + Math.min(72, add * 5);
+        floatText(d.absX, d.absY - 40, `+${add}`, txtColor, txtSize,
+          { glow: txtGlow, popScale: txtPop, life: txtLife });
+
+        // Tier label for big hits
+        if      (add >= 35) floatText(d.absX, d.absY - 85, 'INSANE!!', '#ff2200', 30, {life:1.9, glow:50, popScale:3.2});
+        else if (add >= 22) floatText(d.absX, d.absY - 82, 'MASSIVE!', '#ff6600', 26, {life:1.8, glow:38, popScale:2.8});
+        else if (add >= 14) floatText(d.absX, d.absY - 78, 'HUGE!',    '#ffaa00', 22, {life:1.6, glow:26, popScale:2.4});
+        else if (add >= 9)  floatText(d.absX, d.absY - 74, 'BIG!',     '#ffe066', 18, {life:1.4, glow:16, popScale:2.0});
+
+        const burstN = 8 + Math.min(100, add * 6);
+        burst(d.absX, d.absY, txtColor,    burstN,                    5  + addSI * 9);
+        burst(d.absX, d.absY, '#ffffff',   Math.floor(burstN * 0.5),  7  + addSI * 10);
+        if (add >= 7)  burst(d.absX, d.absY, '#ffee88', Math.floor(burstN * 0.3), 10 + addSI * 7);
+        if (add >= 15) burst(d.absX, d.absY, '#ff6644', Math.floor(burstN * 0.2), 14 + addSI * 6);
+
+        ring(d.absX, d.absY, txtColor, 30 + add * 5,  0.30 + addSI * 0.20);
+        if (add >= 3)  ring(d.absX, d.absY, 'rgba(255,255,255,0.4)', 20 + add * 3, 0.24);
+        if (add >= 5)  ring(RP.x + RP.w/2, RP.y + 91, txtColor, 22 + add * 4, 0.30);
+        if (add >= 8)  ring(d.absX, d.absY, txtColor, 70 + add * 7, 0.46);
+        if (add >= 13) ring(W/2, H/2, 'rgba(255,255,255,0.20)', 90 + add * 5, 0.62);
+
+        if (add >= 8)  shockwave(d.absX, d.absY, txtColor, 2, 28, 38, 55);
+        if (add >= 15) shockwave(d.absX, d.absY, txtColor, 3, 24, 44, 50);
+        if (add >= 22) shockwave(W/2, H/2, 'rgba(255,255,255,0.22)', 3, 65, 55, 70);
+
+        if (add >= 2)  spark(d.absX, d.absY, txtColor,  3 + Math.min(45, Math.floor(add * 2.2)), 8  + addSI * 14);
+        if (add >= 6)  spark(d.absX, d.absY, '#ffffff', Math.floor(add * 0.9),                   11 + addSI * 11);
+        if (add >= 13) spark(d.absX, d.absY, '#ffee88', Math.floor(add * 0.6),                   15 + addSI * 9);
+        if (add >= 22) spark(W/2, H/2, txtColor,        Math.floor(add * 0.4),                   18 + addSI * 8);
+
+        if (add >= 4)  screenFlash(0.04 + addSI * 0.28);
+        if (add >= 10) screenFlash(0.12 + addSI * 0.52);
+        screenShake(2 + Math.min(30, add * 1.1 + scoreIntensity(chips) * 10));
+        SFX.tick(chips, add);
+      }
+
+      // Separate mult cue when this die also bumped the multiplier
+      if (multDelta > 0) {
+        const multLabel = Number.isInteger(multDelta) ? `×+${multDelta}` : `×+${multDelta.toFixed(1)}`;
+        const multDelay = add > 0 ? 75 : 0;
+        setTimeout(() => {
+          floatText(d.absX, d.absY - (add > 0 ? 62 : 40), multLabel, '#ff9944', 14 + Math.min(10, multDelta * 2));
+          burst(d.absX, d.absY, '#ff9944', 6 + Math.min(12, multDelta * 2), 3);
+          ring(d.absX, d.absY, '#ff9944', 22 + multDelta * 3, 0.22);
+          SFX.multTick(mult);
+        }, multDelay);
+      }
+
       setTimeout(() => { d.scoring = false; setTimeout(scoreNext, 60); }, 150);
     }
 
@@ -1184,22 +1474,70 @@ function playHand() {
       const handScore = Math.max(chips, 0) * Math.max(mult, 1);
       const newTotal  = roundScore + handScore;
 
+      const multSI = Math.min(1, Math.log2(Math.max(1, mult)) / 4);
+      const multTxtSize = 22 + Math.min(48, mult * 4);
       SFX.mult(mult);
-      floatText(W/2, H/2 + 30, `×${mult} Mult`, '#9a3826', 22);
-      burst(W/2, H/2 + 30, '#9a3826', 18, 4);
-      screenShake(5 + scoreIntensity(mult * chips) * 5);
+      floatText(W/2, H/2 + 30, `×${mult} Mult`, '#ff9944', multTxtSize,
+        { glow: 12 + multSI * 50, popScale: 2.0 + multSI * 1.6, life: 1.6 + multSI * 0.6 });
+      if (mult >= 8) floatText(W/2, H/2 + 5, 'MULTIPLIER!', '#ffcc44', 20, {life:1.5, glow:32, popScale:2.4});
+
+      const mBN = 18 + Math.floor(multSI * 70);
+      burst(W/2, H/2 + 30, '#ff9944',  mBN,                    5.5 + multSI * 8);
+      burst(W/2, H/2 + 30, '#ffffff',  Math.floor(mBN * 0.55), 7.5 + multSI * 8);
+      if (multSI > 0.15) burst(W/2, H/2 + 30, '#ffcc66', Math.floor(mBN * 0.35), 10 + multSI * 6);
+      if (multSI > 0.50) burst(W/2, H/2,       '#ff6622', Math.floor(mBN * 0.20), 14 + multSI * 5);
+
+      ring(W/2, H/2 + 30, '#ff9944', 50 + mult * 7,  0.38 + multSI * 0.22);
+      ring(W/2, H/2 + 30, '#ffffff', 32 + mult * 4,  0.28 + multSI * 0.16);
+      if (mult >= 2) ring(W/2, H/2, 'rgba(255,153,68,0.28)', 90 + mult * 9, 0.55);
+      if (mult >= 3) ring(W/2, H/2, '#ff9944', 140 + mult * 12, 0.68);
+
+      shockwave(W/2, H/2 + 30, '#ff9944', 2 + Math.floor(multSI * 4), 40, 50, 58);
+      if (multSI > 0.5) shockwave(W/2, H/2, 'rgba(255,200,100,0.30)', 3, 80, 60, 75);
+
+      if (mult >= 3) spark(W/2, H/2 + 30, '#ff9944', 8  + Math.floor(mult * 2.2), 9  + multSI * 12);
+      if (mult >= 4) spark(W/2, H/2 + 30, '#ffffff', Math.floor(mult * 1.1),       12 + multSI * 9);
+      if (mult >= 6) spark(W/2, H/2,       '#ffcc44', Math.floor(mult * 0.8),       15 + multSI * 8);
+
+      if (multSI > 0.25) screenFlash(0.06 + multSI * 0.38);
+      screenShake(8 + multSI * 26 + scoreIntensity(mult * chips) * 12);
 
       setTimeout(() => {
-        const scoreSize = 24 + Math.min(28, Math.log10(Math.max(1, handScore)) * 6);
-        floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize);
-        burst(W/2, H/2 + 60, '#c89960', 24, 5);
-        burst(W/2, H/2 + 60, '#ffffff', 12, 7);
         const si = scoreIntensity(handScore);
-        screenShake(7 + si * 18);
-        screenFlash(Math.min(0.7, 0.2 + si * 0.5));
+        const scoreSize = 22 + Math.min(62, Math.log10(Math.max(1, handScore)) * 13);
+        floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize,
+          { glow: 14 + si * 60, popScale: 2.2 + si * 1.8, life: 1.8 + si * 0.8, vy: 2.8 });
+
+        const scoreBN = 24 + Math.floor(si * 120);
+        burst(W/2, H/2 + 60, '#c89960',  scoreBN,                     6   + si * 9);
+        burst(W/2, H/2 + 60, '#ffffff',  Math.floor(scoreBN * 0.60),   9   + si * 10);
+        burst(W/2, H/2,       '#c89960', Math.floor(scoreBN * 0.40),   7   + si * 8);
+        if (si > 0.20) burst(W/2, H/2 + 60, '#ffee88', Math.floor(scoreBN * 0.40), 12 + si * 8);
+        if (si > 0.45) burst(W/2, H/2 + 60, '#ff8844', Math.floor(scoreBN * 0.25), 16 + si * 7);
+        if (si > 0.70) burst(W/2, H/2,       '#ffffff', Math.floor(scoreBN * 0.20), 20 + si * 6);
+
+        ring(W/2, H/2 + 60, '#c89960', 60  + si * 130, 0.50 + si * 0.24);
+        ring(W/2, H/2 + 60, '#ffffff', 40  + si *  90, 0.38 + si * 0.22);
+        ring(W/2, H/2,       '#c89960', 100 + si * 150, 0.65 + si * 0.20);
+        if (si > 0.20) ring(W/2, H/2, 'rgba(255,255,255,0.22)', 150 + si * 120, 0.80);
+        if (si > 0.55) ring(W/2, H/2, '#ffee88', 200 + si * 100, 0.90);
+
+        shockwave(W/2, H/2 + 60, '#c89960', 3 + Math.floor(si * 5), 50,  55, 55);
+        shockwave(W/2, H/2,       '#ffffff', 3 + Math.floor(si * 4), 80,  65, 65);
+        if (si > 0.40) shockwave(W/2, H/2, '#ffee88', 3, 130, 70, 80);
+        if (si > 0.70) shockwave(W/2, H/2, 'rgba(255,100,50,0.35)', 4, 100, 80, 60);
+
+        spark(W/2, H/2 + 60, '#c89960', 10 + Math.floor(si * 45), 11 + si * 15);
+        spark(W/2, H/2 + 60, '#ffffff', 6  + Math.floor(si * 30), 14 + si * 12);
+        if (si > 0.35) spark(W/2, H/2, '#ffee88',  Math.floor(si * 28), 17 + si * 10);
+        if (si > 0.60) spark(W/2, H/2, '#ff8844',  Math.floor(si * 20), 20 + si * 9);
+        if (si > 0.80) spark(W/2, H/2, '#ffffff',  Math.floor(si * 15), 24 + si * 8);
+
+        screenShake(11 + si * 42);
+        screenFlash(Math.min(0.95, 0.18 + si * 0.77));
         SFX.bigScore(handScore);
 
-        animateTicker(roundScore, newTotal, 0.7, v => { displayRoundScore = v; }, () => {
+        animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
           roundScore = newTotal; displayRoundScore = newTotal;
           handsLeft--; rerollsLeft = REROLLS_PER_HAND;
           rolledOnce = false; handInProgress = false; scoringState = null;
@@ -1214,6 +1552,7 @@ function playHand() {
           initDice();
 
           if (roundScore >= currentTarget()) {
+            if (handsLeft === HANDS_PER_ROUND - 1) firstHandSpectrumGoal = runGoal;
             advanceGoal();
           } else if (handsLeft <= 0) {
             setTimeout(() => {
@@ -1239,6 +1578,9 @@ function advanceGoal() {
   showBanner('✦ GOAL CLEARED ✦', '#c89960');
   screenShake(12);
   screenFlash(0.3);
+  ring(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#c89960', 160, 0.65);
+  ring(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#ffffff',  90, 0.45);
+  spark(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#c89960', 18, 14);
   burst(W/2, H/2, '#c89960', 50, 7);
   burst(W/2, H/2, '#9a3826', 25, 5);
   burst(W/2, H/2, '#ffffff', 18, 9);
@@ -1362,12 +1704,12 @@ const CP = { x:212, w:536, y:8, h:H-16 };
 const RP = { x:756, w:196, y:8, h:H-16 };
 
 const DICE_SIZE  = 44;
-const DICE_GAP   = 10;
+const DICE_GAP   = 22;
 const DICE_Y     = CP.y + 95;
 const DICE_ROW_W = DICE_COUNT * DICE_SIZE + (DICE_COUNT-1) * DICE_GAP;
 const DICE_X0    = CP.x + (CP.w - DICE_ROW_W)/2;
 const BOARD_Y    = DICE_Y - 33;
-const BOARD_H    = 220;
+const BOARD_H    = 270;
 
 function diceRect(i) { return { x: DICE_X0 + i*(DICE_SIZE+DICE_GAP), y: DICE_Y, w: DICE_SIZE, h: DICE_SIZE }; }
 
@@ -1396,10 +1738,39 @@ canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   hoverX = (e.clientX - rect.left) * (W / rect.width);
   hoverY = (e.clientY - rect.top)  * (H / rect.height);
+  if (dragSlider) {
+    const pw=680, px=(W-pw)/2;
+    const tx = px+76, tw = pw-152;
+    const val = Math.max(0, Math.min(1, (hoverX - tx) / tw));
+    if (dragSlider === 'music') {
+      musicVolume = val; bgMusic.volume = val;
+      localStorage.setItem('ff_musicVol', val);
+    } else {
+      sfxVolume = val;
+      if (_sfxGainNode) _sfxGainNode.gain.value = val;
+      localStorage.setItem('ff_sfxVol', val);
+    }
+  }
 });
+
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
+  if (paused && pauseTab === 'audio') {
+    const pw=680, ph=480, px=(W-pw)/2, py=(H-ph)/2;
+    const tx=px+76, tw=pw-152;   // sx+16, totalW=sw-32=(pw-120-32), tw=totalW-40
+    const my1=py+176, my2=py+294;
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; e.preventDefault(); }
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   e.preventDefault(); }
+  }
+});
+
+canvas.addEventListener('mouseup', () => { dragSlider = null; });
 
 canvas.addEventListener('click', e => {
   getAudio();
+  ensureBgMusic();
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top)  * (H / rect.height);
@@ -1433,9 +1804,10 @@ document.addEventListener('keydown', e => {
 function handleClick(mx, my) {
   if (paused) {
     const pw = 680, ph = 480, px = (W-pw)/2, py = (H-ph)/2;
-    // Tabs
-    if (inRect(mx,my,{x:px+20,   y:py+56, w:310, h:28})) { pauseTab='unlockables'; return; }
-    if (inRect(mx,my,{x:px+350,  y:py+56, w:310, h:28})) { pauseTab='quick'; return; }
+    // Tabs — three equal columns
+    if (inRect(mx,my,{x:px+20,  y:py+48, w:206, h:28})) { pauseTab='unlockables'; return; }
+    if (inRect(mx,my,{x:px+237, y:py+48, w:206, h:28})) { pauseTab='quick';       return; }
+    if (inRect(mx,my,{x:px+454, y:py+48, w:206, h:28})) { pauseTab='audio';       return; }
     // Quick Access buttons
     if (pauseTab === 'quick') {
       if (inRect(mx,my,{x:px+60,y:py+100,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; screen='rune'; return; }
@@ -1608,6 +1980,10 @@ function handleClick(mx, my) {
           }
           dice[i].locked = !dice[i].locked;
           SFX[dice[i].locked ? 'lock' : 'unlock']();
+          const lc = diceUpgrades[i] ? diceUpgrades[i].color : '#c89960';
+          burst(dice[i].absX, dice[i].absY, dice[i].locked ? lc : '#ffffff', dice[i].locked ? 10 : 6, dice[i].locked ? 3.5 : 2.5);
+          ring(dice[i].absX, dice[i].absY, lc, dice[i].locked ? 32 : 22, 0.28);
+          if (dice[i].locked) { dice[i].bounceVY = -8; screenShake(3); }
           return;
         }
       }
@@ -1634,7 +2010,27 @@ const PIP_LAYOUTS = {
 };
 
 // ─── 3D Die drawing ───────────────────────────────────────────────────
-function drawDie3D(die, cx, cy, size) {
+// Draw a chamfered-corner polygon path for quad q[] with corner rounding amt (0..1 fraction of edge)
+function chamferPath(q, amt) {
+  ctx.beginPath();
+  for (let i = 0; i < q.length; i++) {
+    const prev = q[(i + q.length - 1) % q.length];
+    const cur  = q[i];
+    const next = q[(i + 1) % q.length];
+    // Point amt along edge coming into cur
+    const ax = cur[0] + (prev[0] - cur[0]) * amt;
+    const ay = cur[1] + (prev[1] - cur[1]) * amt;
+    // Point amt along edge leaving cur
+    const bx = cur[0] + (next[0] - cur[0]) * amt;
+    const by2 = cur[1] + (next[1] - cur[1]) * amt;
+    if (i === 0) ctx.moveTo(ax, ay);
+    else ctx.lineTo(ax, ay);
+    ctx.quadraticCurveTo(cur[0], cur[1], bx, by2);
+  }
+  ctx.closePath();
+}
+
+function drawDie3D(die, cx, cy, size, upg) {
   // Scale-pulse when scoring (Balatro-style pop)
   let scalePulse = 1;
   if (die.scoring) {
@@ -1653,6 +2049,16 @@ function drawDie3D(die, cx, cy, size) {
   const isHov = inRect(hoverX, hoverY, { x:cx-hs, y:cy-hs, w:size, h:size }) && rolledOnce && !handInProgress;
   const by = die.bounceY || 0;
 
+  // Upgrade color components (default ivory)
+  const upgColor = upg ? upg.color : null;
+  let ur = 1, ug = 1, ub = 1;
+  if (upgColor) {
+    const m = upgColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) { ur = parseInt(m[1],16)/255; ug = parseInt(m[2],16)/255; ub = parseInt(m[3],16)/255; }
+  }
+  // Glow/flash color for this die
+  const glowColor = upgColor || '#9a3826';
+
   const rendered = [];
   for (const cf of CUBE_FACES) {
     const [nx, ny, nz] = rotate3(...cf.normal, die.rx, die.ry, die.rz);
@@ -1664,7 +2070,7 @@ function drawDie3D(die, cx, cy, size) {
       const oy = cf.normal[1] + cf.u[1]*su + cf.v[1]*sv;
       const oz = cf.normal[2] + cf.u[2]*su + cf.v[2]*sv;
       const [wx,wy,wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-      const p = 1 + wz * 0.35; // perspective
+      const p = 1 + wz * 0.18; // perspective
       return [cx + wx*hs*p, cy + by + wy*hs*p];
     });
 
@@ -1683,29 +2089,27 @@ function drawDie3D(die, cx, cy, size) {
   }
   rendered.sort((a,b) => a.nz - b.nz); // painter: draw furthest first
 
+  const CH = 0.16; // chamfer fraction
+
   ctx.save();
   for (const fd of rendered) {
-    // Directional lighting — light from upper-left toward viewer
-    // L = normalize(0.6, -0.8, 1.0), H = normalize(L + view(0,0,1))
+    // Directional lighting
     const diffuse = Math.max(0, fd.nx * 0.413 + fd.ny * (-0.566) + fd.nz * 0.713);
     const br      = 0.18 + 0.82 * diffuse;
     const spec    = Math.pow(Math.max(0, fd.nx * 0.223 + fd.ny * (-0.306) + fd.nz * 0.925), 28);
     const isTop   = fd.nz > 0.7;
     const q       = fd.quads;
 
-    // Face center — anchor for gradient and specular
+    // Face center
     const fcx = (q[0][0]+q[1][0]+q[2][0]+q[3][0]) / 4;
     const fcy = (q[0][1]+q[1][1]+q[2][1]+q[3][1]) / 4;
 
-    // Face path
-    ctx.beginPath();
-    ctx.moveTo(q[0][0], q[0][1]);
-    for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]);
-    ctx.closePath();
+    // Chamfered face path
+    chamferPath(q, CH);
 
     // Diffuse gradient along light direction
-    const gSpan = hs * 1.0;
-    const grad  = ctx.createLinearGradient(
+    const gSpan  = hs * 1.0;
+    const grad   = ctx.createLinearGradient(
       fcx + 0.413*gSpan, fcy - 0.566*gSpan,
       fcx - 0.413*gSpan, fcy + 0.566*gSpan
     );
@@ -1715,6 +2119,11 @@ function drawDie3D(die, cx, cy, size) {
       grad.addColorStop(0,    `rgb(${(brLit*255)|0},${(brLit*232)|0},${(brLit*120)|0})`);
       grad.addColorStop(0.55, `rgb(${(br*225)|0},${(br*200)|0},${(br*82)|0})`);
       grad.addColorStop(1,    `rgb(${(brDark*185)|0},${(brDark*140)|0},${(brDark*40)|0})`);
+    } else if (upgColor) {
+      // Tint face with upgrade color
+      grad.addColorStop(0,    `rgb(${(brLit*(255*0.55+ur*255*0.45))|0},${(brLit*(255*0.55+ug*255*0.45))|0},${(brLit*(255*0.55+ub*255*0.45))|0})`);
+      grad.addColorStop(0.55, `rgb(${(br*(200*0.5+ur*200*0.5))|0},${(br*(200*0.5+ug*200*0.5))|0},${(br*(200*0.5+ub*200*0.5))|0})`);
+      grad.addColorStop(1,    `rgb(${(brDark*(150*0.4+ur*150*0.6))|0},${(brDark*(150*0.4+ug*150*0.6))|0},${(brDark*(150*0.4+ub*150*0.6))|0})`);
     } else {
       grad.addColorStop(0,    `rgb(${(brLit*255)|0},${(brLit*255)|0},${(brLit*248)|0})`);
       grad.addColorStop(0.55, `rgb(${(br*238)|0},${(br*232)|0},${(br*218)|0})`);
@@ -1734,26 +2143,22 @@ function drawDie3D(die, cx, cy, size) {
       ctx.fill();
     }
 
-    // Outer edge — dark border (base)
+    // Outer edge — dark border
     ctx.lineWidth   = 2.2;
     ctx.strokeStyle = die.locked
       ? `rgba(100,60,0,${0.6+0.3*br})`
       : `rgba(22,10,40,${0.55+0.35*br})`;
     ctx.stroke();
 
-    // Inset bevel — shrunken quad with bright inner stroke mimics chamfered edge
-    const bevel = 0.88;
+    // Chamfer highlight ring — bright inner stroke along chamfered shape
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(fcx + (q[0][0]-fcx)*bevel, fcy + (q[0][1]-fcy)*bevel);
-    for (let k = 1; k < q.length; k++) {
-      ctx.lineTo(fcx + (q[k][0]-fcx)*bevel, fcy + (q[k][1]-fcy)*bevel);
-    }
-    ctx.closePath();
-    ctx.lineWidth   = 1;
+    chamferPath(q, CH * 1.9);
+    ctx.lineWidth   = 1.2;
     ctx.strokeStyle = die.locked
-      ? `rgba(255,240,180,${0.28 + 0.35*br})`
-      : `rgba(255,255,255,${0.22 + 0.35*br})`;
+      ? `rgba(255,240,180,${0.30 + 0.35*br})`
+      : upgColor
+        ? `rgba(${(ur*255+180)|0>255?255:(ur*255+180)|0},${(ug*255+180)|0>255?255:(ug*255+180)|0},${(ub*255+180)|0>255?255:(ub*255+180)|0},${0.24 + 0.38*br})`
+        : `rgba(255,255,255,${0.22 + 0.35*br})`;
     ctx.stroke();
     ctx.restore();
 
@@ -1762,26 +2167,56 @@ function drawDie3D(die, cx, cy, size) {
       ctx.save();
       ctx.lineWidth   = 2.2;
       ctx.strokeStyle = die.locked ? `rgba(200,153,96,${0.5+0.4*br})` : `rgba(154,56,38,${0.5+0.4*br})`;
-      ctx.shadowColor = die.locked ? '#c89960' : '#9a3826';
+      ctx.shadowColor = die.locked ? '#c89960' : glowColor;
       ctx.shadowBlur  = die.locked ? 14 : 9;
       ctx.stroke();
       ctx.restore();
     }
 
-    // Pips — radial gradient body + tiny specular highlight on top face
+    // Face-reveal flash — white bloom on top face right after landing
+    if (isTop && die.revealT !== undefined && die.revealT < 0.28) {
+      const rf = die.revealT / 0.28;
+      const alpha = (1 - rf) * 0.55;
+      ctx.save();
+      chamferPath(q, CH);
+      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Top face upgrade decoration — icon label
+    if (isTop && upg && upg.icon) {
+      ctx.save();
+      ctx.font      = `bold ${(hs * 0.55)|0}px ui-sans-serif,sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = upgColor || '#ffffff';
+      ctx.fillText(upg.icon, fcx, fcy);
+      ctx.restore();
+    }
+
+    // Pips
     const isOne = fd.faceN === 1;
     const pipR  = hs * 0.135;
     let pipCore, pipEdge;
-    if (die.locked)      { pipCore = `rgba(50,25,0,${br})`;   pipEdge = `rgba(100,60,5,${br})`; }
-    else if (isOne)      { pipCore = `rgba(150,8,8,${br})`;   pipEdge = `rgba(210,50,50,${br})`; }
-    else                 { pipCore = `rgba(10,4,28,${br})`;   pipEdge = `rgba(40,22,70,${br})`; }
+    if (die.locked) {
+      pipCore = `rgba(50,25,0,${br})`;   pipEdge = `rgba(100,60,5,${br})`;
+    } else if (upgColor) {
+      // Dark tinted pips matching upgrade
+      const dr = (ur*120)|0, dg = (ug*80)|0, db = (ub*120)|0;
+      pipCore = `rgba(${dr},${dg},${db},${br})`;
+      pipEdge = `rgba(${Math.min(255,(dr+50)|0)},${Math.min(255,(dg+40)|0)},${Math.min(255,(db+50)|0)},${br})`;
+    } else if (isOne) {
+      pipCore = `rgba(150,8,8,${br})`;   pipEdge = `rgba(210,50,50,${br})`;
+    } else {
+      pipCore = `rgba(10,4,28,${br})`;   pipEdge = `rgba(40,22,70,${br})`;
+    }
 
     for (const [px,py] of fd.pips) {
-      // Soft pip shadow ring (gives recessed look)
       if (isTop) {
         ctx.save();
-        ctx.shadowColor = die.locked ? 'rgba(80,40,0,0.5)'
-          : isOne ? 'rgba(200,20,20,0.45)' : 'rgba(0,0,0,0.45)';
+        ctx.shadowColor = die.locked ? 'rgba(80,40,0,0.5)' : upgColor ? `rgba(${(ur*180)|0},${(ug*120)|0},${(ub*180)|0},0.45)` : isOne ? 'rgba(200,20,20,0.45)' : 'rgba(0,0,0,0.45)';
         ctx.shadowBlur = 5;
         ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
       }
@@ -1794,9 +2229,8 @@ function drawDie3D(die, cx, cy, size) {
       ctx.fill();
       if (isTop) ctx.restore();
 
-      // Specular spot on top face pips
       if (isTop) {
-        ctx.fillStyle = isOne ? 'rgba(255,180,180,0.55)' : 'rgba(255,255,255,0.35)';
+        ctx.fillStyle = (die.locked || upgColor) ? 'rgba(255,240,200,0.40)' : isOne ? 'rgba(255,180,180,0.55)' : 'rgba(255,255,255,0.35)';
         ctx.beginPath();
         ctx.arc(px - pipR*0.35, py - pipR*0.35, pipR*0.32, 0, Math.PI*2);
         ctx.fill();
@@ -1804,16 +2238,16 @@ function drawDie3D(die, cx, cy, size) {
     }
   }
 
-  // Scoring flash — bright ring + expanding shockwave when this die is being counted
+  // Scoring flash
   if (die.scoring) {
     const t = die.scoringT || 0;
     ctx.save();
-    ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 14;
-    ctx.strokeStyle = 'rgba(255,228,60,0.95)'; ctx.lineWidth = 4;
+    ctx.shadowColor = upgColor || '#ffe066'; ctx.shadowBlur = 14;
+    ctx.strokeStyle = upgColor ? `rgba(${(ur*255)|0},${(ug*255)|0},${(ub*255)|0},0.95)` : 'rgba(255,228,60,0.95)';
+    ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.ellipse(cx, cy + by, hs * 1.20, hs * 1.13, 0, 0, Math.PI * 2);
     ctx.stroke();
-    // Expanding shockwave ring
     const ringT = Math.min(1, t / 0.35);
     if (ringT < 1) {
       ctx.globalAlpha = (1 - ringT) * 0.85;
@@ -1828,14 +2262,14 @@ function drawDie3D(die, cx, cy, size) {
     ctx.restore();
   }
 
-  // Land impulse ring — quick pulse when a die just finished rolling
+  // Land impulse ring
   if (die.landT !== undefined && die.landT < 0.28 && !die.rolling) {
     const lt = die.landT / 0.28;
     ctx.save();
     ctx.globalAlpha = (1 - lt) * 0.7;
-    ctx.strokeStyle = '#9a3826';
+    ctx.strokeStyle = glowColor;
     ctx.lineWidth = 2.5 * (1 - lt) + 0.5;
-    ctx.shadowColor = '#9a3826'; ctx.shadowBlur = 4;
+    ctx.shadowColor = glowColor; ctx.shadowBlur = 4;
     const rr = hs * (0.95 + lt * 1.2);
     ctx.beginPath();
     ctx.ellipse(cx, cy + by, rr, rr * 0.7, 0, 0, Math.PI * 2);
@@ -1845,9 +2279,9 @@ function drawDie3D(die, cx, cy, size) {
 
   // Glow halo for locked / hovered
   if (die.locked || isHov) {
-    ctx.shadowColor = die.locked ? '#c89960' : '#9a3826';
+    ctx.shadowColor = die.locked ? '#c89960' : glowColor;
     ctx.shadowBlur  = die.locked ? 24 : 14;
-    ctx.strokeStyle = die.locked ? 'rgba(200,153,96,0.75)' : 'rgba(154,56,38,0.65)';
+    ctx.strokeStyle = die.locked ? 'rgba(200,153,96,0.75)' : `rgba(${(ur*154)|0},${(ug*56)|0},${(ub*38)|0},0.65)`;
     ctx.lineWidth   = 2.5;
     ctx.beginPath();
     ctx.ellipse(cx, cy + by, hs * 1.13, hs * 1.06, 0, 0, Math.PI*2);
@@ -1855,9 +2289,9 @@ function drawDie3D(die, cx, cy, size) {
     ctx.shadowBlur = 0;
   }
 
-  // Drop shadow on board — soft radial falloff
+  // Drop shadow on board
   {
-    const lift = Math.max(0, -by); // rises with bounce height
+    const lift = Math.max(0, -by);
     const sr   = hs * (0.92 - Math.min(0.25, lift * 0.04));
     const sh   = hs * (0.26 + Math.min(0.1, lift * 0.015));
     const sg   = ctx.createRadialGradient(cx + 3, cy + hs * 1.05, 2, cx + 3, cy + hs * 1.05, sr);
@@ -2093,14 +2527,25 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
 
   ctx.fillStyle   = oracle.color;
   ctx.shadowColor = oracle.color; ctx.shadowBlur = 3;
-  ctx.font        = `${owned ? 18 : 26}px ui-sans-serif,sans-serif`;
+  ctx.font        = `${owned ? 16 : 26}px ui-sans-serif,sans-serif`;
   ctx.textAlign   = 'center';
-  ctx.fillText(oracle.icon, x+w/2, y+(owned?26:34));
+  ctx.fillText(oracle.icon, x+(owned?22:w/2), y+(owned?h/2+6:34));
 
   ctx.shadowBlur = 0;
   ctx.fillStyle  = '#fff';
-  ctx.font       = `bold ${owned?10:13}px ui-sans-serif,sans-serif`;
-  ctx.fillText(owned ? (oracle.name.length>14?oracle.name.slice(0,13)+'…':oracle.name) : oracle.name, x+w/2, y+(owned?40:58));
+  ctx.font       = `bold ${owned?9:13}px ui-sans-serif,sans-serif`;
+  if (owned) {
+    ctx.textAlign = 'left';
+    const label = oracle.name.length > 16 ? oracle.name.slice(0,15)+'…' : oracle.name;
+    ctx.fillText(label, x+38, y+h/2-2);
+    ctx.fillStyle = oracle.color;
+    ctx.font = `8px ui-sans-serif,sans-serif`;
+    const eff = oracle.effect.length > 32 ? oracle.effect.slice(0,31)+'…' : oracle.effect;
+    ctx.fillText(eff, x+38, y+h/2+10);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillText(oracle.name, x+w/2, y+58);
+  }
 
   if (!owned) {
     ctx.fillStyle = '#c89960'; ctx.font = '11px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
@@ -2365,9 +2810,9 @@ function drawGame(t) {
   ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#3a1e10');
   panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', '#8899bb', '☽');
 
-  const cardH = 68; const cardW = LP.w - 16;
+  const cardH = 50; const cardW = LP.w - 16;
   for (let i = 0; i < MAX_ORACLES; i++) {
-    const cy = LP.y + 38 + i*(cardH+5);
+    const cy = LP.y + 38 + i*(cardH+4);
     if (i < heldOracles.length) {
       drawOracleCard(heldOracles[i], LP.x+8, cy, cardW, cardH, true);
     } else {
@@ -2429,7 +2874,7 @@ function drawGame(t) {
   // Dice (3D) — positions driven by absX/absY physics
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
-    drawDie3D(d, d.absX, d.absY, DICE_SIZE);
+    drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
     const upg = diceUpgrades[i];
     // Upgrade icon + rune dots below die
     {
@@ -2524,23 +2969,148 @@ function drawGame(t) {
 
   // Right panel
   ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#3a1e10');
-  panelHeader(RP.x + RP.w/2, RP.y + 22, RP.w - 20, 'Fate Score', '#c89960', '⚝');
+  panelHeader(RP.x + RP.w/2, RP.y + 22, RP.w - 20, 'Score', '#c89960', '⚝');
 
-  ctx.save();
-  ctx.fillStyle='#e0c590'; ctx.shadowColor='#9a3826'; ctx.shadowBlur=3;
-  ctx.font=`bold 32px ${SERIF}`; ctx.textAlign='center';
-  ctx.fillText(displayRoundScore.toLocaleString(), RP.x+RP.w/2, RP.y+62);
-  ctx.restore();
+  // Score number — scale-bounces while counting, lava glow on first-hand clear
+  {
+    const scoreStr = Math.floor(displayRoundScore).toLocaleString();
+    const sx = RP.x + RP.w/2, sy = RP.y + 62;
+    const sc = 1 + displayScoreBounce * 0.14;
+    const isLava = firstHandSpectrumGoal === runGoal;
+    ctx.save();
+    ctx.translate(sx, sy); ctx.scale(sc, sc); ctx.translate(-sx, -sy);
+    ctx.font = `bold 32px ${SERIF}`; ctx.textAlign = 'center';
+    if (isLava) {
+      // Pulsing lava glow passes
+      const lavaC = ['#ff2200','#ff6600','#ffaa00','#ff4400','#ffee44','#ff1100'];
+      for (let i = 0; i < 6; i++) {
+        ctx.save();
+        ctx.globalAlpha = 0.22 + Math.sin(t * 4 + i) * 0.08;
+        ctx.shadowColor = lavaC[i];
+        ctx.shadowBlur  = 26 + Math.sin(t * 3 + i * 1.1) * 10;
+        ctx.fillStyle   = lavaC[i];
+        ctx.fillText(scoreStr, sx, sy);
+        ctx.restore();
+      }
+      ctx.fillStyle   = '#fff8e0';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur  = 14 + Math.sin(t * 6) * 5;
+    } else {
+      ctx.fillStyle = '#e0c590'; ctx.shadowColor = '#9a3826'; ctx.shadowBlur = 3;
+    }
+    ctx.fillText(scoreStr, sx, sy);
+    ctx.restore();
+  }
   txt('/ '+currentTarget().toLocaleString(), RP.x+RP.w/2, RP.y+74, {size:11,color:'rgba(200,180,255,0.55)',align:'center'});
 
   // Progress bar
-  const prog = Math.min(1, roundScore/currentTarget());
+  const prog = Math.min(1, displayRoundScore/currentTarget());
   const bx=RP.x+12, by=RP.y+84, bw=RP.w-24, bh=14;
+  const isLava = firstHandSpectrumGoal === runGoal;
   drawRoundRect(bx, by, bw, bh, 5, '#1a0f08', '#3a1e10');
   if (prog>0) {
     ctx.save();
-    ctx.shadowColor = prog>=1?'#c89960':'#a03325'; ctx.shadowBlur = prog>=1?16:6;
-    drawRoundRect(bx, by, bw*prog, bh, 5, prog>=1?'#c89960':'#9a3826', null);
+    if (isLava) {
+      const fillW   = bw * prog;
+      const lavaPhase = (t * 42) % (bw * 0.6);
+
+      // Clip everything to the bar shape
+      ctx.save();
+      roundRect(bx, by, fillW, bh, 5);
+      ctx.clip();
+
+      // Base scrolling gradient
+      const rg = ctx.createLinearGradient(bx - lavaPhase, by, bx - lavaPhase + bw * 1.6, by);
+      [ [0.00,'#1a0100'],[0.08,'#cc1800'],[0.17,'#ff4400'],
+        [0.26,'#ff8800'],[0.33,'#ffcc00'],[0.40,'#ff3300'],
+        [0.48,'#150100'],[0.56,'#dd2000'],[0.65,'#ff6600'],
+        [0.73,'#ffaa00'],[0.80,'#ff2200'],[0.88,'#150100'],
+        [0.94,'#ff5500'],[1.00,'#ffcc00'],
+      ].forEach(([p,c]) => rg.addColorStop(p, c));
+      ctx.fillStyle = rg;
+      ctx.fillRect(bx - lavaPhase, by, bw * 1.6 + lavaPhase, bh);
+
+      // Dark rock islands — slow-drifting ellipses
+      for (let i = 0; i < 7; i++) {
+        const rx = bx + ((i * 41 + lavaPhase * 0.65) % Math.max(1, fillW));
+        const ry = by + bh * 0.5 + Math.sin(i * 2.1 + t * 1.4) * (bh * 0.28);
+        const rr = 3.5 + (i % 3) * 2;
+        ctx.save();
+        ctx.globalAlpha = 0.62 + Math.sin(i * 1.7 + t * 0.8) * 0.14;
+        ctx.fillStyle   = '#100100';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, rr * 2.2, rr * 0.8, Math.sin(i * 0.6) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Yellow hotspot veins
+      for (let i = 0; i < 4; i++) {
+        const hx = bx + ((i * 59 + lavaPhase * 1.4) % Math.max(1, fillW));
+        const hy = by + bh * (0.22 + (i % 3) * 0.30);
+        ctx.save();
+        ctx.globalAlpha = 0.28 + Math.sin(i * 3.1 + t * 3.8) * 0.14;
+        ctx.fillStyle   = '#ffee44';
+        ctx.shadowColor = '#ffee44'; ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.ellipse(hx, hy, 10 + (i % 2) * 4, 2.2, Math.sin(i) * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore(); // end clip
+
+      // Pulsing edge glow
+      ctx.save();
+      ctx.shadowColor = '#ff5500';
+      ctx.shadowBlur  = 18 + Math.sin(t * 4.5) * 9;
+      roundRect(bx, by, fillW, bh, 5);
+      ctx.strokeStyle = 'rgba(255,80,0,0.45)';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      // Bright molten tip flicker
+      if (prog < 0.99) {
+        ctx.save();
+        ctx.globalAlpha = 0.7 + Math.sin(t * 9) * 0.20;
+        ctx.fillStyle   = '#ffee44';
+        ctx.shadowColor = '#ffee44'; ctx.shadowBlur = 24;
+        ctx.fillRect(bx + fillW - 3, by + 1, 3, bh - 2);
+        ctx.restore();
+      }
+
+      // Spawn lava drips from bottom edge
+      if (Math.random() < 0.40) {
+        const cols = ['#ff2200','#ff4400','#ff6600','#ff8800','#ffaa00','#ffcc44'];
+        particles.push({
+          x: bx + Math.random() * fillW,
+          y: by + bh,
+          vx: (Math.random() - 0.5) * 0.9,
+          vy: 0.4 + Math.random() * 1.2,
+          r:  2.2 + Math.random() * 2.8,
+          color: cols[Math.floor(Math.random() * cols.length)],
+          alpha: 1, age: 0,
+          life: 1.0 + Math.random() * 1.2,
+          lavaDrop: true,
+        });
+      }
+    } else {
+      // Heat gradient — left=cool ember, right=white-hot; fill edge reveals current temperature
+      const rg = ctx.createLinearGradient(bx, by, bx+bw, by);
+      rg.addColorStop(0.00, '#1a0300');
+      rg.addColorStop(0.18, '#5c0800');
+      rg.addColorStop(0.38, '#9a1500');
+      rg.addColorStop(0.56, '#cc3300');
+      rg.addColorStop(0.72, '#ff5500');
+      rg.addColorStop(0.84, '#ff8800');
+      rg.addColorStop(0.93, '#ffbb00');
+      rg.addColorStop(0.97, '#ffee44');
+      rg.addColorStop(1.00, '#ffffff');
+      ctx.shadowColor = prog>0.82?'#ff8800':prog>0.52?'#cc3300':'#661100';
+      ctx.shadowBlur  = 4 + prog * 22;
+      drawRoundRect(bx, by, bw*prog, bh, 5, rg, null);
+    }
     ctx.restore();
   }
 
@@ -2561,7 +3131,7 @@ function drawGame(t) {
   }
 
   txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+150, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt('Total Fate', RP.x+RP.w/2, RP.y+176, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
+  txt('Total Score', RP.x+RP.w/2, RP.y+176, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
   txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, RP.y+196, {size:15,color:'#e6c590',align:'center',bold:true});
 
   // Exit portal
@@ -2575,6 +3145,7 @@ function drawGame(t) {
   txt('⏸', pbx+pbw/2, pby+pbh/2+5, {size:11,color:paused?'#c89960':'#887060',align:'center'});
 
   drawParticles();
+  drawRings();
   drawFloaters();
   drawComboPop();
   drawBanner();
@@ -3041,7 +3612,7 @@ function drawWin(t) {
   ctx.fillText('FATE DEFIED', W/2, H/2-92); ctx.restore();
 
   txt('All 8 Goals conquered!', W/2, H/2-44, {size:18,color:'#fff',align:'center'});
-  txt('Total Fate Score:', W/2, H/2+6, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
+  txt('Total Score:', W/2, H/2+6, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
   txt(totalFateScore.toLocaleString(), W/2, H/2+44, {size:38,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
   txt('✦ Endless Mode Unlocked ✦', W/2, H/2+74, {size:14,color:'#b8a874',align:'center',bold:true});
 
@@ -3087,6 +3658,32 @@ function drawScores(t) {
   drawBtn({x:W/2-100,y:H-68,w:200,h:40}, '← Back to Menu', true);
 }
 
+function drawVolumeSlider(label, x, y, totalW, value) {
+  const indent = label ? 70 : 0;
+  const tx = x + indent, tw = totalW - indent - 40, trackH = 6, thumbR = 7;
+  if (label) txt(label, x, y + 4, {size:10, color:'rgba(200,180,140,0.75)'});
+  ctx.save();
+  // Track bg
+  ctx.fillStyle = 'rgba(30,15,50,0.85)';
+  ctx.strokeStyle = 'rgba(100,80,150,0.45)'; ctx.lineWidth = 1;
+  roundRect(tx, y - trackH/2, tw, trackH, 3);
+  ctx.fill(); ctx.stroke();
+  // Fill
+  if (value > 0) {
+    ctx.fillStyle = '#c89960'; ctx.shadowColor = '#c89960'; ctx.shadowBlur = 5;
+    roundRect(tx, y - trackH/2, value * tw, trackH, 3);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  // Thumb
+  const thumbX = tx + value * tw;
+  ctx.fillStyle = dragSlider ? '#fff8e0' : '#e0c590';
+  ctx.shadowColor = '#c89960'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(thumbX, y, thumbR, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  txt(`${Math.round(value * 100)}%`, tx + tw + 10, y + 4, {size:9, color:'rgba(180,160,120,0.55)'});
+}
+
 // ─── SCREEN: Pause / Unlockables ──────────────────────────────────────
 function drawPause(t) {
   // Dim overlay
@@ -3100,13 +3697,18 @@ function drawPause(t) {
 
   txt('— PAUSED —', W/2, py+28, {size:18, color:'#c89960', align:'center', bold:true, shadow:'#c89960'});
 
-  // Tabs
-  const tabUnlockActive = pauseTab === 'unlockables';
-  drawRoundRect(px+20,   py+48, 310, 28, 6, tabUnlockActive?'rgba(100,60,180,0.4)':'rgba(30,15,50,0.4)', tabUnlockActive?'#aa88ff':'rgba(100,80,160,0.3)', 1);
-  txt('✦ Unlockables', px+175,  py+66, {size:11, color: tabUnlockActive?'#cc99ff':'rgba(160,130,220,0.5)', align:'center', bold:tabUnlockActive});
-  const tabQuickActive = pauseTab === 'quick';
-  drawRoundRect(px+350,  py+48, 310, 28, 6, tabQuickActive?'rgba(60,100,60,0.4)':'rgba(20,30,20,0.4)', tabQuickActive?'#88cc88':'rgba(80,120,80,0.3)', 1);
-  txt('⚙ Quick Access', px+505, py+66, {size:11, color: tabQuickActive?'#aaddaa':'rgba(120,170,120,0.5)', align:'center', bold:tabQuickActive});
+  // Three equal tabs
+  const TABS = [
+    { id:'unlockables', label:'✦ Unlockables', ac:['rgba(100,60,180,0.4)','#aa88ff','#cc99ff'], in:['rgba(30,15,50,0.4)','rgba(100,80,160,0.3)','rgba(160,130,220,0.5)'] },
+    { id:'quick',       label:'⚙ Quick Access', ac:['rgba(60,100,60,0.4)', '#88cc88','#aaddaa'], in:['rgba(20,30,20,0.4)', 'rgba(80,120,80,0.3)', 'rgba(120,170,120,0.5)'] },
+    { id:'audio',       label:'♪ Audio',        ac:['rgba(100,80,30,0.4)', '#c89960','#e0c590'], in:['rgba(30,20,8,0.4)',  'rgba(120,90,40,0.3)', 'rgba(160,130,80,0.5)']  },
+  ];
+  TABS.forEach(({ id, label, ac, in: ic }, i) => {
+    const active = pauseTab === id;
+    const tx = px+20 + i*217;
+    drawRoundRect(tx, py+48, 206, 28, 6, active?ac[0]:ic[0], active?ac[1]:ic[1], 1);
+    txt(label, tx+103, py+66, {size:11, color:active?ac[2]:ic[2], align:'center', bold:active});
+  });
 
   if (pauseTab === 'unlockables') {
 
@@ -3169,12 +3771,11 @@ function drawPause(t) {
       markHover(`pause:${item.unlock.id}`, item.name, body, {color: unlocked ? color : '#886699'});
     }
   });
-  } else {
-    // Quick Access tab
+  } else if (pauseTab === 'quick') {
     const qaItems = [
-      { label:'⬡  Rune Table', sub:'Equip runes to your dice',  color:'#cc88ff', by:py+100 },
-      { label:'⚙  Forge',      sub:'Buy dice upgrades & anomalies', color:'#c89960', by:py+175 },
-      { label:'⬡  Exit Portal',sub:'Leave this run and travel to the next game', color:'#9a3826', by:py+250 },
+      { label:'⬡  Rune Table',  sub:'Equip runes to your dice',                    color:'#cc88ff', by:py+100 },
+      { label:'⚙  Forge',       sub:'Buy dice upgrades & anomalies',                color:'#c89960', by:py+175 },
+      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#9a3826', by:py+250 },
     ];
     qaItems.forEach(({ label, sub, color, by }) => {
       const bx = px+60, bw = pw-120, bh = 60;
@@ -3183,9 +3784,26 @@ function drawPause(t) {
       txt(label, bx+bw/2, by+22, {size:15, color, align:'center', bold:true, shadow:color});
       txt(sub,   bx+bw/2, by+42, {size:10, color:'rgba(200,180,140,0.6)', align:'center'});
     });
+  } else if (pauseTab === 'audio') {
+    const sx = px+60, sw = pw-120;
+
+    // Music
+    drawRoundRect(sx, py+110, sw, 100, 8, 'rgba(20,12,4,0.7)', 'rgba(120,90,40,0.4)', 1);
+    txt('♪  Music', sx+16, py+132, {size:13, color:'#c89960', bold:true});
+    txt('Background track', sx+16, py+150, {size:9, color:'rgba(180,150,100,0.55)'});
+    drawVolumeSlider('', sx+16, py+176, sw-32, musicVolume);
+
+    // SFX
+    drawRoundRect(sx, py+228, sw, 100, 8, 'rgba(20,12,4,0.7)', 'rgba(120,90,40,0.4)', 1);
+    txt('♫  Sound Effects', sx+16, py+250, {size:13, color:'#c89960', bold:true});
+    txt('Dice, score ticks, and UI sounds', sx+16, py+268, {size:9, color:'rgba(180,150,100,0.55)'});
+    drawVolumeSlider('', sx+16, py+294, sw-32, sfxVolume);
+
+    // Track name footer
+    txt('Now playing: Cinder Card Shuffle', px+pw/2, py+360, {size:9, color:'rgba(150,130,90,0.45)', align:'center'});
   }
 
-  // Resume button
+  // Resume button (always at bottom)
   drawBtn({x:W/2-80, y:py+ph-52, w:160, h:36}, '▶  Resume', true, true);
 }
 
@@ -3207,7 +3825,8 @@ function loop(now) {
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
     if (d.scoring) d.scoringT += dt; else d.scoringT = 0;
-    if (d.landT !== undefined && !d.rolling) d.landT += dt;
+    if (d.landT   !== undefined && !d.rolling) d.landT   += dt;
+    if (d.revealT !== undefined && !d.rolling) d.revealT += dt;
     if (d.rolling) {
       d.rollT += dt;
       const prog = Math.min(1, d.rollT / d.rollDur);
@@ -3240,7 +3859,8 @@ function loop(now) {
           d.tRz = nearestCanon(d.rz, FACE_ROT[d.face][2]);
         }
         const st   = (prog - PHYSICS.tumblePhase) / (1 - PHYSICS.tumblePhase);
-        const ease = 1 - Math.pow(1 - st, 3);
+        // Ease-out-quart: fast start, decisive stop — no overshoot past the face
+        const ease = 1 - Math.pow(1 - Math.min(st, 1), 4);
         d.rx = d.sfRx + (d.tRx - d.sfRx) * ease;
         d.ry = d.sfRy + (d.tRy - d.sfRy) * ease;
         d.rz = d.sfRz + (d.tRz - d.sfRz) * ease;
@@ -3279,7 +3899,7 @@ function loop(now) {
     // Position physics — dice fly around the table when rolling
     if (d.rolling) {
       const hs = DICE_SIZE / 2;
-      const bL = CP.x + 14 + hs, bR = CP.x + CP.w - 14 - hs;
+      const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
       const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
       d.absX += d.pvx * dt;
       d.absY += d.pvy * dt;
@@ -3329,9 +3949,13 @@ function loop(now) {
         tx = d.homeX; ty = d.homeY;
       }
       if (tx != null) {
-        const lerp = 1 - Math.pow(PHYSICS.glideSpeed, dt);
-        d.absX += (tx - d.absX) * lerp;
-        d.absY += (ty - d.absY) * lerp;
+        const dist = Math.hypot(tx - d.absX, ty - d.absY);
+        if (dist < 0.5) { d.absX = tx; d.absY = ty; }
+        else {
+          const lerp = 1 - Math.pow(0.00001, dt);
+          d.absX += (tx - d.absX) * lerp;
+          d.absY += (ty - d.absY) * lerp;
+        }
       }
     }
   }
@@ -3339,9 +3963,11 @@ function loop(now) {
   // Dice-to-dice collision (cubes → AABB separation + rotational impulse)
   {
     const hs   = DICE_SIZE / 2;
-    const bL   = CP.x + 14 + hs, bR = CP.x + CP.w - 14 - hs;
+    const bL   = 18 + hs, bR = W - 18 - hs;
     const bT   = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
-    const side = DICE_SIZE + PHYSICS.collisionGap;
+    // Visual die footprint is DICE_SIZE * 0.96 (hs = size*0.48). Match the
+    // collision box to what the eye sees so dice never bump into empty air.
+    const side = DICE_SIZE * 0.96 + PHYSICS.collisionGap;
     const e    = PHYSICS.collisionRestitution;
 
     // Pass 1: velocity impulses (rolling dice only) — AABB axis-of-min-penetration
@@ -3445,8 +4071,10 @@ function loop(now) {
 
   // Decay screen shake
   shakeAmp = Math.max(0, shakeAmp - dt * 22);
+  if (displayScoreBounce > 0) displayScoreBounce = Math.max(0, displayScoreBounce - dt * 5);
 
   updateParticles(dt);
+  updateRings(dt);
   updateFloaters(dt);
   updateComboPop(dt);
   updateBanner(dt);
