@@ -766,9 +766,6 @@ const COMBO_COLORS = ['#445566','#5566aa','#7788bb','#8899cc','#aabbdd','#c03040
 
 // ─── Game state ───────────────────────────────────────────────────────
 let screen = 'title';
-let pauseOpen = false;
-let forgeOrigin = 'hub';
-let runeOrigin  = 'hub';
 let runGoal = 0;
 let endless = false;
 const ENDLESS_BASE = 100000;
@@ -809,8 +806,9 @@ let runeSelSlot     = null;  // {die:i, slot:j} currently selected slot (null = 
 
 // ─── Pause state ─────────────────────────────────────────────────────
 let paused        = false;
-let pauseTab      = 'unlockables'; // 'unlockables'
-let screenBeforePause = null;
+let pauseTab      = 'unlockables'; // 'unlockables' | 'quick'
+let forgeOrigin   = 'hub';
+let runeOrigin    = 'hub';
 
 // ─── Unlock state ────────────────────────────────────────────────────
 let unlockedIds    = new Set();
@@ -1427,8 +1425,18 @@ document.addEventListener('keydown', e => {
 
 function handleClick(mx, my) {
   if (paused) {
-    const pw = 680, ph = 440, px = (W-pw)/2, py = (H-ph)/2;
-    if (inRect(mx, my, {x:W/2-80, y:py+ph-52, w:160, h:36})) paused = false;
+    const pw = 680, ph = 480, px = (W-pw)/2, py = (H-ph)/2;
+    // Tabs
+    if (inRect(mx,my,{x:px+20,   y:py+56, w:310, h:28})) { pauseTab='unlockables'; return; }
+    if (inRect(mx,my,{x:px+350,  y:py+56, w:310, h:28})) { pauseTab='quick'; return; }
+    // Quick Access buttons
+    if (pauseTab === 'quick') {
+      if (inRect(mx,my,{x:px+60,y:py+100,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; screen='rune'; return; }
+      if (inRect(mx,my,{x:px+60,y:py+175,w:560,h:60})) { forgeOrigin='game'; paused=false; openForge(); return; }
+      if (inRect(mx,my,{x:px+60,y:py+250,w:560,h:60})) { paused=false; triggerExitPortal(); return; }
+    }
+    // Resume button
+    if (inRect(mx, my, {x:W/2-80, y:py+ph-52, w:160, h:36})) { paused = false; return; }
     return;
   }
   if (screen === 'title') {
@@ -1475,7 +1483,7 @@ function handleClick(mx, my) {
   }
   if (screen === 'rune') {
     // Back button
-    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') pauseOpen=true; return; }
+    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
     const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
     // Die slot clicks
     for (let di = 0; di < DICE_COUNT; di++) {
@@ -1518,7 +1526,7 @@ function handleClick(mx, my) {
   if (screen === 'forge') {
     if (inRect(mx,my,{x:W/2-170,y:64,w:160,h:34})) { forgeTab='dice'; return; }
     if (inRect(mx,my,{x:W/2+10, y:64,w:160,h:34})) { forgeTab='oracles'; return; }
-    if (inRect(mx,my,{x:W/2-90,y:H-54,w:180,h:40})) { const o=forgeOrigin; forgeOrigin='hub'; screen=o; if(o==='game') pauseOpen=true; return; }
+    if (inRect(mx,my,{x:W/2-90,y:H-54,w:180,h:40})) { const o=forgeOrigin; forgeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
     if (forgeTab === 'dice') {
       const upgW=188,upgH=138,upgGap=14;
       const upgTotal=forgeChoices.upgrades.length*(upgW+upgGap)-upgGap;
@@ -1577,16 +1585,7 @@ function handleClick(mx, my) {
   }
   if (screen === 'game') {
     // Pause button (top-right corner of right panel)
-    if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { pauseOpen=!pauseOpen; return; }
-    // Pause overlay buttons
-    if (pauseOpen) {
-      const px=W/2-130, pw=260, py=H/2-130, ph=260;
-      if (inRect(mx,my,{x:px+20,y:py+56, w:pw-40,h:40})) { pauseOpen=false; return; }
-      if (inRect(mx,my,{x:px+20,y:py+106,w:pw-40,h:40})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; pauseOpen=false; screen='rune'; return; }
-      if (inRect(mx,my,{x:px+20,y:py+156,w:pw-40,h:40})) { forgeOrigin='game'; pauseOpen=false; openForge(); return; }
-      if (inRect(mx,my,{x:px+20,y:py+206,w:pw-40,h:40})) { pauseOpen=false; triggerExitPortal(); return; }
-      return;
-    }
+    if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { paused=!paused; return; }
     if (rolledOnce && !handInProgress) {
       for (let i = 0; i < dice.length; i++) {
         const hs = DICE_SIZE / 2;
@@ -2425,24 +2424,8 @@ function drawGame(t) {
 
   // Pause button
   const pbx=RP.x+RP.w-36, pby=RP.y+5, pbw=28, pbh=22;
-  drawRoundRect(pbx,pby,pbw,pbh,4,'rgba(30,15,8,0.85)',pauseOpen?'#c89960':'#3a2010');
-  txt('⏸', pbx+pbw/2, pby+pbh/2+5, {size:11,color:pauseOpen?'#c89960':'#887060',align:'center'});
-
-  // Pause overlay
-  if (pauseOpen) {
-    ctx.save(); ctx.globalAlpha=0.72; ctx.fillStyle='#0a0604'; ctx.fillRect(0,0,W,H); ctx.restore();
-    const px=W/2-130, pw=260, py=H/2-130, ph=260;
-    drawRoundRect(px,py,pw,ph,10,'#130c06','#c89960',1.5);
-    txt('PAUSED', W/2, py+36, {size:20,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
-    const btnStyle=(label,bx,by,bw,bh,col)=>{
-      drawRoundRect(bx,by,bw,bh,6,'rgba(30,15,8,0.9)',col,1);
-      txt(label,bx+bw/2,by+bh/2+5,{size:13,color:col,align:'center',bold:true});
-    };
-    btnStyle('▶  Resume',     px+20,py+56, pw-40,40,'#88bb66');
-    btnStyle('⬡  Rune Table', px+20,py+106,pw-40,40,'#cc88ff');
-    btnStyle('⚙  Forge',      px+20,py+156,pw-40,40,'#c89960');
-    btnStyle('⬡  Exit Portal',px+20,py+206,pw-40,40,'#9a3826');
-  }
+  drawRoundRect(pbx,pby,pbw,pbh,4,'rgba(30,15,8,0.85)',paused?'#c89960':'#3a2010');
+  txt('⏸', pbx+pbw/2, pby+pbh/2+5, {size:11,color:paused?'#c89960':'#887060',align:'center'});
 
   drawParticles();
   drawFloaters();
@@ -2965,14 +2948,20 @@ function drawPause(t) {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  const pw = 680, ph = 440, px = (W-pw)/2, py = (H-ph)/2;
+  const pw = 680, ph = 480, px = (W-pw)/2, py = (H-ph)/2;
   drawRoundRect(px, py, pw, ph, 14, 'rgba(10,5,22,0.97)', '#443366', 2);
 
-  txt('— PAUSED —', W/2, py+30, {size:18, color:'#c89960', align:'center', bold:true, shadow:'#c89960'});
-  txt('Press ESC to resume', W/2, py+50, {size:9, color:'rgba(200,180,255,0.35)', align:'center'});
+  txt('— PAUSED —', W/2, py+28, {size:18, color:'#c89960', align:'center', bold:true, shadow:'#c89960'});
 
-  // Section header
-  txt('✦ UNLOCKABLES', W/2, py+74, {size:13, color:'#aa88ff', align:'center', bold:true});
+  // Tabs
+  const tabUnlockActive = pauseTab === 'unlockables';
+  drawRoundRect(px+20,   py+48, 310, 28, 6, tabUnlockActive?'rgba(100,60,180,0.4)':'rgba(30,15,50,0.4)', tabUnlockActive?'#aa88ff':'rgba(100,80,160,0.3)', 1);
+  txt('✦ Unlockables', px+175,  py+66, {size:11, color: tabUnlockActive?'#cc99ff':'rgba(160,130,220,0.5)', align:'center', bold:tabUnlockActive});
+  const tabQuickActive = pauseTab === 'quick';
+  drawRoundRect(px+350,  py+48, 310, 28, 6, tabQuickActive?'rgba(60,100,60,0.4)':'rgba(20,30,20,0.4)', tabQuickActive?'#88cc88':'rgba(80,120,80,0.3)', 1);
+  txt('⚙ Quick Access', px+505, py+66, {size:11, color: tabQuickActive?'#aaddaa':'rgba(120,170,120,0.5)', align:'center', bold:tabQuickActive});
+
+  if (pauseTab === 'unlockables') {
 
   // All unlockable items grouped
   const allItems = [
@@ -2983,7 +2972,7 @@ function drawPause(t) {
 
   const cols = 3, cardW = 196, cardH = 92, cardGap = 16;
   const gridW = cols*cardW + (cols-1)*cardGap;
-  const gx0 = W/2 - gridW/2, gy0 = py + 88;
+  const gx0 = W/2 - gridW/2, gy0 = py + 92;
 
   allItems.forEach(({ item, type, desc, color }, idx) => {
     const col = idx % cols, row = Math.floor(idx / cols);
@@ -3033,6 +3022,21 @@ function drawPause(t) {
       markHover(`pause:${item.unlock.id}`, item.name, body, {color: unlocked ? color : '#886699'});
     }
   });
+  } else {
+    // Quick Access tab
+    const qaItems = [
+      { label:'⬡  Rune Table', sub:'Equip runes to your dice',  color:'#cc88ff', by:py+100 },
+      { label:'⚙  Forge',      sub:'Buy dice upgrades & anomalies', color:'#c89960', by:py+175 },
+      { label:'⬡  Exit Portal',sub:'Leave this run and travel to the next game', color:'#9a3826', by:py+250 },
+    ];
+    qaItems.forEach(({ label, sub, color, by }) => {
+      const bx = px+60, bw = pw-120, bh = 60;
+      const hovering = inRect(hoverX, hoverY, {x:bx, y:by, w:bw, h:bh});
+      drawRoundRect(bx, by, bw, bh, 8, hovering?'rgba(40,20,10,0.95)':'rgba(20,10,5,0.9)', color, 1.2);
+      txt(label, bx+bw/2, by+22, {size:15, color, align:'center', bold:true, shadow:color});
+      txt(sub,   bx+bw/2, by+42, {size:10, color:'rgba(200,180,140,0.6)', align:'center'});
+    });
+  }
 
   // Resume button
   drawBtn({x:W/2-80, y:py+ph-52, w:160, h:36}, '▶  Resume', true, true);
