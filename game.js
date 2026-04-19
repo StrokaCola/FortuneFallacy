@@ -665,16 +665,14 @@ const ALL_ORACLES = [
 
 // ─── Dice upgrade definitions ─────────────────────────────────────────
 const DICE_UPGRADES = [
-  { id:'glass', name:'Glass Die', shortName:'GLASS', icon:'◆', color:'#b8924a', cost:6, desc:'This die scores ×1.5 points', scoreMultiplier:1.5 },
-  { id:'iron', name:'Iron Die', shortName:'IRON', icon:'⬡', color:'#aab8cc', cost:8, desc:'Minimum score value is 4', scoreMin:4 },
-  { id:'lucky', name:'Lucky Die', shortName:'LUCKY', icon:'★', color:'#ffe066', cost:5, desc:'1s count as 3 when scoring', faceRemap:{from:1,to:3} },
-  { id:'cursed', name:'Cursed Die', shortName:'CURSED', icon:'☠', color:'#cc44ff', cost:3, desc:'Score ×2, −1 Mult', scoreMultiplier:2, multPenalty:1 },
-  { id:'volatile', name:'Volatile Die', shortName:'VOLATILE', icon:'⚠', color:'#ff6622', cost:10, desc:'Scores a d12 instead of face', volatile:12 },
-  { id:'ember', name:'Ember Die', shortName:'EMBER', icon:'🜂', color:'#e86828', cost:7, desc:'+2 points per collision this hand', collisionBonus:2 },
-  { id:'heavy', name:'Heavy Die', shortName:'HEAVY', icon:'▮', color:'#8a6a4a', cost:9, desc:'Scores ×3 — cannot be rerolled', scoreMultiplier:3, noReroll:true },
-  { id:'mirror', name:'Mirror Die', shortName:'MIRROR', icon:'◐', color:'#c8d8e8', cost:8, desc:'Scores as highest face rolled', mirror:true },
-  { id:'wicked', name:'Wicked Die', shortName:'WICKED', icon:'𖤍', color:'#9a4488', cost:6, desc:'+1 Mult per reroll remaining', rerollMult:true },
-  { id:'gold', name:'Gold Die', shortName:'Gold', icon:'⚄', color:'#e1a523', cost:10, desc:'Triggers Twice', triggers:2, visual:{shape:'round',decoration:'text',label:'⚄',overlayOutline:'diamond'} }
+  { id:'iron', name:'Iron Die', shortName:'IRON', icon:'⬡', color:'#aab8cc', cost:3, desc:'Minimum score value is 4', scoreMin:4 },
+  { id:'lead', name:'Lead Die', shortName:'LEAD', icon:'⬡', color:'#4d4d4d', cost:5, desc:'Triggers 2x, but cannot be rerolled', noReroll:true, triggers:2 },
+  { id:'gold', name:'Gold Die', shortName:'Gold', icon:'⚄', color:'#e1a523', cost:8, desc:'Triggers Twice', triggers:2, visual:{shape:'round',decoration:'text',label:'⚄',overlayOutline:'diamond'} },
+  { id:'Aluminum', name:'Aluminum Die', shortName:'ALUMINUM', icon:'⚄', color:'#888899', cost:2, desc:'Tends to roll lower numbers', rollMin:1, rollMax:3, visual:{shape:'round',decoration:'pips',label:'⚄',pipPattern:'triangle'} },
+  { id:'platinum', name:'Platinum Die', shortName:'PLAT', icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3x' },
+  { id:'brass', name:'Brass Die', shortName:'BRASS', icon:'⚄', color:'#98935d', cost:4, desc:'+2 Mult', multBonus:2 },
+  { id:'copper', name:'Copper Die', shortName:'COPPER', icon:'⚄', color:'#b68d5d', cost:5, desc:'Tends to Roll Higher Numbers', rollMin:4, rollMax:6 },
+  { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multipier', scoreMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} }
 ];
 
 // ─── Combo tier colours ───────────────────────────────────────────────
