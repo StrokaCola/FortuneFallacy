@@ -710,42 +710,42 @@ const UNLOCKABLE_DICE = [
   { id:'void_die',   name:'Void Die',   shortName:'VOID', icon:'◈', color:'#aa44ff', cost:7,
     desc:'Scores 0 chips but +5 Mult',
     voidBonus:5, noReroll:true,
-    unlock:{ id:'void_die',   label:'Score a Five of a Kind' },
+    unlock:{ id:'void_die',   label:'Score a Five of a Kind', req:{type:'score_combo',value:'five_of_a_kind'} },
     visual:{ shape:'round', decoration:'outline', outlineShape:'hexagram' } },
   { id:'lucky_die',  name:'Lucky Die',  shortName:'LUCK', icon:'☘', color:'#ffdd44', cost:5,
     desc:'Min score 3 — +1 Mult per reroll used',
     scoreMin:3, rerollMult:true,
-    unlock:{ id:'lucky_die',  label:'Clear Goal 2' },
+    unlock:{ id:'lucky_die',  label:'Clear Goal 2', req:{type:'clear_goal',value:2} },
     visual:{ shape:'round', decoration:'text', label:'☘' } },
   { id:'runic_die',  name:'Runic Die',  shortName:'RUNE', icon:'✦', color:'#cc44ff', cost:8,
     desc:'Score ×2 — −1 Mult',
     scoreMultiplier:2, multPenalty:1,
-    unlock:{ id:'runic_die',  label:'Clear Goal 5' },
+    unlock:{ id:'runic_die',  label:'Clear Goal 5', req:{type:'clear_goal',value:5} },
     visual:{ shape:'hex', decoration:'text', label:'✦' } },
 ];
 
 const UNLOCKABLE_RUNES = [
   { id:'rune_haste',    name:'Haste',    tier:'uncommon', icon:'⚑', color:'#44ddaa', cost:5,
     desc:'+2 ◆ shards on score',  shardsBonus:2,
-    unlock:{ id:'rune_haste',    label:'Spend 15 shards in a single run' } },
+    unlock:{ id:'rune_haste',    label:'Spend 15 shards in a single run', req:{type:'spend_shards',value:15} } },
   { id:'rune_potent',   name:'Potent',   tier:'rare',     icon:'⚜', color:'#ff88cc', cost:7,
     desc:'+3 to score and +1 Mult', scoreBonus:3, multBonus:1,
-    unlock:{ id:'rune_potent',   label:'Clear Goal 3' } },
+    unlock:{ id:'rune_potent',   label:'Clear Goal 3', req:{type:'clear_goal',value:3} } },
   { id:'rune_overload', name:'Overload', tier:'legendary',icon:'⚡', color:'#ff4400', cost:12,
     desc:'Score ×3 — cannot reroll this die', scoreMultiplier:3, noReroll:true,
-    unlock:{ id:'rune_overload', label:'Clear Goal 6' } },
+    unlock:{ id:'rune_overload', label:'Clear Goal 6', req:{type:'clear_goal',value:6} } },
 ];
 
 const UNLOCKABLE_ORACLES = [
   { id:'the_gambler',  name:'The Gambler',   tier:'uncommon', icon:'🎲', color:'#ff6644',
     effect:'+2 Mult for each reroll you have left when scoring',
     flavor:'"Fortune favours the reckless."',
-    unlock:{ id:'the_gambler',  label:'Clear Goal 1' },
+    unlock:{ id:'the_gambler',  label:'Clear Goal 1', req:{type:'clear_goal',value:1} },
     apply(combo, faces, chips, mult) { return [chips, mult + rerollsLeft * 2]; } },
   { id:'momentum',     name:'Momentum',      tier:'rare',     icon:'▶', color:'#44ccff',
     effect:'+1 Mult for each consecutive hand played without rerolling (stacks this round)',
     flavor:'"Keep moving. Never stop."',
-    unlock:{ id:'momentum',     label:'Clear Goal 4' },
+    unlock:{ id:'momentum',     label:'Clear Goal 4', req:{type:'clear_goal',value:4} },
     apply(combo, faces, chips, mult, meta) {
       if (!meta.lastReroll) momentumStreak++;
       else momentumStreak = 0;
@@ -754,7 +754,7 @@ const UNLOCKABLE_ORACLES = [
   { id:'the_collector',name:'The Collector', tier:'legendary',icon:'♜', color:'#ffaa44',
     effect:'+3 Chips for each unique die upgrade type in your pool',
     flavor:'"Every piece matters."',
-    unlock:{ id:'the_collector',label:'Own 4 or more upgraded dice' },
+    unlock:{ id:'the_collector',label:'Own 4 or more upgraded dice', req:{type:'own_upgrades',value:4} },
     apply(combo, faces, chips, mult) {
       const types = new Set(diceUpgrades.filter(Boolean).map(d => d.id)).size;
       return [chips + types * 3, mult];
@@ -812,7 +812,7 @@ let runeOrigin    = 'hub';
 
 // ─── Unlock state ────────────────────────────────────────────────────
 let unlockedIds    = new Set();
-let runStats       = { fiveOfAKindScored: false, totalShardsSpent: 0, maxNoRerollStreak: 0, _noRerollCur: 0 };
+let runStats       = { fiveOfAKindScored: false, totalShardsSpent: 0, maxNoRerollStreak: 0, _noRerollCur: 0, handsPlayed: 0, combosScored: {}, runCompleted: false };
 let momentumStreak = 0;
 const UNLOCKS_KEY  = 'fortunefallacy_unlocks';
 
@@ -827,22 +827,25 @@ function allUnlockableItems() {
 }
 function isUnlocked(id) { return unlockedIds.has(id); }
 
+function evalUnlockReq(req) {
+  if (!req) return false;
+  switch (req.type) {
+    case 'clear_goal':    return runGoal >= req.value;
+    case 'score_combo':   return !!(runStats.combosScored[req.value]);
+    case 'spend_shards':  return runStats.totalShardsSpent >= req.value;
+    case 'own_upgrades':  return diceUpgrades.filter(Boolean).length >= req.value;
+    case 'score_hands':   return runStats.handsPlayed >= req.value;
+    case 'win_run':       return runStats.runCompleted;
+    default:              return false;
+  }
+}
+
 function checkUnlocks() {
   let any = false;
   for (const item of allUnlockableItems()) {
     const uid = item.unlock.id;
     if (unlockedIds.has(uid)) continue;
-    let met = false;
-    if (uid === 'void_die')       met = runStats.fiveOfAKindScored;
-    if (uid === 'lucky_die')      met = runGoal >= 2;
-    if (uid === 'runic_die')      met = runGoal >= 5;
-    if (uid === 'rune_haste')     met = runStats.totalShardsSpent >= 15;
-    if (uid === 'rune_potent')    met = runGoal >= 3;
-    if (uid === 'rune_overload')  met = runGoal >= 6;
-    if (uid === 'the_gambler')    met = runGoal >= 1;
-    if (uid === 'momentum')       met = runGoal >= 4;
-    if (uid === 'the_collector')  met = diceUpgrades.filter(Boolean).length >= 4;
-    if (met) {
+    if (evalUnlockReq(item.unlock.req)) {
       unlockedIds.add(uid);
       any = true;
       const name = item.name;
@@ -924,7 +927,7 @@ function startRun(isEndless = false) {
   ];
   runeSelInv  = null;
   runeSelSlot = null;
-  runStats    = { fiveOfAKindScored: false, totalShardsSpent: 0, maxNoRerollStreak: 0, _noRerollCur: 0 };
+  runStats    = { fiveOfAKindScored: false, totalShardsSpent: 0, maxNoRerollStreak: 0, _noRerollCur: 0, handsPlayed: 0, combosScored: {}, runCompleted: false };
   momentumStreak = 0;
   nameEntry   = playerName;
   screen      = 'nameentry';
@@ -1202,6 +1205,8 @@ function playHand() {
           rolledOnce = false; handInProgress = false; scoringState = null;
           // Track run stats for unlock conditions
           if (combo.id === 'five_of_a_kind') runStats.fiveOfAKindScored = true;
+          runStats.handsPlayed++;
+          runStats.combosScored[combo.id] = (runStats.combosScored[combo.id] || 0) + 1;
           if (!lastHandMeta.lastReroll) runStats._noRerollCur++;
           else runStats._noRerollCur = 0;
           runStats.maxNoRerollStreak = Math.max(runStats.maxNoRerollStreak, runStats._noRerollCur);
@@ -1244,6 +1249,8 @@ function advanceGoal() {
     if (!endless && runGoal >= GOAL_TARGETS.length) {
       SFX.win();
       unlockEndless();
+      runStats.runCompleted = true;
+      checkUnlocks();
       nameEntry       = '';
       nameEntryActive = false;
       screen = 'win';

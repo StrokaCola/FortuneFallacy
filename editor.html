@@ -252,6 +252,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
   line-height: 1.5;
 }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+.unlock-section { border-top: 1px solid var(--border); padding: 10px 14px 10px; background: rgba(180,153,80,0.03); }
+.unlock-section .behaviors-title { color: #b89940; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.unlock-body { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.unlock-body select, .unlock-body input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 5px; padding: 3px 6px; font-size: 12px; }
+.unlock-label-preview { color: rgba(180,160,100,0.65); font-size: 11px; font-style: italic; }
 </style>
 </head>
 <body>
@@ -546,6 +551,7 @@ function buildCard(die, idx) {
       <div class="behaviors-title">Visual</div>
       <div id="vis-${idx}">${buildVisual(die, idx)}</div>
     </div>
+    <div id="unlock-sec-${idx}">${buildUnlockSection(die, idx)}</div>
   `;
   card.appendChild(body);
   return card;
@@ -710,6 +716,72 @@ function copyCode() {
   });
 }
 
+// ─── Unlock section ───────────────────────────────────────────────────
+const UNLOCK_COMBOS = [
+  ['five_of_a_kind','Five of a Kind'],['four_of_a_kind','Four of a Kind'],
+  ['full_house','Full House'],['large_straight','Large Straight'],
+  ['small_straight','Small Straight'],['three_of_a_kind','Three of a Kind'],
+  ['two_pair','Two Pair'],['one_pair','One Pair'],['chance','Chance']];
+function unlockLabel(req) {
+  if (!req) return '';
+  if (req.type === 'clear_goal')   return `Clear Goal ${req.value}`;
+  if (req.type === 'score_combo')  { const c = UNLOCK_COMBOS.find(c=>c[0]===req.value); return `Score a ${c?c[1]:req.value}`; }
+  if (req.type === 'spend_shards') return `Spend ${req.value} shards in a single run`;
+  if (req.type === 'own_upgrades') return `Own ${req.value} or more upgraded dice`;
+  if (req.type === 'score_hands')  return `Score ${req.value} hands in a run`;
+  if (req.type === 'win_run')      return 'Complete a full run';
+  return '';
+}
+function buildUnlockSection(item, idx) {
+  const u = item.unlock;
+  const req = u ? (u.req || {type:'clear_goal',value:1}) : null;
+  const typeOpts = [['clear_goal','Clear Goal N'],['score_combo','Score Combo'],
+    ['spend_shards','Spend N Shards'],['own_upgrades','Own N Upgrades'],
+    ['score_hands','Score N Hands'],['win_run','Win a Run']];
+  const selHtml = req ? `<select onchange="updUnlockType(${idx},this.value)">${
+    typeOpts.map(([v,l])=>`<option value="${v}"${req.type===v?' selected':''}>${l}</option>`).join('')
+  }</select>` : '';
+  let valHtml = '';
+  if (req && req.type === 'score_combo') {
+    valHtml = `<select onchange="updUnlockVal(${idx},this.value)">${
+      UNLOCK_COMBOS.map(([id,nm])=>`<option value="${id}"${req.value===id?' selected':''}>${nm}</option>`).join('')
+    }</select>`;
+  } else if (req && req.type !== 'win_run') {
+    valHtml = `<input type="number" value="${req.value||1}" min="1" max="50" style="width:52px" oninput="updUnlockVal(${idx},+this.value)"/>`;
+  }
+  return `<div class="unlock-section">
+    <div class="behaviors-title" style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="unl-${idx}" ${u?'checked':''} onchange="togUnlock(${idx},this.checked)"/>
+      <label for="unl-${idx}" style="cursor:pointer">Unlockable</label>
+    </div>
+    ${u ? `<div class="unlock-body">${selHtml}${valHtml}<span class="unlock-label-preview">${unlockLabel(req)}</span></div>` : ''}
+  </div>`;
+}
+function togUnlock(idx, on) {
+  if (on) diceList[idx].unlock = { id: diceList[idx].id, label: 'Clear Goal 1', req: {type:'clear_goal',value:1} };
+  else delete diceList[idx].unlock;
+  saveState();
+  const el = document.getElementById(`unlock-sec-${idx}`);
+  if (el) el.outerHTML = `<div id="unlock-sec-${idx}">${buildUnlockSection(diceList[idx], idx)}</div>`;
+}
+function updUnlockType(idx, type) {
+  if (!diceList[idx].unlock) return;
+  const defVal = type === 'score_combo' ? 'five_of_a_kind' : type === 'win_run' ? undefined : 1;
+  diceList[idx].unlock.req = { type, value: defVal };
+  diceList[idx].unlock.label = unlockLabel(diceList[idx].unlock.req);
+  saveState();
+  const el = document.getElementById(`unlock-sec-${idx}`);
+  if (el) el.outerHTML = `<div id="unlock-sec-${idx}">${buildUnlockSection(diceList[idx], idx)}</div>`;
+}
+function updUnlockVal(idx, val) {
+  if (!diceList[idx].unlock) return;
+  diceList[idx].unlock.req.value = val;
+  diceList[idx].unlock.label = unlockLabel(diceList[idx].unlock.req);
+  saveState();
+  const el = document.querySelector(`#unlock-sec-${idx} .unlock-label-preview`);
+  if (el) el.textContent = diceList[idx].unlock.label;
+}
+
 function generateCode() {
   const entries = diceList.map(d => {
     const p = [];
@@ -757,9 +829,20 @@ function generateCode() {
       if (v.overlayOutline)                vp.push(`overlayOutline:'${v.overlayOutline}'`);
       p.push(`visual:{${vp.join(',')}}`);
     }
+    if (d.unlock) {
+      const u = d.unlock, r = u.req||{type:'clear_goal',value:1};
+      const rv = r.value === undefined ? '' : `,value:${typeof r.value==='string'?`'${r.value}'`:r.value}`;
+      p.push(`unlock:{id:'${q(u.id)}',label:'${q(u.label)}',req:{type:'${r.type}'${rv}}}`);
+    }
     return `  { ${p.join(', ')} }`;
   });
-  return `const DICE_UPGRADES = [\n${entries.join(',\n')}\n];`;
+  const regular    = diceList.filter(d => !d.unlock);
+  const unlockable = diceList.filter(d =>  d.unlock);
+  const regEntries = regular.map(d => entries[diceList.indexOf(d)]);
+  const unlEntries = unlockable.map(d => entries[diceList.indexOf(d)]);
+  let out = `const DICE_UPGRADES = [\n${regEntries.join(',\n')}\n];`;
+  if (unlEntries.length) out += `\n\nconst UNLOCKABLE_DICE = [\n${unlEntries.join(',\n')}\n];`;
+  return out;
 }
 
 function q(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
