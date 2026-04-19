@@ -220,14 +220,32 @@ const DEFAULT_RUNES = [
   { id:'anchor',    name:'Anchor',    tier:'rare',      icon:'⚓', color:'#aabbcc', cost:7, desc:'×2 score — cannot reroll', scoreMultiplier:2, noReroll:true },
   { id:'mirror_r',  name:'Mirror',    tier:'rare',      icon:'◈', color:'#88ddff', cost:8, desc:'Copies highest held face',  mirror:true },
   { id:'resonance', name:'Resonance', tier:'rare',      icon:'≋', color:'#cc88ff', cost:7, desc:'+3 Chips per die collision',collisionBonus:3 },
-  { id:'sovereign', name:'Sovereign', tier:'legendary', icon:'♛', color:'#ffaa44', cost:12,desc:'Scores three times',        triggers:3 },
+  { id:'sovereign',    name:'Sovereign', tier:'legendary', icon:'♛', color:'#ffaa44', cost:12, desc:'Scores three times', triggers:3 },
+  // Unlockable runes
+  { id:'rune_haste',    name:'Haste',    tier:'uncommon', icon:'⚑', color:'#44ddaa', cost:5,
+    desc:'+2 ◆ shards on score', shardsBonus:2,
+    unlock:{id:'rune_haste', label:'Spend 15 shards in a single run', req:{type:'spend_shards',value:15}} },
+  { id:'rune_potent',   name:'Potent',   tier:'rare',     icon:'⚜', color:'#ff88cc', cost:7,
+    desc:'+3 to score and +1 Mult', scoreBonus:3, multBonus:1,
+    unlock:{id:'rune_potent', label:'Clear Goal 3', req:{type:'clear_goal',value:3}} },
+  { id:'rune_overload', name:'Overload', tier:'legendary',icon:'⚡', color:'#ff4400', cost:12,
+    desc:'Score ×3 — cannot reroll this die', scoreMultiplier:3, noReroll:true,
+    unlock:{id:'rune_overload', label:'Clear Goal 6', req:{type:'clear_goal',value:6}} },
 ];
 
 let runes = [];
 
 function load() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) { try { runes = JSON.parse(saved); return; } catch {} }
+  if (saved) {
+    try {
+      runes = JSON.parse(saved);
+      for (const def of DEFAULT_RUNES) {
+        if (!runes.find(r => r.id === def.id)) runes.push({...def});
+      }
+      return;
+    } catch {}
+  }
   runes = DEFAULT_RUNES.map(r => ({...r}));
 }
 

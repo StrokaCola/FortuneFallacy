@@ -308,13 +308,32 @@ const DEFAULT_DICE = [
     desc:'Scores as highest face rolled', mirror:true },
   { id:'wicked',   name:'Wicked Die',   shortName:'WICKED',   icon:'𖤍', color:'#9a4488', cost:6,
     desc:'+1 Mult per reroll remaining', rerollMult:true },
+  // Unlockable dice
+  { id:'void_die',  name:'Void Die',  shortName:'VOID', icon:'◈', color:'#aa44ff', cost:7,
+    desc:'Scores 0 chips but +5 Mult', voidBonus:5, noReroll:true,
+    unlock:{id:'void_die',  label:'Score a Five of a Kind', req:{type:'score_combo',value:'five_of_a_kind'}},
+    visual:{shape:'round', decoration:'outline', outlineShape:'hexagram'} },
+  { id:'lucky_die', name:'Lucky Die', shortName:'LUCK', icon:'☘', color:'#ffdd44', cost:5,
+    desc:'Min score 3 — +1 Mult per reroll used', scoreMin:3, rerollMult:true,
+    unlock:{id:'lucky_die', label:'Clear Goal 2', req:{type:'clear_goal',value:2}},
+    visual:{shape:'round', decoration:'text', label:'☘'} },
+  { id:'runic_die', name:'Runic Die', shortName:'RUNE', icon:'✦', color:'#cc44ff', cost:8,
+    desc:'Score ×2 — −1 Mult', scoreMultiplier:2, multPenalty:1,
+    unlock:{id:'runic_die', label:'Clear Goal 5', req:{type:'clear_goal',value:5}},
+    visual:{shape:'hex', decoration:'text', label:'✦'} },
 ];
 
 // ─── Persistence ──────────────────────────────────────────────────────
 function loadState() {
   try {
     const s = localStorage.getItem('ff_dice_editor');
-    if (s) return JSON.parse(s);
+    if (s) {
+      const saved = JSON.parse(s);
+      for (const def of DEFAULT_DICE) {
+        if (!saved.find(d => d.id === def.id)) saved.push(cloneDie(def));
+      }
+      return saved;
+    }
   } catch {}
   return DEFAULT_DICE.map(cloneDie);
 }

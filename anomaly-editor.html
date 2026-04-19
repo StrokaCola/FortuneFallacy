@@ -367,11 +367,39 @@ const DEFAULT_ANOMALIES = [
   {id:'marionette',    name:'The Marionette',    tier:'legendary',icon:'𓂀',  color:'#e0c050',
    effect:'Three of a Kind → Chips × face value', flavor:'"Every string pulled, still you dance the same."',
    behavior:{type:'custom', code:"if(c.id!=='three_kind'&&c.id!=='four_kind'&&c.id!=='five_kind')return[b,m];\nconst counts={}; d.forEach(v=>counts[v]=(counts[v]||0)+1);\nconst trip=Object.keys(counts).find(k=>counts[k]>=3);\nreturn trip?[b*+trip,m]:[b,m];"}},
+
+  // Unlockable anomalies
+  {id:'the_gambler',   name:'The Gambler',   tier:'uncommon', icon:'🎲', color:'#ff6644',
+   effect:'+2 Mult for each reroll you have left when scoring',
+   flavor:'"Fortune favours the reckless."',
+   behavior:{type:'custom', code:'return [b, m + rerollsLeft * 2];'},
+   unlock:{id:'the_gambler', label:'Clear Goal 1', req:{type:'clear_goal',value:1}} },
+
+  {id:'momentum',      name:'Momentum',      tier:'rare',     icon:'▶', color:'#44ccff',
+   effect:'+1 Mult for each consecutive hand played without rerolling (stacks this round)',
+   flavor:'"Keep moving. Never stop."',
+   behavior:{type:'custom', code:'if (!meta.lastReroll) momentumStreak++; else momentumStreak = 0; return [b, m + Math.max(0, momentumStreak - 1)];'},
+   unlock:{id:'momentum', label:'Clear Goal 4', req:{type:'clear_goal',value:4}} },
+
+  {id:'the_collector', name:'The Collector', tier:'legendary',icon:'♜', color:'#ffaa44',
+   effect:'+3 Chips for each unique die upgrade type in your pool',
+   flavor:'"Every piece matters."',
+   behavior:{type:'custom', code:'const types = new Set(diceUpgrades.filter(Boolean).map(d => d.id)).size; return [b + types * 3, m];'},
+   unlock:{id:'the_collector', label:'Own 4 or more upgraded dice', req:{type:'own_upgrades',value:4}} },
 ];
 
 // ─── Persistence ──────────────────────────────────────────────────────
 function loadState() {
-  try { const s = localStorage.getItem('ff_anomaly_editor'); if (s) return JSON.parse(s); } catch {}
+  try {
+    const s = localStorage.getItem('ff_anomaly_editor');
+    if (s) {
+      const saved = JSON.parse(s);
+      for (const def of DEFAULT_ANOMALIES) {
+        if (!saved.find(a => a.id === def.id)) saved.push(cloneAnomaly(def));
+      }
+      return saved;
+    }
+  } catch {}
   return DEFAULT_ANOMALIES.map(cloneAnomaly);
 }
 function saveState() { localStorage.setItem('ff_anomaly_editor', JSON.stringify(anomalyList)); }
