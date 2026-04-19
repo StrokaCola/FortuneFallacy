@@ -6,6 +6,51 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 960
 const H = canvas.height;  // 540
 
+// ─── Physics constants (edit via physics-editor.html) ────────────────
+const PHYSICS = (()=>{
+  const saved = localStorage.getItem('ff_physics');
+  const defaults = {
+    throwSpeedX:          620,
+    throwSpeedY:          380,
+    launchBounceBase:      22,
+    launchBounceRand:      10,
+    initSpinXY:            42,
+    initSpinZ:             22,
+    rollDurBase:         0.62,
+    rollDurStagger:     0.055,
+    rollDurRand:         0.12,
+    tumblePhase:         0.62,
+    tumbleRate:         0.045,
+    spinCoupling:        0.22,
+    spinFriction:        0.32,
+    gravity:              150,
+    floorRestitution:    0.42,
+    hopThreshold:          90,
+    maxHops:                4,
+    hopBaseVel:             7,
+    hopRandVel:             5,
+    hopSpeedFactor:     0.008,
+    landingSpinX:           7,
+    landingSpinZ:           5,
+    landingFriction:     0.90,
+    airDrag:             0.62,
+    groundFriction:      0.18,
+    wallRestitution:     0.72,
+    wallSpinY:           0.02,
+    wallSpinZ:          0.015,
+    collisionRestitution: 0.78,
+    collisionGap:           2,
+    collisionSpin:       0.07,
+    collisionHopThreshold: 40,
+    collisionHopBase:       4,
+    collisionHopFactor:  0.018,
+    landBounceVel:          6,
+    glideSpeed:        0.0015,
+  };
+  if (!saved) return defaults;
+  try { return Object.assign({}, defaults, JSON.parse(saved)); } catch { return defaults; }
+})();
+
 // ─── Portal setup ────────────────────────────────────────────────────
 const incoming   = Portal.readPortalParams();
 const nextTarget = await Portal.pickPortalTarget();
@@ -63,9 +108,21 @@ const SFX = {
     playTone(f * 1.25, 'sine', 0.14, 0.12, 0.06);
     if (tier >= 6) playTone(f * 1.5, 'sine', 0.12, 0.1, 0.12);
   },
-  tick(score) { playTone(300 + Math.min(score / 500, 1) * 600, 'square', 0.03, 0.03); },
-  mult()      { playTone(110, 'sawtooth', 0.22, 0.08); playTone(165, 'sawtooth', 0.18, 0.07, 0.05); },
-  bigScore()  { [523, 659, 784].forEach((f, i) => playTone(f, 'triangle', 0.2, 0.18, i * 0.1)); },
+  tick(score) {
+    const si = scoreIntensity(score);
+    playTone(260 + si * 900, 'square', 0.03 + si * 0.03, 0.03 + si * 0.04);
+  },
+  mult(m = 1) {
+    const si = Math.min(1, Math.log2(Math.max(1, m)) / 5);
+    playTone(110 * (1 + si * 0.8), 'sawtooth', 0.22, 0.08 + si * 0.08);
+    playTone(165 * (1 + si * 0.8), 'sawtooth', 0.18, 0.07 + si * 0.06, 0.05);
+  },
+  bigScore(score = 0) {
+    const si = scoreIntensity(score);
+    const base = [523, 659, 784];
+    const gain = 0.14 + si * 0.12;
+    base.forEach((f, i) => playTone(f * (1 + si * 0.6), 'triangle', 0.2 + si * 0.15, gain, i * (0.1 - si * 0.05)));
+  },
   oracle()    { [1047, 1319, 1568].forEach((f, i) => playTone(f, 'sine', 0.18, 0.12, i * 0.06)); },
   clear()     { [392, 494, 587, 698, 784].forEach((f, i) => playTone(f, 'triangle', 0.18, 0.16, i * 0.08)); },
   win()       { [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'triangle', 0.3, 0.18, i * 0.12)); },
@@ -173,6 +230,8 @@ function screenFlash(a = 0.4) { flashAlpha = Math.max(flashAlpha, a); }
 // ─── Screen shake ─────────────────────────────────────────────────────
 let shakeAmp = 0;
 function screenShake(a = 8) { shakeAmp = Math.max(shakeAmp, a); }
+// 0–1 log scale relative to max goal score (~50k)
+function scoreIntensity(val) { return Math.min(1, Math.log10(Math.max(10, val)) / 4.7); }
 
 // ─── 3D Math ──────────────────────────────────────────────────────────
 function rotate3(x, y, z, rx, ry, rz) {
@@ -284,12 +343,12 @@ function drawRoundRect(x, y, w, h, r, fill, stroke, lw = 2) {
 }
 
 // ─── Ornament helpers ─────────────────────────────────────────────────
-const SERIF = "Georgia,'Cinzel','Trajan Pro',serif";
+const SERIF = "'Cinzel Decorative',Cinzel,'Palatino Linotype',Georgia,serif";
 
-// Draws a parchment-style layered frame with corner sigils and an inner hairline.
-function ornamentFrame(x, y, w, h, accent = '#9a3826', opts = {}) {
-  const { bg = 'rgba(22,13,7,0.94)', inner = 'rgba(200,153,96,0.35)', corner = 8 } = opts;
-  // Outer warm parchment fill with a gentle vertical gradient
+// Draws a dark-stone layered frame with corner sigils and an inner hairline.
+function ornamentFrame(x, y, w, h, accent = '#7a1a28', opts = {}) {
+  const { bg = 'rgba(6,6,18,0.96)', inner = 'rgba(80,100,160,0.28)', corner = 8 } = opts;
+  // Outer void-stone fill with a gentle vertical gradient
   const g = ctx.createLinearGradient(x, y, x, y + h);
   g.addColorStop(0, bg);
   g.addColorStop(1, 'rgba(12,6,3,0.96)');
@@ -366,41 +425,43 @@ const EMBERS = Array.from({ length: 44 }, () => ({
 }));
 
 function drawBG(t) {
-  ctx.fillStyle = '#0d0805';
+  ctx.fillStyle = '#06060f';
   ctx.fillRect(0, 0, W, H);
 
-  // Soft warm vignette — candlelight spill from top-left + ember blush bottom-right
-  const g1 = ctx.createRadialGradient(W*0.22, H*0.18, 30, W*0.22, H*0.18, W*0.6);
-  g1.addColorStop(0,   'rgba(200,153,96,0.10)');
-  g1.addColorStop(0.6, 'rgba(120,70,30,0.03)');
+  // Cold moonlight from top-center
+  const g1 = ctx.createRadialGradient(W*0.5, -H*0.05, 20, W*0.5, H*0.4, W*0.75);
+  g1.addColorStop(0,   'rgba(70,85,150,0.13)');
+  g1.addColorStop(0.5, 'rgba(40,50,100,0.05)');
   g1.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
-  const g2 = ctx.createRadialGradient(W*0.82, H*0.92, 10, W*0.82, H*0.92, W*0.55);
-  g2.addColorStop(0,   'rgba(154,56,38,0.10)');
+
+  // Blood-mist seep from bottom corners
+  const g2 = ctx.createRadialGradient(W*0.5, H*1.05, 10, W*0.5, H*0.85, W*0.6);
+  g2.addColorStop(0,   'rgba(90,15,28,0.12)');
   g2.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  // Candle flicker over the whole scene (very subtle)
-  const flick = 0.92 + 0.08 * Math.sin(t*6.1) * Math.sin(t*2.7);
+  // Cold moonlight pulse (slow and subtle)
+  const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = `rgba(255,${Math.floor(230*flick)},${Math.floor(200*flick)},1)`;
-  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = `rgba(${Math.floor(185*pulse)},${Math.floor(195*pulse)},${Math.floor(230*pulse)},1)`;
+  ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // Drifting embers
+  // Drifting shadow motes
   for (const s of EMBERS) {
-    const a = 0.22 + 0.35 * Math.sin(t*1.4 + s.ph);
-    const y = (s.y - t*10*s.drift) % H;
+    const a = 0.06 + 0.10 * Math.sin(t * 0.9 + s.ph);
+    const y = (s.y - t * 5 * s.drift) % H;
     const yy = y < 0 ? y + H : y;
-    ctx.fillStyle = `rgba(220,${130+Math.floor(40*a)},70,${a})`;
+    ctx.fillStyle = `rgba(60,70,120,${a.toFixed(2)})`;
     ctx.fillRect(s.x, yy, s.r, s.r);
   }
 
-  // Deep corner vignette
-  const g3 = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.35, W/2, H/2, Math.max(W,H)*0.75);
+  // Heavy corner vignette — darkness presses in
+  const g3 = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.22, W/2, H/2, Math.max(W,H)*0.78);
   g3.addColorStop(0,   'rgba(0,0,0,0)');
-  g3.addColorStop(1,   'rgba(0,0,0,0.55)');
+  g3.addColorStop(1,   'rgba(0,0,0,0.75)');
   ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
 }
 
@@ -604,28 +665,20 @@ const ALL_ORACLES = [
 
 // ─── Dice upgrade definitions ─────────────────────────────────────────
 const DICE_UPGRADES = [
-  { id:'glass',    name:'Glass Die',    shortName:'GLASS',    icon:'◆', color:'#b8924a', cost:6,
-    desc:'This die scores ×1.5 points', scoreMultiplier:1.5 },
-  { id:'iron',     name:'Iron Die',     shortName:'IRON',     icon:'⬡', color:'#aab8cc', cost:8,
-    desc:'Minimum score value is 4' },
-  { id:'lucky',    name:'Lucky Die',    shortName:'LUCKY',    icon:'★', color:'#ffe066', cost:5,
-    desc:"1s count as 3 when scoring" },
-  { id:'cursed',   name:'Cursed Die',   shortName:'CURSED',   icon:'☠', color:'#cc44ff', cost:3,
-    desc:'Score ×2, −1 Mult', scoreMultiplier:2, multPenalty:1 },
-  { id:'volatile', name:'Volatile Die', shortName:'VOLATILE', icon:'⚠', color:'#ff6622', cost:10,
-    desc:'Scores a d12 instead of face' },
-  { id:'ember',    name:'Ember Die',    shortName:'EMBER',    icon:'🜂', color:'#e86828', cost:7,
-    desc:'+2 points per collision this hand' },
-  { id:'heavy',    name:'Heavy Die',    shortName:'HEAVY',    icon:'▮', color:'#8a6a4a', cost:9,
-    desc:'Scores ×3 — cannot be rerolled', scoreMultiplier:3 },
-  { id:'mirror',   name:'Mirror Die',   shortName:'MIRROR',   icon:'◐', color:'#c8d8e8', cost:8,
-    desc:'Scores as highest face rolled' },
-  { id:'wicked',   name:'Wicked Die',   shortName:'WICKED',   icon:'𖤍', color:'#9a4488', cost:6,
-    desc:'+1 Mult per reroll remaining' },
+  { id:'glass', name:'Glass Die', shortName:'GLASS', icon:'◆', color:'#b8924a', cost:6, desc:'This die scores ×1.5 points', scoreMultiplier:1.5 },
+  { id:'iron', name:'Iron Die', shortName:'IRON', icon:'⬡', color:'#aab8cc', cost:8, desc:'Minimum score value is 4', scoreMin:4 },
+  { id:'lucky', name:'Lucky Die', shortName:'LUCKY', icon:'★', color:'#ffe066', cost:5, desc:'1s count as 3 when scoring', faceRemap:{from:1,to:3} },
+  { id:'cursed', name:'Cursed Die', shortName:'CURSED', icon:'☠', color:'#cc44ff', cost:3, desc:'Score ×2, −1 Mult', scoreMultiplier:2, multPenalty:1 },
+  { id:'volatile', name:'Volatile Die', shortName:'VOLATILE', icon:'⚠', color:'#ff6622', cost:10, desc:'Scores a d12 instead of face', volatile:12 },
+  { id:'ember', name:'Ember Die', shortName:'EMBER', icon:'🜂', color:'#e86828', cost:7, desc:'+2 points per collision this hand', collisionBonus:2 },
+  { id:'heavy', name:'Heavy Die', shortName:'HEAVY', icon:'▮', color:'#8a6a4a', cost:9, desc:'Scores ×3 — cannot be rerolled', scoreMultiplier:3, noReroll:true },
+  { id:'mirror', name:'Mirror Die', shortName:'MIRROR', icon:'◐', color:'#c8d8e8', cost:8, desc:'Scores as highest face rolled', mirror:true },
+  { id:'wicked', name:'Wicked Die', shortName:'WICKED', icon:'𖤍', color:'#9a4488', cost:6, desc:'+1 Mult per reroll remaining', rerollMult:true },
+  { id:'gold', name:'Gold Die', shortName:'Gold', icon:'⚄', color:'#e1a523', cost:10, desc:'Triggers Twice', triggers:2, visual:{shape:'round',decoration:'text',label:'⚄',overlayOutline:'diamond'} }
 ];
 
 // ─── Combo tier colours ───────────────────────────────────────────────
-const COMBO_COLORS = ['#776655','#a89070','#b8a874','#bfa060','#c89960','#b35838','#9a3826','#8b1a1a','#f7e8b0'];
+const COMBO_COLORS = ['#445566','#5566aa','#7788bb','#8899cc','#aabbdd','#c03040','#8b1a2a','#5a0a14','#d0d8f0'];
 
 // ─── Game state ───────────────────────────────────────────────────────
 let screen = 'title';
@@ -725,8 +778,15 @@ function startRun(isEndless = false) {
   comboStreak    = { id:null, count:0 };
   shards         = 0;
   diceUpgrades   = Array(DICE_COUNT).fill(null);
-  startRound();
-  screen = 'game';
+  nameEntry      = playerName;
+  screen         = 'nameentry';
+}
+
+function confirmPlayerName() {
+  playerName = nameEntry.trim() || 'Wanderer';
+  nameEntry  = playerName;
+  localStorage.setItem('fortunefallacy_player', playerName);
+  screen = 'hub';
 }
 
 function startRound() {
@@ -752,28 +812,32 @@ function goalLabel() {
 function rollDice() {
   if (handInProgress) return;
   const targets = rolledOnce
-    ? dice.filter((d,i) => !d.locked && diceUpgrades[i]?.id !== 'heavy')
+    ? dice.filter((d,i) => !d.locked && !diceUpgrades[i]?.noReroll)
     : dice;
   if (targets.length === 0) return;
   SFX.roll();
-  screenShake(4);
+  screenShake(4 + scoreIntensity(roundScore) * 6);
 
   targets.forEach((d, i) => {
-    d.face    = 1 + Math.floor(Math.random() * 6);
+    const _rupg = diceUpgrades[dice.indexOf(d)];
+    if (_rupg && _rupg.rollMin !== undefined && _rupg.rollMax !== undefined)
+      d.face = _rupg.rollMin + Math.floor(Math.random() * (_rupg.rollMax - _rupg.rollMin + 1));
+    else
+      d.face = 1 + Math.floor(Math.random() * 6);
     d.rolling = true;
     d.rollT   = 0;
-    d.rollDur = 0.62 + i * 0.055 + Math.random() * 0.12;
+    d.rollDur = PHYSICS.rollDurBase + i * PHYSICS.rollDurStagger + Math.random() * PHYSICS.rollDurRand;
     d.settling = false;
     // Wild spin
-    d.vx = (Math.random() - 0.5) * 42;
-    d.vy = (Math.random() - 0.5) * 42;
-    d.vz = (Math.random() - 0.5) * 22;
+    d.vx = (Math.random() - 0.5) * PHYSICS.initSpinXY;
+    d.vy = (Math.random() - 0.5) * PHYSICS.initSpinXY;
+    d.vz = (Math.random() - 0.5) * PHYSICS.initSpinZ;
     // Anticipation bounce — stronger launch
     d.bounceY  = 0;
-    d.bounceVY = -(22 + Math.random() * 10);
+    d.bounceVY = -(PHYSICS.launchBounceBase + Math.random() * PHYSICS.launchBounceRand);
     // Table bounce velocity
-    d.pvx = (Math.random() - 0.5) * 620;
-    d.pvy = (Math.random() - 0.5) * 380;
+    d.pvx = (Math.random() - 0.5) * PHYSICS.throwSpeedX;
+    d.pvy = (Math.random() - 0.5) * PHYSICS.throwSpeedY;
     d.bounceCount = 0;
     // Target rotation
     const [trx, try_, trz] = FACE_ROT[d.face];
@@ -791,15 +855,15 @@ function rollDice() {
         const [trx, try_, trz] = FACE_ROT[d.face];
         d.rx = trx; d.ry = try_; d.rz = trz;
         d.landT = 0;
-        d.bounceVY = -6;
+        d.bounceVY = -PHYSICS.landBounceVel;
         burst(d.absX, d.absY + DICE_SIZE * 0.35, '#c89960', 5, 2.2);
         burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff', 3, 3);
-        playTone(180 + d.face * 22, 'triangle', 0.08, 0.08);
-        screenShake(3);
+        playTone(180 + d.face * 22, 'triangle', 0.08 + scoreIntensity(roundScore) * 0.08, 0.08 + scoreIntensity(roundScore) * 0.06);
+        screenShake(3 + d.face * 0.3 + scoreIntensity(roundScore) * 4);
       }, i * 60);
     });
     rolledOnce = true;
-    setTimeout(() => screenShake(8), targets.length * 60);
+    setTimeout(() => screenShake(8 + scoreIntensity(roundScore) * 8), targets.length * 60);
   }, (maxDur + 0.12) * 1000);
 }
 
@@ -835,17 +899,22 @@ function playHand() {
     SFX.combo(combo.tier);
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
-    if (tier >= 6) { screenFlash(0.4); screenShake(tier >= 7 ? 10 : 6); }
+    if (tier >= 6) { screenFlash(0.4); screenShake((tier >= 7 ? 10 : 6) + scoreIntensity(roundScore) * 6); }
     const burstN = [4,8,12,16,20,26,34,44,60][tier] || 10;
     const burstSpd = 4 + tier * 0.7;
     burst(W/2, H/2, COMBO_COLORS[tier] || '#c89960', burstN, burstSpd);
     if (tier >= 5) burst(W/2, H/2, '#ffffff', Math.floor(burstN/3), burstSpd * 1.3);
 
+    const scoreQueue = [];
+    for (const entry of heldEntries) {
+      const t = (entry.upg && entry.upg.triggers > 1) ? entry.upg.triggers : 1;
+      for (let ti = 0; ti < t; ti++) scoreQueue.push(entry);
+    }
     let dieIdx = 0;
 
     function scoreNext() {
-      if (dieIdx >= heldEntries.length) { applyModifiers(); return; }
-      const entry = heldEntries[dieIdx];
+      if (dieIdx >= scoreQueue.length) { applyModifiers(); return; }
+      const entry = scoreQueue[dieIdx];
       const d   = entry.die;
       const upg = entry.upg;
       dieIdx++;
@@ -853,14 +922,18 @@ function playHand() {
       d.scoringT = 0;
       let add   = d.face;
       if (upg) {
-        if (upg.id === 'iron')               add = Math.max(add, 4);
-        if (upg.id === 'lucky' && add === 1) add = 3;
-        if (upg.id === 'volatile')           add = 1 + Math.floor(Math.random() * 12);
-        if (upg.id === 'mirror')             add = Math.max(...heldEntries.map(e => e.die.face));
-        if (upg.id === 'ember')              add += rollCollisions.length * 2;
-        if (upg.scoreMultiplier)             add = Math.round(add * upg.scoreMultiplier);
-        if (upg.id === 'wicked') { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
-        if (upg.multPenalty) { mult = Math.max(1, mult - upg.multPenalty); scoringState.mult = mult; }
+        if (upg.scoreMin !== undefined)                    add = Math.max(add, upg.scoreMin);
+        if (upg.faceRemap && add === upg.faceRemap.from)   add = upg.faceRemap.to;
+        if (upg.invert)                                    add = 7 - d.face;
+        if (upg.volatile !== undefined)                    add = 1 + Math.floor(Math.random() * upg.volatile);
+        if (upg.mirror)                                    add = Math.max(...heldEntries.map(e => e.die.face));
+        if (upg.collisionBonus !== undefined)              add += rollCollisions.length * upg.collisionBonus;
+        if (upg.voidBonus !== undefined)                   { add = 0; mult += upg.voidBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.scoreMultiplier !== undefined)             add = Math.round(add * upg.scoreMultiplier);
+        if (upg.rerollMult)                                { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.multBonus !== undefined)                   { mult += upg.multBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.multPenalty !== undefined)                 { mult = Math.max(1, mult - upg.multPenalty); scoringState.mult = mult; }
+        if (upg.shardsBonus !== undefined)                 { shards += upg.shardsBonus; floatText(d.absX, d.absY - 60, `+${upg.shardsBonus} ◆`, '#b8a874', 13); }
       }
       chips += add;
       scoringState.chips = chips;
@@ -872,7 +945,7 @@ function playHand() {
       const burstN = 8 + Math.min(20, add * 2);
       burst(d.absX, d.absY, txtColor, burstN, 3.5);
       if (add >= 8) burst(d.absX, d.absY, '#ffffff', Math.floor(burstN/2), 5);
-      screenShake(1.2 + Math.min(5, add * 0.4));
+      screenShake(1.2 + Math.min(8, add * 0.4 + scoreIntensity(chips) * 3));
       SFX.tick(chips);
       setTimeout(() => { d.scoring = false; setTimeout(scoreNext, 60); }, 150);
     }
@@ -934,20 +1007,20 @@ function playHand() {
       const handScore = Math.max(chips, 0) * Math.max(mult, 1);
       const newTotal  = roundScore + handScore;
 
-      SFX.mult();
+      SFX.mult(mult);
       floatText(W/2, H/2 + 30, `×${mult} Mult`, '#9a3826', 22);
       burst(W/2, H/2 + 30, '#9a3826', 18, 4);
-      screenShake(5);
+      screenShake(5 + scoreIntensity(mult * chips) * 5);
 
       setTimeout(() => {
         const scoreSize = 24 + Math.min(28, Math.log10(Math.max(1, handScore)) * 6);
         floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize);
         burst(W/2, H/2 + 60, '#c89960', 24, 5);
         burst(W/2, H/2 + 60, '#ffffff', 12, 7);
-        screenShake(7 + Math.min(10, Math.log10(Math.max(1, handScore)) * 2));
-        screenFlash(Math.min(0.55, 0.2 + Math.log10(Math.max(1, handScore)) * 0.08));
-        SFX.bigScore();
-        if (handScore >= 10000) { screenFlash(0.75); screenShake(18); }
+        const si = scoreIntensity(handScore);
+        screenShake(7 + si * 18);
+        screenFlash(Math.min(0.7, 0.2 + si * 0.5));
+        SFX.bigScore(handScore);
 
         animateTicker(roundScore, newTotal, 0.7, v => { displayRoundScore = v; }, () => {
           roundScore = newTotal; displayRoundScore = newTotal;
@@ -1003,6 +1076,7 @@ function advanceGoal() {
     // Pre-generate free oracle choices for the gift button
     const pool = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id) && o.tier !== 'legendary');
     shopChoices = pool.sort(() => Math.random()-0.5).slice(0, 3);
+    forgeChoices = { upgrades: [], oracles: [] };
     screen = 'hub';
   }, 1800);
 }
@@ -1020,23 +1094,27 @@ function pickOracle(idx) {
 function skipShop() { shopChoices = []; screen = 'hub'; }
 
 function openForge() {
-  forgeChoices.upgrades = [...DICE_UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
-  // Weighted oracle pool: legendaries scarce, rares uncommon; ensure variety by tier
-  const unowned = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id));
-  const weights = { common: 3, uncommon: 2, rare: 1.3, legendary: 0.5 };
-  const weightedPool = [];
-  unowned.forEach(o => {
-    const n = Math.round((weights[o.tier || 'common']) * 2);
-    for (let i = 0; i < n; i++) weightedPool.push(o);
-  });
-  const picked = [];
-  while (picked.length < 3 && weightedPool.length > 0) {
-    const i = Math.floor(Math.random() * weightedPool.length);
-    const o = weightedPool[i];
-    if (!picked.find(p => p.id === o.id)) picked.push(o);
-    weightedPool.splice(i, 1);
+  if (forgeChoices.upgrades.length === 0) {
+    forgeChoices.upgrades = [...DICE_UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
   }
-  forgeChoices.oracles = picked;
+  if (forgeChoices.oracles.length === 0) {
+    // Weighted oracle pool: legendaries scarce, rares uncommon; ensure variety by tier
+    const unowned = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id));
+    const weights = { common: 3, uncommon: 2, rare: 1.3, legendary: 0.5 };
+    const weightedPool = [];
+    unowned.forEach(o => {
+      const n = Math.round((weights[o.tier || 'common']) * 2);
+      for (let i = 0; i < n; i++) weightedPool.push(o);
+    });
+    const picked = [];
+    while (picked.length < 3 && weightedPool.length > 0) {
+      const i = Math.floor(Math.random() * weightedPool.length);
+      const o = weightedPool[i];
+      if (!picked.find(p => p.id === o.id)) picked.push(o);
+      weightedPool.splice(i, 1);
+    }
+    forgeChoices.oracles = picked;
+  }
   forgeTab = 'dice';
   forgeSelectedUpgrade = null;
   screen = 'forge';
@@ -1071,6 +1149,7 @@ function triggerReturnPortal() {
 // ─── Name entry ───────────────────────────────────────────────────────
 let nameEntry       = '';
 let nameEntryActive = false;
+let playerName      = localStorage.getItem('fortunefallacy_player') || '';
 
 function submitScore() {
   const name = nameEntry.trim() || incoming.username || 'Wanderer';
@@ -1131,6 +1210,12 @@ canvas.addEventListener('click', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if (screen === 'nameentry') {
+    if (e.key === 'Backspace') { nameEntry = nameEntry.slice(0, -1); e.preventDefault(); return; }
+    if (e.key === 'Enter') { confirmPlayerName(); return; }
+    if (e.key.length === 1 && nameEntry.length < 20) { nameEntry += e.key; return; }
+    return;
+  }
   if (nameEntryActive) {
     if (e.key === 'Backspace') nameEntry = nameEntry.slice(0, -1);
     else if (e.key === 'Enter') submitScore();
@@ -1147,6 +1232,11 @@ function handleClick(mx, my) {
     if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { startRun(true); return; }
     if (inRect(mx,my,{x:W/2-110,y:tfy+304,w:220,h:36})) { loadScores(); screen='scores'; return; }
     startRun(false);
+    return;
+  }
+  if (screen === 'nameentry') {
+    if (inRect(mx,my,{x:W/2-130,y:H/2+54,w:260,h:50})) { confirmPlayerName(); return; }
+    if (inRect(mx,my,{x:W/2-90,y:H-68,w:180,h:40})) { screen='title'; return; }
     return;
   }
   if (screen === 'scores') {
@@ -1300,7 +1390,7 @@ function drawDie3D(die, cx, cy, size) {
       const oy = cf.normal[1] + cf.u[1]*su + cf.v[1]*sv;
       const oz = cf.normal[2] + cf.u[2]*su + cf.v[2]*sv;
       const [wx,wy,wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-      const p = 1 + wz * 0.18; // weak perspective
+      const p = 1 + wz * 0.35; // perspective
       return [cx + wx*hs*p, cy + by + wy*hs*p];
     });
 
@@ -1311,23 +1401,27 @@ function drawDie3D(die, cx, cy, size) {
       const oy = cf.normal[1] + cf.u[1]*ux + cf.v[1]*vv;
       const oz = cf.normal[2] + cf.u[2]*ux + cf.v[2]*vv;
       const [wx,wy,wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-      const p = 1 + wz * 0.18;
+      const p = 1 + wz * 0.35;
       return [cx + wx*hs*p, cy + by + wy*hs*p];
     });
 
-    rendered.push({ quads, pips, nz, faceN: cf.n });
+    rendered.push({ quads, pips, nx, ny, nz, faceN: cf.n });
   }
   rendered.sort((a,b) => a.nz - b.nz); // painter: draw furthest first
 
   ctx.save();
   for (const fd of rendered) {
-    const br    = 0.45 + 0.55 * fd.nz;
-    const isTop = fd.nz > 0.8;
-    const q     = fd.quads;
+    // Directional lighting — light from upper-left toward viewer
+    // L = normalize(0.6, -0.8, 1.0), H = normalize(L + view(0,0,1))
+    const diffuse = Math.max(0, fd.nx * 0.413 + fd.ny * (-0.566) + fd.nz * 0.713);
+    const br      = 0.18 + 0.82 * diffuse;
+    const spec    = Math.pow(Math.max(0, fd.nx * 0.223 + fd.ny * (-0.306) + fd.nz * 0.925), 28);
+    const isTop   = fd.nz > 0.7;
+    const q       = fd.quads;
 
-    // Quad bounding points for gradient direction (top edge → bottom edge)
-    const topMx = (q[0][0] + q[1][0]) / 2, topMy = (q[0][1] + q[1][1]) / 2;
-    const botMx = (q[2][0] + q[3][0]) / 2, botMy = (q[2][1] + q[3][1]) / 2;
+    // Face center — anchor for gradient and specular
+    const fcx = (q[0][0]+q[1][0]+q[2][0]+q[3][0]) / 4;
+    const fcy = (q[0][1]+q[1][1]+q[2][1]+q[3][1]) / 4;
 
     // Face path
     ctx.beginPath();
@@ -1335,17 +1429,36 @@ function drawDie3D(die, cx, cy, size) {
     for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]);
     ctx.closePath();
 
-    // Face gradient — lighter at top, darker at bottom for 3D lit feel
-    const grad = ctx.createLinearGradient(topMx, topMy, botMx, botMy);
+    // Diffuse gradient along light direction
+    const gSpan = hs * 1.0;
+    const grad  = ctx.createLinearGradient(
+      fcx + 0.413*gSpan, fcy - 0.566*gSpan,
+      fcx - 0.413*gSpan, fcy + 0.566*gSpan
+    );
+    const brLit  = Math.min(1, br + spec * 0.55);
+    const brDark = br * 0.68;
     if (die.locked) {
-      grad.addColorStop(0, `rgb(${(br*255)|0},${(br*232)|0},${(br*120)|0})`);
-      grad.addColorStop(1, `rgb(${(br*205)|0},${(br*155)|0},${(br*45)|0})`);
+      grad.addColorStop(0,    `rgb(${(brLit*255)|0},${(brLit*232)|0},${(brLit*120)|0})`);
+      grad.addColorStop(0.55, `rgb(${(br*225)|0},${(br*200)|0},${(br*82)|0})`);
+      grad.addColorStop(1,    `rgb(${(brDark*185)|0},${(brDark*140)|0},${(brDark*40)|0})`);
     } else {
-      grad.addColorStop(0, `rgb(${(br*252)|0},${(br*248)|0},${(br*236)|0})`);
-      grad.addColorStop(1, `rgb(${(br*205)|0},${(br*198)|0},${(br*180)|0})`);
+      grad.addColorStop(0,    `rgb(${(brLit*255)|0},${(brLit*255)|0},${(brLit*248)|0})`);
+      grad.addColorStop(0.55, `rgb(${(br*238)|0},${(br*232)|0},${(br*218)|0})`);
+      grad.addColorStop(1,    `rgb(${(brDark*185)|0},${(brDark*178)|0},${(brDark*160)|0})`);
     }
     ctx.fillStyle = grad;
     ctx.fill();
+
+    // Specular gloss overlay
+    if (spec > 0.04) {
+      const litX = fcx + 0.413 * hs * 0.42, litY = fcy - 0.566 * hs * 0.42;
+      const sg   = ctx.createRadialGradient(litX, litY, 0, litX, litY, hs * 0.9);
+      sg.addColorStop(0,   `rgba(255,255,255,${(spec * 0.52).toFixed(3)})`);
+      sg.addColorStop(0.4, `rgba(255,255,255,${(spec * 0.10).toFixed(3)})`);
+      sg.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = sg;
+      ctx.fill();
+    }
 
     // Outer edge — dark border (base)
     ctx.lineWidth   = 2.2;
@@ -1354,10 +1467,7 @@ function drawDie3D(die, cx, cy, size) {
       : `rgba(22,10,40,${0.55+0.35*br})`;
     ctx.stroke();
 
-    // Inset bevel — draw a slightly shrunken quad with a bright inner stroke
-    // to mimic a chamfered edge under top-left light.
-    const fcx = (q[0][0]+q[1][0]+q[2][0]+q[3][0]) / 4;
-    const fcy = (q[0][1]+q[1][1]+q[2][1]+q[3][1]) / 4;
+    // Inset bevel — shrunken quad with bright inner stroke mimics chamfered edge
     const bevel = 0.88;
     ctx.save();
     ctx.beginPath();
@@ -1399,7 +1509,7 @@ function drawDie3D(die, cx, cy, size) {
         ctx.shadowColor = die.locked ? 'rgba(80,40,0,0.5)'
           : isOne ? 'rgba(200,20,20,0.45)' : 'rgba(0,0,0,0.45)';
         ctx.shadowBlur = 5;
-        ctx.shadowOffsetY = 1;
+        ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
       }
       const pg = ctx.createRadialGradient(px - pipR*0.3, py - pipR*0.3, 0, px, py, pipR);
       pg.addColorStop(0, pipEdge);
@@ -1809,13 +1919,32 @@ function drawTitle(t) {
   ctx.restore();
 }
 
+// ─── SCREEN: Name Entry ───────────────────────────────────────────────
+function drawNameEntry(t) {
+  drawBG(t);
+
+  txt('WHO IS PLAYING?', W/2, H/2 - 110, {size:28,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
+  txt('Your name will appear on the high score board', W/2, H/2 - 70, {size:13,color:'#b8a874',align:'center'});
+
+  // Input box
+  const bx = W/2 - 160, by = H/2 - 46, bw = 320, bh = 52;
+  drawRoundRect(bx, by, bw, bh, 10, '#100828', '#c89960', 2);
+  const cursor = Math.floor(t*2) % 2 === 0 ? '|' : ' ';
+  const display = (nameEntry || '') + cursor;
+  txt(display, W/2, by + 34, {size:20,color:'#f7e0b0',align:'center'});
+  if (!nameEntry) txt('Enter name…', W/2, by + 34, {size:16,color:'rgba(200,153,96,0.35)',align:'center'});
+
+  drawBtn({x:W/2-130,y:H/2+54,w:260,h:50}, '▶  Begin Run', true, true);
+  drawBtn({x:W/2-90,y:H-68,w:180,h:40}, '← Back', true, false);
+}
+
 // ─── SCREEN: Game ─────────────────────────────────────────────────────
 function drawGame(t) {
   drawBG(t);
 
   // Left panel
   ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#3a1e10');
-  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Oracles', '#c89960', '☽');
+  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', '#8899bb', '☽');
 
   const cardH = 68; const cardW = LP.w - 16;
   for (let i = 0; i < MAX_ORACLES; i++) {
@@ -2017,7 +2146,7 @@ function drawGame(t) {
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
 function drawShop(t) {
   drawBG(t);
-  txt('ORACLE SHOP', W/2, 56, {size:30,color:'#9a3826',align:'center',bold:true,shadow:'#9a3826'});
+  txt('ANOMALY GIFT', W/2, 56, {size:30,color:'#7a1a28',align:'center',bold:true,shadow:'#7a1a28'});
   txt(`Goal ${runGoal} cleared! Choose a power-up — it lasts the whole run.`, W/2, 86, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
 
   for (let i = 0; i < shopChoices.length; i++) {
@@ -2032,7 +2161,7 @@ function drawShop(t) {
 function drawHub(t) {
   drawBG(t);
   txt('CAMPAIGN MAP', W/2, 44, {size:24,color:'#9a3826',align:'center',bold:true,shadow:'#9a3826'});
-  txt(`Goal ${runGoal} cleared  ·  +${hubEarnedShards} Shards earned`, W/2, 72, {size:13,color:'#b8a874',align:'center'});
+  txt(runGoal === 0 ? 'Choose your path — press Next Goal to begin' : `Goal ${runGoal} cleared  ·  +${hubEarnedShards} Shards earned`, W/2, 72, {size:13,color:'#b8a874',align:'center'});
 
   // Shard badge (top right)
   drawRoundRect(W-158, 14, 144, 34, 8, 'rgba(200,153,96,0.08)', '#b8a874', 1.5);
@@ -2070,7 +2199,7 @@ function drawHub(t) {
 
   // Owned oracle row
   if (heldOracles.length > 0) {
-    txt('YOUR ORACLES', 90, 232, {size:9,color:'rgba(200,170,120,0.55)',align:'left',bold:true});
+    txt('YOUR ANOMALIES', 90, 232, {size:9,color:'rgba(140,160,200,0.6)',align:'left',bold:true});
     heldOracles.forEach((o,i) => drawOracleCard(o, 90+i*54, 244, 48, 68, true));
   }
 
@@ -2088,20 +2217,131 @@ function drawHub(t) {
       }
       if (hov) markHover(`hubDie:${i}`, u.name, upgradeTooltipBody(u), { color: u.color });
       drawRoundRect(ux,342,48,48,8,'rgba(12,4,28,0.9)',u.color,2);
-      txt(u.icon, ux+24, 372, {size:18,color:u.color,align:'center'});
+      drawDieMini(ux+24, 366, 30, u);
     });
   }
 
   // Action buttons
   const BY = H - 84;
   const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
-  drawBtn({x:W/2-300,y:BY,w:185,h:50}, '🔮 Oracle Gift', canOracle, canOracle);
-  if (!canOracle) txt('(oracles full)', W/2-207, BY+64, {size:9,color:'rgba(200,180,255,0.3)',align:'center'});
+  drawBtn({x:W/2-300,y:BY,w:185,h:50}, '⚡ Anomaly Gift', canOracle, canOracle);
+  if (!canOracle) txt('(anomalies full)', W/2-207, BY+64, {size:9,color:'rgba(160,180,255,0.35)',align:'center'});
   drawBtn({x:W/2-75,y:BY,w:175,h:50}, '⚒ Forge Shop', true, shards>0);
   txt(`◆ ${shards} shards available`, W/2+12, BY+64, {size:9,color:'#b8a874',align:'center'});
   drawBtn({x:W/2+130,y:BY,w:170,h:50}, 'Next Goal →', true, true);
 
   drawParticles(); drawFloaters();
+}
+
+// ─── Die visual helpers ───────────────────────────────────────────────
+function _diePipPos(pattern, count, hs) {
+  if (pattern === 'triangle') return [[0,-hs*0.32],[-hs*0.3,hs*0.25],[hs*0.3,hs*0.25]].slice(0,count);
+  if (pattern === 'corners')  return [[-hs*0.42,-hs*0.36],[hs*0.42,-hs*0.36],[-hs*0.42,hs*0.36],[hs*0.42,hs*0.36]].slice(0,count);
+  if (pattern === 'ring')     return Array.from({length:count},(_,i)=>{const a=(i/count)*Math.PI*2-Math.PI/2;return[hs*0.38*Math.cos(a),hs*0.38*Math.sin(a)];});
+  if (pattern === 'row')      return Array.from({length:count},(_,i)=>[((i-(count-1)/2))*hs*0.44,0]);
+  return [[0,0]];
+}
+
+function _dieDefaultVis(upg) {
+  const m = {
+    iron:     {shape:'hex',   decoration:'pips',    pipCount:4, pipPattern:'corners'},
+    glass:    {shape:'round', decoration:'text',    label:'×1.5', labelSize:0.27, overlayOutline:'diamond'},
+    lucky:    {shape:'round', decoration:'pips',    pipCount:3, pipPattern:'triangle', pipStyle:'char', pipChar:'★', pipGlow:true, pipSize:0.3},
+    cursed:   {shape:'round', decoration:'text',    label:'×2', sublabel:'−1M', sublabelY:0.25, labelGlow:true},
+    volatile: {shape:'round', decoration:'text',    label:'?', labelSize:0.48, sublabel:'d12', sublabelY:-0.3, sublabelAlpha:0.55, labelGlow:true},
+    ember:    {shape:'round', decoration:'pips',    pipCount:3, pipPattern:'triangle', pipGlow:true, pipSize:0.11},
+    heavy:    {shape:'round', decoration:'text',    label:'×3', sublabel:'⛓', sublabelY:0.25, sublabelAlpha:0.65},
+    mirror:   {shape:'round', decoration:'pips',    pipCount:4, pipPattern:'corners', divider:true},
+    wicked:   {shape:'round', decoration:'outline', outlineShape:'pentagon', labelGlow:true},
+  };
+  return m[upg.id] || {shape:'round', decoration:'text', label:upg.icon||'?', labelGlow:true};
+}
+
+function drawDieMini(cx, cy, sz, upg) {
+  const vis = upg.visual || _dieDefaultVis(upg);
+  const hs = sz / 2;
+  const color = upg.color;
+  const cr = parseInt(color.slice(1,3),16), cg = parseInt(color.slice(3,5),16), cb = parseInt(color.slice(5,7),16);
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (vis.shape === 'hex') {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      (i ? ctx.lineTo : ctx.moveTo).call(ctx, cx + hs * Math.cos(a), cy + hs * Math.sin(a));
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#1a1e28'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+  } else {
+    const bg = `rgba(${Math.round(cr*0.09)},${Math.round(cg*0.09)},${Math.round(cb*0.09)},0.96)`;
+    drawRoundRect(cx-hs, cy-hs, sz, sz, sz*0.18, bg, color, 1.5);
+  }
+
+  if (vis.decoration === 'pips') {
+    const pts = _diePipPos(vis.pipPattern||'triangle', vis.pipCount||3, hs);
+    if (vis.pipGlow) { ctx.shadowColor = color; ctx.shadowBlur = 6; }
+    pts.forEach(([px,py]) => {
+      if (vis.pipStyle === 'char') {
+        ctx.fillStyle = color; ctx.font = `${sz*(vis.pipSize||0.3)}px sans-serif`;
+        ctx.fillText(vis.pipChar||'★', cx+px, cy+py+sz*0.05);
+      } else {
+        ctx.beginPath(); ctx.arc(cx+px, cy+py, sz*(vis.pipSize||0.09), 0, Math.PI*2);
+        ctx.fillStyle = color; ctx.fill();
+      }
+    });
+    ctx.shadowBlur = 0;
+  } else if (vis.decoration === 'outline') {
+    ctx.strokeStyle = color; ctx.lineWidth = sz*0.06;
+    if (vis.labelGlow) { ctx.shadowColor = color; ctx.shadowBlur = 5; }
+    ctx.beginPath();
+    if (!vis.outlineShape || vis.outlineShape === 'pentagon') {
+      for (let i = 0; i < 5; i++) {
+        const a = (i*4*Math.PI/5) - Math.PI/2;
+        (i ? ctx.lineTo : ctx.moveTo).call(ctx, cx+hs*0.62*Math.cos(a), cy+hs*0.62*Math.sin(a));
+      }
+      ctx.closePath(); ctx.stroke();
+    } else if (vis.outlineShape === 'diamond') {
+      ctx.moveTo(cx,cy-hs*0.65); ctx.lineTo(cx+hs*0.55,cy); ctx.lineTo(cx,cy+hs*0.65); ctx.lineTo(cx-hs*0.55,cy); ctx.closePath(); ctx.stroke();
+    } else if (vis.outlineShape === 'hexagram') {
+      for (let s = 0; s < 2; s++) {
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const a = (i*2*Math.PI/3)+s*Math.PI/3-Math.PI/6;
+          (i ? ctx.lineTo : ctx.moveTo).call(ctx, cx+hs*0.58*Math.cos(a), cy+hs*0.58*Math.sin(a));
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+    }
+    ctx.shadowBlur = 0;
+  } else {
+    const hasSubl = !!(vis.sublabel);
+    const labelY = cy + sz*(vis.labelY||0);
+    if (vis.labelGlow !== false) { ctx.shadowColor = color; ctx.shadowBlur = 6; }
+    ctx.fillStyle = color; ctx.font = `bold ${sz*(vis.labelSize||0.32)}px sans-serif`;
+    ctx.fillText(vis.label||upg.icon||'?', cx, labelY + (hasSubl ? sz*0.08 : 0));
+    ctx.shadowBlur = 0;
+    if (hasSubl) {
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${vis.sublabelAlpha??0.6})`;
+      ctx.font = `${sz*(vis.sublabelSize||0.19)}px sans-serif`;
+      ctx.fillText(vis.sublabel, cx, vis.sublabelY !== undefined ? cy+sz*vis.sublabelY : labelY-sz*0.28);
+    }
+  }
+
+  if (vis.overlayOutline) {
+    ctx.shadowBlur = 0; ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.45)`; ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (vis.overlayOutline === 'diamond') {
+      ctx.moveTo(cx,cy-hs*0.68); ctx.lineTo(cx+hs*0.55,cy); ctx.lineTo(cx,cy+hs*0.68); ctx.lineTo(cx-hs*0.55,cy); ctx.closePath();
+    }
+    ctx.stroke();
+  }
+  if (vis.divider) {
+    ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(190,215,240,0.4)'; ctx.lineWidth = 0.8;
+    ctx.setLineDash([2,2]); ctx.beginPath(); ctx.moveTo(cx-hs*0.7,cy); ctx.lineTo(cx+hs*0.7,cy); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
 }
 
 // ─── SCREEN: Forge ────────────────────────────────────────────────────
@@ -2114,7 +2354,7 @@ function drawForge(t) {
   // Tabs
   const tabY = 64;
   drawBtn({x:W/2-170,y:tabY,w:160,h:34}, '⚄ Dice Upgrades', true, forgeTab==='dice');
-  drawBtn({x:W/2+10, y:tabY,w:160,h:34}, '🔮 Oracle Store',  true, forgeTab==='oracles');
+  drawBtn({x:W/2+10, y:tabY,w:160,h:34}, '⚡ Anomaly Store', true, forgeTab==='oracles');
 
   if (forgeTab === 'dice') {
     // Upgrade cards — click to BUY (adds a new die to your pool)
@@ -2135,8 +2375,8 @@ function drawForge(t) {
         hov?'rgba(18,6,36,0.95)':'rgba(12,4,28,0.85)',
         canAfford?(hov?upg.color:'rgba(140,90,220,0.65)'):'rgba(70,50,100,0.35)',hov?2.5:1.5);
       ctx.restore();
-      txt(upg.icon, ux+upgW/2, uy+28, {size:20,color:upg.color,align:'center'});
-      txt(upg.name, ux+upgW/2, uy+50, {size:12,color:'#fff',align:'center'});
+      drawDieMini(ux+upgW/2, uy+26, 36, upg);
+      txt(upg.name, ux+upgW/2, uy+52, {size:12,color:'#fff',align:'center'});
       txt(upg.desc, ux+upgW/2, uy+68, {size:10,color:'#c89960',align:'center'});
       txt(`◆ ${upg.cost} Shards`, ux+upgW/2, uy+92, {size:11,color:canAfford?'#b8a874':'rgba(180,150,100,0.5)',align:'center',bold:true});
       txt(canAfford?'click to buy':poolFull?'pool full':'not enough shards',
@@ -2159,7 +2399,7 @@ function drawForge(t) {
       }
       drawRoundRect(px,py,poolW,poolW,6,'rgba(10,3,24,0.9)',
         ex?ex.color:'rgba(200,200,200,0.5)', ex?2:1.2);
-      if (ex) txt(ex.icon, px+poolW/2, py+poolW/2+6, {size:18,color:ex.color,align:'center'});
+      if (ex) drawDieMini(px+poolW/2, py+poolW/2, 28, ex);
       else    txt('⚅', px+poolW/2, py+poolW/2+6, {size:18,color:'#e0d3b8',align:'center'});
     }
     // Reroll offerings
@@ -2168,9 +2408,9 @@ function drawForge(t) {
     drawBtn({x:W/2+90,y:H-54,w:140,h:40}, `🜂 Reroll ◆${rerollCost}`, canReroll, canReroll);
   } else {
     // Oracle store
-    txt('BUY ORACLES WITH SHARDS', W/2, 122, {size:10,color:'rgba(200,170,120,0.55)',align:'center',bold:true});
+    txt('BUY ANOMALIES WITH SHARDS', W/2, 122, {size:10,color:'rgba(140,160,200,0.6)',align:'center',bold:true});
     if (forgeChoices.oracles.length === 0) {
-      txt('No oracles available — you own them all!', W/2, 280, {size:14,color:'rgba(200,180,255,0.4)',align:'center'});
+      txt('No anomalies available — you own them all!', W/2, 280, {size:14,color:'rgba(160,180,255,0.45)',align:'center'});
     } else {
       const cW=220,cH=260,cGap=22;
       const cTotal=forgeChoices.oracles.length*(cW+cGap)-cGap;
@@ -2181,7 +2421,7 @@ function drawForge(t) {
         const canAfford=shards>=cost && heldOracles.length<MAX_ORACLES;
         drawOracleCard(o,ox,oy,cW,cH,false);
         drawBtn({x:ox+20,y:oy+cH+6,w:cW-40,h:32}, `◆ ${cost} Shards`, canAfford, canAfford);
-        if (!canAfford && heldOracles.length>=MAX_ORACLES) txt('(oracles full)',ox+cW/2,oy+cH+48,{size:9,color:'rgba(200,180,255,0.35)',align:'center'});
+        if (!canAfford && heldOracles.length>=MAX_ORACLES) txt('(anomalies full)',ox+cW/2,oy+cH+48,{size:9,color:'rgba(200,180,255,0.35)',align:'center'});
       });
     }
     // Reroll offerings
@@ -2274,21 +2514,21 @@ function loop(now) {
       d.rollT += dt;
       const prog = Math.min(1, d.rollT / d.rollDur);
 
-      if (prog < 0.62) {
+      if (prog < PHYSICS.tumblePhase) {
         // Tumble coupling — linear velocity drives rotation axis perpendicular to motion
         const speed = Math.hypot(d.pvx, d.pvy);
         if (speed > 20) {
           const inv = 1 / speed;
           const mx  = d.pvx * inv, my = d.pvy * inv;
-          const tumbleRate = speed * 0.045;
+          const tumbleRate = speed * PHYSICS.tumbleRate;
           // Moving right → spin around Y; moving down → spin around X
-          d.vy = d.vy * 0.78 + mx * tumbleRate * 0.22;
-          d.vx = d.vx * 0.78 + my * tumbleRate * 0.22;
+          d.vy = d.vy * (1 - PHYSICS.spinCoupling) + mx * tumbleRate * PHYSICS.spinCoupling;
+          d.vx = d.vx * (1 - PHYSICS.spinCoupling) + my * tumbleRate * PHYSICS.spinCoupling;
         }
         d.rx += d.vx * dt;
         d.ry += d.vy * dt;
         d.rz += d.vz * dt;
-        const fr = Math.pow(0.32, dt);
+        const fr = Math.pow(PHYSICS.spinFriction, dt);
         d.vx *= fr; d.vy *= fr; d.vz *= fr;
         d.settling = false;
       } else {
@@ -2301,7 +2541,7 @@ function loop(now) {
           d.tRy = nearestCanon(d.ry, FACE_ROT[d.face][1]);
           d.tRz = nearestCanon(d.rz, FACE_ROT[d.face][2]);
         }
-        const st   = (prog - 0.62) / 0.38;
+        const st   = (prog - PHYSICS.tumblePhase) / (1 - PHYSICS.tumblePhase);
         const ease = 1 - Math.pow(1 - st, 3);
         d.rx = d.sfRx + (d.tRx - d.sfRx) * ease;
         d.ry = d.sfRy + (d.tRy - d.sfRy) * ease;
@@ -2310,23 +2550,23 @@ function loop(now) {
     }
     // Bounce physics — gravity + multi-hop while tumbling
     const speed2 = Math.hypot(d.pvx, d.pvy);
-    if (d.rolling && d.bounceY >= 0 && d.bounceVY >= -0.01 && speed2 > 90 && (d.bounceCount|0) < 4) {
+    if (d.rolling && d.bounceY >= 0 && d.bounceVY >= -0.01 && speed2 > PHYSICS.hopThreshold && (d.bounceCount|0) < PHYSICS.maxHops) {
       // Still moving fast → take another hop (tumbling)
-      d.bounceVY = -(7 + Math.random() * 5 + speed2 * 0.008);
+      d.bounceVY = -(PHYSICS.hopBaseVel + Math.random() * PHYSICS.hopRandVel + speed2 * PHYSICS.hopSpeedFactor);
       d.bounceCount = (d.bounceCount|0) + 1;
     }
     if (d.bounceY < 0 || d.bounceVY < 0) {
-      d.bounceVY += 150 * dt;
+      d.bounceVY += PHYSICS.gravity * dt;
       d.bounceY  += d.bounceVY * dt;
       if (d.bounceY > 0) {
         d.bounceY = 0;
         if (Math.abs(d.bounceVY) > 3) {
-          d.bounceVY = -Math.abs(d.bounceVY) * 0.42;
+          d.bounceVY = -Math.abs(d.bounceVY) * PHYSICS.floorRestitution;
           // Landing thud → angular kick + tangential friction
           if (d.rolling) {
-            d.vx += (Math.random() - 0.5) * 7;
-            d.vz += (Math.random() - 0.5) * 5;
-            d.pvx *= 0.90; d.pvy *= 0.90;
+            d.vx += (Math.random() - 0.5) * PHYSICS.landingSpinX;
+            d.vz += (Math.random() - 0.5) * PHYSICS.landingSpinZ;
+            d.pvx *= PHYSICS.landingFriction; d.pvy *= PHYSICS.landingFriction;
             if (Math.abs(d.bounceVY) > 4) {
               burst(d.absX, d.absY + DICE_SIZE*0.35, '#8a5a2e', 2, 1.6);
               playTone(100 + Math.random()*30, 'square', 0.02, 0.03);
@@ -2347,37 +2587,37 @@ function loop(now) {
       d.absY += d.pvy * dt;
       // Air drag is light; ground (rolling) friction grips harder
       const inAir = d.bounceY < -0.5;
-      const fr = inAir ? Math.pow(0.62, dt) : Math.pow(0.18, dt);
+      const fr = inAir ? Math.pow(PHYSICS.airDrag, dt) : Math.pow(PHYSICS.groundFriction, dt);
       d.pvx *= fr; d.pvy *= fr;
       // Wall collisions — bounce + spin kick from tangential velocity
       if (d.absX < bL) {
         d.absX = bL;
         const inV = -d.pvx;
-        d.pvx = Math.abs(d.pvx) * 0.72;
-        d.vy += inV * 0.02;
-        d.vz += d.pvy * 0.015;
+        d.pvx = Math.abs(d.pvx) * PHYSICS.wallRestitution;
+        d.vy += inV * PHYSICS.wallSpinY;
+        d.vz += d.pvy * PHYSICS.wallSpinZ;
         if (inV > 80) { burst(bL, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
       } else if (d.absX > bR) {
         d.absX = bR;
         const inV = d.pvx;
-        d.pvx = -Math.abs(d.pvx) * 0.72;
-        d.vy -= inV * 0.02;
-        d.vz -= d.pvy * 0.015;
+        d.pvx = -Math.abs(d.pvx) * PHYSICS.wallRestitution;
+        d.vy -= inV * PHYSICS.wallSpinY;
+        d.vz -= d.pvy * PHYSICS.wallSpinZ;
         if (inV > 80) { burst(bR, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
       }
       if (d.absY < bT) {
         d.absY = bT;
         const inV = -d.pvy;
-        d.pvy = Math.abs(d.pvy) * 0.72;
-        d.vx -= inV * 0.02;
-        d.vz += d.pvx * 0.015;
+        d.pvy = Math.abs(d.pvy) * PHYSICS.wallRestitution;
+        d.vx -= inV * PHYSICS.wallSpinY;
+        d.vz += d.pvx * PHYSICS.wallSpinZ;
         if (inV > 80) { burst(d.absX, bT, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
       } else if (d.absY > bB) {
         d.absY = bB;
         const inV = d.pvy;
-        d.pvy = -Math.abs(d.pvy) * 0.72;
-        d.vx += inV * 0.02;
-        d.vz -= d.pvx * 0.015;
+        d.pvy = -Math.abs(d.pvy) * PHYSICS.wallRestitution;
+        d.vx += inV * PHYSICS.wallSpinY;
+        d.vz -= d.pvx * PHYSICS.wallSpinZ;
         if (inV > 80) { burst(d.absX, bB, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
       }
     }
@@ -2391,7 +2631,7 @@ function loop(now) {
         tx = d.homeX; ty = d.homeY;
       }
       if (tx != null) {
-        const lerp = 1 - Math.pow(0.0015, dt);
+        const lerp = 1 - Math.pow(PHYSICS.glideSpeed, dt);
         d.absX += (tx - d.absX) * lerp;
         d.absY += (ty - d.absY) * lerp;
       }
@@ -2403,8 +2643,8 @@ function loop(now) {
     const hs   = DICE_SIZE / 2;
     const bL   = CP.x + 14 + hs, bR = CP.x + CP.w - 14 - hs;
     const bT   = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
-    const side = DICE_SIZE + 2;  // full cube edge + small air gap
-    const e    = 0.78;
+    const side = DICE_SIZE + PHYSICS.collisionGap;
+    const e    = PHYSICS.collisionRestitution;
 
     // Pass 1: velocity impulses (rolling dice only) — AABB axis-of-min-penetration
     for (let ci = 0; ci < dice.length - 1; ci++) {
@@ -2441,18 +2681,18 @@ function loop(now) {
         // Rotational kick — perpendicular component of contact → spin (juice)
         const tx = -ny, ty = nx;
         const relTan = relVx * tx + relVy * ty;
-        const spinKick = relTan * 0.07;
+        const spinKick = relTan * PHYSICS.collisionSpin;
         di.vx += spinKick * 0.75; di.vy -= spinKick * 0.75; di.vz += spinKick * 1.1;
         dj.vx -= spinKick * 0.75; dj.vy += spinKick * 0.75; dj.vz -= spinKick * 1.1;
 
         // Vertical hop from collision — harder hits lift the dice
         const impactMag = Math.abs(dvn);
-        if (impactMag > 40 && di.rolling) {
-          di.bounceVY = Math.min(di.bounceVY, -(4 + impactMag * 0.018));
+        if (impactMag > PHYSICS.collisionHopThreshold && di.rolling) {
+          di.bounceVY = Math.min(di.bounceVY, -(PHYSICS.collisionHopBase + impactMag * PHYSICS.collisionHopFactor));
           di.bounceCount = (di.bounceCount|0) + 1;
         }
-        if (impactMag > 40 && dj.rolling) {
-          dj.bounceVY = Math.min(dj.bounceVY, -(4 + impactMag * 0.018));
+        if (impactMag > PHYSICS.collisionHopThreshold && dj.rolling) {
+          dj.bounceVY = Math.min(dj.bounceVY, -(PHYSICS.collisionHopBase + impactMag * PHYSICS.collisionHopFactor));
           dj.bounceCount = (dj.bounceCount|0) + 1;
         }
 
@@ -2521,8 +2761,9 @@ function loop(now) {
     ctx.translate(sx, sy);
   }
   switch (screen) {
-    case 'title':  drawTitle(t);  break;
-    case 'game':   drawGame(t);   break;
+    case 'title':      drawTitle(t);      break;
+    case 'nameentry':  drawNameEntry(t);  break;
+    case 'game':       drawGame(t);       break;
     case 'shop':   drawShop(t);   break;
     case 'hub':    drawHub(t);    break;
     case 'forge':  drawForge(t);  break;
@@ -2536,7 +2777,11 @@ function loop(now) {
 
 // ─── Boot ─────────────────────────────────────────────────────────────
 loadScores();
-screen = incoming.fromPortal ? 'game' : 'title';
-if (incoming.fromPortal) startRun(false);
+if (incoming.fromPortal) {
+  playerName = incoming.username || playerName;
+  nameEntry  = playerName;
+  startRun(false);
+  screen = 'game';
+}
 
 requestAnimationFrame(loop);
