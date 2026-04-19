@@ -675,6 +675,36 @@ const DICE_UPGRADES = [
   { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multipier', scoreMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} }
 ];
 
+// ─── Rune definitions ─────────────────────────────────────────────────
+const ALL_RUNES = [
+  { id:'amplify',   name:'Amplify',   tier:'common',   icon:'⬆', color:'#7799ee', cost:2,
+    desc:'+2 to scored value',           scoreBonus:2 },
+  { id:'gilded',    name:'Gilded',    tier:'common',   icon:'◆', color:'#c89960', cost:2,
+    desc:'+1 ◆ shard on score',          shardsBonus:1 },
+  { id:'blessed',   name:'Blessed',   tier:'common',   icon:'✦', color:'#ddcc55', cost:3,
+    desc:'Scores at least 4',            scoreMin:4 },
+  { id:'sharpened', name:'Sharpened', tier:'common',   icon:'▲', color:'#88bbaa', cost:3,
+    desc:'+1 Mult when scoring',         multBonus:1 },
+  { id:'echo',      name:'Echo',      tier:'uncommon', icon:'◎', color:'#55ccaa', cost:5,
+    desc:'Scores one extra time',        triggers:2 },
+  { id:'dark',      name:'Dark',      tier:'uncommon', icon:'☽', color:'#9955dd', cost:4,
+    desc:'Score = 7 − face value',       invert:true },
+  { id:'volatile',  name:'Volatile',  tier:'uncommon', icon:'?', color:'#ff6644', cost:4,
+    desc:'Scores a random d10',          volatile:10 },
+  { id:'surge',     name:'Surge',     tier:'uncommon', icon:'⚡', color:'#ffcc22', cost:5,
+    desc:'+1 Mult per reroll used',      rerollMult:true },
+  { id:'anchor',    name:'Anchor',    tier:'rare',     icon:'⚓', color:'#aabbcc', cost:7,
+    desc:'×2 score — cannot reroll',     scoreMultiplier:2, noReroll:true },
+  { id:'mirror_r',  name:'Mirror',    tier:'rare',     icon:'◈', color:'#88ddff', cost:8,
+    desc:'Copies highest held face',     mirror:true },
+  { id:'resonance', name:'Resonance', tier:'rare',     icon:'≋', color:'#cc88ff', cost:7,
+    desc:'+3 Chips per die collision',   collisionBonus:3 },
+  { id:'sovereign', name:'Sovereign', tier:'legendary',icon:'♛', color:'#ffaa44', cost:12,
+    desc:'Scores three times',           triggers:3 },
+];
+const RUNE_TIERS = { common:'#778899', uncommon:'#44bb66', rare:'#9955ee', legendary:'#c89960' };
+const MAX_RUNE_SLOTS = 2;
+
 // ─── Combo tier colours ───────────────────────────────────────────────
 const COMBO_COLORS = ['#445566','#5566aa','#7788bb','#8899cc','#aabbdd','#c03040','#8b1a2a','#5a0a14','#d0d8f0'];
 
@@ -711,6 +741,12 @@ let hubEarnedShards    = 0;
 let forgeTab           = 'dice';
 let forgeChoices       = { upgrades: [], oracles: [] };
 let forgeSelectedUpgrade = null;
+
+// ─── Rune state ───────────────────────────────────────────────────────
+let runeInventory   = [];  // rune objects the player owns
+let diceRunes       = [];  // Array(DICE_COUNT) of Array(MAX_RUNE_SLOTS): equipped runes
+let runeSelInv      = null;  // index in runeInventory currently selected (null = none)
+let runeSelSlot     = null;  // {die:i, slot:j} currently selected slot (null = none)
 
 // ─── Hover tooltip state ──────────────────────────────────────────────
 let hoverState        = { id: null, since: 0 };
@@ -776,8 +812,21 @@ function startRun(isEndless = false) {
   comboStreak    = { id:null, count:0 };
   shards         = 0;
   diceUpgrades   = Array(DICE_COUNT).fill(null);
-  nameEntry      = playerName;
-  screen         = 'nameentry';
+  diceRunes      = Array.from({length: DICE_COUNT}, () => Array(MAX_RUNE_SLOTS).fill(null));
+  runeInventory  = [
+    ALL_RUNES.find(r => r.id === 'amplify'),
+    ALL_RUNES.find(r => r.id === 'gilded'),
+    ALL_RUNES.find(r => r.id === 'blessed'),
+  ];
+  runeSelInv  = null;
+  runeSelSlot = null;
+  nameEntry   = playerName;
+  screen      = 'nameentry';
+}
+
+function grantRune(tier = 'common') {
+  const pool = ALL_RUNES.filter(r => r.tier === tier);
+  if (pool.length) runeInventory.push(pool[Math.floor(Math.random() * pool.length)]);
 }
 
 function confirmPlayerName() {
@@ -810,7 +859,7 @@ function goalLabel() {
 function rollDice() {
   if (handInProgress) return;
   const targets = rolledOnce
-    ? dice.filter((d,i) => !d.locked && !diceUpgrades[i]?.noReroll)
+    ? dice.filter((d,i) => !d.locked && !diceUpgrades[i]?.noReroll && !(diceRunes[i]||[]).some(r=>r?.noReroll))
     : dice;
   if (targets.length === 0) return;
   SFX.roll();
@@ -904,8 +953,12 @@ function playHand() {
     if (tier >= 5) burst(W/2, H/2, '#ffffff', Math.floor(burstN/3), burstSpd * 1.3);
 
     const scoreQueue = [];
-    for (const entry of heldEntries) {
-      const t = (entry.upg && entry.upg.triggers > 1) ? entry.upg.triggers : 1;
+    for (let ei = 0; ei < heldEntries.length; ei++) {
+      const entry   = heldEntries[ei];
+      const dieIdx  = dice.indexOf(entry.die);
+      const baseT   = (entry.upg && entry.upg.triggers > 1) ? entry.upg.triggers : 1;
+      const runeT   = (diceRunes[dieIdx] || []).reduce((s, r) => s + (r && r.triggers > 1 ? r.triggers - 1 : 0), 0);
+      const t       = baseT + runeT;
       for (let ti = 0; ti < t; ti++) scoreQueue.push(entry);
     }
     let dieIdx = 0;
@@ -932,6 +985,21 @@ function playHand() {
         if (upg.multBonus !== undefined)                   { mult += upg.multBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
         if (upg.multPenalty !== undefined)                 { mult = Math.max(1, mult - upg.multPenalty); scoringState.mult = mult; }
         if (upg.shardsBonus !== undefined)                 { shards += upg.shardsBonus; floatText(d.absX, d.absY - 60, `+${upg.shardsBonus} ◆`, '#b8a874', 13); }
+      }
+      // Apply equipped rune effects
+      const _dieIdx = dice.indexOf(d);
+      for (const rune of (diceRunes[_dieIdx] || [])) {
+        if (!rune) continue;
+        if (rune.scoreBonus !== undefined)      add += rune.scoreBonus;
+        if (rune.scoreMin !== undefined)        add = Math.max(add, rune.scoreMin);
+        if (rune.invert)                        add = 7 - d.face;
+        if (rune.volatile !== undefined)        add = 1 + Math.floor(Math.random() * rune.volatile);
+        if (rune.mirror)                        add = Math.max(...heldEntries.map(e => e.die.face));
+        if (rune.collisionBonus !== undefined)  add += rollCollisions.length * rune.collisionBonus;
+        if (rune.scoreMultiplier !== undefined) add = Math.round(add * rune.scoreMultiplier);
+        if (rune.rerollMult)                    { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.multBonus !== undefined)       { mult += rune.multBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.shardsBonus !== undefined)     { shards += rune.shardsBonus; floatText(d.absX, d.absY - 75, `+${rune.shardsBonus} ◆`, rune.color, 11); }
       }
       chips += add;
       scoringState.chips = chips;
@@ -1071,6 +1139,11 @@ function advanceGoal() {
     const earned = Math.max(3, Math.floor(5 + (roundScore - clearedTarget) / 200));
     shards += earned;
     hubEarnedShards = earned;
+    // Grant a rune reward every other goal (scaling tier)
+    if (runGoal % 2 === 0) {
+      const t = runGoal >= 6 ? 'legendary' : runGoal >= 4 ? 'rare' : runGoal >= 2 ? 'uncommon' : 'common';
+      grantRune(t);
+    }
     // Pre-generate free oracle choices for the gift button
     const pool = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id) && o.tier !== 'legendary');
     shopChoices = pool.sort(() => Math.random()-0.5).slice(0, 3);
@@ -1260,9 +1333,52 @@ function handleClick(mx, my) {
   if (screen === 'hub') {
     const BY = H - 84;
     const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
-    if (canOracle && inRect(mx,my,{x:W/2-300,y:BY,w:185,h:50})) { screen='shop'; return; }
-    if (inRect(mx,my,{x:W/2-75,y:BY,w:175,h:50})) { openForge(); return; }
-    if (inRect(mx,my,{x:W/2+130,y:BY,w:170,h:50})) { startRound(); screen='game'; return; }
+    if (canOracle && inRect(mx,my,{x:W/2-330,y:BY,w:165,h:50})) { screen='shop'; return; }
+    if (inRect(mx,my,{x:W/2-145,y:BY,w:155,h:50})) { openForge(); return; }
+    if (inRect(mx,my,{x:W/2+15, y:BY,w:145,h:50})) { runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
+    if (inRect(mx,my,{x:W/2+175,y:BY,w:155,h:50})) { startRound(); screen='game'; return; }
+    return;
+  }
+  if (screen === 'rune') {
+    // Back button
+    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { screen='hub'; return; }
+    const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
+    // Die slot clicks
+    for (let di = 0; di < DICE_COUNT; di++) {
+      const cx = dieCardX + di*(dieCardW+dieCardGap);
+      for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+        const sx = cx + 10 + si*(dieCardW/2-12);
+        const sy = dieCardY + dieCardH - 60;
+        if (inRect(mx,my,{x:sx,y:sy,w:dieCardW/2-16,h:46})) {
+          if (runeSelInv !== null) {
+            // Place selected inventory rune into this slot
+            const prev = diceRunes[di][si];
+            diceRunes[di][si] = runeInventory[runeSelInv];
+            runeInventory.splice(runeSelInv, 1);
+            if (prev) runeInventory.push(prev);
+            runeSelInv = null;
+          } else if (diceRunes[di][si]) {
+            // Unequip rune back to inventory
+            runeInventory.push(diceRunes[di][si]);
+            diceRunes[di][si] = null;
+          } else {
+            runeSelSlot = {die:di, slot:si};
+          }
+          return;
+        }
+      }
+    }
+    // Inventory rune clicks
+    const invY = dieCardY + dieCardH + 50;
+    for (let ri = 0; ri < runeInventory.length; ri++) {
+      const rx = 80 + ri * 90;
+      if (inRect(mx,my,{x:rx,y:invY,w:80,h:80})) {
+        runeSelInv = (runeSelInv === ri) ? null : ri;
+        runeSelSlot = null;
+        return;
+      }
+    }
+    runeSelInv = null; runeSelSlot = null;
     return;
   }
   if (screen === 'forge') {
@@ -2219,14 +2335,16 @@ function drawHub(t) {
     });
   }
 
-  // Action buttons
+  // Action buttons (4-up row)
   const BY = H - 84;
   const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
-  drawBtn({x:W/2-300,y:BY,w:185,h:50}, '⚡ Anomaly Gift', canOracle, canOracle);
-  if (!canOracle) txt('(anomalies full)', W/2-207, BY+64, {size:9,color:'rgba(160,180,255,0.35)',align:'center'});
-  drawBtn({x:W/2-75,y:BY,w:175,h:50}, '⚒ Forge Shop', true, shards>0);
-  txt(`◆ ${shards} shards available`, W/2+12, BY+64, {size:9,color:'#b8a874',align:'center'});
-  drawBtn({x:W/2+130,y:BY,w:170,h:50}, 'Next Goal →', true, true);
+  drawBtn({x:W/2-330,y:BY,w:165,h:50}, '⚡ Anomaly Gift', canOracle, canOracle);
+  if (!canOracle) txt('(anomalies full)', W/2-247, BY+64, {size:9,color:'rgba(160,180,255,0.35)',align:'center'});
+  drawBtn({x:W/2-145,y:BY,w:155,h:50}, '⚒ Forge Shop', true, shards>0);
+  txt(`◆ ${shards} shards`, W/2-67, BY+64, {size:9,color:'#b8a874',align:'center'});
+  drawBtn({x:W/2+15, y:BY,w:145,h:50}, '✦ Rune Table', true, runeInventory.length > 0);
+  txt(`${runeInventory.length} rune${runeInventory.length!==1?'s':''}`, W/2+87, BY+64, {size:9,color:'#cc88ff',align:'center'});
+  drawBtn({x:W/2+175,y:BY,w:155,h:50}, 'Next Goal →', true, true);
 
   drawParticles(); drawFloaters();
 }
@@ -2343,6 +2461,142 @@ function drawDieMini(cx, cy, sz, upg) {
 }
 
 // ─── SCREEN: Forge ────────────────────────────────────────────────────
+// ─── Rune Table ───────────────────────────────────────────────────────
+function runeTableLayout() {
+  const dieCardW   = 148;
+  const dieCardH   = 200;
+  const dieCardGap = 18;
+  const totalW     = DICE_COUNT * dieCardW + (DICE_COUNT - 1) * dieCardGap;
+  const dieCardX   = (W - totalW) / 2;
+  const dieCardY   = 96;
+  return { dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap };
+}
+
+function drawRuneSlotBox(x, y, w, h, rune, selected) {
+  const col = rune ? (RUNE_TIERS[rune.tier] || '#777') : 'rgba(255,255,255,0.07)';
+  const bg  = rune ? `rgba(${hexToRgb(col)},0.12)` : 'rgba(255,255,255,0.03)';
+  drawRoundRect(x, y, w, h, 7, bg, selected ? '#ffffff' : col, selected ? 2.5 : 1.5);
+  if (rune) {
+    ctx.fillStyle = col;
+    ctx.font = `bold 17px ui-sans-serif,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(rune.icon, x + w/2, y + h/2 - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `9px ui-sans-serif,sans-serif`;
+    ctx.fillText(rune.name, x + w/2, y + h/2 + 10);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = '18px ui-sans-serif,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('+', x + w/2, y + h/2 + 6);
+  }
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function drawRuneTable(t) {
+  drawBG(t);
+  txt('✦ RUNE TABLE', W/2, 44, {size:24, color:'#cc88ff', align:'center', bold:true, shadow:'#9944cc'});
+  txt('Enchant your dice — select a rune then click a slot', W/2, 68, {size:12, color:'rgba(180,160,220,0.7)', align:'center'});
+
+  const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
+
+  // Die cards
+  for (let di = 0; di < DICE_COUNT; di++) {
+    const cx = dieCardX + di * (dieCardW + dieCardGap);
+    const cy = dieCardY;
+    const upg = diceUpgrades[di];
+    const tierCol = upg ? upg.color : '#556070';
+
+    // Card background
+    drawRoundRect(cx, cy, dieCardW, dieCardH, 10, 'rgba(14,10,28,0.92)', tierCol, 1.5);
+
+    // Die preview
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cx+4, cy+4, dieCardW-8, 100);
+    ctx.clip();
+    drawDieMini(cx + dieCardW/2, cy + 52, 44, upg || {id:'plain', name:'Plain Die', icon:'⚄', color:'#e0d3b8'});
+    ctx.restore();
+
+    // Die name
+    txt(upg ? upg.name : 'Plain Die', cx + dieCardW/2, cy + 114,
+      {size:10, color: upg ? upg.color : '#aab8cc', align:'center', bold:true});
+
+    // Rune slots label
+    txt('RUNES', cx + dieCardW/2, cy + 132, {size:8, color:'rgba(180,160,220,0.5)', align:'center', bold:true});
+
+    // 2 rune slots
+    const slotW = dieCardW/2 - 14;
+    const slotH = 46;
+    const slotY = cy + dieCardH - 58;
+    for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+      const sx  = cx + 10 + si * (slotW + 8);
+      const rune = diceRunes[di] && diceRunes[di][si];
+      const selSlot = runeSelSlot && runeSelSlot.die === di && runeSelSlot.slot === si;
+      const canDrop = runeSelInv !== null && !rune;
+      drawRuneSlotBox(sx, slotY, slotW, slotH, rune, selSlot || canDrop);
+      if (inRect(hoverX, hoverY, {x:sx, y:slotY, w:slotW, h:slotH}) && rune) {
+        markHover(`runeSlot:${di}:${si}`, rune.name, `${rune.desc}\n\nTier: ${rune.tier}\nClick to unequip`, {color: RUNE_TIERS[rune.tier]});
+      }
+    }
+  }
+
+  // Inventory section
+  const invY = dieCardY + dieCardH + 28;
+  txt('YOUR RUNES', 80, invY - 8, {size:9, color:'rgba(180,160,220,0.55)', align:'left', bold:true});
+
+  if (runeInventory.length === 0) {
+    txt('No runes — earn them by clearing goals or visiting the Forge',
+      W/2, invY + 44, {size:11, color:'rgba(160,140,200,0.4)', align:'center'});
+  }
+
+  for (let ri = 0; ri < runeInventory.length; ri++) {
+    const rune = runeInventory[ri];
+    const rx   = 80 + ri * 90;
+    const ry   = invY;
+    const col  = RUNE_TIERS[rune.tier] || '#777';
+    const sel  = runeSelInv === ri;
+    drawRoundRect(rx, ry, 80, 80, 9,
+      sel ? `rgba(${hexToRgb(col)},0.22)` : `rgba(${hexToRgb(col)},0.08)`,
+      sel ? '#ffffff' : col, sel ? 2.5 : 1.5);
+    if (sel) {
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 14;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath(); roundRect(rx, ry, 80, 80, 9); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.fillStyle = col;
+    ctx.font = `bold 22px ui-sans-serif,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(rune.icon, rx + 40, ry + 34);
+    txt(rune.name, rx + 40, ry + 52, {size:8, color:'rgba(255,255,255,0.65)', align:'center', bold:true});
+    txt(rune.tier, rx + 40, ry + 64, {size:7, color: col, align:'center'});
+
+    if (inRect(hoverX, hoverY, {x:rx, y:ry, w:80, h:80})) {
+      markHover(`runeInv:${ri}`, rune.name, `${rune.desc}\n\nTier: ${rune.tier}\nClick to select, then click a die slot`, {color: col});
+    }
+  }
+
+  // Instruction hint
+  if (runeSelInv !== null) {
+    const rune = runeInventory[runeSelInv];
+    txt(`${rune.icon} ${rune.name} selected — click an empty slot on a die to enchant it`,
+      W/2, H - 76, {size:11, color: RUNE_TIERS[rune.tier] || '#cc88ff', align:'center'});
+  }
+
+  // Back button
+  drawBtn({x:W/2-80, y:H-58, w:160, h:40}, '← Back to Map', true, true);
+
+  drawParticles(); drawFloaters();
+}
+
 function drawForge(t) {
   drawBG(t);
   txt('THE FORGE', W/2, 42, {size:24,color:'#b35838',align:'center',bold:true,shadow:'#b35838'});
@@ -2765,6 +3019,7 @@ function loop(now) {
     case 'shop':   drawShop(t);   break;
     case 'hub':    drawHub(t);    break;
     case 'forge':  drawForge(t);  break;
+    case 'rune':   drawRuneTable(t); break;
     case 'win':    drawWin(t);    break;
     case 'scores': drawScores(t); break;
   }
