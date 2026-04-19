@@ -766,6 +766,9 @@ const COMBO_COLORS = ['#445566','#5566aa','#7788bb','#8899cc','#aabbdd','#c03040
 
 // ─── Game state ───────────────────────────────────────────────────────
 let screen = 'title';
+let pauseOpen = false;
+let forgeOrigin = 'hub';
+let runeOrigin  = 'hub';
 let runGoal = 0;
 let endless = false;
 const ENDLESS_BASE = 100000;
@@ -1465,14 +1468,14 @@ function handleClick(mx, my) {
     const BY = H - 84;
     const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
     if (canOracle && inRect(mx,my,{x:W/2-330,y:BY,w:165,h:50})) { screen='shop'; return; }
-    if (inRect(mx,my,{x:W/2-145,y:BY,w:155,h:50})) { openForge(); return; }
-    if (inRect(mx,my,{x:W/2+15, y:BY,w:145,h:50})) { runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
+    if (inRect(mx,my,{x:W/2-145,y:BY,w:155,h:50})) { forgeOrigin='hub'; openForge(); return; }
+    if (inRect(mx,my,{x:W/2+15, y:BY,w:145,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
     if (inRect(mx,my,{x:W/2+175,y:BY,w:155,h:50})) { startRound(); screen='game'; return; }
     return;
   }
   if (screen === 'rune') {
     // Back button
-    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { screen='hub'; return; }
+    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') pauseOpen=true; return; }
     const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
     // Die slot clicks
     for (let di = 0; di < DICE_COUNT; di++) {
@@ -1515,7 +1518,7 @@ function handleClick(mx, my) {
   if (screen === 'forge') {
     if (inRect(mx,my,{x:W/2-170,y:64,w:160,h:34})) { forgeTab='dice'; return; }
     if (inRect(mx,my,{x:W/2+10, y:64,w:160,h:34})) { forgeTab='oracles'; return; }
-    if (inRect(mx,my,{x:W/2-90,y:H-54,w:180,h:40})) { screen='hub'; return; }
+    if (inRect(mx,my,{x:W/2-90,y:H-54,w:180,h:40})) { const o=forgeOrigin; forgeOrigin='hub'; screen=o; if(o==='game') pauseOpen=true; return; }
     if (forgeTab === 'dice') {
       const upgW=188,upgH=138,upgGap=14;
       const upgTotal=forgeChoices.upgrades.length*(upgW+upgGap)-upgGap;
@@ -1573,6 +1576,17 @@ function handleClick(mx, my) {
     return;
   }
   if (screen === 'game') {
+    // Pause button (top-right corner of right panel)
+    if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { pauseOpen=!pauseOpen; return; }
+    // Pause overlay buttons
+    if (pauseOpen) {
+      const px=W/2-130, pw=260, py=H/2-130, ph=260;
+      if (inRect(mx,my,{x:px+20,y:py+56, w:pw-40,h:40})) { pauseOpen=false; return; }
+      if (inRect(mx,my,{x:px+20,y:py+106,w:pw-40,h:40})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; pauseOpen=false; screen='rune'; return; }
+      if (inRect(mx,my,{x:px+20,y:py+156,w:pw-40,h:40})) { forgeOrigin='game'; pauseOpen=false; openForge(); return; }
+      if (inRect(mx,my,{x:px+20,y:py+206,w:pw-40,h:40})) { pauseOpen=false; triggerExitPortal(); return; }
+      return;
+    }
     if (rolledOnce && !handInProgress) {
       for (let i = 0; i < dice.length; i++) {
         const hs = DICE_SIZE / 2;
@@ -2407,8 +2421,28 @@ function drawGame(t) {
   // Exit portal
   exitPortalPulse += 0.05;
   const epLabel = (nextTarget?.title ?? 'Jam Hub').slice(0,14);
-  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, '#9a3826', exitPortalPulse, epLabel, endless);
-  if (!endless) txt('(finish run first)', RP.x+RP.w/2, RP.y+RP.h-14, {size:8,color:'rgba(180,100,255,0.35)',align:'center'});
+  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, '#9a3826', exitPortalPulse, epLabel, true);
+
+  // Pause button
+  const pbx=RP.x+RP.w-36, pby=RP.y+5, pbw=28, pbh=22;
+  drawRoundRect(pbx,pby,pbw,pbh,4,'rgba(30,15,8,0.85)',pauseOpen?'#c89960':'#3a2010');
+  txt('⏸', pbx+pbw/2, pby+pbh/2+5, {size:11,color:pauseOpen?'#c89960':'#887060',align:'center'});
+
+  // Pause overlay
+  if (pauseOpen) {
+    ctx.save(); ctx.globalAlpha=0.72; ctx.fillStyle='#0a0604'; ctx.fillRect(0,0,W,H); ctx.restore();
+    const px=W/2-130, pw=260, py=H/2-130, ph=260;
+    drawRoundRect(px,py,pw,ph,10,'#130c06','#c89960',1.5);
+    txt('PAUSED', W/2, py+36, {size:20,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
+    const btnStyle=(label,bx,by,bw,bh,col)=>{
+      drawRoundRect(bx,by,bw,bh,6,'rgba(30,15,8,0.9)',col,1);
+      txt(label,bx+bw/2,by+bh/2+5,{size:13,color:col,align:'center',bold:true});
+    };
+    btnStyle('▶  Resume',     px+20,py+56, pw-40,40,'#88bb66');
+    btnStyle('⬡  Rune Table', px+20,py+106,pw-40,40,'#cc88ff');
+    btnStyle('⚙  Forge',      px+20,py+156,pw-40,40,'#c89960');
+    btnStyle('⬡  Exit Portal',px+20,py+206,pw-40,40,'#9a3826');
+  }
 
   drawParticles();
   drawFloaters();
