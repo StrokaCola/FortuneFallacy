@@ -64,8 +64,5 @@ body {
 }
 #rotate-hint svg { width: 64px; height: 64px; opacity: 0.7; }
 
-/* Only show rotation hint on actual touch devices — desktop browsers in a
-   portrait window should still see the game, not a "rotate your device" wall */
-@media (orientation: portrait) and (pointer: coarse) {
-  #rotate-hint { display: flex; }
-}
+/* Rotate-hint visibility is controlled entirely by JS (see game.js)
+   so CSS media queries cannot fire it on non-touch devices. */
