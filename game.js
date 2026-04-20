@@ -1260,7 +1260,11 @@ function initDice() {
       pvx: 0, pvy: 0, physBody: null,
     };
   });
-  rolledOnce = false;
+  rolledOnce   = false;
+  trayOrder    = [];
+  traySelSlot  = -1;
+  dragTraySlot = -1;
+  dragOccurred = false;
 }
 
 function startRun(isEndless = false) {
@@ -1305,6 +1309,21 @@ function startRound() {
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
   initDice();
+}
+
+function sellDie(idx) {
+  if (diceUpgrades.length <= 1) return; // keep at least 1 die
+  for (const r of (diceRunes[idx] || [])) { if (r) runeInventory.push(r); }
+  const upg = diceUpgrades[idx];
+  const refund = upg ? Math.floor(upg.cost / 2) : 1;
+  shards += refund;
+  if (refund > 0) floatText(W/2, H/2 - 30, `+◆${refund}`, '#b8a874', 16);
+  diceUpgrades.splice(idx, 1);
+  diceRunes.splice(idx, 1);
+  trayOrder = trayOrder.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
+  if (traySelSlot >= trayOrder.length) traySelSlot = -1;
+  SFX.unlock();
+  burst(W/2, H/2, '#ff4466', 8, 3);
 }
 
 function currentTarget() {
@@ -1458,10 +1477,7 @@ function rollDice() {
 // ─── Play hand ────────────────────────────────────────────────────────
 function playHand() {
   if (!rolledOnce || handInProgress) return;
-  const heldEntries = [];
-  for (let i = 0; i < dice.length; i++) {
-    if (dice[i].locked) heldEntries.push({ die: dice[i], upg: diceUpgrades[i] });
-  }
+  const heldEntries = trayOrder.map(i => ({ die: dice[i], upg: diceUpgrades[i] }));
   if (heldEntries.length === 0) return;
   handInProgress = true;
 
@@ -2258,6 +2274,12 @@ function handleClick(mx, my) {
             return;
           }
           dice[i].locked = !dice[i].locked;
+          if (dice[i].locked) {
+            trayOrder.push(i);
+          } else {
+            trayOrder = trayOrder.filter(x => x !== i);
+            if (traySelSlot >= trayOrder.length) traySelSlot = -1;
+          }
           SFX[dice[i].locked ? 'lock' : 'unlock']();
           const lc = diceUpgrades[i] ? diceUpgrades[i].color : '#c89960';
           burst(dice[i].absX, dice[i].absY, dice[i].locked ? lc : '#ffffff', dice[i].locked ? 10 : 6, dice[i].locked ? 3.5 : 2.5);
@@ -2271,7 +2293,7 @@ function handleClick(mx, my) {
       if (!rolledOnce) { rollDice(); return; }
       if (rerollsLeft > 0) { rerollsLeft--; rollDice(); return; }
     }
-    if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && heldCount() > 0) { playHand(); return; }
+    if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
     // Exit portal (endless only — in main run it shows on win screen)
     if (endless && inRect(mx,my,{x:RP.x+RP.w/2-30,y:RP.y+RP.h-74,w:60,h:60})) { triggerExitPortal(); return; }
     if (incoming.ref && inRect(mx,my,{x:LP.x+LP.w/2-30,y:LP.y+LP.h-74,w:60,h:60})) { triggerReturnPortal(); return; }
@@ -3132,24 +3154,51 @@ function drawGame(t) {
     ctx.textAlign = 'center';
     ctx.fillText('— HELD —', CP.x + CP.w/2, HOLD_Y - 4);
     ctx.restore();
-    // Slot outlines
+    // Slot outlines — highlight drag source (dashed) and drop target (violet glow)
     const held = heldCount();
+    // Find nearest drop-target slot while dragging
+    let dropTarget = -1;
+    if (dragTraySlot !== -1) {
+      let bestDist = Infinity;
+      for (let slot = 0; slot < trayOrder.length; slot++) {
+        const cx = HOLD_X0 + slot*(HOLD_SLOT_W+HOLD_GAP) + HOLD_SLOT_W/2;
+        const d2 = Math.abs(hoverX - cx);
+        if (d2 < bestDist) { bestDist = d2; dropTarget = slot; }
+      }
+    }
     for (let si = 0; si < MAX_HELD; si++) {
-      const sx = HOLD_X0 + si*(HOLD_SLOT_W + HOLD_GAP);
-      const sy = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
-      const filled = si < held;
+      const sx  = HOLD_X0 + si*(HOLD_SLOT_W + HOLD_GAP);
+      const sy  = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
+      const isDragSrc  = si === dragTraySlot;
+      const isDropTgt  = si === dropTarget && dragTraySlot !== -1 && si !== dragTraySlot;
+      const filled     = si < held && !isDragSrc;
       ctx.save();
-      ctx.strokeStyle = filled ? 'rgba(200,153,96,0.45)' : 'rgba(200,153,96,0.12)';
-      ctx.setLineDash(filled ? [] : [3, 3]);
-      ctx.lineWidth = 1;
+      if (isDragSrc) {
+        ctx.strokeStyle = 'rgba(200,153,96,0.18)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+      } else if (isDropTgt) {
+        ctx.strokeStyle = 'rgba(180,100,255,0.9)';
+        ctx.shadowColor = '#aa55ff'; ctx.shadowBlur = 10;
+        ctx.lineWidth = 2;
+      } else {
+        ctx.strokeStyle = filled ? 'rgba(200,153,96,0.45)' : 'rgba(200,153,96,0.12)';
+        ctx.setLineDash(filled ? [] : [3, 3]);
+        ctx.lineWidth = 1;
+      }
       roundRect(sx, sy, HOLD_SLOT_W, HOLD_SLOT_W, 6);
       ctx.stroke();
       ctx.restore();
+      // Slot order number (subtle, inside each filled slot)
+      if (si < trayOrder.length && trayOrder.length > 1 && !isDragSrc) {
+        txt(`${si+1}`, sx + HOLD_SLOT_W/2, HOLD_Y + HOLD_H - 5, {size:7, color:'rgba(200,160,255,0.35)', align:'center', bold:true});
+      }
     }
   }
 
-  // Dice (3D) — positions driven by absX/absY physics
+  // Dice (3D) — positions driven by absX/absY physics; skip dragged die (drawn as ghost at cursor)
   for (let i = 0; i < dice.length; i++) {
+    if (dragTraySlot !== -1 && i === trayOrder[dragTraySlot]) continue;
     const d = dice[i];
     drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
     const upg = diceUpgrades[i];
@@ -3226,8 +3275,8 @@ function drawGame(t) {
     scoringState.chipPunch = Math.max(0, chipPunch - 0.08);
     scoringState.multPunch = Math.max(0, multPunch - 0.08);
   } else if (rolledOnce && !handInProgress) {
-    const heldFaces = dice.filter(d => d.locked).map(d => d.face);
-    if (heldFaces.length > 0) {
+    if (trayOrder.length > 0) {
+      const heldFaces = trayOrder.map(i => dice[i].face);
       const combo = detectCombo(heldFaces);
       const col   = COMBO_COLORS[combo.tier]||'#fff';
       txt(combo.name, CP.x+CP.w/2, BOARD_Y + BOARD_H - 12, {size:15,color:col,align:'center',bold:true,shadow:col});
@@ -3237,12 +3286,44 @@ function drawGame(t) {
   }
 
   const canRoll = !handInProgress && (!rolledOnce || rerollsLeft > 0);
-  const canPlay = rolledOnce && !handInProgress && heldCount() > 0;
+  const canPlay = rolledOnce && !handInProgress && trayOrder.length > 0;
+  const prev = canPlay ? previewHand() : null;
+  const oneShot = prev && (prev.total + roundScore >= currentTarget());
+
   drawBtn(BTN_ROLL, rolledOnce ? `Reroll  (${rerollsLeft} left)` : 'Roll Dice', canRoll);
-  drawBtn(BTN_PLAY, 'Play Hand  ✦', canPlay, canPlay);
+
+  // One-shot glow + lightning on Play Hand button
+  if (oneShot) {
+    const pulse = 0.55 + 0.35*Math.sin(t*3.4);
+    ctx.save();
+    ctx.shadowColor = '#cc44ff'; ctx.shadowBlur = 28 + 16*Math.sin(t*3.4);
+    ctx.strokeStyle = `rgba(200,100,255,${pulse})`;
+    ctx.lineWidth = 3;
+    roundRect(BTN_PLAY.x-4, BTN_PLAY.y-4, BTN_PLAY.w+8, BTN_PLAY.h+8, 12);
+    ctx.stroke();
+    ctx.restore();
+    for (let li = 0; li < 2; li++) {
+      if (Math.random() < 0.32) {
+        const lx = BTN_PLAY.x + 8 + Math.random()*(BTN_PLAY.w-16);
+        const ly = BTN_PLAY.y + 6 + Math.random()*(BTN_PLAY.h-12);
+        ctx.save();
+        ctx.globalAlpha = 0.55 + Math.random()*0.45;
+        ctx.strokeStyle = Math.random()<0.5 ? '#dd88ff' : '#ffffff';
+        ctx.lineWidth = 1.2; ctx.shadowColor = '#aa44ff'; ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        const dx1=(Math.random()-0.5)*18, dy1=(Math.random()-0.5)*18;
+        ctx.lineTo(lx+dx1, ly+dy1);
+        ctx.lineTo(lx+dx1+(Math.random()-0.5)*10, ly+dy1+(Math.random()-0.5)*10);
+        ctx.stroke(); ctx.restore();
+      }
+    }
+  }
+  drawBtn(BTN_PLAY, 'Play Hand  ✦', canPlay, canPlay || oneShot);
 
   if (rolledOnce && !handInProgress)
-    txt('Click dice to hold / release them', CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
+    txt(trayOrder.length > 1 ? 'Click to hold · drag held dice to reorder' : 'Click dice to hold / release them',
+      CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
   ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#2a1880');
@@ -3426,6 +3507,18 @@ function drawGame(t) {
   drawFloaters();
   drawComboPop();
   drawBanner();
+
+  // Drag ghost — draw dragged die at cursor with glow
+  if (dragTraySlot !== -1 && trayOrder[dragTraySlot] !== undefined) {
+    const di = trayOrder[dragTraySlot];
+    const pulse = 0.7 + 0.2*Math.sin(t*6);
+    ctx.save();
+    ctx.globalAlpha = 0.88;
+    ctx.shadowColor = '#aa55ff';
+    ctx.shadowBlur  = 18 * pulse;
+    drawDie3D(dice[di], hoverX, hoverY, DICE_SIZE, diceUpgrades[di]);
+    ctx.restore();
+  }
 
   if (flashAlpha > 0) {
     ctx.save(); ctx.globalAlpha=flashAlpha; ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
@@ -4216,10 +4309,14 @@ function loop(now) {
   lastT = now;
   const t = now / 1000;
 
-  // Assign held dice to tray slots by held order (drives glide targets)
+  // Assign held dice to tray slots using trayOrder (enables drag reordering)
   {
-    let hs = 0;
-    for (const d of dice) d.holdSlot = d.locked ? hs++ : -1;
+    for (const d of dice) d.holdSlot = -1;
+    for (let slot = 0; slot < trayOrder.length; slot++) {
+      if (slot === dragTraySlot) continue; // dragged die floats freely
+      const d = dice[trayOrder[slot]];
+      if (d) d.holdSlot = slot;
+    }
   }
 
   // Step Rapier physics (once per frame, before reading body state)
@@ -4362,10 +4459,10 @@ function loop(now) {
     // Glide between holding tray and last board position based on lock state
     if (!d.rolling) {
       let tx = null, ty = null;
-      if (d.locked) {
-        const slot = holdSlotCenter(d.holdSlot != null ? d.holdSlot : 0);
+      if (d.locked && d.holdSlot >= 0) {
+        const slot = holdSlotCenter(d.holdSlot);
         tx = slot.x; ty = slot.y;
-      } else if (d.homeX != null) {
+      } else if (!d.locked && d.homeX != null) {
         tx = d.homeX; ty = d.homeY;
       }
       if (tx != null) {
