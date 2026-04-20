@@ -1087,7 +1087,8 @@ let heldOracles  = [];
 let comboStreak  = { id: null, count: 0 };
 let lastHandMeta = { lastReroll: false };
 
-let shopChoices = [];
+let shopStock = { oracles: [], runes: [], upgrades: [] };
+let shopTab   = 'oracles';
 let highScores  = [];
 let onlineScores  = [];
 let onlineLoading = false;
@@ -1271,11 +1272,7 @@ function startRun(isEndless = false) {
   shards         = 0;
   diceUpgrades   = Array(DICE_COUNT).fill(null);
   diceRunes      = Array.from({length: DICE_COUNT}, () => Array(MAX_RUNE_SLOTS).fill(null));
-  runeInventory  = [
-    ALL_RUNES.find(r => r.id === 'amplify'),
-    ALL_RUNES.find(r => r.id === 'gilded'),
-    ALL_RUNES.find(r => r.id === 'blessed'),
-  ];
+  runeInventory  = [];
   runeSelInv  = null;
   runeSelSlot = null;
   runStats    = { fiveOfAKindScored: false, totalShardsSpent: 0, maxNoRerollStreak: 0, _noRerollCur: 0, handsPlayed: 0, combosScored: {}, runCompleted: false };
@@ -1807,33 +1804,43 @@ function advanceGoal() {
     const earned = Math.max(3, Math.floor(5 + (roundScore - clearedTarget) / 200));
     shards += earned;
     hubEarnedShards = earned;
-    // Grant a rune reward every other goal (scaling tier)
-    if (runGoal % 2 === 0) {
-      const t = runGoal >= 6 ? 'legendary' : runGoal >= 4 ? 'rare' : runGoal >= 2 ? 'uncommon' : 'common';
-      grantRune(t);
-    }
     // Check unlocks after goal advance
     checkUnlocks();
-    // Pre-generate free oracle choices for the gift button
-    const allOraclePool = [...ALL_ORACLES, ...UNLOCKABLE_ORACLES.filter(o => isUnlocked(o.unlock.id))];
-    const pool = allOraclePool.filter(o => !heldOracles.find(h => h.id === o.id) && o.tier !== 'legendary');
-    shopChoices = pool.sort(() => Math.random()-0.5).slice(0, 3);
     forgeChoices = { upgrades: [], oracles: [] };
-    screen = 'hub';
+    openShop();
   }, 1800);
 }
 
-function pickOracle(idx) {
-  const o = shopChoices[idx];
-  if (!o) return;
-  SFX.oracle();
-  heldOracles.push(o);
-  shopChoices = [];
-  burst(W/2, H/2, o.color, 20, 5);
-  screen = 'hub';
-}
+function openShop() {
+  // Anomalies — weighted pool (legendaries scarce)
+  const allOraclesFull = [...ALL_ORACLES, ...UNLOCKABLE_ORACLES.filter(o => isUnlocked(o.unlock.id))];
+  const unownedO = allOraclesFull.filter(o => !heldOracles.find(h => h.id === o.id));
+  const oWeights = { common: 3, uncommon: 2, rare: 1.3, legendary: 0.5 };
+  const oPool = [];
+  unownedO.forEach(o => {
+    const n = Math.round((oWeights[o.tier || 'common']) * 2);
+    for (let i = 0; i < n; i++) oPool.push(o);
+  });
+  const pickedO = [];
+  while (pickedO.length < 3 && oPool.length > 0) {
+    const i = Math.floor(Math.random() * oPool.length);
+    const o = oPool[i];
+    if (!pickedO.find(p => p.id === o.id)) pickedO.push(o);
+    oPool.splice(i, 1);
+  }
+  shopStock.oracles = pickedO;
 
-function skipShop() { shopChoices = []; screen = 'hub'; }
+  // Runes — random selection from all available
+  const allRunesFull = [...ALL_RUNES, ...UNLOCKABLE_RUNES.filter(r => isUnlocked(r.unlock.id))];
+  shopStock.runes = [...allRunesFull].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  // Dice upgrades — random selection
+  const allDice = [...DICE_UPGRADES, ...UNLOCKABLE_DICE.filter(d => isUnlocked(d.unlock.id))];
+  shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  shopTab = 'oracles';
+  screen = 'shop';
+}
 
 function openForge() {
   if (forgeChoices.upgrades.length === 0) {
@@ -1992,7 +1999,7 @@ canvas.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (paused) { paused = false; e.preventDefault(); return; }
-    const pauseable = ['game','hub','forge','rune','shop','scores','howto'];
+    const pauseable = ['game','hub','rune','shop','scores','howto'];
     if (pauseable.includes(screen) && !nameEntryActive) {
       paused = true; e.preventDefault(); return;
     }
@@ -2022,9 +2029,8 @@ function handleClick(mx, my) {
     if (inRect(mx,my,{x:px+454, y:py+48, w:206, h:28})) { pauseTab='audio';       return; }
     // Quick Access buttons
     if (pauseTab === 'quick') {
-      if (inRect(mx,my,{x:px+60,y:py+100,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; screen='rune'; return; }
-      if (inRect(mx,my,{x:px+60,y:py+175,w:560,h:60})) { forgeOrigin='game'; paused=false; openForge(); return; }
-      if (inRect(mx,my,{x:px+60,y:py+250,w:560,h:60})) { paused=false; triggerExitPortal(); return; }
+      if (inRect(mx,my,{x:px+60,y:py+130,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; screen='rune'; return; }
+      if (inRect(mx,my,{x:px+60,y:py+220,w:560,h:60})) { paused=false; triggerExitPortal(); return; }
     }
     // Resume button
     if (inRect(mx, my, {x:W/2-80, y:py+ph-52, w:160, h:36})) { paused = false; return; }
@@ -2067,20 +2073,105 @@ function handleClick(mx, my) {
     return;
   }
   if (screen === 'shop') {
-    for (let i = 0; i < shopChoices.length; i++) {
-      const cx = W/2 - 380 + i*265;
-      if (inRect(mx,my,{x:cx,y:H/2-150,w:250,h:310})) { pickOracle(i); return; }
+    // Continue button
+    if (inRect(mx,my,{x:W/2-240,y:H-54,w:190,h:40})) { screen='hub'; return; }
+    // Tab switching
+    if (inRect(mx,my,{x:W/2-260,y:72,w:162,h:34})) { shopTab='oracles';  return; }
+    if (inRect(mx,my,{x:W/2-82, y:72,w:154,h:34})) { shopTab='runes';    return; }
+    if (inRect(mx,my,{x:W/2+82, y:72,w:162,h:34})) { shopTab='upgrades'; return; }
+
+    if (shopTab === 'oracles') {
+      const cW=218,cH=238,cGap=20;
+      const cTotal=shopStock.oracles.length*(cW+cGap)-cGap;
+      const cX0=W/2-cTotal/2;
+      for (let i=0;i<shopStock.oracles.length;i++) {
+        const ox=cX0+i*(cW+cGap);
+        const cost=oracleCost(shopStock.oracles[i]);
+        if (inRect(mx,my,{x:ox+18,y:134+cH+6,w:cW-36,h:32})) {
+          if (shards>=cost && heldOracles.length<MAX_ORACLES) {
+            shards-=cost;
+            runStats.totalShardsSpent+=cost;
+            const o=shopStock.oracles.splice(i,1)[0];
+            heldOracles.push(o); SFX.oracle(); burst(W/2,H/2,o.color,15,5);
+            checkUnlocks();
+          }
+          return;
+        }
+      }
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
+        shards-=3;
+        const allO=[...ALL_ORACLES,...UNLOCKABLE_ORACLES.filter(o=>isUnlocked(o.unlock.id))];
+        const unowned=allO.filter(o=>!heldOracles.find(h=>h.id===o.id));
+        const wts={common:3,uncommon:2,rare:1.3,legendary:0.5};
+        const wp=[]; unowned.forEach(o=>{const n=Math.round((wts[o.tier||'common'])*2);for(let i=0;i<n;i++)wp.push(o);});
+        const picked=[]; while(picked.length<3&&wp.length>0){const i=Math.floor(Math.random()*wp.length);const o=wp[i];if(!picked.find(p=>p.id===o.id))picked.push(o);wp.splice(i,1);}
+        shopStock.oracles=picked;
+        SFX.roll(); burst(W/2+170,H-34,'#aa66ff',10,4); return;
+      }
     }
-    if (inRect(mx,my,{x:W/2-70,y:H-68,w:140,h:40})) { skipShop(); return; }
+
+    if (shopTab === 'runes') {
+      const rW=218,rH=170,rGap=20;
+      const rTotal=shopStock.runes.length*(rW+rGap)-rGap;
+      const rX0=W/2-rTotal/2;
+      for (let i=0;i<shopStock.runes.length;i++) {
+        const rx=rX0+i*(rW+rGap);
+        if (inRect(mx,my,{x:rx,y:140,w:rW,h:rH})) {
+          const r=shopStock.runes[i];
+          if (shards>=r.cost) {
+            shards-=r.cost;
+            runStats.totalShardsSpent+=r.cost;
+            runeInventory.push({...r});
+            shopStock.runes.splice(i,1);
+            SFX.oracle();
+            const tc=RUNE_TIERS[r.tier]||'#888';
+            burst(mx,my,tc,12,4); floatText(mx,my-18,`+${r.name}`,tc,12);
+          }
+          return;
+        }
+      }
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
+        shards-=3;
+        const allR=[...ALL_RUNES,...UNLOCKABLE_RUNES.filter(r=>isUnlocked(r.unlock.id))];
+        shopStock.runes=allR.sort(()=>Math.random()-0.5).slice(0,3);
+        SFX.roll(); burst(W/2+170,H-34,'#55cc88',10,4); return;
+      }
+    }
+
+    if (shopTab === 'upgrades') {
+      const upgW=188,upgH=138,upgGap=14;
+      const upgTotal=shopStock.upgrades.length*(upgW+upgGap)-upgGap;
+      const upgX0=W/2-upgTotal/2;
+      const poolFull=diceUpgrades.length>=MAX_DICE;
+      for (let i=0;i<shopStock.upgrades.length;i++) {
+        const ux=upgX0+i*(upgW+upgGap);
+        if (inRect(mx,my,{x:ux,y:134,w:upgW,h:upgH})) {
+          const upg=shopStock.upgrades[i];
+          if (shards>=upg.cost && !poolFull) {
+            shards-=upg.cost;
+            runStats.totalShardsSpent+=upg.cost;
+            diceUpgrades.push({...upg});
+            shopStock.upgrades.splice(i,1);
+            SFX.oracle(); burst(mx,my,upg.color,14,4.5);
+            floatText(mx,my-18,`+${upg.shortName} die`,upg.color,13);
+            checkUnlocks();
+          }
+          return;
+        }
+      }
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
+        shards-=3;
+        const allD=[...DICE_UPGRADES,...UNLOCKABLE_DICE.filter(d=>isUnlocked(d.unlock.id))];
+        shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,3);
+        SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4); return;
+      }
+    }
     return;
   }
   if (screen === 'hub') {
     const BY = H - 84;
-    const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
-    if (canOracle && inRect(mx,my,{x:W/2-330,y:BY,w:165,h:50})) { screen='shop'; return; }
-    if (inRect(mx,my,{x:W/2-145,y:BY,w:155,h:50})) { forgeOrigin='hub'; openForge(); return; }
-    if (inRect(mx,my,{x:W/2+15, y:BY,w:145,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
-    if (inRect(mx,my,{x:W/2+175,y:BY,w:155,h:50})) { startRound(); screen='game'; return; }
+    if (inRect(mx,my,{x:W/2-310,y:BY,w:260,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
+    if (inRect(mx,my,{x:W/2+50, y:BY,w:260,h:50})) { startRound(); screen='game'; return; }
     return;
   }
   if (screen === 'rune') {
@@ -2123,66 +2214,6 @@ function handleClick(mx, my) {
       }
     }
     runeSelInv = null; runeSelSlot = null;
-    return;
-  }
-  if (screen === 'forge') {
-    if (inRect(mx,my,{x:W/2-170,y:64,w:160,h:34})) { forgeTab='dice'; return; }
-    if (inRect(mx,my,{x:W/2+10, y:64,w:160,h:34})) { forgeTab='oracles'; return; }
-    if (inRect(mx,my,{x:W/2-90,y:H-54,w:180,h:40})) { const o=forgeOrigin; forgeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
-    if (forgeTab === 'dice') {
-      const upgW=188,upgH=138,upgGap=14;
-      const upgTotal=forgeChoices.upgrades.length*(upgW+upgGap)-upgGap;
-      const upgX0=W/2-upgTotal/2;
-      const poolFull = diceUpgrades.length >= MAX_DICE;
-      for (let i=0;i<forgeChoices.upgrades.length;i++) {
-        const ux=upgX0+i*(upgW+upgGap);
-        if (inRect(mx,my,{x:ux,y:134,w:upgW,h:upgH})) {
-          const upg=forgeChoices.upgrades[i];
-          if (shards>=upg.cost && !poolFull) {
-            shards -= upg.cost;
-            runStats.totalShardsSpent += upg.cost;
-            diceUpgrades.push({ ...upg });
-            forgeChoices.upgrades.splice(i, 1);
-            SFX.oracle(); burst(mx,my,upg.color,14,4.5);
-            floatText(mx, my-18, `+${upg.shortName} die`, upg.color, 13);
-            checkUnlocks();
-          }
-          return;
-        }
-      }
-      // Reroll upgrade offerings
-      if (inRect(mx,my,{x:W/2+90,y:H-54,w:140,h:40}) && shards>=3) {
-        shards -= 3;
-        forgeChoices.upgrades = [...DICE_UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
-        SFX.roll(); burst(W/2+160,H-34,'#c89960',10,4); return;
-      }
-    }
-    if (forgeTab === 'oracles') {
-      const cW=220,cH=260,cGap=22;
-      const cTotal=forgeChoices.oracles.length*(cW+cGap)-cGap;
-      const cX0=W/2-cTotal/2;
-      for (let i=0;i<forgeChoices.oracles.length;i++) {
-        const ox=cX0+i*(cW+cGap);
-        const cost=oracleCost(forgeChoices.oracles[i]);
-        if (inRect(mx,my,{x:ox+20,y:136+cH+6,w:cW-40,h:32})) {
-          if (shards>=cost && heldOracles.length<MAX_ORACLES) {
-            shards-=cost;
-            runStats.totalShardsSpent += cost;
-            const o=forgeChoices.oracles.splice(i,1)[0];
-            heldOracles.push(o); SFX.oracle(); burst(W/2,H/2,o.color,15,5);
-            checkUnlocks();
-          }
-          return;
-        }
-      }
-      // Reroll oracle offerings
-      if (inRect(mx,my,{x:W/2+90,y:H-54,w:140,h:40}) && shards>=3) {
-        shards -= 3;
-        const unowned = ALL_ORACLES.filter(o => !heldOracles.find(h => h.id === o.id));
-        forgeChoices.oracles = unowned.sort(() => Math.random()-0.5).slice(0, 3);
-        SFX.roll(); burst(W/2+160,H-34,'#c89960',10,4); return;
-      }
-    }
     return;
   }
   if (screen === 'game') {
@@ -3375,14 +3406,102 @@ function drawGame(t) {
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
 function drawShop(t) {
   drawBG(t);
-  txt('ANOMALY GIFT', W/2, 56, {size:30,color:'#8844ee',align:'center',bold:true,shadow:'#8844ee'});
-  txt(`Goal ${runGoal} cleared! Choose a power-up — it lasts the whole run.`, W/2, 86, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
+  txt('THE SHOP', W/2, 42, {size:24,color:'#aa66ff',align:'center',bold:true,shadow:'#aa66ff'});
+  txt(`Goal ${runGoal} cleared!  ·  Spend your shards before continuing.`, W/2, 60, {size:11,color:'rgba(180,160,255,0.55)',align:'center'});
+  drawRoundRect(W-158, 14, 144, 34, 8, 'rgba(200,153,96,0.08)', '#b8a874', 1.5);
+  txt(`◆ ${shards} Shards`, W - 86, 36, {size:13,color:'#b8a874',align:'center',bold:true});
 
-  for (let i = 0; i < shopChoices.length; i++) {
-    const cx = W/2 - 380 + i*265;
-    drawOracleCard(shopChoices[i], cx, H/2-150, 250, 310);
+  // Tabs
+  const tabY = 72;
+  drawBtn({x:W/2-260, y:tabY, w:162, h:34}, '⚡ Anomalies', true, shopTab==='oracles');
+  drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, '⬡ Runes',     true, shopTab==='runes');
+  drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, '⚄ Dice',      true, shopTab==='upgrades');
+
+  const rerollCost = 3;
+  const canReroll  = shards >= rerollCost;
+  drawBtn({x:W/2+100, y:H-54, w:140, h:40}, `🜂 Reroll ◆${rerollCost}`, canReroll, canReroll);
+  drawBtn({x:W/2-240, y:H-54, w:190, h:40}, 'Continue →', true, true);
+
+  if (shopTab === 'oracles') {
+    txt('BUY ANOMALIES — each grants a passive power for the rest of your run',
+      W/2, 122, {size:10,color:'rgba(140,160,200,0.6)',align:'center',bold:true});
+    if (shopStock.oracles.length === 0) {
+      txt('No anomalies available — you own them all!', W/2, 300, {size:14,color:'rgba(160,180,255,0.45)',align:'center'});
+    } else {
+      const cW=218, cH=238, cGap=20;
+      const cTotal = shopStock.oracles.length * (cW+cGap) - cGap;
+      const cX0    = W/2 - cTotal/2;
+      shopStock.oracles.forEach((o, i) => {
+        const ox = cX0 + i*(cW+cGap), oy = 134;
+        const cost = oracleCost(o);
+        const canAfford = shards >= cost && heldOracles.length < MAX_ORACLES;
+        drawOracleCard(o, ox, oy, cW, cH, false);
+        drawBtn({x:ox+18, y:oy+cH+6, w:cW-36, h:32}, `◆ ${cost} Shards`, canAfford, canAfford);
+        if (!canAfford && heldOracles.length >= MAX_ORACLES)
+          txt('(anomalies full)', ox+cW/2, oy+cH+48, {size:9,color:'rgba(200,180,255,0.35)',align:'center'});
+      });
+    }
+
+  } else if (shopTab === 'runes') {
+    txt('BUY RUNES — equip them to dice in the Rune Table',
+      W/2, 122, {size:10,color:'rgba(140,200,160,0.6)',align:'center',bold:true});
+    const rW=218, rH=170, rGap=20;
+    const rTotal = shopStock.runes.length * (rW+rGap) - rGap;
+    const rX0    = W/2 - rTotal/2;
+    shopStock.runes.forEach((r, i) => {
+      const rx = rX0 + i*(rW+rGap), ry = 140;
+      const canAfford = shards >= r.cost;
+      const hov = inRect(hoverX, hoverY, {x:rx, y:ry, w:rW, h:rH});
+      const tierCol = RUNE_TIERS[r.tier] || '#888';
+      ctx.save();
+      if (hov && canAfford) { ctx.shadowColor = tierCol; ctx.shadowBlur = 8; }
+      drawRoundRect(rx, ry, rW, rH, 10,
+        hov ? 'rgba(18,6,36,0.95)' : 'rgba(12,4,28,0.85)',
+        canAfford ? (hov ? tierCol : 'rgba(120,80,200,0.65)') : 'rgba(70,50,100,0.35)',
+        hov ? 2.5 : 1.5);
+      ctx.restore();
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = `28px ui-sans-serif,sans-serif`;
+      ctx.fillStyle = tierCol; ctx.shadowColor = tierCol; ctx.shadowBlur = 6;
+      ctx.fillText(r.icon, rx+rW/2, ry+38);
+      ctx.restore();
+      txt(r.name,   rx+rW/2, ry+58,  {size:13,color:'#fff',       align:'center',bold:true});
+      txt(r.desc,   rx+rW/2, ry+76,  {size:10,color:'#c89960',    align:'center'});
+      txt(r.tier.toUpperCase(), rx+rW/2, ry+94, {size:9,color:tierCol,align:'center',bold:true});
+      txt(`◆ ${r.cost} Shards`, rx+rW/2, ry+118, {size:11,color:canAfford?'#b8a874':'rgba(180,150,100,0.5)',align:'center',bold:true});
+      txt(canAfford?'click to buy':'not enough shards', rx+rW/2, ry+138,
+        {size:9,color:canAfford?'rgba(255,200,80,0.7)':'rgba(200,170,120,0.35)',align:'center'});
+    });
+
+  } else {
+    const poolFull = diceUpgrades.length >= MAX_DICE;
+    txt(poolFull ? `POOL FULL (${MAX_DICE} dice max)` : `BUY DICE — adds a new die to your pool  (${diceUpgrades.length}/${MAX_DICE})`,
+      W/2, 122, {size:10,color:poolFull?'#ff8844':'rgba(200,170,120,0.55)',align:'center',bold:true});
+    const upgW=188, upgH=138, upgGap=14;
+    const upgTotal = shopStock.upgrades.length * (upgW+upgGap) - upgGap;
+    const upgX0    = W/2 - upgTotal/2;
+    shopStock.upgrades.forEach((upg, i) => {
+      const ux = upgX0 + i*(upgW+upgGap), uy = 134;
+      const canAfford = shards >= upg.cost && !poolFull;
+      const hov = inRect(hoverX, hoverY, {x:ux, y:uy, w:upgW, h:upgH});
+      if (hov) markHover(`shopDie:${upg.id}:${i}`, upg.name, upgradeTooltipBody(upg), {color:upg.color,cost:upg.cost});
+      ctx.save();
+      if (hov && canAfford) { ctx.shadowColor = upg.color; ctx.shadowBlur = 6; }
+      drawRoundRect(ux, uy, upgW, upgH, 10,
+        hov ? 'rgba(18,6,36,0.95)' : 'rgba(12,4,28,0.85)',
+        canAfford ? (hov ? upg.color : 'rgba(140,90,220,0.65)') : 'rgba(70,50,100,0.35)',
+        hov ? 2.5 : 1.5);
+      ctx.restore();
+      drawDieMini(ux+upgW/2, uy+26, 36, upg);
+      txt(upg.name,  ux+upgW/2, uy+52,  {size:12,color:'#fff',  align:'center'});
+      txt(upg.desc,  ux+upgW/2, uy+68,  {size:10,color:'#c89960',align:'center'});
+      txt(`◆ ${upg.cost} Shards`, ux+upgW/2, uy+92, {size:11,color:canAfford?'#b8a874':'rgba(180,150,100,0.5)',align:'center',bold:true});
+      txt(canAfford?'click to buy':poolFull?'pool full':'not enough shards',
+        ux+upgW/2, uy+114, {size:9,color:canAfford?'rgba(255,200,80,0.7)':'rgba(200,170,120,0.35)',align:'center'});
+    });
   }
-  drawBtn({x:W/2-70,y:H-68,w:140,h:38}, 'Skip →', true);
+
   drawParticles(); drawFloaters();
 }
 
@@ -3450,16 +3569,11 @@ function drawHub(t) {
     });
   }
 
-  // Action buttons (4-up row)
+  // Action buttons — Rune Table + Next Goal
   const BY = H - 84;
-  const canOracle = heldOracles.length < MAX_ORACLES && shopChoices.length > 0;
-  drawBtn({x:W/2-330,y:BY,w:165,h:50}, '⚡ Anomaly Gift', canOracle, canOracle);
-  if (!canOracle) txt('(anomalies full)', W/2-247, BY+64, {size:9,color:'rgba(160,180,255,0.35)',align:'center'});
-  drawBtn({x:W/2-145,y:BY,w:155,h:50}, '⚒ Forge Shop', true, shards>0);
-  txt(`◆ ${shards} shards`, W/2-67, BY+64, {size:9,color:'#b8a874',align:'center'});
-  drawBtn({x:W/2+15, y:BY,w:145,h:50}, '✦ Rune Table', true, runeInventory.length > 0);
-  txt(`${runeInventory.length} rune${runeInventory.length!==1?'s':''}`, W/2+87, BY+64, {size:9,color:'#cc88ff',align:'center'});
-  drawBtn({x:W/2+175,y:BY,w:155,h:50}, 'Next Goal →', true, true);
+  drawBtn({x:W/2-310,y:BY,w:260,h:50}, '✦ Rune Table', true, runeInventory.length > 0);
+  txt(`${runeInventory.length} rune${runeInventory.length!==1?'s':''}`, W/2-180, BY+64, {size:9,color:'#cc88ff',align:'center'});
+  drawBtn({x:W/2+50,y:BY,w:260,h:50}, 'Next Goal →', true, true);
 
   drawParticles(); drawFloaters();
 }
@@ -4009,9 +4123,8 @@ function drawPause(t) {
   });
   } else if (pauseTab === 'quick') {
     const qaItems = [
-      { label:'⬡  Rune Table',  sub:'Equip runes to your dice',                    color:'#cc88ff', by:py+100 },
-      { label:'⚙  Forge',       sub:'Buy dice upgrades & anomalies',                color:'#c89960', by:py+175 },
-      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#22aadd', by:py+250 },
+      { label:'⬡  Rune Table',  sub:'Equip runes to your dice',                    color:'#cc88ff', by:py+130 },
+      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#22aadd', by:py+220 },
     ];
     qaItems.forEach(({ label, sub, color, by }) => {
       const bx = px+60, bw = pw-120, bh = 60;
@@ -4346,9 +4459,8 @@ function loop(now) {
     case 'howto':      drawHowToPlay(t);  break;
     case 'nameentry':  drawNameEntry(t);  break;
     case 'game':       drawGame(t);       break;
-    case 'shop':   drawShop(t);   break;
-    case 'hub':    drawHub(t);    break;
-    case 'forge':  drawForge(t);  break;
+    case 'shop':   drawShop(t);      break;
+    case 'hub':    drawHub(t);       break;
     case 'rune':   drawRuneTable(t); break;
     case 'win':    drawWin(t);    break;
     case 'scores': drawScores(t); break;
