@@ -6,20 +6,6 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 960
 const H = canvas.height;  // 540
 
-// ─── Rotate-hint (mobile portrait only) ──────────────────────────────
-// CSS media queries can't reliably distinguish a touch phone from a
-// desktop browser in a narrow window, so we drive visibility from JS.
-const _rotateHint = document.getElementById('rotate-hint');
-const _isTouchDevice = navigator.maxTouchPoints > 0;
-function _updateRotateHint() {
-  if (!_rotateHint) return;
-  const portrait = window.innerHeight > window.innerWidth;
-  _rotateHint.style.display = (_isTouchDevice && portrait) ? 'flex' : 'none';
-}
-window.addEventListener('resize', _updateRotateHint);
-window.addEventListener('orientationchange', _updateRotateHint);
-_updateRotateHint();
-
 // ─── Physics constants (edit via physics-editor.html) ────────────────
 const PHYSICS = (()=>{
   const saved = localStorage.getItem('ff_physics');
@@ -1110,16 +1096,6 @@ let onlineFetched = false;
 let scoresTab     = 'global';
 
 let hoverX = -1, hoverY = -1;
-
-// ─── Tray order / drag state ──────────────────────────────────────────
-let trayOrder       = [];   // dice indices in held-tray slot order
-let traySelSlot     = -1;
-let pendingDragSlot = -1;   // slot pressed but not yet confirmed as drag
-let dragTraySlot    = -1;   // active visual drag (-1 = none)
-let dragStartX      = 0;
-let dragStartY      = 0;
-let dragOccurred    = false; // suppresses click event after a real drag
-
 let scoringState    = null; // { chips, mult } — live display during hand scoring
 let rollCollisions  = [];  // unique die-pair collisions recorded during current hand
 
@@ -1135,6 +1111,10 @@ let runeInventory   = [];  // rune objects the player owns
 let diceRunes       = [];  // Array(DICE_COUNT) of Array(MAX_RUNE_SLOTS): equipped runes
 let runeSelInv      = null;  // index in runeInventory currently selected (null = none)
 let runeSelSlot     = null;  // {die:i, slot:j} currently selected slot (null = none)
+
+// ─── Tray order state ─────────────────────────────────────────────────
+let trayOrder    = [];   // dice indices in held-tray slot order (enables reordering)
+let traySelSlot  = -1;  // tray slot index selected for swap (-1 = none)
 
 // ─── Pause state ─────────────────────────────────────────────────────
 let paused        = false;
@@ -1284,12 +1264,9 @@ function initDice() {
       pvx: 0, pvy: 0, physBody: null,
     };
   });
-  rolledOnce      = false;
-  trayOrder       = [];
-  traySelSlot     = -1;
-  pendingDragSlot = -1;
-  dragTraySlot    = -1;
-  dragOccurred    = false;
+  rolledOnce  = false;
+  trayOrder   = [];
+  traySelSlot = -1;
 }
 
 function startRun(isEndless = false) {
@@ -1497,6 +1474,43 @@ function rollDice() {
       setTimeout(() => screenShake(8 + scoreIntensity(roundScore) * 8), targets.length * 60);
     }, (maxDur + 0.12) * 1000);
   }
+}
+
+// ─── Hand preview (deterministic estimate, no side effects) ──────────
+function previewHand() {
+  if (!rolledOnce || handInProgress || trayOrder.length === 0) return null;
+  const entries = trayOrder.map(i => ({die: dice[i], upg: diceUpgrades[i], idx: i}));
+  const faces   = entries.map(e => e.die.face);
+  const combo   = detectCombo(faces);
+  let chips = combo.chips;
+  let mult  = combo.mult;
+  for (const {die, upg, idx} of entries) {
+    let add = die.face;
+    if (upg) {
+      if (upg.scoreMin !== undefined)                  add = Math.max(add, upg.scoreMin);
+      if (upg.faceRemap && add === upg.faceRemap.from) add = upg.faceRemap.to;
+      if (upg.invert)                                  add = 7 - die.face;
+      if (upg.mirror)                                  add = Math.max(...faces);
+      if (upg.voidBonus !== undefined)                 { add = 0; mult += upg.voidBonus; }
+      if (upg.scoreMultiplier !== undefined)            add = Math.round(add * upg.scoreMultiplier);
+      if (upg.multBonus !== undefined)                 mult += upg.multBonus;
+      if (upg.multPenalty !== undefined)               mult = Math.max(1, mult - upg.multPenalty);
+      if (upg.rerollMult)                              mult += rerollsLeft;
+    }
+    for (const rune of (diceRunes[idx] || [])) {
+      if (!rune) continue;
+      if (rune.chipBonus  !== undefined) add  += rune.chipBonus;
+      if (rune.multBonus  !== undefined) mult += rune.multBonus;
+      if (rune.mirror)                   add   = Math.max(...faces);
+      if (rune.rerollMult)               mult += rerollsLeft;
+    }
+    const baseT = (upg && upg.triggers > 1) ? upg.triggers : 1;
+    const runeT = (diceRunes[idx] || []).reduce((s,r) => s + (r && r.triggers > 1 ? r.triggers-1 : 0), 0);
+    chips += add * (baseT + runeT);
+  }
+  chips = Math.max(0, chips);
+  mult  = Math.max(1, mult);
+  return { chips, mult, combo, total: chips * mult };
 }
 
 // ─── Play hand ────────────────────────────────────────────────────────
@@ -1994,28 +2008,14 @@ function heldCount() { let n = 0; for (const d of dice) if (d.locked) n++; retur
 function inRect(mx, my, r) { return mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h; }
 
 // ─── Input ────────────────────────────────────────────────────────────
-function canvasXY(clientX, clientY) {
+canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left) * (W / rect.width),
-    y: (clientY - rect.top)  * (H / rect.height),
-  };
-}
-
-function pointerMove(mx, my) {
-  hoverX = mx; hoverY = my;
-  // Promote pending press to active drag once the pointer has moved far enough
-  if (pendingDragSlot !== -1 && Math.hypot(mx - dragStartX, my - dragStartY) > 22) {
-    dragTraySlot    = pendingDragSlot;
-    pendingDragSlot = -1;
-    // Teleport die to cursor so the glide-back on release starts from here, not the old slot
-    const di = trayOrder[dragTraySlot];
-    if (di !== undefined && dice[di]) { dice[di].absX = mx; dice[di].absY = my; }
-  }
+  hoverX = (e.clientX - rect.left) * (W / rect.width);
+  hoverY = (e.clientY - rect.top)  * (H / rect.height);
   if (dragSlider) {
     const pw=680, px=(W-pw)/2;
     const tx = px+76, tw = pw-152;
-    const val = Math.max(0, Math.min(1, (mx - tx) / tw));
+    const val = Math.max(0, Math.min(1, (hoverX - tx) / tw));
     if (dragSlider === 'music') {
       musicVolume = val; bgMusic.volume = val;
       localStorage.setItem('ff_musicVol', val);
@@ -2025,108 +2025,31 @@ function pointerMove(mx, my) {
       localStorage.setItem('ff_sfxVol', val);
     }
   }
-}
+});
 
-function pointerDown(mx, my) {
-  hoverX = mx; hoverY = my;
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
   if (paused && pauseTab === 'audio') {
     const pw=680, ph=480, px=(W-pw)/2, py=(H-ph)/2;
-    const tx=px+76, tw=pw-152;
+    const tx=px+76, tw=pw-152;   // sx+16, totalW=sw-32=(pw-120-32), tw=totalW-40
     const my1=py+176, my2=py+294;
-    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; }
-    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   }
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; e.preventDefault(); }
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   e.preventDefault(); }
   }
-  // Record press on a tray slot — drag activates in pointerMove once threshold is crossed
-  if (screen === 'game' && rolledOnce && !handInProgress && trayOrder.length > 1) {
-    const slotTop = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
-    for (let slot = 0; slot < trayOrder.length; slot++) {
-      const slotX = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP);
-      if (mx >= slotX && mx <= slotX + HOLD_SLOT_W && my >= slotTop && my <= slotTop + HOLD_SLOT_W) {
-        pendingDragSlot = slot;
-        dragStartX      = mx;
-        dragStartY      = my;
-        break;
-      }
-    }
-  }
-}
+});
 
-function pointerUp(mx, my) {
-  dragSlider      = null;
-  pendingDragSlot = -1;   // cancel any uncommitted press
-  if (dragTraySlot !== -1) {
-    let best = dragTraySlot, bestDist = Infinity;
-    for (let slot = 0; slot < trayOrder.length; slot++) {
-      const cx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2;
-      const d  = Math.abs(mx - cx);
-      if (d < bestDist) { bestDist = d; best = slot; }
-    }
-    if (best !== dragTraySlot) {
-      const item = trayOrder.splice(dragTraySlot, 1)[0];
-      trayOrder.splice(best, 0, item);
-      SFX.unlock();
-    }
-    // Always suppress the click when a visual drag occurred — even if the die
-    // was dropped back on the same slot.  A true tap never reaches this branch
-    // (pendingDragSlot is cancelled before dragTraySlot is ever set).
-    dragOccurred = true;
-    dragTraySlot = -1;
-  }
-}
+canvas.addEventListener('mouseup', () => { dragSlider = null; });
 
-// Mouse events
-canvas.addEventListener('mousemove', e => {
-  const {x, y} = canvasXY(e.clientX, e.clientY);
-  pointerMove(x, y);
-});
-canvas.addEventListener('mousedown', e => {
-  const {x, y} = canvasXY(e.clientX, e.clientY);
-  pointerDown(x, y);
-  e.preventDefault();
-});
-canvas.addEventListener('mouseup', e => {
-  const {x, y} = canvasXY(e.clientX, e.clientY);
-  pointerUp(x, y);
-});
 canvas.addEventListener('click', e => {
-  getAudio(); ensureBgMusic();
-  if (dragOccurred) { dragOccurred = false; return; }
-  const {x, y} = canvasXY(e.clientX, e.clientY);
-  handleClick(x, y);
+  getAudio();
+  ensureBgMusic();
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
+  handleClick(mx, my);
 });
-
-// Touch events — map to same pointer helpers; synthesise click on tap
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  getAudio(); ensureBgMusic();
-  const t = e.changedTouches[0];
-  const {x, y} = canvasXY(t.clientX, t.clientY);
-  pointerDown(x, y);
-}, { passive: false });
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  const {x, y} = canvasXY(t.clientX, t.clientY);
-  pointerMove(x, y);
-}, { passive: false });
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  const {x, y} = canvasXY(t.clientX, t.clientY);
-  pointerUp(x, y);
-  if (!dragOccurred) {
-    handleClick(x, y);
-  } else {
-    dragOccurred = false;
-  }
-}, { passive: false });
-canvas.addEventListener('touchcancel', () => {
-  // OS interrupted the gesture (notification, edge swipe, etc.) — clean up
-  dragSlider      = null;
-  pendingDragSlot = -1;
-  dragTraySlot    = -1;
-  dragOccurred    = false;
-}, { passive: true });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -2298,6 +2221,19 @@ function handleClick(mx, my) {
         shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,3);
         SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4); return;
       }
+      // Sell pool dice
+      const N=diceUpgrades.length;
+      if (N > 1) {
+        const sellCardW=68,sellGap=8;
+        const sellTotalW=N*(sellCardW+sellGap)-sellGap;
+        const sellX0=W/2-sellTotalW/2;
+        for (let i=0;i<N;i++) {
+          const sx=sellX0+i*(sellCardW+sellGap);
+          if (inRect(mx,my,{x:sx+4,y:302+52,w:sellCardW-8,h:28})) {
+            sellDie(i); return;
+          }
+        }
+      }
     }
     return;
   }
@@ -2312,34 +2248,9 @@ function handleClick(mx, my) {
     if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
     const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
     const sc = dieCardW / 148;
-    // Die slot and sell button clicks
+    // Rune slot clicks
     for (let di = 0; di < poolSize; di++) {
       const cx = dieCardX + di*(dieCardW+dieCardGap);
-      // Sell / drop button
-      const upg = diceUpgrades[di];
-      const isExtra = di >= DICE_COUNT;
-      if (upg || isExtra) {
-        const btnY = dieCardY + dieCardH + 4;
-        if (inRect(mx,my,{x:cx,y:btnY,w:dieCardW,h:20})) {
-          // Unequip all runes on this die back to inventory
-          if (diceRunes[di]) {
-            for (const r of diceRunes[di]) { if (r) runeInventory.push(r); }
-          }
-          const refund = upg ? Math.floor(upg.cost / 2) : 0;
-          shards += refund;
-          if (refund > 0) floatText(cx + dieCardW/2, dieCardY + dieCardH - 10, `+◆${refund}`, '#b8a874', 14);
-          if (isExtra) {
-            diceUpgrades.splice(di, 1);
-            diceRunes.splice(di, 1);
-          } else {
-            diceUpgrades[di] = null;
-            diceRunes[di] = Array(MAX_RUNE_SLOTS).fill(null);
-          }
-          runeSelInv = null; runeSelSlot = null;
-          SFX.unlock(); burst(cx + dieCardW/2, dieCardY + dieCardH/2, '#ff4466', 8, 3);
-          return;
-        }
-      }
       // Rune slot clicks
       const slotW = Math.round(dieCardW/2 - 14*sc);
       const slotH = Math.round(46*sc);
@@ -2366,7 +2277,7 @@ function handleClick(mx, my) {
       }
     }
     // Inventory rune clicks
-    const invY = dieCardY + dieCardH + 32;
+    const invY = dieCardY + dieCardH + 12;
     for (let ri = 0; ri < runeInventory.length; ri++) {
       const rx = 80 + ri * 90;
       if (inRect(mx,my,{x:rx,y:invY,w:80,h:100})) {
@@ -2382,10 +2293,24 @@ function handleClick(mx, my) {
     // Pause button (top-right corner of right panel)
     if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { paused=!paused; return; }
     if (rolledOnce && !handInProgress) {
+      // Tray reorder arrows (shown below each occupied slot when >1 die held)
+      if (trayOrder.length > 1) {
+        const arrowY = HOLD_Y + HOLD_H + 4;
+        for (let slot = 0; slot < trayOrder.length; slot++) {
+          const sx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP);
+          if (slot > 0 && inRect(mx, my, {x:sx, y:arrowY, w:22, h:18})) {
+            [trayOrder[slot-1], trayOrder[slot]] = [trayOrder[slot], trayOrder[slot-1]];
+            SFX.unlock(); return;
+          }
+          if (slot < trayOrder.length-1 && inRect(mx, my, {x:sx+HOLD_SLOT_W-22, y:arrowY, w:22, h:18})) {
+            [trayOrder[slot], trayOrder[slot+1]] = [trayOrder[slot+1], trayOrder[slot]];
+            SFX.unlock(); return;
+          }
+        }
+      }
       for (let i = 0; i < dice.length; i++) {
-        // Locked dice in the tray get the full slot as their touch target; board dice use die size
-        const hs = dice[i].locked ? HOLD_SLOT_W / 2 : DICE_SIZE / 2;
-        if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:hs*2, h:hs*2})) {
+        const hs = DICE_SIZE / 2;
+        if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:DICE_SIZE, h:DICE_SIZE})) {
           if (!dice[i].locked && heldCount() >= MAX_HELD) {
             floatText(dice[i].absX, dice[i].absY - 30, `Held full (${MAX_HELD})`, '#ff8844', 12);
             return;
@@ -3271,51 +3196,43 @@ function drawGame(t) {
     ctx.textAlign = 'center';
     ctx.fillText('— HELD —', CP.x + CP.w/2, HOLD_Y - 4);
     ctx.restore();
-    // Slot outlines — highlight drag source (dashed) and drop target (violet glow)
+    // Slot outlines
     const held = heldCount();
-    // Find nearest drop-target slot while dragging
-    let dropTarget = -1;
-    if (dragTraySlot !== -1) {
-      let bestDist = Infinity;
-      for (let slot = 0; slot < trayOrder.length; slot++) {
-        const cx = HOLD_X0 + slot*(HOLD_SLOT_W+HOLD_GAP) + HOLD_SLOT_W/2;
-        const d2 = Math.abs(hoverX - cx);
-        if (d2 < bestDist) { bestDist = d2; dropTarget = slot; }
-      }
-    }
     for (let si = 0; si < MAX_HELD; si++) {
-      const sx  = HOLD_X0 + si*(HOLD_SLOT_W + HOLD_GAP);
-      const sy  = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
-      const isDragSrc  = si === dragTraySlot;
-      const isDropTgt  = si === dropTarget && dragTraySlot !== -1 && si !== dragTraySlot;
-      const filled     = si < held && !isDragSrc;
+      const sx = HOLD_X0 + si*(HOLD_SLOT_W + HOLD_GAP);
+      const sy = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
+      const filled = si < held;
       ctx.save();
-      if (isDragSrc) {
-        ctx.strokeStyle = 'rgba(200,153,96,0.18)';
-        ctx.setLineDash([4, 4]);
-        ctx.lineWidth = 1;
-      } else if (isDropTgt) {
-        ctx.strokeStyle = 'rgba(180,100,255,0.9)';
-        ctx.shadowColor = '#aa55ff'; ctx.shadowBlur = 10;
-        ctx.lineWidth = 2;
-      } else {
-        ctx.strokeStyle = filled ? 'rgba(200,153,96,0.45)' : 'rgba(200,153,96,0.12)';
-        ctx.setLineDash(filled ? [] : [3, 3]);
-        ctx.lineWidth = 1;
-      }
+      ctx.strokeStyle = filled ? 'rgba(200,153,96,0.45)' : 'rgba(200,153,96,0.12)';
+      ctx.setLineDash(filled ? [] : [3, 3]);
+      ctx.lineWidth = 1;
       roundRect(sx, sy, HOLD_SLOT_W, HOLD_SLOT_W, 6);
       ctx.stroke();
       ctx.restore();
-      // Slot order number (subtle, inside each filled slot)
-      if (si < trayOrder.length && trayOrder.length > 1 && !isDragSrc) {
-        txt(`${si+1}`, sx + HOLD_SLOT_W/2, HOLD_Y + HOLD_H - 5, {size:7, color:'rgba(200,160,255,0.35)', align:'center', bold:true});
+    }
+    // Reorder arrows + slot numbers (shown when 2+ dice held)
+    if (rolledOnce && !handInProgress && trayOrder.length > 1) {
+      const arrowY = HOLD_Y + HOLD_H + 4;
+      for (let slot = 0; slot < trayOrder.length; slot++) {
+        const sx = HOLD_X0 + slot*(HOLD_SLOT_W + HOLD_GAP);
+        txt(`${slot+1}`, sx + HOLD_SLOT_W/2, arrowY + 13, {size:8, color:'rgba(200,160,255,0.45)', align:'center', bold:true});
+        if (slot > 0) {
+          const hov = inRect(hoverX, hoverY, {x:sx, y:arrowY, w:22, h:18});
+          drawRoundRect(sx, arrowY, 22, 18, 4, hov?'rgba(180,140,255,0.22)':'rgba(80,60,120,0.12)', hov?'#aa66ff':'#442280', 1);
+          txt('◀', sx+11, arrowY+13, {size:9, color:hov?'#cc88ff':'#7755aa', align:'center'});
+        }
+        if (slot < trayOrder.length-1) {
+          const rx = sx + HOLD_SLOT_W - 22;
+          const hov = inRect(hoverX, hoverY, {x:rx, y:arrowY, w:22, h:18});
+          drawRoundRect(rx, arrowY, 22, 18, 4, hov?'rgba(180,140,255,0.22)':'rgba(80,60,120,0.12)', hov?'#aa66ff':'#442280', 1);
+          txt('▶', rx+11, arrowY+13, {size:9, color:hov?'#cc88ff':'#7755aa', align:'center'});
+        }
       }
     }
   }
 
-  // Dice (3D) — positions driven by absX/absY physics; skip dragged die (drawn as ghost at cursor)
+  // Dice (3D) — positions driven by absX/absY physics
   for (let i = 0; i < dice.length; i++) {
-    if (dragTraySlot !== -1 && i === trayOrder[dragTraySlot]) continue;
     const d = dice[i];
     drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
     const upg = diceUpgrades[i];
@@ -3439,7 +3356,7 @@ function drawGame(t) {
   drawBtn(BTN_PLAY, 'Play Hand  ✦', canPlay, canPlay || oneShot);
 
   if (rolledOnce && !handInProgress)
-    txt(trayOrder.length > 1 ? 'Click to hold · drag held dice to reorder' : 'Click dice to hold / release them',
+    txt(trayOrder.length > 1 ? 'Click dice to hold · ◀▶ to reorder' : 'Click dice to hold / release them',
       CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
@@ -3605,9 +3522,44 @@ function drawGame(t) {
     txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+120, {size:13,color:'#8844ee',align:'center',bold:true});
   }
 
-  txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+150, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt('Total Score', RP.x+RP.w/2, RP.y+176, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, RP.y+196, {size:15,color:'#e6c590',align:'center',bold:true});
+  txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+148, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
+  txt('Total Score', RP.x+RP.w/2, RP.y+166, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
+  txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, RP.y+184, {size:15,color:'#e6c590',align:'center',bold:true});
+
+  // Hand preview panel (right side, shows estimate of current held hand)
+  if (rolledOnce && !handInProgress) {
+    const prevData = previewHand();
+    const pvy = RP.y + 206;
+    drawRoundRect(RP.x+6, pvy-6, RP.w-12, 110, 8, 'rgba(10,4,24,0.7)', 'rgba(80,50,140,0.45)', 1);
+    txt('HAND PREVIEW', RP.x+RP.w/2, pvy+8, {size:8, color:'rgba(180,160,220,0.6)', align:'center', bold:true});
+    if (prevData) {
+      const col = COMBO_COLORS[prevData.combo.tier] || '#aaa';
+      txt(prevData.combo.name, RP.x+RP.w/2, pvy+24, {size:11, color:col, align:'center', bold:true, shadow:col});
+      // chips × mult
+      txt(`${prevData.chips}`, RP.x+RP.w/2-28, pvy+44, {size:16, color:'#c89960', align:'center', bold:true});
+      txt('×', RP.x+RP.w/2, pvy+42, {size:12, color:'rgba(200,180,140,0.7)', align:'center'});
+      txt(`${prevData.mult}`, RP.x+RP.w/2+28, pvy+44, {size:16, color:'#ee3388', align:'center', bold:true});
+      // Total with one-shot glow
+      const willClear = prevData.total + roundScore >= currentTarget();
+      if (willClear) {
+        const gp = 0.5 + 0.4*Math.sin(t*3.2);
+        ctx.save();
+        ctx.shadowColor = '#cc44ff'; ctx.shadowBlur = 16 + 10*Math.sin(t*3.2);
+        ctx.strokeStyle = `rgba(190,100,255,${gp})`;
+        ctx.lineWidth = 2;
+        roundRect(RP.x+16, pvy+54, RP.w-32, 26, 6);
+        ctx.stroke(); ctx.restore();
+        txt('= ' + prevData.total.toLocaleString(), RP.x+RP.w/2, pvy+71, {size:13, color:'#eeddff', align:'center', bold:true});
+        txt('ONE SHOT!', RP.x+RP.w/2, pvy+88, {size:8, color:`rgba(220,160,255,${0.6+0.3*Math.sin(t*3.2)})`, align:'center', bold:true});
+      } else {
+        txt('= ' + prevData.total.toLocaleString(), RP.x+RP.w/2, pvy+71, {size:13, color:'#c8b8e8', align:'center', bold:true});
+        const need = currentTarget() - roundScore - prevData.total;
+        txt(`need ${need.toLocaleString()} more`, RP.x+RP.w/2, pvy+88, {size:8, color:'rgba(180,160,200,0.45)', align:'center'});
+      }
+    } else {
+      txt('Hold dice to preview', RP.x+RP.w/2, pvy+44, {size:10, color:'rgba(160,140,200,0.4)', align:'center'});
+    }
+  }
 
   // Exit portal
   exitPortalPulse += 0.05;
@@ -3624,18 +3576,6 @@ function drawGame(t) {
   drawFloaters();
   drawComboPop();
   drawBanner();
-
-  // Drag ghost — draw dragged die at cursor with glow
-  if (dragTraySlot !== -1 && trayOrder[dragTraySlot] !== undefined) {
-    const di = trayOrder[dragTraySlot];
-    const pulse = 0.7 + 0.2*Math.sin(t*6);
-    ctx.save();
-    ctx.globalAlpha = 0.88;
-    ctx.shadowColor = '#aa55ff';
-    ctx.shadowBlur  = 18 * pulse;
-    drawDie3D(dice[di], hoverX, hoverY, DICE_SIZE, diceUpgrades[di]);
-    ctx.restore();
-  }
 
   if (flashAlpha > 0) {
     ctx.save(); ctx.globalAlpha=flashAlpha; ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
@@ -3740,6 +3680,38 @@ function drawShop(t) {
       txt(canAfford?'click to buy':poolFull?'pool full':'not enough shards',
         ux+upgW/2, uy+114, {size:9,color:canAfford?'rgba(255,200,80,0.7)':'rgba(200,170,120,0.35)',align:'center'});
     });
+
+    // ── Sell from pool ──────────────────────────────────────────────────
+    const N = diceUpgrades.length;
+    txt('SELL FROM YOUR POOL', W/2, 292, {size:9, color:'rgba(200,150,100,0.6)', align:'center', bold:true});
+    const sellCardW=68, sellCardH=88, sellGap=8;
+    const sellTotalW = N*(sellCardW+sellGap) - sellGap;
+    const sellX0 = W/2 - sellTotalW/2;
+    for (let i = 0; i < N; i++) {
+      const sx = sellX0 + i*(sellCardW+sellGap), sy = 302;
+      const upg = diceUpgrades[i];
+      const refund = upg ? Math.floor(upg.cost/2) : 1;
+      const cantSell = N <= 1;
+      const cardHov = inRect(hoverX, hoverY, {x:sx, y:sy, w:sellCardW, h:sellCardH});
+      drawRoundRect(sx, sy, sellCardW, sellCardH, 8,
+        cardHov&&!cantSell ? 'rgba(18,6,36,0.95)' : 'rgba(10,3,24,0.85)',
+        upg ? upg.color : 'rgba(180,180,180,0.35)', 1.2);
+      drawDieMini(sx+sellCardW/2, sy+24, 22, upg || {id:'plain',name:'Plain Die',icon:'⚄',color:'#e0d3b8'});
+      txt(upg ? upg.shortName : 'Plain', sx+sellCardW/2, sy+44, {size:7, color:upg?upg.color:'#aab8cc', align:'center', bold:true});
+      if (!cantSell) {
+        const btnHov = inRect(hoverX, hoverY, {x:sx+4, y:sy+52, w:sellCardW-8, h:28});
+        drawRoundRect(sx+4, sy+52, sellCardW-8, 28, 5,
+          btnHov ? 'rgba(200,40,60,0.3)' : 'rgba(140,20,40,0.15)',
+          btnHov ? '#ff4466' : '#882244', 1);
+        txt(`Sell`, sx+sellCardW/2, sy+64, {size:8, color:btnHov?'#ff8899':'#cc6677', align:'center', bold:true});
+        txt(`◆${refund}`, sx+sellCardW/2, sy+75, {size:8, color:btnHov?'#ffaaaa':'#aa5566', align:'center', bold:true});
+        if (btnHov) markHover(`shopSell:${i}`, `Sell ${upg?upg.name:'Plain Die'}`,
+          upg?`Refunds ◆${refund} shards. Runes returned to inventory.`:`Refunds ◆1 shard. Runes returned.`,
+          {color:'#ff4466'});
+      } else {
+        txt('min 1', sx+sellCardW/2, sy+68, {size:7, color:'rgba(180,100,100,0.45)', align:'center'});
+      }
+    }
   }
 
   drawParticles(); drawFloaters();
@@ -4030,24 +4002,10 @@ function drawRuneTable(t) {
       }
     }
 
-    // Sell / drop button below card
-    if (upg || isExtra) {
-      const btnY = cy + dieCardH + 4;
-      const btnH = 20;
-      const refund = upg ? Math.floor(upg.cost / 2) : 0;
-      const label = isExtra ? `Sell ◆${refund}` : `Sell ◆${refund}`;
-      const btnHov = inRect(hoverX, hoverY, {x:cx, y:btnY, w:dieCardW, h:btnH});
-      drawRoundRect(cx, btnY, dieCardW, btnH, 5,
-        btnHov ? 'rgba(200,40,60,0.25)' : 'rgba(160,20,40,0.12)',
-        btnHov ? '#ff4466' : '#882244', 1);
-      txt(label, cx + dieCardW/2, btnY + 13,
-        {size:Math.max(7, Math.round(9*sc)), color: btnHov ? '#ff8899' : '#cc6677', align:'center', bold:true});
-      if (btnHov) markHover(`sellDie:${di}`, label, isExtra ? 'Remove this die from your pool' : 'Strip the upgrade off this die slot', {color:'#ff4466'});
-    }
   }
 
-  // Inventory section — pushed down to clear sell buttons
-  const invY = dieCardY + dieCardH + 32;
+  // Inventory section
+  const invY = dieCardY + dieCardH + 12;
   txt('YOUR RUNES', 80, invY - 8, {size:9, color:'rgba(180,160,220,0.55)', align:'left', bold:true});
 
   if (runeInventory.length === 0) {
@@ -4426,11 +4384,10 @@ function loop(now) {
   lastT = now;
   const t = now / 1000;
 
-  // Assign held dice to tray slots using trayOrder (enables drag reordering)
+  // Assign held dice to tray slots using trayOrder (enables reordering)
   {
     for (const d of dice) d.holdSlot = -1;
     for (let slot = 0; slot < trayOrder.length; slot++) {
-      if (slot === dragTraySlot) continue; // dragged die floats freely
       const d = dice[trayOrder[slot]];
       if (d) d.holdSlot = slot;
     }
@@ -4576,10 +4533,10 @@ function loop(now) {
     // Glide between holding tray and last board position based on lock state
     if (!d.rolling) {
       let tx = null, ty = null;
-      if (d.locked && d.holdSlot >= 0) {
-        const slot = holdSlotCenter(d.holdSlot);
+      if (d.locked) {
+        const slot = holdSlotCenter(d.holdSlot != null ? d.holdSlot : 0);
         tx = slot.x; ty = slot.y;
-      } else if (!d.locked && d.homeX != null) {
+      } else if (d.homeX != null) {
         tx = d.homeX; ty = d.homeY;
       }
       if (tx != null) {
