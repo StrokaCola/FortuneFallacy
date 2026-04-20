@@ -1152,7 +1152,7 @@ async function fetchOnlineScores() {
   if (onlineLoading || FIREBASE_URL === 'YOUR_FIREBASE_URL_HERE') return;
   onlineLoading = true;
   try {
-    const res = await fetch(`${FIREBASE_URL}.json?limitToLast=200`);
+    const res = await fetch(`${FIREBASE_URL}.json?orderBy="$key"&limitToLast=200`);
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     onlineScores = data
