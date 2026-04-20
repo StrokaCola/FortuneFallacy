@@ -270,11 +270,18 @@ function drawRings() {
     const alp  = (1-t) * 0.88;
     const thick = (r.maxR > 100 ? 4 : 2.5) * (1-t) + 0.5;
     ctx.save();
-    ctx.globalAlpha  = alp;
+    // Additive blend so overlapping rings bloom naturally
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha  = alp * 0.75;
     ctx.strokeStyle  = r.color;
     ctx.shadowColor  = r.color;
-    ctx.shadowBlur   = (r.maxR > 80 ? 22 : 12) * (1-t);
+    ctx.shadowBlur   = (r.maxR > 80 ? 32 : 18) * (1-t);
     ctx.lineWidth    = thick;
+    ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(1, rad), 0, Math.PI*2); ctx.stroke();
+    // Second slightly-offset pass for glow width
+    ctx.globalAlpha  = alp * 0.30;
+    ctx.shadowBlur   = (r.maxR > 80 ? 55 : 30) * (1-t);
+    ctx.lineWidth    = thick * 2.5;
     ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(1, rad), 0, Math.PI*2); ctx.stroke();
     ctx.restore();
   }
@@ -333,13 +340,31 @@ function drawParticles() {
     if (p.spark) {
       const spd = Math.hypot(p.vx, p.vy);
       if (spd > 0.2) {
-        const len = (p.len || 5) * (1 - p.age/p.life);
-        ctx.strokeStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 4;
-        ctx.lineWidth = 1.5;
+        const ageFrac = p.age / p.life;
+        const len = (p.len || 5) * (1 - ageFrac);
+        // Color gradient: bright white/yellow tip fading to base color tail
+        const tipAlpha = Math.max(0, (1 - ageFrac * 1.8));
+        const tailX = p.x - (p.vx / spd) * len;
+        const tailY = p.y - (p.vy / spd) * len;
+        const grad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+        grad.addColorStop(0, `rgba(255,255,240,${tipAlpha.toFixed(3)})`);
+        grad.addColorStop(0.35, p.color);
+        grad.addColorStop(1, 'rgba(80,20,0,0)');
+        ctx.strokeStyle = grad;
+        ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+        ctx.lineWidth = 2.2 * (1 - ageFrac * 0.6);
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - (p.vx/spd)*len, p.y - (p.vy/spd)*len);
+        ctx.lineTo(tailX, tailY);
         ctx.stroke();
+        // Bright core dot at tip
+        if (tipAlpha > 0.1) {
+          ctx.shadowBlur   = 8;
+          ctx.fillStyle    = `rgba(255,255,220,${(tipAlpha * 0.9).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     } else if (p.lavaDrop) {
       const spd    = Math.hypot(p.vx, p.vy);
@@ -368,9 +393,16 @@ function drawParticles() {
       ctx.fill();
       ctx.restore();
     } else {
-      ctx.fillStyle   = p.color;
-      ctx.shadowColor = p.color; ctx.shadowBlur = 6;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      // Burst particle — radial gradient with bright hot core
+      const ageFrac = Math.max(0, p.age / p.life);
+      const cr = Math.max(0.5, p.r * (1 - ageFrac * 0.4));
+      const cg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, cr);
+      cg.addColorStop(0,   `rgba(255,255,230,${Math.min(1, (1-ageFrac)*1.5).toFixed(3)})`);
+      cg.addColorStop(0.3, p.color);
+      cg.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle   = cg;
+      ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, cr, 0, Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
@@ -689,9 +721,45 @@ const EMBERS = Array.from({ length: 52 }, (_, i) => ({
   cyan: i % 3 === 0, // one-third are cyan, rest violet
 }));
 
+// Star field — 280 fixed stars, varied size and twinkle phase
+const STARS = Array.from({ length: 280 }, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  r: Math.random() < 0.08 ? 1.4 + Math.random() * 0.8  // bright stars
+    : Math.random() < 0.25 ? 0.8 + Math.random() * 0.5  // medium stars
+    : 0.3 + Math.random() * 0.4,                          // dim stars
+  ph: Math.random() * Math.PI * 2,
+  spd: 0.4 + Math.random() * 1.2,
+  blue: Math.random() < 0.15,  // slightly blue-white
+}));
+
 function drawBG(t) {
   ctx.fillStyle = '#040410';
   ctx.fillRect(0, 0, W, H);
+
+  // Star field — drawn first so everything layers on top
+  ctx.save();
+  for (const s of STARS) {
+    const twinkle = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * s.spd + s.ph), 1.8);
+    const alpha   = twinkle * (s.r > 1.2 ? 0.95 : s.r > 0.7 ? 0.65 : 0.42);
+    if (s.blue) {
+      ctx.fillStyle = `rgba(200,220,255,${alpha.toFixed(3)})`;
+    } else {
+      ctx.fillStyle = `rgba(240,238,255,${alpha.toFixed(3)})`;
+    }
+    if (s.r > 1.0) {
+      // Bright stars get a tiny cross-hair glint
+      ctx.shadowColor = s.blue ? 'rgba(160,200,255,0.8)' : 'rgba(220,215,255,0.8)';
+      ctx.shadowBlur  = s.r * 3.5;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r * twinkle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  ctx.restore();
 
   // Electric void bloom from top-center
   const g1 = ctx.createRadialGradient(W*0.5, -H*0.05, 20, W*0.5, H*0.4, W*0.75);
@@ -714,32 +782,40 @@ function drawBG(t) {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // Arcane rings — slow-rotating concentric circles with tick marks
+  // Arcane rings — slow-rotating concentric circles with tick marks and glow
   ctx.save();
   const ringDefs = [
-    { r: 148, color: '#7733ee', ticks: 6, speed:  0.040 },
-    { r: 240, color: '#22aadd', ticks: 8, speed: -0.025 },
-    { r: 332, color: '#5522bb', ticks: 6, speed:  0.016 },
+    { r: 148, color: '#9944ff', shadowColor: 'rgba(140,60,255,0.6)', ticks: 6, speed:  0.040, tickLen: 8 },
+    { r: 196, color: '#4455dd', shadowColor: 'rgba(60,80,220,0.4)', ticks: 12, speed: 0.018, tickLen: 4 },
+    { r: 240, color: '#22ccee', shadowColor: 'rgba(30,180,230,0.5)', ticks: 8, speed: -0.025, tickLen: 8 },
+    { r: 332, color: '#6633cc', shadowColor: 'rgba(90,40,200,0.4)', ticks: 6, speed:  0.016, tickLen: 6 },
   ];
+  const arcPulse = 0.8 + 0.2 * Math.sin(t * 0.55);
   for (const rd of ringDefs) {
     const rot = t * rd.speed;
-    ctx.globalAlpha = 0.055;
+    // Glowing ring
+    ctx.globalAlpha = 0.12 * arcPulse;
+    ctx.shadowColor = rd.shadowColor;
+    ctx.shadowBlur  = 8;
     ctx.strokeStyle = rd.color;
-    ctx.lineWidth = 0.9;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.arc(W/2, H/2, rd.r, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.globalAlpha = 0.08;
-    ctx.lineWidth = 1.2;
+    // Tick marks with stronger glow
+    ctx.globalAlpha = 0.18 * arcPulse;
+    ctx.shadowBlur  = 6;
+    ctx.lineWidth = 1.4;
     for (let k = 0; k < rd.ticks; k++) {
       const a = rot + (k / rd.ticks) * Math.PI * 2;
       const cos = Math.cos(a), sin = Math.sin(a);
       ctx.beginPath();
-      ctx.moveTo(W/2 + cos * (rd.r - 6), H/2 + sin * (rd.r - 6));
-      ctx.lineTo(W/2 + cos * (rd.r + 6), H/2 + sin * (rd.r + 6));
+      ctx.moveTo(W/2 + cos * (rd.r - rd.tickLen), H/2 + sin * (rd.r - rd.tickLen));
+      ctx.lineTo(W/2 + cos * (rd.r + rd.tickLen), H/2 + sin * (rd.r + rd.tickLen));
       ctx.stroke();
     }
   }
+  ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
   ctx.restore();
 
@@ -2411,6 +2487,32 @@ function drawDie3D(die, cx, cy, size, upg) {
     ctx.stroke();
     ctx.restore();
 
+    // Rim light — cinematic back-light from bottom-left opposite to key light
+    // Strongest on side faces that face the rim direction but are camera-visible
+    if (!isTop) {
+      const rimDot = Math.max(0, fd.nx * (-0.55) + fd.ny * 0.62 + fd.nz * 0.08);
+      if (rimDot > 0.05) {
+        ctx.save();
+        chamferPath(q, CH * 1.6);
+        const rimStr = rimDot * (die.locked ? 0.55 : 0.45);
+        const rimA   = (rimStr * 0.9).toFixed(3);
+        if (die.locked) {
+          ctx.strokeStyle = `rgba(255,210,120,${rimA})`;
+          ctx.shadowColor = 'rgba(255,190,80,0.7)';
+        } else if (upgColor) {
+          ctx.strokeStyle = `rgba(${(ur*200+55)|0},${(ug*180+55)|0},${(ub*220+35)|0},${rimA})`;
+          ctx.shadowColor = upgColor;
+        } else {
+          ctx.strokeStyle = `rgba(140,110,255,${rimA})`;
+          ctx.shadowColor = 'rgba(120,80,255,0.6)';
+        }
+        ctx.shadowBlur  = 5 * rimStr;
+        ctx.lineWidth   = 1.8;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     // Hover/locked glow stroke on top face only
     if ((die.locked || isHov) && isTop) {
       ctx.save();
@@ -2491,7 +2593,32 @@ function drawDie3D(die, cx, cy, size, upg) {
   if (die.scoring) {
     const t = die.scoringT || 0;
     ctx.save();
-    ctx.shadowColor = upgColor || '#ffe066'; ctx.shadowBlur = 14;
+    // Light rays — additive crepuscular spikes radiating from scoring die
+    const rayT = Math.min(1, t / 0.22);
+    if (rayT < 1) {
+      ctx.globalCompositeOperation = 'lighter';
+      const rayCount = 12;
+      const rayBase  = hs * (1.1 + rayT * 0.4);
+      const rayColor = upgColor || '#ffe066';
+      for (let ri = 0; ri < rayCount; ri++) {
+        const angle = (ri / rayCount) * Math.PI * 2 + t * 2.5;
+        const len   = rayBase + (ri % 3 === 0 ? hs * 1.8 : hs * 0.7) * (1 - rayT);
+        const alpha = (1 - rayT) * (ri % 3 === 0 ? 0.55 : 0.28);
+        ctx.globalAlpha  = alpha;
+        ctx.strokeStyle  = rayColor;
+        ctx.shadowColor  = rayColor;
+        ctx.shadowBlur   = 8;
+        ctx.lineWidth    = ri % 3 === 0 ? 2.5 : 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * hs * 1.05, cy + by + Math.sin(angle) * hs * 0.98);
+        ctx.lineTo(cx + Math.cos(angle) * len,        cy + by + Math.sin(angle) * len * 0.94);
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+    // Pulsing ring border
+    ctx.shadowColor = upgColor || '#ffe066'; ctx.shadowBlur = 18;
     ctx.strokeStyle = upgColor ? `rgba(${(ur*255)|0},${(ug*255)|0},${(ub*255)|0},0.95)` : 'rgba(255,228,60,0.95)';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -2500,7 +2627,7 @@ function drawDie3D(die, cx, cy, size, upg) {
     const ringT = Math.min(1, t / 0.35);
     if (ringT < 1) {
       ctx.globalAlpha = (1 - ringT) * 0.85;
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 8;
       ctx.lineWidth = 3 * (1 - ringT) + 1;
       ctx.strokeStyle = '#ffffff';
       const rr = hs * (1.2 + ringT * 1.8);
@@ -2526,16 +2653,34 @@ function drawDie3D(die, cx, cy, size, upg) {
     ctx.restore();
   }
 
-  // Glow halo for locked / hovered
+  // Glow halo for locked / hovered — additive bloom passes for cinematic depth
   if (die.locked || isHov) {
-    ctx.shadowColor = die.locked ? '#c89960' : glowColor;
-    ctx.shadowBlur  = die.locked ? 24 : 14;
-    ctx.strokeStyle = die.locked ? 'rgba(200,153,96,0.75)' : upgColor ? `rgba(${(ur*255)|0},${(ug*200)|0},${(ub*255)|0},0.65)` : 'rgba(119,51,238,0.65)';
-    ctx.lineWidth   = 2.5;
+    ctx.save();
+    // Outer diffuse bloom (additive — overlapping dice brighten naturally)
+    ctx.globalCompositeOperation = 'lighter';
+    const bloomColor = die.locked ? 'rgba(200,140,60,0.12)' : upgColor ? `rgba(${(ur*180)|0},${(ug*120)|0},${(ub*200)|0},0.10)` : 'rgba(90,40,200,0.10)';
+    ctx.fillStyle = bloomColor;
     ctx.beginPath();
-    ctx.ellipse(cx, cy + by, hs * 1.13, hs * 1.06, 0, 0, Math.PI*2);
+    ctx.ellipse(cx, cy + by, hs * 2.2, hs * 2.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // Inner sharp ring
+    ctx.shadowColor = die.locked ? '#c89960' : glowColor;
+    ctx.shadowBlur  = die.locked ? 28 : 16;
+    ctx.strokeStyle = die.locked ? 'rgba(220,165,100,0.80)' : upgColor ? `rgba(${(ur*255)|0},${(ug*200)|0},${(ub*255)|0},0.68)` : 'rgba(130,60,255,0.68)';
+    ctx.lineWidth   = die.locked ? 3.0 : 2.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + by, hs * 1.13, hs * 1.06, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Second pass — ultra-soft wide glow
+    ctx.shadowBlur  = die.locked ? 45 : 28;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + by, hs * 1.35, hs * 1.26, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   // Drop shadow on board
