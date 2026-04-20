@@ -2151,6 +2151,7 @@ function handleClick(mx, my) {
             shards-=upg.cost;
             runStats.totalShardsSpent+=upg.cost;
             diceUpgrades.push({...upg});
+            diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
             shopStock.upgrades.splice(i,1);
             SFX.oracle(); burst(mx,my,upg.color,14,4.5);
             floatText(mx,my-18,`+${upg.shortName} die`,upg.color,13);
@@ -2177,14 +2178,43 @@ function handleClick(mx, my) {
   if (screen === 'rune') {
     // Back button
     if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
-    const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
-    // Die slot clicks
-    for (let di = 0; di < DICE_COUNT; di++) {
+    const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
+    const sc = dieCardW / 148;
+    // Die slot and sell button clicks
+    for (let di = 0; di < poolSize; di++) {
       const cx = dieCardX + di*(dieCardW+dieCardGap);
+      // Sell / drop button
+      const upg = diceUpgrades[di];
+      const isExtra = di >= DICE_COUNT;
+      if (upg || isExtra) {
+        const btnY = dieCardY + dieCardH + 4;
+        if (inRect(mx,my,{x:cx,y:btnY,w:dieCardW,h:20})) {
+          // Unequip all runes on this die back to inventory
+          if (diceRunes[di]) {
+            for (const r of diceRunes[di]) { if (r) runeInventory.push(r); }
+          }
+          const refund = upg ? Math.floor(upg.cost / 2) : 0;
+          shards += refund;
+          if (refund > 0) floatText(cx + dieCardW/2, dieCardY + dieCardH - 10, `+◆${refund}`, '#b8a874', 14);
+          if (isExtra) {
+            diceUpgrades.splice(di, 1);
+            diceRunes.splice(di, 1);
+          } else {
+            diceUpgrades[di] = null;
+            diceRunes[di] = Array(MAX_RUNE_SLOTS).fill(null);
+          }
+          runeSelInv = null; runeSelSlot = null;
+          SFX.unlock(); burst(cx + dieCardW/2, dieCardY + dieCardH/2, '#ff4466', 8, 3);
+          return;
+        }
+      }
+      // Rune slot clicks
+      const slotW = Math.round(dieCardW/2 - 14*sc);
+      const slotH = Math.round(46*sc);
+      const slotY = dieCardY + dieCardH - Math.round(58*sc);
       for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
-        const sx = cx + 10 + si*(dieCardW/2-12);
-        const sy = dieCardY + dieCardH - 60;
-        if (inRect(mx,my,{x:sx,y:sy,w:dieCardW/2-16,h:46})) {
+        const sx = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
+        if (inRect(mx,my,{x:sx,y:slotY,w:slotW,h:slotH})) {
           if (runeSelInv !== null) {
             // Place selected inventory rune into this slot
             const prev = diceRunes[di][si];
@@ -2204,10 +2234,10 @@ function handleClick(mx, my) {
       }
     }
     // Inventory rune clicks
-    const invY = dieCardY + dieCardH + 50;
+    const invY = dieCardY + dieCardH + 32;
     for (let ri = 0; ri < runeInventory.length; ri++) {
       const rx = 80 + ri * 90;
-      if (inRect(mx,my,{x:rx,y:invY,w:80,h:80})) {
+      if (inRect(mx,my,{x:rx,y:invY,w:80,h:100})) {
         runeSelInv = (runeSelInv === ri) ? null : ri;
         runeSelSlot = null;
         return;
@@ -3692,13 +3722,14 @@ function drawDieMini(cx, cy, sz, upg) {
 // ─── SCREEN: Forge ────────────────────────────────────────────────────
 // ─── Rune Table ───────────────────────────────────────────────────────
 function runeTableLayout() {
-  const dieCardW   = 148;
-  const dieCardH   = 200;
-  const dieCardGap = 18;
-  const totalW     = DICE_COUNT * dieCardW + (DICE_COUNT - 1) * dieCardGap;
+  const poolSize   = diceUpgrades.length;
+  const gap        = poolSize <= 5 ? 18 : 6;
+  const dieCardW   = poolSize <= 5 ? 148 : Math.floor((W - 40 - (poolSize - 1) * gap) / poolSize);
+  const dieCardH   = Math.round(dieCardW * 200 / 148);
+  const totalW     = poolSize * dieCardW + (poolSize - 1) * gap;
   const dieCardX   = (W - totalW) / 2;
   const dieCardY   = 96;
-  return { dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap };
+  return { dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap: gap, poolSize };
 }
 
 function drawRuneSlotBox(x, y, w, h, rune, selected) {
@@ -3733,21 +3764,26 @@ function drawRuneTable(t) {
   txt('✦ RUNE TABLE', W/2, 44, {size:24, color:'#cc88ff', align:'center', bold:true, shadow:'#9944cc'});
   txt('Enchant your dice — select a rune then click a slot', W/2, 68, {size:12, color:'rgba(180,160,220,0.7)', align:'center'});
 
-  const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap} = runeTableLayout();
+  const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
+  const sc = dieCardW / 148;
 
   // Die cards
-  for (let di = 0; di < DICE_COUNT; di++) {
+  for (let di = 0; di < poolSize; di++) {
     const cx = dieCardX + di * (dieCardW + dieCardGap);
     const cy = dieCardY;
     const upg = diceUpgrades[di];
     const tierCol = upg ? upg.color : '#556070';
+    const isExtra = di >= DICE_COUNT;
 
     // Card background
     drawRoundRect(cx, cy, dieCardW, dieCardH, 10, 'rgba(14,10,28,0.92)', tierCol, 1.5);
+    if (isExtra) {
+      drawRoundRect(cx, cy, dieCardW, dieCardH, 10, 'transparent', '#3355aa', 1);
+    }
 
     // Tooltip for die card (upper portion, above rune slots)
-    const slotY_check = cy + dieCardH - 58;
-    if (inRect(hoverX, hoverY, {x:cx, y:cy, w:dieCardW, h:slotY_check - cy})) {
+    const slotY_base = cy + dieCardH - Math.round(58 * sc);
+    if (inRect(hoverX, hoverY, {x:cx, y:cy, w:dieCardW, h:slotY_base - cy})) {
       const tipName = upg ? upg.name : 'Plain Die';
       const tipColor = upg ? upg.color : '#aab8cc';
       markHover(`runeTableDie:${di}`, tipName, dieTooltipBody(di), { color: tipColor });
@@ -3756,24 +3792,25 @@ function drawRuneTable(t) {
     // Die preview
     ctx.save();
     ctx.beginPath();
-    ctx.rect(cx+4, cy+4, dieCardW-8, 100);
+    ctx.rect(cx+4, cy+4, dieCardW-8, Math.round(100*sc));
     ctx.clip();
-    drawDieMini(cx + dieCardW/2, cy + 52, 44, upg || {id:'plain', name:'Plain Die', icon:'⚄', color:'#e0d3b8'});
+    drawDieMini(cx + dieCardW/2, cy + Math.round(52*sc), Math.round(44*sc), upg || {id:'plain', name:'Plain Die', icon:'⚄', color:'#e0d3b8'});
     ctx.restore();
 
     // Die name
-    txt(upg ? upg.name : 'Plain Die', cx + dieCardW/2, cy + 114,
-      {size:10, color: upg ? upg.color : '#aab8cc', align:'center', bold:true});
+    txt(upg ? upg.name : 'Plain Die', cx + dieCardW/2, cy + Math.round(114*sc),
+      {size:Math.max(7, Math.round(10*sc)), color: upg ? upg.color : '#aab8cc', align:'center', bold:true});
 
     // Rune slots label
-    txt('RUNES', cx + dieCardW/2, cy + 132, {size:8, color:'rgba(180,160,220,0.5)', align:'center', bold:true});
+    txt('RUNES', cx + dieCardW/2, cy + Math.round(132*sc),
+      {size:Math.max(6, Math.round(8*sc)), color:'rgba(180,160,220,0.5)', align:'center', bold:true});
 
     // 2 rune slots
-    const slotW = dieCardW/2 - 14;
-    const slotH = 46;
-    const slotY = cy + dieCardH - 58;
+    const slotW = Math.round(dieCardW/2 - 14*sc);
+    const slotH = Math.round(46*sc);
+    const slotY = cy + dieCardH - Math.round(58*sc);
     for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
-      const sx  = cx + 10 + si * (slotW + 8);
+      const sx  = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
       const rune = diceRunes[di] && diceRunes[di][si];
       const selSlot = runeSelSlot && runeSelSlot.die === di && runeSelSlot.slot === si;
       const canDrop = runeSelInv !== null && !rune;
@@ -3782,14 +3819,29 @@ function drawRuneTable(t) {
         markHover(`runeSlot:${di}:${si}`, rune.name, `${rune.desc}\n\nTier: ${rune.tier}\nClick to unequip`, {color: RUNE_TIERS[rune.tier]});
       }
     }
+
+    // Sell / drop button below card
+    if (upg || isExtra) {
+      const btnY = cy + dieCardH + 4;
+      const btnH = 20;
+      const refund = upg ? Math.floor(upg.cost / 2) : 0;
+      const label = isExtra ? `Sell ◆${refund}` : `Sell ◆${refund}`;
+      const btnHov = inRect(hoverX, hoverY, {x:cx, y:btnY, w:dieCardW, h:btnH});
+      drawRoundRect(cx, btnY, dieCardW, btnH, 5,
+        btnHov ? 'rgba(200,40,60,0.25)' : 'rgba(160,20,40,0.12)',
+        btnHov ? '#ff4466' : '#882244', 1);
+      txt(label, cx + dieCardW/2, btnY + 13,
+        {size:Math.max(7, Math.round(9*sc)), color: btnHov ? '#ff8899' : '#cc6677', align:'center', bold:true});
+      if (btnHov) markHover(`sellDie:${di}`, label, isExtra ? 'Remove this die from your pool' : 'Strip the upgrade off this die slot', {color:'#ff4466'});
+    }
   }
 
-  // Inventory section
-  const invY = dieCardY + dieCardH + 28;
+  // Inventory section — pushed down to clear sell buttons
+  const invY = dieCardY + dieCardH + 32;
   txt('YOUR RUNES', 80, invY - 8, {size:9, color:'rgba(180,160,220,0.55)', align:'left', bold:true});
 
   if (runeInventory.length === 0) {
-    txt('No runes — earn them by clearing goals or visiting the Forge',
+    txt('No runes — buy them in the Shop after each round',
       W/2, invY + 44, {size:11, color:'rgba(160,140,200,0.4)', align:'center'});
   }
 
