@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>FortuneFallacy — Dice Model Editor</title>
+<style>
+:root {
+  --bg:#07070e; --surface:#0f0f1a; --card:#121220; --border:#252538;
+  --gold:#c89960; --text:#c0c8d8; --muted:#556080;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+.toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;
+  display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.toolbar h1{font-size:17px;color:var(--gold);flex:1;letter-spacing:.5px}
+.toolbar .hint{font-size:11px;color:var(--muted)}
+.btn{background:rgba(200,153,96,.08);border:1px solid rgba(200,153,96,.4);color:var(--gold);
+  padding:5px 13px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+.btn:hover{background:rgba(200,153,96,.18)}
+.btn.blue{border-color:rgba(85,110,200,.5);color:#8899dd;background:rgba(85,110,200,.08)}
+.btn.blue:hover{background:rgba(85,110,200,.18)}
+.btn.red{border-color:rgba(180,40,40,.5);color:#ff7777;background:rgba(140,30,30,.08)}
+.btn.red:hover{background:rgba(140,30,30,.18)}
+.btn.sm{padding:3px 9px;font-size:11px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;padding:18px}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-head{display:flex;gap:0;align-items:stretch;background:rgba(0,0,0,.3);border-bottom:1px solid var(--border)}
+
+/* 3D preview pane */
+.preview-pane{position:relative;width:130px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;background:rgba(0,0,0,.4);border-right:1px solid var(--border);padding:8px}
+.preview-pane canvas{display:block;cursor:grab}
+.preview-pane canvas:active{cursor:grabbing}
+.preview-label{position:absolute;bottom:6px;left:0;right:0;text-align:center;
+  font-size:10px;color:var(--muted);pointer-events:none}
+
+.card-info{flex:1;min-width:0;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.card-title-row{display:flex;align-items:center;gap:6px}
+.card-title-row input.name-input{flex:1;font-weight:700;font-size:14px;background:transparent;
+  border:none;border-bottom:1px solid transparent;color:var(--text);padding:1px 0}
+.card-title-row input.name-input:focus{outline:none;border-bottom-color:var(--gold)}
+.icon-color-row{display:flex;gap:6px;align-items:center}
+.icon-color-row input.icon-input{width:38px;font-size:18px;text-align:center;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;
+  color:var(--text);padding:2px 4px;cursor:text}
+.icon-color-row input[type=color]{width:34px;height:28px;border:1px solid var(--border);
+  border-radius:4px;padding:1px 2px;cursor:pointer;background:none}
+.icon-color-row label{font-size:10px;color:var(--muted);white-space:nowrap}
+.id-cost-row{display:flex;gap:6px;align-items:center}
+.id-cost-row input{background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:3px;color:var(--text);padding:2px 5px;font-size:11px}
+.id-cost-row input:focus{outline:none;border-color:var(--gold)}
+.id-cost-row .id-input{flex:1}
+.id-cost-row .cost-input{width:44px}
+.desc-row textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:3px;color:var(--text);padding:3px 6px;font-size:11px;resize:none;height:38px;
+  font-family:inherit}
+.desc-row textarea:focus{outline:none;border-color:var(--gold)}
+.card-actions{display:flex;gap:4px;justify-content:flex-end;margin-top:auto}
+
+/* Behaviors section */
+.behaviors{border-top:1px solid var(--border);padding:9px 12px}
+.section-title{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:7px}
+.beh-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.beh-row{display:flex;align-items:center;gap:5px;font-size:11px}
+.beh-row input[type=checkbox]{cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--gold)}
+.beh-row label{cursor:pointer;color:var(--text);flex:1;white-space:nowrap}
+.beh-row input[type=number]{background:rgba(255,255,255,.04);border:1px solid var(--border);
+  color:var(--text);border-radius:3px;padding:2px 4px;font-size:11px;width:40px}
+.beh-row input[type=number]:disabled{opacity:.3}
+.beh-row input[type=number]:focus{outline:none;border-color:var(--gold)}
+.beh-row .sep{color:var(--muted);font-size:10px}
+.beh-row input[type=number][style*=width]{width:auto}
+
+/* Unlock section */
+.unlock-sec{border-top:1px solid var(--border);padding:9px 12px;background:rgba(180,150,70,.025)}
+.unlock-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:5px}
+.unlock-row select,.unlock-row input[type=number]{background:var(--surface);border:1px solid var(--border);
+  color:var(--text);border-radius:4px;padding:3px 6px;font-size:11px}
+.unlock-preview{font-size:10px;color:rgba(200,170,90,.65);font-style:italic;width:100%;margin-top:3px}
+
+/* Export modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;
+  align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;
+  width:min(900px,95vw);max-height:88vh;display:flex;flex-direction:column;gap:12px}
+.modal h2{color:var(--gold);font-size:15px}
+.modal-info{background:rgba(200,153,96,.06);border:1px solid rgba(200,153,96,.2);border-radius:6px;
+  padding:10px 13px;font-size:12px;line-height:1.6;color:#a0aac0}
+.modal-info code{color:var(--gold);font-family:monospace}
+.modal pre{background:#040408;border:1px solid var(--border);border-radius:7px;padding:13px;
+  font-family:'Consolas','Fira Code',monospace;font-size:12px;overflow:auto;flex:1;
+  color:#9aaabb;white-space:pre;line-height:1.5}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>🎲 Dice Model Editor — FortuneFallacy</h1>
+  <span class="hint">Live 3D preview • Auto-saved</span>
+  <button class="btn blue" onclick="addDie()">+ New Die</button>
+  <button class="btn" onclick="showExport()">⬇ Export</button>
+  <button class="btn red" onclick="resetDefaults()">↺ Reset</button>
+</div>
+
+<div id="grid" class="grid"></div>
+
+<div id="exportModal" class="modal-bg">
+  <div class="modal">
+    <h2>Export — DICE_UPGRADES &amp; UNLOCKABLE_DICE</h2>
+    <div class="modal-info">
+      Replace the matching <code>const DICE_UPGRADES = [...]</code> and
+      <code>const UNLOCKABLE_DICE = [...]</code> blocks in <code>game.js</code>.
+      Bump the <code>?v=N</code> cache-buster on the script tag in <code>index.html</code>.
+    </div>
+    <pre id="exportCode"></pre>
+    <div class="modal-footer">
+      <button class="btn blue" onclick="copyCode()">Copy</button>
+      <button class="btn" onclick="closeExport()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  3-D die renderer (ported from game.js)
+// ═══════════════════════════════════════════════════
+const CUBE_FACES = [
+  {n:1,normal:[0,0,1],  u:[1,0,0],  v:[0,1,0]},
+  {n:6,normal:[0,0,-1], u:[-1,0,0], v:[0,1,0]},
+  {n:2,normal:[1,0,0],  u:[0,0,-1], v:[0,1,0]},
+  {n:5,normal:[-1,0,0], u:[0,0,1],  v:[0,1,0]},
+  {n:3,normal:[0,-1,0], u:[1,0,0],  v:[0,0,-1]},
+  {n:4,normal:[0,1,0],  u:[1,0,0],  v:[0,0,1]},
+];
+const PIP_LAYOUTS = {
+  1:[[.5,.5]],
+  2:[[.28,.28],[.72,.72]],
+  3:[[.28,.28],[.5,.5],[.72,.72]],
+  4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],
+  5:[[.28,.28],[.72,.28],[.5,.5],[.28,.72],[.72,.72]],
+  6:[[.28,.22],[.72,.22],[.28,.5],[.72,.5],[.28,.78],[.72,.78]],
+};
+
+function rotate3(x,y,z,rx,ry,rz){
+  let y1=y*Math.cos(rx)-z*Math.sin(rx), z1=y*Math.sin(rx)+z*Math.cos(rx);
+  let x2=x*Math.cos(ry)+z1*Math.sin(ry), z2=-x*Math.sin(ry)+z1*Math.cos(ry);
+  return [x2*Math.cos(rz)-y1*Math.sin(rz), x2*Math.sin(rz)+y1*Math.cos(rz), z2];
+}
+
+function chamferPath(ctx, q, amt){
+  ctx.beginPath();
+  for(let i=0;i<q.length;i++){
+    const prev=q[(i+q.length-1)%q.length], cur=q[i], next=q[(i+1)%q.length];
+    const ax=cur[0]+(prev[0]-cur[0])*amt, ay=cur[1]+(prev[1]-cur[1])*amt;
+    const bx=cur[0]+(next[0]-cur[0])*amt, by=cur[1]+(next[1]-cur[1])*amt;
+    if(i===0) ctx.moveTo(ax,ay); else ctx.lineTo(ax,ay);
+    ctx.quadraticCurveTo(cur[0],cur[1],bx,by);
+  }
+  ctx.closePath();
+}
+
+function drawDie3D(ctx, cx, cy, size, rx, ry, rz, upg){
+  const hs = size * 0.48;
+  const CH = 0.16;
+
+  // Upgrade color
+  let ur=1, ug=1, ub=1;
+  if(upg && upg.color){
+    const m = upg.color.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if(m){ur=parseInt(m[1],16)/255;ug=parseInt(m[2],16)/255;ub=parseInt(m[3],16)/255;}
+  }
+
+  const rendered=[];
+  for(const cf of CUBE_FACES){
+    const [nx,ny,nz]=rotate3(...cf.normal,rx,ry,rz);
+    if(nz<=0) continue;
+    const quads=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([su,sv])=>{
+      const ox=cf.normal[0]+cf.u[0]*su+cf.v[0]*sv;
+      const oy=cf.normal[1]+cf.u[1]*su+cf.v[1]*sv;
+      const oz=cf.normal[2]+cf.u[2]*su+cf.v[2]*sv;
+      const [wx,wy,wz]=rotate3(ox,oy,oz,rx,ry,rz);
+      const p=1+wz*0.18;
+      return [cx+wx*hs*p, cy+wy*hs*p];
+    });
+    const pips=(PIP_LAYOUTS[cf.n]||[]).map(([pu,pv])=>{
+      const ux=(pu-.5)*1.4, vv=(pv-.5)*1.4;
+      const ox=cf.normal[0]+cf.u[0]*ux+cf.v[0]*vv;
+      const oy=cf.normal[1]+cf.u[1]*ux+cf.v[1]*vv;
+      const oz=cf.normal[2]+cf.u[2]*ux+cf.v[2]*vv;
+      const [wx,wy,wz]=rotate3(ox,oy,oz,rx,ry,rz);
+      const p=1+wz*0.18;
+      return [cx+wx*hs*p, cy+wy*hs*p];
+    });
+    rendered.push({quads,pips,nx,ny,nz,faceN:cf.n});
+  }
+  rendered.sort((a,b)=>a.nz-b.nz);
+
+  ctx.save();
+  for(const fd of rendered){
+    const diffuse=Math.max(0,fd.nx*.413+fd.ny*(-.566)+fd.nz*.713);
+    const br=.18+.82*diffuse;
+    const spec=Math.pow(Math.max(0,fd.nx*.223+fd.ny*(-.306)+fd.nz*.925),28);
+    const isTop=fd.nz>.7;
+    const q=fd.quads;
+    const fcx=(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4;
+    const fcy=(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4;
+
+    chamferPath(ctx, q, CH);
+    const gSpan=hs*1.0;
+    const grad=ctx.createLinearGradient(fcx+.413*gSpan,fcy-.566*gSpan,fcx-.413*gSpan,fcy+.566*gSpan);
+    const brLit=Math.min(1,br+spec*.55), brDark=br*.68;
+    if(upg && upg.color){
+      grad.addColorStop(0,`rgb(${(brLit*(255*.55+ur*255*.45))|0},${(brLit*(255*.55+ug*255*.45))|0},${(brLit*(255*.55+ub*255*.45))|0})`);
+      grad.addColorStop(.55,`rgb(${(br*(200*.5+ur*200*.5))|0},${(br*(200*.5+ug*200*.5))|0},${(br*(200*.5+ub*200*.5))|0})`);
+      grad.addColorStop(1,`rgb(${(brDark*(150*.4+ur*150*.6))|0},${(brDark*(150*.4+ug*150*.6))|0},${(brDark*(150*.4+ub*150*.6))|0})`);
+    } else {
+      grad.addColorStop(0,`rgb(${(brLit*255)|0},${(brLit*255)|0},${(brLit*248)|0})`);
+      grad.addColorStop(.55,`rgb(${(br*238)|0},${(br*232)|0},${(br*218)|0})`);
+      grad.addColorStop(1,`rgb(${(brDark*185)|0},${(brDark*178)|0},${(brDark*160)|0})`);
+    }
+    ctx.fillStyle=grad; ctx.fill();
+
+    if(spec>.04){
+      const litX=fcx+.413*hs*.42, litY=fcy-.566*hs*.42;
+      const sg=ctx.createRadialGradient(litX,litY,0,litX,litY,hs*.9);
+      sg.addColorStop(0,`rgba(255,255,255,${(spec*.52).toFixed(3)})`);
+      sg.addColorStop(.4,`rgba(255,255,255,${(spec*.10).toFixed(3)})`);
+      sg.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=sg; ctx.fill();
+    }
+
+    ctx.lineWidth=2.2;
+    ctx.strokeStyle=`rgba(22,10,40,${.55+.35*br})`; ctx.stroke();
+
+    // Chamfer highlight
+    ctx.save();
+    chamferPath(ctx, q, CH*1.9);
+    ctx.lineWidth=1.2;
+    const cr2=(ur*255+180)|0, cg2=(ug*255+180)|0, cb2=(ub*255+180)|0;
+    ctx.strokeStyle=upg?.color
+      ? `rgba(${cr2>255?255:cr2},${cg2>255?255:cg2},${cb2>255?255:cb2},${.24+.38*br})`
+      : `rgba(255,255,255,${.22+.35*br})`;
+    ctx.stroke(); ctx.restore();
+
+    // Icon overlay on top face
+    if(isTop && upg?.icon){
+      ctx.save();
+      ctx.font=`bold ${(hs*.58)|0}px ui-sans-serif,sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.globalAlpha=.20;
+      ctx.fillStyle=upg.color||'#ffffff';
+      ctx.fillText(upg.icon, fcx, fcy);
+      ctx.restore();
+    }
+
+    // Pips
+    const isOne=fd.faceN===1;
+    const pipR=hs*.135;
+    let pipCore, pipEdge;
+    if(upg?.color){
+      const dr=(ur*120)|0, dg=(ug*80)|0, db2=(ub*120)|0;
+      pipCore=`rgba(${dr},${dg},${db2},${br})`;
+      pipEdge=`rgba(${Math.min(255,dr+50)},${Math.min(255,dg+40)},${Math.min(255,db2+50)},${br})`;
+    } else if(isOne){
+      pipCore=`rgba(150,8,8,${br})`; pipEdge=`rgba(210,50,50,${br})`;
+    } else {
+      pipCore=`rgba(10,4,28,${br})`; pipEdge=`rgba(40,22,70,${br})`;
+    }
+    for(const [px,py] of fd.pips){
+      if(isTop){ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=4;ctx.shadowOffsetX=.8;ctx.shadowOffsetY=.8;}
+      const pg=ctx.createRadialGradient(px-pipR*.3,py-pipR*.3,0,px,py,pipR);
+      pg.addColorStop(0,pipEdge); pg.addColorStop(1,pipCore);
+      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(px,py,pipR,0,Math.PI*2); ctx.fill();
+      if(isTop){ctx.restore(); ctx.fillStyle='rgba(255,255,255,.32)'; ctx.beginPath(); ctx.arc(px-pipR*.35,py-pipR*.35,pipR*.3,0,Math.PI*2); ctx.fill();}
+    }
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
+//  Animation loop — all preview canvases share one RAF
+// ═══════════════════════════════════════════════════
+const previews = new Map(); // canvasEl → {rx, ry, drag, lastX, lastY, spinning}
+let rafId = null;
+let lastT = performance.now();
+
+function startLoop(){
+  if(rafId) return;
+  function step(now){
+    const dt=Math.min(0.05,(now-lastT)/1000); lastT=now;
+    for(const [canvas, state] of previews){
+      if(!state.drag) { state.rx += dt*.38; state.ry += dt*.72; }
+      const ctx=canvas.getContext('2d');
+      const w=canvas.width, h=canvas.height;
+      ctx.clearRect(0,0,w,h);
+      // subtle bg
+      const bg=ctx.createRadialGradient(w/2,h/2,2,w/2,h/2,w*.6);
+      bg.addColorStop(0,'rgba(30,18,8,.9)'); bg.addColorStop(1,'rgba(8,5,2,.95)');
+      ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+      // shadow
+      ctx.save();
+      const sg=ctx.createRadialGradient(w/2+3,h*.82,2,w/2+3,h*.82,w*.35);
+      sg.addColorStop(0,'rgba(0,0,0,.55)'); sg.addColorStop(.6,'rgba(0,0,0,.18)'); sg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sg; ctx.beginPath(); ctx.ellipse(w/2+3,h*.82,w*.28,h*.1,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+      drawDie3D(ctx, w/2, h/2+1, Math.min(w,h)*.74, state.rx, state.ry, state.rz||0, state.upg);
+    }
+    rafId=requestAnimationFrame(step);
+  }
+  rafId=requestAnimationFrame(step);
+}
+
+function registerPreview(canvas, upg){
+  const state={rx:.6, ry:.4, rz:0, drag:false, lastX:0, lastY:0, upg};
+  previews.set(canvas, state);
+  canvas.addEventListener('mousedown', e=>{state.drag=true;state.lastX=e.clientX;state.lastY=e.clientY;e.preventDefault();});
+  canvas.addEventListener('mousemove', e=>{
+    if(!state.drag) return;
+    state.ry+=(e.clientX-state.lastX)*.012;
+    state.rx+=(e.clientY-state.lastY)*.012;
+    state.lastX=e.clientX; state.lastY=e.clientY;
+  });
+  window.addEventListener('mouseup', ()=>{ state.drag=false; });
+  startLoop();
+  return state;
+}
+
+// ═══════════════════════════════════════════════════
+//  Data
+// ═══════════════════════════════════════════════════
+const DEFAULT_DICE = [
+  {id:'iron',      name:'Iron Die',      shortName:'IRON',     icon:'⬡', color:'#aab8cc', cost:3,  desc:'Minimum score value is 4', scoreMin:4},
+  {id:'lead',      name:'Lead Die',      shortName:'LEAD',     icon:'⬡', color:'#4d4d4d', cost:5,  desc:'Triggers 2x, cannot reroll', noReroll:true, triggers:2},
+  {id:'gold',      name:'Gold Die',      shortName:'GOLD',     icon:'⚄', color:'#e1a523', cost:8,  desc:'Triggers twice', triggers:2},
+  {id:'aluminum',  name:'Aluminum Die',  shortName:'ALUM',     icon:'⚄', color:'#888899', cost:2,  desc:'Rolls lower (1–3)', rollMin:1, rollMax:3},
+  {id:'platinum',  name:'Platinum Die',  shortName:'PLAT',     icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3×', triggers:3},
+  {id:'brass',     name:'Brass Die',     shortName:'BRASS',    icon:'⚄', color:'#98935d', cost:4,  desc:'+2 Mult', multBonus:2},
+  {id:'copper',    name:'Copper Die',    shortName:'COPPER',   icon:'⚄', color:'#b68d5d', cost:5,  desc:'Rolls higher (4–6)', rollMin:4, rollMax:6},
+  {id:'silver',    name:'Silver Die',    shortName:'SILVER',   icon:'⚄', color:'#b5b5b5', cost:5,  desc:'×1.5 Multiplier', scoreMultiplier:1.5},
+  // Unlockable
+  {id:'void_die',  name:'Void Die',      shortName:'VOID',     icon:'◈', color:'#aa44ff', cost:7,  desc:'0 chips +5 Mult, no reroll', voidBonus:5, noReroll:true,
+    unlock:{id:'void_die',label:'Score a Five of a Kind',req:{type:'score_combo',value:'five_of_a_kind'}}},
+  {id:'lucky_die', name:'Lucky Die',     shortName:'LUCK',     icon:'☘', color:'#ffdd44', cost:5,  desc:'Min score 3, +1 Mult/reroll', scoreMin:3, rerollMult:true,
+    unlock:{id:'lucky_die',label:'Clear Goal 2',req:{type:'clear_goal',value:2}}},
+  {id:'runic_die', name:'Runic Die',     shortName:'RUNE',     icon:'✦', color:'#cc44ff', cost:8,  desc:'Score ×2, −1 Mult', scoreMultiplier:2, multPenalty:1,
+    unlock:{id:'runic_die',label:'Clear Goal 5',req:{type:'clear_goal',value:5}}},
+];
+
+const UNLOCK_COMBOS = ['pair','two_pair','three_of_a_kind','straight','full_house','four_of_a_kind','five_of_a_kind','six_of_a_kind'];
+const UNLOCK_TYPES = [
+  {value:'none',       label:'No unlock requirement'},
+  {value:'clear_goal', label:'Clear goal #'},
+  {value:'score_combo',label:'Score a combo'},
+  {value:'spend_shards',label:'Spend N shards in a run'},
+  {value:'own_upgrades',label:'Own N upgrades'},
+  {value:'score_hands',label:'Play N hands'},
+  {value:'win_run',    label:'Complete a run'},
+];
+
+function loadState(){
+  try{
+    const s=localStorage.getItem('ff_dicemodel_editor');
+    if(s){
+      const saved=JSON.parse(s);
+      for(const def of DEFAULT_DICE) if(!saved.find(d=>d.id===def.id)) saved.push(JSON.parse(JSON.stringify(def)));
+      return saved;
+    }
+  }catch{}
+  return DEFAULT_DICE.map(d=>JSON.parse(JSON.stringify(d)));
+}
+function saveState(){ localStorage.setItem('ff_dicemodel_editor',JSON.stringify(diceList)); }
+function resetDefaults(){
+  if(!confirm('Reset all dice to defaults?')) return;
+  localStorage.removeItem('ff_dicemodel_editor');
+  diceList=DEFAULT_DICE.map(d=>JSON.parse(JSON.stringify(d)));
+  renderGrid();
+}
+
+let diceList = loadState();
+
+// ═══════════════════════════════════════════════════
+//  Build card
+// ═══════════════════════════════════════════════════
+function buildCard(die, idx){
+  const card=document.createElement('div');
+  card.className='card';
+  card.id=`card-${idx}`;
+
+  // ── Head: preview + basic info ──────────────────
+  const head=document.createElement('div');
+  head.className='card-head';
+
+  // Preview pane
+  const pane=document.createElement('div');
+  pane.className='preview-pane';
+  const canvas=document.createElement('canvas');
+  canvas.width=114; canvas.height=114;
+  canvas.title='Drag to rotate';
+  pane.appendChild(canvas);
+  const plabel=document.createElement('div');
+  plabel.className='preview-label';
+  plabel.textContent='drag to rotate';
+  pane.appendChild(plabel);
+  head.appendChild(pane);
+
+  // Register animated preview
+  const state=registerPreview(canvas, {color:die.color, icon:die.icon});
+
+  // Info pane
+  const info=document.createElement('div');
+  info.className='card-info';
+
+  // Name
+  const titleRow=document.createElement('div');
+  titleRow.className='card-title-row';
+  const nameInput=document.createElement('input');
+  nameInput.className='name-input'; nameInput.type='text'; nameInput.value=die.name;
+  nameInput.oninput=()=>{ die.name=nameInput.value; saveState(); };
+  titleRow.appendChild(nameInput);
+  info.appendChild(titleRow);
+
+  // Icon + color
+  const icRow=document.createElement('div');
+  icRow.className='icon-color-row';
+  const icLabel=document.createElement('label'); icLabel.textContent='Icon';
+  const icInput=document.createElement('input');
+  icInput.className='icon-input'; icInput.type='text'; icInput.value=die.icon||'';
+  icInput.oninput=()=>{ die.icon=icInput.value; state.upg={color:die.color,icon:die.icon}; saveState(); };
+  const colLabel=document.createElement('label'); colLabel.textContent='Color';
+  const colInput=document.createElement('input');
+  colInput.type='color'; colInput.value=die.color||'#c89960';
+  colInput.oninput=()=>{ die.color=colInput.value; state.upg={color:die.color,icon:die.icon}; saveState(); };
+  icRow.appendChild(icLabel); icRow.appendChild(icInput);
+  icRow.appendChild(colLabel); icRow.appendChild(colInput);
+  info.appendChild(icRow);
+
+  // ID + cost
+  const idRow=document.createElement('div');
+  idRow.className='id-cost-row';
+  const idInput=document.createElement('input');
+  idInput.className='id-input'; idInput.placeholder='id'; idInput.value=die.id||'';
+  idInput.oninput=()=>{ die.id=idInput.value; saveState(); };
+  const costLabel=document.createElement('label'); costLabel.style.fontSize='10px'; costLabel.style.color='var(--muted)'; costLabel.textContent='◆';
+  const costInput=document.createElement('input');
+  costInput.className='cost-input'; costInput.type='number'; costInput.min=1; costInput.max=20; costInput.value=die.cost||1;
+  costInput.oninput=()=>{ die.cost=+costInput.value; saveState(); };
+  idRow.appendChild(idInput); idRow.appendChild(costLabel); idRow.appendChild(costInput);
+  info.appendChild(idRow);
+
+  // Desc
+  const descRow=document.createElement('div');
+  descRow.className='desc-row';
+  const descTA=document.createElement('textarea');
+  descTA.placeholder='Description…'; descTA.value=die.desc||'';
+  descTA.oninput=()=>{ die.desc=descTA.value; saveState(); };
+  descRow.appendChild(descTA);
+  info.appendChild(descRow);
+
+  // Actions
+  const actions=document.createElement('div');
+  actions.className='card-actions';
+  const dupBtn=document.createElement('button');
+  dupBtn.className='btn sm blue'; dupBtn.textContent='⧉ Dupe';
+  dupBtn.onclick=()=>{ const c=JSON.parse(JSON.stringify(die)); c.id=die.id+'_copy'; c.name+=' (copy)'; diceList.splice(idx+1,0,c); saveState(); renderGrid(); };
+  const delBtn=document.createElement('button');
+  delBtn.className='btn sm red'; delBtn.textContent='✕';
+  delBtn.onclick=()=>{ if(!confirm('Delete "'+die.name+'"?')) return; diceList.splice(idx,1); saveState(); renderGrid(); };
+  actions.appendChild(dupBtn); actions.appendChild(delBtn);
+  info.appendChild(actions);
+
+  head.appendChild(info);
+  card.appendChild(head);
+
+  // ── Behaviors ──────────────────────────────────
+  const beh=document.createElement('div');
+  beh.className='behaviors';
+  const behTitle=document.createElement('div');
+  behTitle.className='section-title'; behTitle.textContent='Behaviors';
+  beh.appendChild(behTitle);
+  const grid=document.createElement('div');
+  grid.className='beh-grid';
+
+  function checkRow(label, key){
+    const row=document.createElement('div'); row.className='beh-row';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!die[key];
+    cb.id=`${key}-${idx}`;
+    cb.onchange=()=>{ if(cb.checked) die[key]=true; else delete die[key]; saveState(); };
+    const lbl=document.createElement('label'); lbl.htmlFor=cb.id; lbl.textContent=label;
+    row.appendChild(cb); row.appendChild(lbl); grid.appendChild(row);
+  }
+  function numRow(label, key, min=1, max=99, step=1, defaultVal=null){
+    const row=document.createElement('div'); row.className='beh-row';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.id=`${key}-${idx}`;
+    cb.checked=die[key]!==undefined;
+    const lbl=document.createElement('label'); lbl.htmlFor=cb.id; lbl.textContent=label;
+    const num=document.createElement('input'); num.type='number'; num.min=min; num.max=max; num.step=step;
+    num.value=die[key]!==undefined ? die[key] : (defaultVal||min);
+    num.disabled=!cb.checked;
+    cb.onchange=()=>{ num.disabled=!cb.checked; if(cb.checked) die[key]=+num.value; else delete die[key]; saveState(); };
+    num.oninput=()=>{ die[key]=+num.value; saveState(); };
+    row.appendChild(cb); row.appendChild(lbl); row.appendChild(num); grid.appendChild(row);
+  }
+  function rangeRow(label, keyMin, keyMax, minV=1, maxV=6){
+    const row=document.createElement('div'); row.className='beh-row';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.id=`rng-${idx}`;
+    cb.checked=die[keyMin]!==undefined;
+    const lbl=document.createElement('label'); lbl.htmlFor=cb.id; lbl.textContent=label;
+    const n1=document.createElement('input'); n1.type='number'; n1.min=minV; n1.max=maxV; n1.value=die[keyMin]||minV; n1.disabled=!cb.checked;
+    const sep=document.createElement('span'); sep.className='sep'; sep.textContent='–';
+    const n2=document.createElement('input'); n2.type='number'; n2.min=minV; n2.max=maxV; n2.value=die[keyMax]||maxV; n2.disabled=!cb.checked;
+    cb.onchange=()=>{ n1.disabled=n2.disabled=!cb.checked; if(cb.checked){die[keyMin]=+n1.value;die[keyMax]=+n2.value;}else{delete die[keyMin];delete die[keyMax];} saveState(); };
+    n1.oninput=()=>{ die[keyMin]=+n1.value; saveState(); };
+    n2.oninput=()=>{ die[keyMax]=+n2.value; saveState(); };
+    row.appendChild(cb); row.appendChild(lbl); row.appendChild(n1); row.appendChild(sep); row.appendChild(n2); grid.appendChild(row);
+  }
+
+  checkRow('No Reroll', 'noReroll');
+  checkRow('Mirror (copy highest face)', 'mirror');
+  checkRow('Invert (7−face)', 'invert');
+  checkRow('+Mult per reroll used', 'rerollMult');
+  numRow('Triggers ×', 'triggers', 1, 5, 1, 2);
+  numRow('Score ×', 'scoreMultiplier', 0.5, 5, 0.5, 1.5);
+  numRow('Min score', 'scoreMin', 1, 6, 1, 1);
+  numRow('+Mult bonus', 'multBonus', 1, 10, 1, 1);
+  numRow('Mult penalty', 'multPenalty', 1, 10, 1, 1);
+  numRow('+Chips bonus', 'chipBonus', 1, 20, 1, 1);
+  numRow('+Shards bonus', 'shardsBonus', 1, 10, 1, 1);
+  numRow('Void Mult bonus', 'voidBonus', 1, 20, 1, 5);
+  numRow('Volatile d', 'volatile', 4, 20, 2, 10);
+  numRow('Collision bonus', 'collisionBonus', 1, 10, 1, 2);
+  rangeRow('Roll range', 'rollMin', 'rollMax');
+
+  beh.appendChild(grid);
+  card.appendChild(beh);
+
+  // ── Unlock section ─────────────────────────────
+  const ulsec=document.createElement('div');
+  ulsec.className='unlock-sec';
+  const ulTitle=document.createElement('div');
+  ulTitle.className='section-title'; ulTitle.textContent='Unlock Requirement';
+  ulsec.appendChild(ulTitle);
+
+  const ulRow=document.createElement('div'); ulRow.className='unlock-row';
+  const typeSelect=document.createElement('select');
+  UNLOCK_TYPES.forEach(t=>{ const o=document.createElement('option'); o.value=t.value; o.textContent=t.label; typeSelect.appendChild(o); });
+  const curType=die.unlock?.req?.type||'none';
+  typeSelect.value=curType;
+
+  const valInput=document.createElement('input'); valInput.type='number'; valInput.min=1; valInput.max=99; valInput.value=die.unlock?.req?.value||1;
+  const comboSelect=document.createElement('select');
+  UNLOCK_COMBOS.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c.replace(/_/g,' '); comboSelect.appendChild(o); });
+  if(die.unlock?.req?.value && typeof die.unlock.req.value==='string') comboSelect.value=die.unlock.req.value;
+
+  const preview=document.createElement('div'); preview.className='unlock-preview';
+
+  function updateUnlock(){
+    const t=typeSelect.value;
+    valInput.style.display='none'; comboSelect.style.display='none';
+    if(t==='none'){ delete die.unlock; preview.textContent=''; saveState(); return; }
+    if(!die.unlock) die.unlock={id:die.id,label:'',req:{}};
+    die.unlock.id=die.id;
+    if(t==='score_combo'){
+      comboSelect.style.display='';
+      die.unlock.req={type:t, value:comboSelect.value};
+      die.unlock.label=`Score a ${comboSelect.value.replace(/_/g,' ')}`;
+    } else if(['clear_goal','spend_shards','own_upgrades','score_hands'].includes(t)){
+      valInput.style.display='';
+      die.unlock.req={type:t, value:+valInput.value};
+      die.unlock.label=t==='clear_goal'?`Clear Goal ${valInput.value}`:t==='spend_shards'?`Spend ${valInput.value} shards`:t==='own_upgrades'?`Own ${valInput.value} upgrades`:`Play ${valInput.value} hands`;
+    } else {
+      die.unlock.req={type:t};
+      die.unlock.label='Complete a run';
+    }
+    preview.textContent=`Unlock: "${die.unlock.label}"`;
+    saveState();
+  }
+  typeSelect.onchange=updateUnlock;
+  valInput.oninput=updateUnlock;
+  comboSelect.onchange=updateUnlock;
+  updateUnlock();
+
+  ulRow.appendChild(typeSelect); ulRow.appendChild(valInput); ulRow.appendChild(comboSelect);
+  ulsec.appendChild(ulRow); ulsec.appendChild(preview);
+  card.appendChild(ulsec);
+
+  return card;
+}
+
+function renderGrid(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  previews.clear();
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  diceList.forEach((die,i)=>{ grid.appendChild(buildCard(die,i)); });
+  startLoop();
+}
+
+function addDie(){
+  diceList.push({id:'new_die_'+Date.now(),name:'New Die',shortName:'NEW',icon:'⚄',color:'#c89960',cost:3,desc:'',});
+  saveState(); renderGrid();
+  document.getElementById('grid').lastElementChild.scrollIntoView({behavior:'smooth'});
+}
+
+// ── Export ──────────────────────────────────────────
+function generateCode(){
+  const base=[], unlockable=[];
+  for(const d of diceList){
+    if(d.unlock) unlockable.push(d); else base.push(d);
+  }
+  const fmt=arr=>arr.map(d=>{
+    const keys=['id','name','shortName','icon','color','cost','desc',
+      'noReroll','mirror','invert','rerollMult',
+      'triggers','scoreMultiplier','scoreMin','multBonus','multPenalty',
+      'chipBonus','shardsBonus','voidBonus','volatile','collisionBonus',
+      'rollMin','rollMax'];
+    let s='  { ';
+    const parts=[];
+    for(const k of keys){ if(d[k]!==undefined) parts.push(`${k}:${JSON.stringify(d[k])}`); }
+    if(d.unlock) parts.push(`unlock:${JSON.stringify(d.unlock)}`);
+    return s+parts.join(', ')+' }';
+  }).join(',\n');
+  return `const DICE_UPGRADES = [\n${fmt(base)}\n];\n\nconst UNLOCKABLE_DICE = [\n${fmt(unlockable)}\n];`;
+}
+
+function showExport(){ document.getElementById('exportCode').textContent=generateCode(); document.getElementById('exportModal').classList.add('open'); }
+function closeExport(){ document.getElementById('exportModal').classList.remove('open'); }
+function copyCode(){ navigator.clipboard.writeText(document.getElementById('exportCode').textContent).then(()=>{ const b=document.querySelector('.btn.blue'); const t=b.textContent; b.textContent='Copied!'; setTimeout(()=>b.textContent=t,1500); }); }
+document.getElementById('exportModal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeExport(); });
+
+renderGrid();
+</script>
+</body>
+</html>

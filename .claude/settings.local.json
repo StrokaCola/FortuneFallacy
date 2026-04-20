@@ -16,7 +16,8 @@
       "WebFetch(domain:github.com)",
       "mcp__Claude_Preview__preview_start",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
-      "Bash(python -m http.server 8001)"
+      "Bash(python -m http.server 8001)",
+      "Bash(grep -v \"//.*bounceY\\\\|//.*bounceVY\")"
     ]
   }
 }
