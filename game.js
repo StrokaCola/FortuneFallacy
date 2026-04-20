@@ -1169,13 +1169,21 @@ async function fetchOnlineScores() {
 async function submitOnlineScore(name, score, mode) {
   if (FIREBASE_URL === 'YOUR_FIREBASE_URL_HERE') return;
   try {
-    await fetch(`${FIREBASE_URL}.json`, {
+    const res = await fetch(`${FIREBASE_URL}.json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, score, mode, date: Date.now() }),
     });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('[FortuneFallacy] Score submit failed:', res.status, text);
+      return;
+    }
     onlineFetched = false;
-  } catch { /* silently fail */ }
+    console.log('[FortuneFallacy] Score submitted:', name, score);
+  } catch (e) {
+    console.error('[FortuneFallacy] Score submit error:', e);
+  }
 }
 function endlessUnlocked() {
   try { return !!localStorage.getItem('fortunefallacy_endless'); } catch { return false; }
