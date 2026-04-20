@@ -1978,14 +1978,20 @@ function heldCount() { let n = 0; for (const d of dice) if (d.locked) n++; retur
 function inRect(mx, my, r) { return mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h; }
 
 // ─── Input ────────────────────────────────────────────────────────────
-canvas.addEventListener('mousemove', e => {
+function canvasXY(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  hoverX = (e.clientX - rect.left) * (W / rect.width);
-  hoverY = (e.clientY - rect.top)  * (H / rect.height);
+  return {
+    x: (clientX - rect.left) * (W / rect.width),
+    y: (clientY - rect.top)  * (H / rect.height),
+  };
+}
+
+function pointerMove(mx, my) {
+  hoverX = mx; hoverY = my;
   if (dragSlider) {
     const pw=680, px=(W-pw)/2;
     const tx = px+76, tw = pw-152;
-    const val = Math.max(0, Math.min(1, (hoverX - tx) / tw));
+    const val = Math.max(0, Math.min(1, (mx - tx) / tw));
     if (dragSlider === 'music') {
       musicVolume = val; bgMusic.volume = val;
       localStorage.setItem('ff_musicVol', val);
@@ -1995,31 +2001,99 @@ canvas.addEventListener('mousemove', e => {
       localStorage.setItem('ff_sfxVol', val);
     }
   }
-});
+}
 
-canvas.addEventListener('mousedown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = (e.clientX - rect.left) * (W / rect.width);
-  const my = (e.clientY - rect.top)  * (H / rect.height);
+function pointerDown(mx, my) {
   if (paused && pauseTab === 'audio') {
     const pw=680, ph=480, px=(W-pw)/2, py=(H-ph)/2;
-    const tx=px+76, tw=pw-152;   // sx+16, totalW=sw-32=(pw-120-32), tw=totalW-40
+    const tx=px+76, tw=pw-152;
     const my1=py+176, my2=py+294;
-    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; e.preventDefault(); }
-    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   e.preventDefault(); }
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; }
+    if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   }
   }
+  // Tray drag: start dragging a held die slot
+  if (screen === 'game' && rolledOnce && !handInProgress && trayOrder.length > 1) {
+    const slotTop = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
+    for (let slot = 0; slot < trayOrder.length; slot++) {
+      const slotX = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP);
+      if (mx >= slotX && mx <= slotX + HOLD_SLOT_W && my >= slotTop && my <= slotTop + HOLD_SLOT_W) {
+        dragTraySlot = slot;
+        dragStartX   = mx;
+        dragStartY   = my;
+        break;
+      }
+    }
+  }
+}
+
+function pointerUp(mx, my) {
+  dragSlider = null;
+  if (dragTraySlot !== -1) {
+    const moved = Math.hypot(mx - dragStartX, my - dragStartY) > 6;
+    if (moved) {
+      let best = dragTraySlot, bestDist = Infinity;
+      for (let slot = 0; slot < trayOrder.length; slot++) {
+        const cx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2;
+        const d  = Math.abs(mx - cx);
+        if (d < bestDist) { bestDist = d; best = slot; }
+      }
+      if (best !== dragTraySlot) {
+        const item = trayOrder.splice(dragTraySlot, 1)[0];
+        trayOrder.splice(best, 0, item);
+        SFX.unlock();
+      }
+      dragOccurred = true;
+    }
+    dragTraySlot = -1;
+  }
+}
+
+// Mouse events
+canvas.addEventListener('mousemove', e => {
+  const {x, y} = canvasXY(e.clientX, e.clientY);
+  pointerMove(x, y);
 });
-
-canvas.addEventListener('mouseup', () => { dragSlider = null; });
-
+canvas.addEventListener('mousedown', e => {
+  const {x, y} = canvasXY(e.clientX, e.clientY);
+  pointerDown(x, y);
+  e.preventDefault();
+});
+canvas.addEventListener('mouseup', e => {
+  const {x, y} = canvasXY(e.clientX, e.clientY);
+  pointerUp(x, y);
+});
 canvas.addEventListener('click', e => {
-  getAudio();
-  ensureBgMusic();
-  const rect = canvas.getBoundingClientRect();
-  const mx = (e.clientX - rect.left) * (W / rect.width);
-  const my = (e.clientY - rect.top)  * (H / rect.height);
-  handleClick(mx, my);
+  getAudio(); ensureBgMusic();
+  if (dragOccurred) { dragOccurred = false; return; }
+  const {x, y} = canvasXY(e.clientX, e.clientY);
+  handleClick(x, y);
 });
+
+// Touch events — map to same pointer helpers; synthesise click on tap
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  getAudio(); ensureBgMusic();
+  const t = e.changedTouches[0];
+  const {x, y} = canvasXY(t.clientX, t.clientY);
+  pointerDown(x, y);
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const {x, y} = canvasXY(t.clientX, t.clientY);
+  pointerMove(x, y);
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const {x, y} = canvasXY(t.clientX, t.clientY);
+  pointerUp(x, y);
+  if (!dragOccurred) {
+    handleClick(x, y);
+  } else {
+    dragOccurred = false;
+  }
+}, { passive: false });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
