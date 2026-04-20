@@ -608,12 +608,12 @@ function drawRoundRect(x, y, w, h, r, fill, stroke, lw = 2) {
 const SERIF = "'Cinzel Decorative',Cinzel,'Palatino Linotype',Georgia,serif";
 
 // Draws a dark-stone layered frame with corner sigils and an inner hairline.
-function ornamentFrame(x, y, w, h, accent = '#7a1a28', opts = {}) {
-  const { bg = 'rgba(6,6,18,0.96)', inner = 'rgba(80,100,160,0.28)', corner = 8 } = opts;
+function ornamentFrame(x, y, w, h, accent = '#5522bb', opts = {}) {
+  const { bg = 'rgba(4,4,16,0.96)', inner = 'rgba(100,60,220,0.25)', corner = 8 } = opts;
   // Outer void-stone fill with a gentle vertical gradient
   const g = ctx.createLinearGradient(x, y, x, y + h);
   g.addColorStop(0, bg);
-  g.addColorStop(1, 'rgba(12,6,3,0.96)');
+  g.addColorStop(1, 'rgba(3,2,12,0.97)');
   drawRoundRect(x, y, w, h, 10, g, accent, 1.5);
   // Inner hairline border (double-stroke look)
   ctx.save();
@@ -658,10 +658,12 @@ function panelHeader(cx, y, width, title, accent = '#c89960', sigil = '✦') {
   // Divider line below
   const lineY = y + 6;
   const half = Math.min(width/2 - 10, m.width/2 + 28);
+  const hm = accent.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  const [ar, ag, ab] = hm ? [parseInt(hm[1],16), parseInt(hm[2],16), parseInt(hm[3],16)] : [200,153,96];
   const grad = ctx.createLinearGradient(cx - half, lineY, cx + half, lineY);
-  grad.addColorStop(0,   'rgba(200,153,96,0)');
-  grad.addColorStop(0.5, 'rgba(200,153,96,0.55)');
-  grad.addColorStop(1,   'rgba(200,153,96,0)');
+  grad.addColorStop(0,   `rgba(${ar},${ag},${ab},0)`);
+  grad.addColorStop(0.5, `rgba(${ar},${ag},${ab},0.55)`);
+  grad.addColorStop(1,   `rgba(${ar},${ag},${ab},0)`);
   ctx.strokeStyle = grad;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -680,50 +682,84 @@ function panelHeader(cx, y, width, title, accent = '#c89960', sigil = '✦') {
   ctx.restore();
 }
 
-const EMBERS = Array.from({ length: 44 }, () => ({
+const EMBERS = Array.from({ length: 52 }, (_, i) => ({
   x: Math.random()*W, y: Math.random()*H,
-  r: 0.4 + Math.random()*1.2, ph: Math.random()*Math.PI*2,
-  drift: 0.05 + Math.random()*0.15,
+  r: 0.6 + Math.random()*1.6, ph: Math.random()*Math.PI*2,
+  drift: 0.06 + Math.random()*0.18,
+  cyan: i % 3 === 0, // one-third are cyan, rest violet
 }));
 
 function drawBG(t) {
-  ctx.fillStyle = '#06060f';
+  ctx.fillStyle = '#040410';
   ctx.fillRect(0, 0, W, H);
 
-  // Cold moonlight from top-center
+  // Electric void bloom from top-center
   const g1 = ctx.createRadialGradient(W*0.5, -H*0.05, 20, W*0.5, H*0.4, W*0.75);
-  g1.addColorStop(0,   'rgba(70,85,150,0.13)');
-  g1.addColorStop(0.5, 'rgba(40,50,100,0.05)');
+  g1.addColorStop(0,   'rgba(90,35,220,0.18)');
+  g1.addColorStop(0.5, 'rgba(55,18,140,0.07)');
   g1.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
 
-  // Blood-mist seep from bottom corners
+  // Deep cyan seep from bottom
   const g2 = ctx.createRadialGradient(W*0.5, H*1.05, 10, W*0.5, H*0.85, W*0.6);
-  g2.addColorStop(0,   'rgba(90,15,28,0.12)');
+  g2.addColorStop(0,   'rgba(0,90,170,0.10)');
   g2.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  // Cold moonlight pulse (slow and subtle)
+  // Slow void pulse
   const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = `rgba(${Math.floor(185*pulse)},${Math.floor(195*pulse)},${Math.floor(230*pulse)},1)`;
+  ctx.fillStyle = `rgba(${Math.floor(165*pulse)},${Math.floor(170*pulse)},${Math.floor(220*pulse)},1)`;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // Drifting shadow motes
+  // Arcane rings — slow-rotating concentric circles with tick marks
+  ctx.save();
+  const ringDefs = [
+    { r: 148, color: '#7733ee', ticks: 6, speed:  0.040 },
+    { r: 240, color: '#22aadd', ticks: 8, speed: -0.025 },
+    { r: 332, color: '#5522bb', ticks: 6, speed:  0.016 },
+  ];
+  for (const rd of ringDefs) {
+    const rot = t * rd.speed;
+    ctx.globalAlpha = 0.055;
+    ctx.strokeStyle = rd.color;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, rd.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.08;
+    ctx.lineWidth = 1.2;
+    for (let k = 0; k < rd.ticks; k++) {
+      const a = rot + (k / rd.ticks) * Math.PI * 2;
+      const cos = Math.cos(a), sin = Math.sin(a);
+      ctx.beginPath();
+      ctx.moveTo(W/2 + cos * (rd.r - 6), H/2 + sin * (rd.r - 6));
+      ctx.lineTo(W/2 + cos * (rd.r + 6), H/2 + sin * (rd.r + 6));
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Drifting void motes — violet and cyan circles
   for (const s of EMBERS) {
-    const a = 0.06 + 0.10 * Math.sin(t * 0.9 + s.ph);
+    const a = 0.07 + 0.12 * Math.sin(t * 0.9 + s.ph);
     const y = (s.y - t * 5 * s.drift) % H;
     const yy = y < 0 ? y + H : y;
-    ctx.fillStyle = `rgba(60,70,120,${a.toFixed(2)})`;
-    ctx.fillRect(s.x, yy, s.r, s.r);
+    ctx.fillStyle = s.cyan
+      ? `rgba(34,170,220,${a.toFixed(2)})`
+      : `rgba(110,55,230,${a.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(s.x, yy, s.r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Heavy corner vignette — darkness presses in
   const g3 = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.22, W/2, H/2, Math.max(W,H)*0.78);
   g3.addColorStop(0,   'rgba(0,0,0,0)');
-  g3.addColorStop(1,   'rgba(0,0,0,0.75)');
+  g3.addColorStop(1,   'rgba(0,0,0,0.80)');
   ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
 }
 
@@ -1026,7 +1062,8 @@ const UNLOCKABLE_ORACLES = [
 ];
 
 // ─── Combo tier colours ───────────────────────────────────────────────
-const COMBO_COLORS = ['#445566','#5566aa','#7788bb','#8899cc','#aabbdd','#c03040','#8b1a2a','#5a0a14','#d0d8f0'];
+// tier 0→8: chance → pair → two-pair → three-kind → sm-straight → full-house → lg-straight → four-kind → five-kind
+const COMBO_COLORS = ['#556677','#5577bb','#6688cc','#7799dd','#88aaee','#dd4477','#cc44ff','#ff8833','#ffffff'];
 
 // ─── Game state ───────────────────────────────────────────────────────
 let screen = 'title';
@@ -1750,7 +1787,7 @@ function advanceGoal() {
   ring(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#ffffff',  90, 0.45);
   spark(CP.x + CP.w/2, BOARD_Y + BOARD_H/2, '#c89960', 18, 14);
   burst(W/2, H/2, '#c89960', 50, 7);
-  burst(W/2, H/2, '#9a3826', 25, 5);
+  burst(W/2, H/2, '#aa66ff', 25, 5);
   burst(W/2, H/2, '#ffffff', 18, 9);
 
   setTimeout(() => {
@@ -1836,7 +1873,7 @@ function triggerExitPortal() {
   if (portalRedirecting) return;
   portalRedirecting = true;
   SFX.portal();
-  burst(W - 44, H/2, '#9a3826', 24, 5);
+  burst(W - 44, H/2, '#22aadd', 24, 5);
   setTimeout(() => Portal.sendPlayerThroughPortal(
     nextTarget?.url ?? 'https://callumhyoung.github.io/gamejam/',
     { username: incoming.username, color: incoming.color, speed: incoming.speed }
@@ -2238,7 +2275,7 @@ function drawDie3D(die, cx, cy, size, upg) {
     if (m) { ur = parseInt(m[1],16)/255; ug = parseInt(m[2],16)/255; ub = parseInt(m[3],16)/255; }
   }
   // Glow/flash color for this die
-  const glowColor = upgColor || '#9a3826';
+  const glowColor = upgColor || '#7733ee';
 
   const rendered = [];
   for (const cf of CUBE_FACES) {
@@ -2347,7 +2384,7 @@ function drawDie3D(die, cx, cy, size, upg) {
     if ((die.locked || isHov) && isTop) {
       ctx.save();
       ctx.lineWidth   = 2.2;
-      ctx.strokeStyle = die.locked ? `rgba(200,153,96,${0.5+0.4*br})` : `rgba(154,56,38,${0.5+0.4*br})`;
+      ctx.strokeStyle = die.locked ? `rgba(200,153,96,${0.5+0.4*br})` : `rgba(119,51,238,${0.5+0.4*br})`;
       ctx.shadowColor = die.locked ? '#c89960' : glowColor;
       ctx.shadowBlur  = die.locked ? 14 : 9;
       ctx.stroke();
@@ -2462,7 +2499,7 @@ function drawDie3D(die, cx, cy, size, upg) {
   if (die.locked || isHov) {
     ctx.shadowColor = die.locked ? '#c89960' : glowColor;
     ctx.shadowBlur  = die.locked ? 24 : 14;
-    ctx.strokeStyle = die.locked ? 'rgba(200,153,96,0.75)' : `rgba(${(ur*154)|0},${(ug*56)|0},${(ub*38)|0},0.65)`;
+    ctx.strokeStyle = die.locked ? 'rgba(200,153,96,0.75)' : upgColor ? `rgba(${(ur*255)|0},${(ug*200)|0},${(ub*255)|0},0.65)` : 'rgba(119,51,238,0.65)';
     ctx.lineWidth   = 2.5;
     ctx.beginPath();
     ctx.ellipse(cx, cy + by, hs * 1.13, hs * 1.06, 0, 0, Math.PI*2);
@@ -2499,47 +2536,46 @@ function drawDie3D(die, cx, cy, size, upg) {
 
 // ─── Board surface ────────────────────────────────────────────────────
 function drawBoard(cx, topY, width, height) {
-  // Perspective felt table under the dice
+  // Obsidian divination table under the dice
   const bx = cx - width/2, bw = width, bh = height;
   ctx.save();
-  // Candlelit stone altar — warm amber core fading to near-black edges
+  // Deep void-stone — cool dark core fading to near-black edges
   const gr = ctx.createRadialGradient(cx, topY + bh*0.4, 10, cx, topY + bh*0.4, bw*0.55);
-  gr.addColorStop(0,   'rgba(60,28,10,0.92)');
-  gr.addColorStop(0.6, 'rgba(28,12,4,0.94)');
-  gr.addColorStop(1,   'rgba(8,3,1,0.95)');
+  gr.addColorStop(0,   'rgba(18,10,48,0.92)');
+  gr.addColorStop(0.6, 'rgba(8,5,22,0.94)');
+  gr.addColorStop(1,   'rgba(2,1,8,0.96)');
   roundRect(bx, topY, bw, bh, 14);
   ctx.fillStyle = gr;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(154,56,38,0.4)';
+  ctx.strokeStyle = 'rgba(100,44,220,0.45)';
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // Subtle ember inner glow border
-  ctx.shadowColor = 'rgba(200,153,96,0.2)';
-  ctx.shadowBlur  = 6;
-  ctx.strokeStyle = 'rgba(200,120,60,0.22)';
+  // Violet inner glow border
+  ctx.shadowColor = 'rgba(120,60,255,0.18)';
+  ctx.shadowBlur  = 8;
+  ctx.strokeStyle = 'rgba(100,55,210,0.20)';
   ctx.lineWidth   = 1;
   roundRect(bx+4, topY+4, bw-8, bh-8, 11);
   ctx.stroke();
   ctx.shadowBlur  = 0;
 
-  // Rune-lines radiating to center (perspective vanishing)
-  ctx.strokeStyle = 'rgba(200,130,70,0.14)';
-  ctx.lineWidth   = 1;
-  const lines = 7;
+  // Grid lines converging to vanishing point
+  ctx.strokeStyle = 'rgba(100,70,200,0.09)';
+  ctx.lineWidth   = 0.8;
+  const lines = 8;
   for (let i = 0; i <= lines; i++) {
     const f  = i / lines;
     const xp = bx + bw * f;
-    // Converge slightly toward horizontal center line
     const yTop = topY + 4;
     const yBot = topY + bh - 4;
     ctx.beginPath();
     ctx.moveTo(xp, yTop);
-    ctx.lineTo(cx + (xp-cx)*0.6, topY + bh*0.5);
+    ctx.lineTo(cx + (xp-cx)*0.55, topY + bh*0.5);
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(xp, yBot);
-    ctx.lineTo(cx + (xp-cx)*0.6, topY + bh*0.5);
+    ctx.lineTo(cx + (xp-cx)*0.55, topY + bh*0.5);
     ctx.stroke();
   }
   ctx.restore();
@@ -2548,28 +2584,27 @@ function drawBoard(cx, topY, width, height) {
 // ─── Button drawing ───────────────────────────────────────────────────
 function drawBtn(r, label, enabled, hot = false) {
   const hover = inRect(hoverX, hoverY, r) && enabled;
-  const bg    = !enabled ? '#140a05' : hot && hover ? '#4a1a0e' : hot ? '#3a1408' : hover ? '#22120a' : '#180c06';
-  const bdr   = !enabled ? '#2a1810' : hot ? '#b35838' : hover ? '#b8924a' : '#6a4a28';
+  const isActive = hot && hover;
+  const bg    = !enabled ? '#080614' : isActive ? '#1c0850' : hot ? '#150638' : hover ? '#110530' : '#0c0420';
+  const bdr   = !enabled ? '#1c1438' : isActive ? '#aa66ff' : hot ? '#8844ee' : hover ? '#6633cc' : '#3a2670';
   ctx.save();
-  // Subtle base fill with gradient
   const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
   grd.addColorStop(0, bg);
-  grd.addColorStop(1, 'rgba(0,0,0,0.4)');
-  drawRoundRect(r.x, r.y, r.w, r.h, 8, grd, bdr, 1.6);
-  // Inner hairline for chrome feel
-  ctx.strokeStyle = enabled ? 'rgba(200,153,96,0.28)' : 'rgba(120,90,60,0.15)';
+  grd.addColorStop(1, 'rgba(0,0,0,0.5)');
+  drawRoundRect(r.x, r.y, r.w, r.h, 8, grd, bdr, 1.5);
+  // Inner hairline
+  ctx.strokeStyle = enabled
+    ? (isActive ? 'rgba(160,100,255,0.35)' : 'rgba(110,66,200,0.20)')
+    : 'rgba(80,60,130,0.10)';
   ctx.lineWidth = 1;
   roundRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6, 6);
   ctx.stroke();
-  // Corner sigils
-  if (enabled) {
-    ctx.fillStyle = hot ? '#d4a050' : '#9a7848';
-    ctx.font = '10px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('✦', r.x + 12, r.y + r.h/2 + 4);
-    ctx.fillText('✦', r.x + r.w - 12, r.y + r.h/2 + 4);
+  // Glow on active/hover
+  if (enabled && (hover || hot)) {
+    ctx.shadowColor = isActive ? '#aa66ff' : '#7733ee';
+    ctx.shadowBlur  = isActive ? 18 : 9;
   }
-  ctx.fillStyle = enabled ? (hot ? '#f7e0b0' : '#e8d4a8') : '#5a4830';
+  ctx.fillStyle = enabled ? (isActive ? '#eedeff' : hot ? '#d8c8f8' : hover ? '#c8b8ee' : '#b8aad8') : '#443860';
   ctx.font      = `bold 15px ${SERIF}`;
   ctx.textAlign = 'center';
   ctx.fillText(label, r.x + r.w/2, r.y + r.h/2 + 5);
@@ -2676,7 +2711,7 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
   }
   ctx.save();
   if (hover) { ctx.shadowColor = oracle.color; ctx.shadowBlur = 8; }
-  const bg = owned ? '#130a05' : hover ? '#22100a' : '#180c06';
+  const bg = owned ? '#0a0820' : hover ? '#120a30' : '#0c0820';
   drawRoundRect(x, y, w, h, 12, bg, oracle.color, owned ? 1.5 : 2);
 
   // Legendary badge
@@ -2760,7 +2795,7 @@ function drawHowToPlay(t) {
 
   const fw = 920, fh = 516;
   const fx = (W - fw) / 2, fy = (H - fh) / 2;
-  ornamentFrame(fx, fy, fw, fh, '#5a2a18', { bg: 'rgba(28,14,8,0.97)', inner: 'rgba(200,153,96,0.4)' });
+  ornamentFrame(fx, fy, fw, fh, '#4422aa', { bg: 'rgba(4,3,16,0.97)', inner: 'rgba(110,60,220,0.35)' });
 
   // Title
   ctx.save();
@@ -2786,9 +2821,9 @@ function drawHowToPlay(t) {
   const lw = fw / 2 - 50;
 
   const sectionHeader = (label, y) => {
-    txt(label, lx, y, {size:10, color:'#9a3826', bold:true});
+    txt(label, lx, y, {size:10, color:'#8855ee', bold:true});
     ctx.save();
-    ctx.strokeStyle = 'rgba(154,56,38,0.3)';
+    ctx.strokeStyle = 'rgba(119,51,238,0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     const tw = ctx.measureText(label).width + 8;
@@ -2895,7 +2930,7 @@ function drawTitle(t) {
   // Ornate central parchment frame
   const fw = 560, fh = 360;
   const fx = (W - fw) / 2, fy = (H - fh) / 2;
-  ornamentFrame(fx, fy, fw, fh, '#5a2a18', { bg: 'rgba(28,14,8,0.94)', inner: 'rgba(200,153,96,0.45)' });
+  ornamentFrame(fx, fy, fw, fh, '#4422aa', { bg: 'rgba(4,3,18,0.95)', inner: 'rgba(200,153,96,0.42)' });
 
   // Top flourish line with sigils
   ctx.save();
@@ -2918,7 +2953,7 @@ function drawTitle(t) {
   ctx.fillStyle='rgba(0,0,0,0.7)';
   ctx.font = `bold 64px ${SERIF}`;
   ctx.fillText('FortuneFallacy', W/2 + 2, fy + 112 + 2);
-  ctx.shadowColor = '#9a3826'; ctx.shadowBlur = 10;
+  ctx.shadowColor = '#6622cc'; ctx.shadowBlur = 14;
   ctx.fillStyle = '#c89960';
   ctx.fillText('FortuneFallacy', W/2, fy + 112);
   ctx.restore();
@@ -2988,8 +3023,8 @@ function drawGame(t) {
   drawBG(t);
 
   // Left panel
-  ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#3a1e10');
-  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', '#8899bb', '☽');
+  ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#2a1880');
+  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', '#9966ee', '☽');
 
   const cardH = 50; const cardW = LP.w - 16;
   for (let i = 0; i < MAX_ORACLES; i++) {
@@ -3008,7 +3043,7 @@ function drawGame(t) {
   }
 
   // Center panel
-  ornamentFrame(CP.x, CP.y, CP.w, CP.h, '#3a1e10');
+  ornamentFrame(CP.x, CP.y, CP.w, CP.h, '#2a1880');
   // Ornate title with goal label (replaces plain header)
   ctx.save();
   ctx.textAlign = 'center';
@@ -3016,7 +3051,7 @@ function drawGame(t) {
   ctx.font = `bold 20px ${SERIF}`;
   ctx.fillText(goalLabel(), CP.x + CP.w/2, CP.y + 30);
   ctx.restore();
-  panelHeader(CP.x + CP.w/2, CP.y + 46, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#a88860', '✦');
+  panelHeader(CP.x + CP.w/2, CP.y + 46, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
 
   // Board surface behind dice
   drawBoard(CP.x + CP.w/2, BOARD_Y, CP.w - 16, BOARD_H);
@@ -3118,11 +3153,11 @@ function drawGame(t) {
     // Mult with punch scale
     ctx.save();
     ctx.translate(cx2 + 58, sy); ctx.scale(multScale, multScale);
-    ctx.fillStyle = '#9a3826'; ctx.shadowColor = '#9a3826'; ctx.shadowBlur = 3 + multPunch * 10;
+    ctx.fillStyle = '#ee3388'; ctx.shadowColor = '#ee3388'; ctx.shadowBlur = 3 + multPunch * 10;
     ctx.font = 'bold 22px ui-sans-serif,sans-serif';
     ctx.fillText(mult, 0, 0);
     ctx.restore();
-    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(154,56,38,0.55)';
+    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(238,51,136,0.55)';
     ctx.font = '9px ui-sans-serif,sans-serif';
     ctx.fillText('mult', cx2 + 58, sy + 13);
     ctx.restore();
@@ -3149,7 +3184,7 @@ function drawGame(t) {
     txt('Click dice to hold / release them', CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
-  ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#3a1e10');
+  ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#2a1880');
   panelHeader(RP.x + RP.w/2, RP.y + 22, RP.w - 20, 'Score', '#c89960', '⚝');
 
   // Score number — scale-bounces while counting, lava glow on first-hand clear
@@ -3177,7 +3212,7 @@ function drawGame(t) {
       ctx.shadowColor = '#ffaa00';
       ctx.shadowBlur  = 14 + Math.sin(t * 6) * 5;
     } else {
-      ctx.fillStyle = '#e0c590'; ctx.shadowColor = '#9a3826'; ctx.shadowBlur = 3;
+      ctx.fillStyle = '#e0c590'; ctx.shadowColor = '#6622cc'; ctx.shadowBlur = 4;
     }
     ctx.fillText(scoreStr, sx, sy);
     ctx.restore();
@@ -3188,7 +3223,7 @@ function drawGame(t) {
   const prog = Math.min(1, displayRoundScore/currentTarget());
   const bx=RP.x+12, by=RP.y+84, bw=RP.w-24, bh=14;
   const isLava = firstHandSpectrumGoal === runGoal;
-  drawRoundRect(bx, by, bw, bh, 5, '#1a0f08', '#3a1e10');
+  drawRoundRect(bx, by, bw, bh, 5, '#0a0818', '#2a1866');
   if (prog>0) {
     ctx.save();
     if (isLava) {
@@ -3277,18 +3312,18 @@ function drawGame(t) {
         });
       }
     } else {
-      // Heat gradient — left=cool ember, right=white-hot; fill edge reveals current temperature
+      // Void gradient — left=deep violet, right=electric white; fill edge reveals progress
       const rg = ctx.createLinearGradient(bx, by, bx+bw, by);
-      rg.addColorStop(0.00, '#1a0300');
-      rg.addColorStop(0.18, '#5c0800');
-      rg.addColorStop(0.38, '#9a1500');
-      rg.addColorStop(0.56, '#cc3300');
-      rg.addColorStop(0.72, '#ff5500');
-      rg.addColorStop(0.84, '#ff8800');
-      rg.addColorStop(0.93, '#ffbb00');
-      rg.addColorStop(0.97, '#ffee44');
+      rg.addColorStop(0.00, '#0a0420');
+      rg.addColorStop(0.18, '#220a60');
+      rg.addColorStop(0.38, '#4422aa');
+      rg.addColorStop(0.56, '#6633cc');
+      rg.addColorStop(0.72, '#8844ee');
+      rg.addColorStop(0.84, '#aa77ff');
+      rg.addColorStop(0.93, '#ccbbff');
+      rg.addColorStop(0.97, '#eeddff');
       rg.addColorStop(1.00, '#ffffff');
-      ctx.shadowColor = prog>0.82?'#ff8800':prog>0.52?'#cc3300':'#661100';
+      ctx.shadowColor = prog>0.82?'#aa77ff':prog>0.52?'#7744ee':'#3311aa';
       ctx.shadowBlur  = 4 + prog * 22;
       drawRoundRect(bx, by, bw*prog, bh, 5, rg, null);
     }
@@ -3302,13 +3337,13 @@ function drawGame(t) {
       const dx = RP.x + 14 + i*(RP.w-28)/(GOAL_TARGETS.length-1);
       ctx.save();
       if (i<runGoal) { ctx.fillStyle='#c89960'; ctx.shadowColor='#c89960'; ctx.shadowBlur=2; }
-      else if (i===runGoal) { ctx.fillStyle='#9a3826'; ctx.shadowColor='#9a3826'; ctx.shadowBlur=3; }
-      else { ctx.fillStyle='#2a1810'; }
+      else if (i===runGoal) { ctx.fillStyle='#7733ee'; ctx.shadowColor='#7733ee'; ctx.shadowBlur=4; }
+      else { ctx.fillStyle='#1a1240'; }
       ctx.beginPath(); ctx.arc(dx, RP.y+128, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   } else {
-    txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+120, {size:13,color:'#9a3826',align:'center',bold:true});
+    txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+120, {size:13,color:'#8844ee',align:'center',bold:true});
   }
 
   txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+150, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
@@ -3318,11 +3353,11 @@ function drawGame(t) {
   // Exit portal
   exitPortalPulse += 0.05;
   const epLabel = (nextTarget?.title ?? 'Jam Hub').slice(0,14);
-  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, '#9a3826', exitPortalPulse, epLabel, true);
+  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, '#22aadd', exitPortalPulse, epLabel, true);
 
   // Pause button
   const pbx=RP.x+RP.w-36, pby=RP.y+5, pbw=28, pbh=22;
-  drawRoundRect(pbx,pby,pbw,pbh,4,'rgba(30,15,8,0.85)',paused?'#c89960':'#3a2010');
+  drawRoundRect(pbx,pby,pbw,pbh,4,'rgba(10,6,24,0.85)',paused?'#c89960':'#2a1860');
   txt('⏸', pbx+pbw/2, pby+pbh/2+5, {size:11,color:paused?'#c89960':'#887060',align:'center'});
 
   drawParticles();
@@ -3340,7 +3375,7 @@ function drawGame(t) {
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
 function drawShop(t) {
   drawBG(t);
-  txt('ANOMALY GIFT', W/2, 56, {size:30,color:'#7a1a28',align:'center',bold:true,shadow:'#7a1a28'});
+  txt('ANOMALY GIFT', W/2, 56, {size:30,color:'#8844ee',align:'center',bold:true,shadow:'#8844ee'});
   txt(`Goal ${runGoal} cleared! Choose a power-up — it lasts the whole run.`, W/2, 86, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
 
   for (let i = 0; i < shopChoices.length; i++) {
@@ -3354,7 +3389,7 @@ function drawShop(t) {
 // ─── SCREEN: Hub ──────────────────────────────────────────────────────
 function drawHub(t) {
   drawBG(t);
-  txt('CAMPAIGN MAP', W/2, 44, {size:24,color:'#9a3826',align:'center',bold:true,shadow:'#9a3826'});
+  txt('CAMPAIGN MAP', W/2, 44, {size:24,color:'#8844ee',align:'center',bold:true,shadow:'#8844ee'});
   txt(runGoal === 0 ? 'Choose your path — press Next Goal to begin' : `Goal ${runGoal} cleared  ·  +${hubEarnedShards} Shards earned`, W/2, 72, {size:13,color:'#b8a874',align:'center'});
 
   // Shard badge (top right)
@@ -3368,7 +3403,7 @@ function drawHub(t) {
     const x1 = mapXS + (i/(nodes.length-1))*(mapXE-mapXS);
     const x2 = mapXS + ((i+1)/(nodes.length-1))*(mapXE-mapXS);
     ctx.save();
-    ctx.strokeStyle = i < runGoal ? '#c89960' : 'rgba(100,60,30,0.5)';
+    ctx.strokeStyle = i < runGoal ? '#c89960' : 'rgba(60,40,120,0.5)';
     ctx.lineWidth = 3; ctx.setLineDash(i < runGoal ? [] : [6,5]);
     ctx.beginPath(); ctx.moveTo(x1+22, mapY); ctx.lineTo(x2-22, mapY); ctx.stroke();
     ctx.setLineDash([]); ctx.restore();
@@ -3376,19 +3411,19 @@ function drawHub(t) {
   for (let i = 0; i < nodes.length; i++) {
     const gx = mapXS + (i/(nodes.length-1))*(mapXE-mapXS);
     const cleared = i < runGoal, current = i === runGoal;
-    const col = cleared ? '#c89960' : current ? '#9a3826' : '#2a1810';
+    const col = cleared ? '#c89960' : current ? '#8833ff' : '#1a1240';
     ctx.save();
     ctx.shadowColor = col; ctx.shadowBlur = cleared||current ? 14 : 0;
     ctx.fillStyle = col;
     ctx.beginPath(); ctx.arc(gx, mapY, 20, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = cleared ? '#ffe066' : current ? '#b35838' : '#332255';
+    ctx.strokeStyle = cleared ? '#ffe066' : current ? '#aa66ff' : '#2a1e55';
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, mapY, 20, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = cleared ? '#0d0805' : current ? '#fff' : '#5a3a18';
+    ctx.fillStyle = cleared ? '#0a0820' : current ? '#fff' : '#4a3880';
     ctx.font = 'bold 12px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(cleared ? '✓' : String(i+1), gx, mapY+5);
     const lbl = nodes[i]>=10000 ? (nodes[i]/1000|0)+'k' : nodes[i]>=1000 ? (nodes[i]/1000).toFixed(1)+'k' : String(nodes[i]);
-    txt(lbl, gx, mapY+38, {size:10,color:cleared?'#c89960':current?'#9a3826':'rgba(180,150,100,0.5)',align:'center'});
+    txt(lbl, gx, mapY+38, {size:10,color:cleared?'#c89960':current?'#aa66ff':'rgba(140,120,200,0.5)',align:'center'});
   }
 
   // Owned oracle row
@@ -3785,7 +3820,7 @@ function drawForge(t) {
 // ─── SCREEN: Win ──────────────────────────────────────────────────────
 function drawWin(t) {
   drawBG(t);
-  if (Math.random()<0.04) burst(Math.random()*W, Math.random()*H, Math.random()<0.5?'#c89960':'#9a3826', 3, 4);
+  if (Math.random()<0.04) burst(Math.random()*W, Math.random()*H, Math.random()<0.5?'#c89960':'#aa66ff', 3, 4);
 
   ctx.save();
   ctx.textAlign='center'; ctx.shadowColor='#c89960'; ctx.shadowBlur=14;
@@ -3806,7 +3841,7 @@ function drawWin(t) {
   }
 
   exitPortalPulse += 0.05; returnPortalPulse += 0.05;
-  drawPortalRing(W-52, H/2, 32, '#9a3826', exitPortalPulse, epLabel(), true);
+  drawPortalRing(W-52, H/2, 32, '#22aadd', exitPortalPulse, epLabel(), true);
   if (incoming.ref) drawPortalRing(52, H/2, 32, '#b8a874', returnPortalPulse, '← Return', true);
 
   drawParticles(); drawFloaters();
@@ -3834,7 +3869,7 @@ function drawScores(t) {
 
   const headers = ['#','Name','Score','Mode'];
   const cxs     = [W/2-230, W/2-170, W/2+50, W/2+185];
-  headers.forEach((h,i) => txt(h, cxs[i], 116, {size:11,color:'#9a3826',align:'left',bold:true}));
+  headers.forEach((h,i) => txt(h, cxs[i], 116, {size:11,color:'#8844ee',align:'left',bold:true}));
 
   const list = scoresTab === 'global' ? onlineScores : highScores;
 
@@ -3976,12 +4011,12 @@ function drawPause(t) {
     const qaItems = [
       { label:'⬡  Rune Table',  sub:'Equip runes to your dice',                    color:'#cc88ff', by:py+100 },
       { label:'⚙  Forge',       sub:'Buy dice upgrades & anomalies',                color:'#c89960', by:py+175 },
-      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#9a3826', by:py+250 },
+      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#22aadd', by:py+250 },
     ];
     qaItems.forEach(({ label, sub, color, by }) => {
       const bx = px+60, bw = pw-120, bh = 60;
       const hovering = inRect(hoverX, hoverY, {x:bx, y:by, w:bw, h:bh});
-      drawRoundRect(bx, by, bw, bh, 8, hovering?'rgba(40,20,10,0.95)':'rgba(20,10,5,0.9)', color, 1.2);
+      drawRoundRect(bx, by, bw, bh, 8, hovering?'rgba(10,6,28,0.95)':'rgba(6,4,18,0.9)', color, 1.2);
       txt(label, bx+bw/2, by+22, {size:15, color, align:'center', bold:true, shadow:color});
       txt(sub,   bx+bw/2, by+42, {size:10, color:'rgba(200,180,140,0.6)', align:'center'});
     });
