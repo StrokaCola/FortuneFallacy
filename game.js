@@ -461,6 +461,41 @@ function rotate3(x, y, z, rx, ry, rz) {
   return [x3, y3, z2];
 }
 
+// ─── Rapier init ──────────────────────────────────────────────────────
+let RAPIER_LIB = null;  // set after dynamic import resolves
+
+async function initRapier() {
+  try {
+    const mod = await import('./rapier/rapier.mjs');
+    await mod.init({ module_or_path: './rapier/rapier_wasm3d_bg.wasm' });
+    RAPIER_LIB = mod;
+  } catch (e) {
+    console.warn('Rapier unavailable, using legacy physics:', e.message);
+    return;
+  }
+
+  const R   = RAPIER_LIB;
+  const world = new R.World({ x: 0, y: -14, z: 0 });
+
+  const tHW = (CP.w  - 20) / 2 / PHYS_SCALE;  // table half-width  ≈ 5.16
+  const tHD = (BOARD_H - 20) / 2 / PHYS_SCALE; // table half-depth  ≈ 2.50
+  const wH  = 3;
+
+  // Floor — top surface at y = 0
+  world.createCollider(
+    R.ColliderDesc.cuboid(tHW + 1, 0.1, tHD + 1)
+      .setTranslation(0, -0.1, 0).setRestitution(0.55).setFriction(0.25)
+  );
+  // Four walls
+  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation(-tHW - 0.1, wH, 0).setRestitution(0.55).setFriction(0.1));
+  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation( tHW + 0.1, wH, 0).setRestitution(0.55).setFriction(0.1));
+  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH, -tHD - 0.1).setRestitution(0.55).setFriction(0.1));
+  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH,  tHD + 0.1).setRestitution(0.55).setFriction(0.1));
+
+  rapierWorld = world;
+  console.log('Rapier3D ready — physics world active');
+}
+
 // face: number(1-6), normal out, u=right, v=down when viewed from outside
 // +Z toward viewer at rest → face 1 shows
 const CUBE_FACES = [
@@ -486,6 +521,19 @@ const FACE_ROT = {
 function nearestCanon(cur, target) {
   const n = Math.round((cur - target) / PI2);
   return target + n * PI2;
+}
+
+// Given accumulated render Euler angles, return the nearest canonical face (1-6)
+function eulerToFace(rx, ry, rz) {
+  let bestFace = 1, bestErr = Infinity;
+  for (const [face, rot] of Object.entries(FACE_ROT)) {
+    const dx = nearestCanon(rx, rot[0]) - rx;
+    const dy = nearestCanon(ry, rot[1]) - ry;
+    const dz = nearestCanon(rz, rot[2]) - rz;
+    const err = dx*dx + dy*dy + dz*dz;
+    if (err < bestErr) { bestErr = err; bestFace = +face; }
+  }
+  return bestFace;
 }
 
 // ─── Banner ───────────────────────────────────────────────────────────
@@ -1101,6 +1149,11 @@ function unlockEndless() {
 // ─── Run management ───────────────────────────────────────────────────
 function initDice() {
   rollCollisions = [];
+  if (rapierWorld && dice) {
+    for (const d of dice) {
+      if (d.physBody) { rapierWorld.removeRigidBody(d.physBody); d.physBody = null; }
+    }
+  }
   const N = Math.max(DICE_COUNT, diceUpgrades.length || DICE_COUNT);
   const perRow = 5;
   const cols   = Math.min(N, perRow);
@@ -1121,7 +1174,7 @@ function initDice() {
       scoringT: 0, landT: 0,
       absX: x0 + c * (DICE_SIZE + DICE_GAP) + DICE_SIZE / 2,
       absY: DICE_Y + r * rowH + DICE_SIZE / 2,
-      pvx: 0, pvy: 0,
+      pvx: 0, pvy: 0, physBody: null,
     };
   });
   rolledOnce = false;
@@ -1184,6 +1237,45 @@ function goalLabel() {
   return endless ? `Endless ${runGoal + 1}` : `Goal ${runGoal + 1} / ${GOAL_TARGETS.length}`;
 }
 
+// ─── Natural settle (Rapier path) ─────────────────────────────────────
+function settleDie(d, dIdx) {
+  if (!d.rolling) return;
+  if (d.physBody && rapierWorld) {
+    const tr = d.physBody.translation();
+    const hs = DICE_SIZE / 2;
+    const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
+    const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
+    d.absX    = Math.max(bL, Math.min(bR, PHYS_CX + tr.x * PHYS_SCALE));
+    d.absY    = Math.max(bT, Math.min(bB, PHYS_CZ + tr.z * PHYS_SCALE));
+    d.bounceY = 0;
+    rapierWorld.removeRigidBody(d.physBody);
+    d.physBody = null;
+  }
+  const rawFace = eulerToFace(d.rx, d.ry, d.rz);
+  d.face = Math.max(d.faceMin ?? 1, Math.min(d.faceMax ?? 6, rawFace));
+  d.rolling  = false;
+  d.settling = false;
+  d.pvx = 0; d.pvy = 0;
+  d.homeX = d.absX; d.homeY = d.absY;
+  const [trx, try_, trz] = FACE_ROT[d.face];
+  d.rx = trx; d.ry = try_; d.rz = trz;
+  d.landT = 0;
+  d.revealT = 0;
+  d.bounceVY = -PHYSICS.landBounceVel;
+  const upgC = diceUpgrades[dIdx] ? diceUpgrades[dIdx].color : '#c89960';
+  burst(d.absX, d.absY + DICE_SIZE * 0.35, upgC,    10, 3.2);
+  burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff',  5, 4.0);
+  spark(d.absX, d.absY + DICE_SIZE * 0.35, upgC, 8, 10);
+  ring(d.absX, d.absY, upgC, 38, 0.32);
+  playTone(130 + d.face * 22, 'triangle', 0.15 + scoreIntensity(roundScore) * 0.10, 0.12 + scoreIntensity(roundScore) * 0.06);
+  playTone(260 + d.face * 22, 'sine', 0.06, 0.18);
+  screenShake(6 + d.face * 0.6 + scoreIntensity(roundScore) * 6);
+  if (!dice.some(x => x.rolling)) {
+    rolledOnce = true;
+    screenShake(8 + scoreIntensity(roundScore) * 8);
+  }
+}
+
 // ─── Dice rolling ─────────────────────────────────────────────────────
 function rollDice() {
   if (handInProgress) return;
@@ -1195,15 +1287,15 @@ function rollDice() {
   screenShake(4 + scoreIntensity(roundScore) * 6);
 
   targets.forEach((d, i) => {
-    const _rupg = diceUpgrades[dice.indexOf(d)];
-    if (_rupg && _rupg.rollMin !== undefined && _rupg.rollMax !== undefined)
-      d.face = _rupg.rollMin + Math.floor(Math.random() * (_rupg.rollMax - _rupg.rollMin + 1));
-    else
-      d.face = 1 + Math.floor(Math.random() * 6);
+    const dIdx = dice.indexOf(d);
+    const rupg = diceUpgrades[dIdx];
+    d.faceMin = rupg?.rollMin ?? 1;
+    d.faceMax = rupg?.rollMax ?? 6;
     d.rolling = true;
     d.rollT   = 0;
     d.rollDur = PHYSICS.rollDurBase + i * PHYSICS.rollDurStagger + Math.random() * PHYSICS.rollDurRand;
     d.settling = false;
+    d.settleFrames = 0;
     // Wild spin
     d.vx = (Math.random() - 0.5) * PHYSICS.initSpinXY;
     d.vy = (Math.random() - 0.5) * PHYSICS.initSpinXY;
@@ -1219,38 +1311,69 @@ function rollDice() {
     d.pvx = Math.cos(throwAngle) * throwMag;
     d.pvy = Math.sin(throwAngle) * throwMag * (PHYSICS.throwSpeedY / PHYSICS.throwSpeedX);
     d.bounceCount = 0;
-    // Target rotation
-    const [trx, try_, trz] = FACE_ROT[d.face];
-    d.tRx = trx; d.tRy = try_; d.tRz = trz;
+    if (rapierWorld && RAPIER_LIB) {
+      // Rapier path: face determined on natural settle — set placeholder for safety
+      d.face = 1;
+      if (d.physBody) { rapierWorld.removeRigidBody(d.physBody); d.physBody = null; }
+      const R = RAPIER_LIB;
+      const physX = (d.absX - PHYS_CX) / PHYS_SCALE;
+      const physZ = (d.absY - PHYS_CZ) / PHYS_SCALE;
+      const physY = RAPIER_DIE_HALF + 0.4 + Math.random() * 0.4;
+      d.physBody = rapierWorld.createRigidBody(
+        R.RigidBodyDesc.dynamic()
+          .setTranslation(physX, physY, physZ)
+          .setLinearDamping(0.05)
+          .setAngularDamping(0.3)
+      );
+      rapierWorld.createCollider(
+        R.ColliderDesc.cuboid(RAPIER_DIE_HALF, RAPIER_DIE_HALF, RAPIER_DIE_HALF)
+          .setRestitution(0.5).setFriction(0.3),
+        d.physBody
+      );
+      // Velocity: X/Z = table throw, Y = upward bounce launch
+      d.physBody.setLinvel({ x: d.pvx / PHYS_SCALE, y: -d.bounceVY / PHYS_SCALE, z: d.pvy / PHYS_SCALE }, true);
+      // Angular velocity coupled to throw direction so die looks like it's rolling
+      const physVX = d.pvx / PHYS_SCALE, physVZ = d.pvy / PHYS_SCALE;
+      const rollX = physVZ / RAPIER_DIE_HALF + (Math.random() - 0.5) * 6;
+      const rollZ = -physVX / RAPIER_DIE_HALF + (Math.random() - 0.5) * 6;
+      d.physBody.setAngvel({ x: rollX, y: (Math.random() - 0.5) * 4, z: rollZ }, true);
+    } else {
+      // Legacy path: predetermine face now
+      d.face = d.faceMin + Math.floor(Math.random() * (d.faceMax - d.faceMin + 1));
+      const [trx, try_, trz] = FACE_ROT[d.face];
+      d.tRx = trx; d.tRy = try_; d.tRz = trz;
+    }
   });
 
-  const maxDur = Math.max(...targets.map(d => d.rollDur));
-  setTimeout(() => {
-    targets.forEach((d, i) => {
-      setTimeout(() => {
-        d.rolling  = false;
-        d.settling = false;
-        d.pvx = 0; d.pvy = 0;
-        d.homeX = d.absX; d.homeY = d.absY;
-        const [trx, try_, trz] = FACE_ROT[d.face];
-        d.rx = trx; d.ry = try_; d.rz = trz;
-        d.landT = 0;
-        d.revealT = 0;   // drives face-reveal flash in drawDie3D
-        d.bounceVY = -PHYSICS.landBounceVel;
-        const upgC = diceUpgrades[i] ? diceUpgrades[i].color : '#c89960';
-        burst(d.absX, d.absY + DICE_SIZE * 0.35, upgC,    10, 3.2);
-        burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff',  5, 4.0);
-        spark(d.absX, d.absY + DICE_SIZE * 0.35, upgC, 8, 10);
-        ring(d.absX, d.absY, upgC, 38, 0.32);
-        // Pitched thud: lower pitch = heavier land feel, face note for variety
-        playTone(130 + d.face * 22, 'triangle', 0.15 + scoreIntensity(roundScore) * 0.10, 0.12 + scoreIntensity(roundScore) * 0.06);
-        playTone(260 + d.face * 22, 'sine',     0.06, 0.18);
-        screenShake(6 + d.face * 0.6 + scoreIntensity(roundScore) * 6);
-      }, i * 60);
-    });
-    rolledOnce = true;
-    setTimeout(() => screenShake(8 + scoreIntensity(roundScore) * 8), targets.length * 60);
-  }, (maxDur + 0.12) * 1000);
+  // Legacy path: timer-based forced settle (Rapier uses per-die natural settle in update loop)
+  if (!rapierWorld) {
+    const maxDur = Math.max(...targets.map(d => d.rollDur));
+    setTimeout(() => {
+      targets.forEach((d, i) => {
+        setTimeout(() => {
+          d.rolling  = false;
+          d.settling = false;
+          d.pvx = 0; d.pvy = 0;
+          d.homeX = d.absX; d.homeY = d.absY;
+          const [trx, try_, trz] = FACE_ROT[d.face];
+          d.rx = trx; d.ry = try_; d.rz = trz;
+          d.landT = 0;
+          d.revealT = 0;
+          d.bounceVY = -PHYSICS.landBounceVel;
+          const upgC = diceUpgrades[dice.indexOf(d)] ? diceUpgrades[dice.indexOf(d)].color : '#c89960';
+          burst(d.absX, d.absY + DICE_SIZE * 0.35, upgC,    10, 3.2);
+          burst(d.absX, d.absY + DICE_SIZE * 0.35, '#ffffff',  5, 4.0);
+          spark(d.absX, d.absY + DICE_SIZE * 0.35, upgC, 8, 10);
+          ring(d.absX, d.absY, upgC, 38, 0.32);
+          playTone(130 + d.face * 22, 'triangle', 0.15 + scoreIntensity(roundScore) * 0.10, 0.12 + scoreIntensity(roundScore) * 0.06);
+          playTone(260 + d.face * 22, 'sine',     0.06, 0.18);
+          screenShake(6 + d.face * 0.6 + scoreIntensity(roundScore) * 6);
+        }, i * 60);
+      });
+      rolledOnce = true;
+      setTimeout(() => screenShake(8 + scoreIntensity(roundScore) * 8), targets.length * 60);
+    }, (maxDur + 0.12) * 1000);
+  }
 }
 
 // ─── Play hand ────────────────────────────────────────────────────────
@@ -1703,13 +1826,20 @@ const LP = { x:8,   w:196, y:8, h:H-16 };
 const CP = { x:212, w:536, y:8, h:H-16 };
 const RP = { x:756, w:196, y:8, h:H-16 };
 
-const DICE_SIZE  = 44;
+const DICE_SIZE  = 38;
 const DICE_GAP   = 22;
 const DICE_Y     = CP.y + 95;
 const DICE_ROW_W = DICE_COUNT * DICE_SIZE + (DICE_COUNT-1) * DICE_GAP;
 const DICE_X0    = CP.x + (CP.w - DICE_ROW_W)/2;
 const BOARD_Y    = DICE_Y - 33;
 const BOARD_H    = 270;
+
+// ─── Rapier3D physics constants ────────────────────────────────────────
+const PHYS_SCALE      = 50;       // canvas pixels per physics unit
+const RAPIER_DIE_HALF = DICE_SIZE / 2 / PHYS_SCALE;  // ~0.44 units
+const PHYS_CX         = CP.x + CP.w * 0.5;            // canvas centre-X of play area
+const PHYS_CZ         = BOARD_Y + BOARD_H * 0.5;      // canvas centre-Y of play area
+let rapierWorld       = null;
 
 function diceRect(i) { return { x: DICE_X0 + i*(DICE_SIZE+DICE_GAP), y: DICE_Y, w: DICE_SIZE, h: DICE_SIZE }; }
 
@@ -3821,6 +3951,9 @@ function loop(now) {
     for (const d of dice) d.holdSlot = d.locked ? hs++ : -1;
   }
 
+  // Step Rapier physics (once per frame, before reading body state)
+  if (rapierWorld && dice.some(d => d.rolling && d.physBody)) rapierWorld.step();
+
   // Update 3D dice physics
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
@@ -3831,7 +3964,14 @@ function loop(now) {
       d.rollT += dt;
       const prog = Math.min(1, d.rollT / d.rollDur);
 
-      if (prog < PHYSICS.tumblePhase) {
+      if (d.physBody) {
+        // Rapier drives angular velocity; remap rapier axes → render axes
+        // rapier X→render X, rapier Z→render Y, rapier Y→render Z
+        const av = d.physBody.angvel();
+        d.vx = av.x; d.vy = av.z; d.vz = av.y;
+        d.rx += d.vx * dt; d.ry += d.vy * dt; d.rz += d.vz * dt;
+        d.settling = false;
+      } else if (prog < PHYSICS.tumblePhase) {
         // Tumble coupling — linear velocity drives rotation axis perpendicular to motion
         const speed = Math.hypot(d.pvx, d.pvy);
         if (speed > 20) {
@@ -3866,77 +4006,86 @@ function loop(now) {
         d.rz = d.sfRz + (d.tRz - d.sfRz) * ease;
       }
     }
-    // Bounce physics — gravity + multi-hop while tumbling
-    const speed2 = Math.hypot(d.pvx, d.pvy);
-    if (d.rolling && d.bounceY >= 0 && d.bounceVY >= -0.01 && speed2 > PHYSICS.hopThreshold && (d.bounceCount|0) < PHYSICS.maxHops) {
-      // Still moving fast → take another hop (tumbling)
-      d.bounceVY = -(PHYSICS.hopBaseVel + Math.random() * PHYSICS.hopRandVel + speed2 * PHYSICS.hopSpeedFactor);
-      d.bounceCount = (d.bounceCount|0) + 1;
-    }
-    if (d.bounceY < 0 || d.bounceVY < 0) {
-      d.bounceVY += PHYSICS.gravity * dt;
-      d.bounceY  += d.bounceVY * dt;
-      if (d.bounceY > 0) {
-        d.bounceY = 0;
-        if (Math.abs(d.bounceVY) > 3) {
-          d.bounceVY = -Math.abs(d.bounceVY) * PHYSICS.floorRestitution;
-          // Landing thud → angular kick + tangential friction
-          if (d.rolling) {
-            d.vx += (Math.random() - 0.5) * PHYSICS.landingSpinX;
-            d.vz += (Math.random() - 0.5) * PHYSICS.landingSpinZ;
-            d.pvx *= PHYSICS.landingFriction; d.pvy *= PHYSICS.landingFriction;
-            if (Math.abs(d.bounceVY) > 4) {
-              burst(d.absX, d.absY + DICE_SIZE*0.35, '#8a5a2e', 2, 1.6);
-              playTone(100 + Math.random()*30, 'square', 0.02, 0.03);
+    if (d.physBody && d.rolling) {
+      // Rapier handles position + bounce — read body state directly
+      const tr = d.physBody.translation();
+      const lv = d.physBody.linvel();
+      d.absX    = PHYS_CX + tr.x * PHYS_SCALE;
+      d.absY    = PHYS_CZ + tr.z * PHYS_SCALE;
+      d.bounceY = (RAPIER_DIE_HALF - tr.y) * PHYS_SCALE;
+      d.pvx     = lv.x * PHYS_SCALE;
+      d.pvy     = lv.z * PHYS_SCALE;
+      // Natural settle: both linear and angular speed below threshold for 8 consecutive frames
+      const linSpd = Math.hypot(lv.x, lv.y, lv.z);
+      const angSpd = Math.hypot(d.vx, d.vy, d.vz); // set from angvel earlier this frame
+      const isStill = linSpd < 0.15 && angSpd < 0.3;
+      d.settleFrames = isStill ? (d.settleFrames | 0) + 1 : 0;
+      if (d.settleFrames >= 8 || d.rollT > 5.0) settleDie(d, i);
+    } else {
+      // Legacy bounce physics — gravity + multi-hop while tumbling
+      const speed2 = Math.hypot(d.pvx, d.pvy);
+      if (d.rolling && d.bounceY >= 0 && d.bounceVY >= -0.01 && speed2 > PHYSICS.hopThreshold && (d.bounceCount|0) < PHYSICS.maxHops) {
+        d.bounceVY = -(PHYSICS.hopBaseVel + Math.random() * PHYSICS.hopRandVel + speed2 * PHYSICS.hopSpeedFactor);
+        d.bounceCount = (d.bounceCount|0) + 1;
+      }
+      if (d.bounceY < 0 || d.bounceVY < 0) {
+        d.bounceVY += PHYSICS.gravity * dt;
+        d.bounceY  += d.bounceVY * dt;
+        if (d.bounceY > 0) {
+          d.bounceY = 0;
+          if (Math.abs(d.bounceVY) > 3) {
+            d.bounceVY = -Math.abs(d.bounceVY) * PHYSICS.floorRestitution;
+            if (d.rolling) {
+              d.vx += (Math.random() - 0.5) * PHYSICS.landingSpinX;
+              d.vz += (Math.random() - 0.5) * PHYSICS.landingSpinZ;
+              d.pvx *= PHYSICS.landingFriction; d.pvy *= PHYSICS.landingFriction;
+              if (Math.abs(d.bounceVY) > 4) {
+                burst(d.absX, d.absY + DICE_SIZE*0.35, '#8a5a2e', 2, 1.6);
+                playTone(100 + Math.random()*30, 'square', 0.02, 0.03);
+              }
             }
+          } else {
+            d.bounceVY = 0;
           }
-        } else {
-          d.bounceVY = 0;
         }
       }
-    }
 
-    // Position physics — dice fly around the table when rolling
-    if (d.rolling) {
-      const hs = DICE_SIZE / 2;
-      const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
-      const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
-      d.absX += d.pvx * dt;
-      d.absY += d.pvy * dt;
-      // Air drag is light; ground (rolling) friction grips harder
-      const inAir = d.bounceY < -0.5;
-      const fr = inAir ? Math.pow(PHYSICS.airDrag, dt) : Math.pow(PHYSICS.groundFriction, dt);
-      d.pvx *= fr; d.pvy *= fr;
-      // Wall collisions — bounce + spin kick from tangential velocity
-      if (d.absX < bL) {
-        d.absX = bL;
-        const inV = -d.pvx;
-        d.pvx = Math.abs(d.pvx) * PHYSICS.wallRestitution;
-        d.vy += inV * PHYSICS.wallSpinY;
-        d.vz += d.pvy * PHYSICS.wallSpinZ;
-        if (inV > 80) { burst(bL, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
-      } else if (d.absX > bR) {
-        d.absX = bR;
-        const inV = d.pvx;
-        d.pvx = -Math.abs(d.pvx) * PHYSICS.wallRestitution;
-        d.vy -= inV * PHYSICS.wallSpinY;
-        d.vz -= d.pvy * PHYSICS.wallSpinZ;
-        if (inV > 80) { burst(bR, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
-      }
-      if (d.absY < bT) {
-        d.absY = bT;
-        const inV = -d.pvy;
-        d.pvy = Math.abs(d.pvy) * PHYSICS.wallRestitution;
-        d.vx -= inV * PHYSICS.wallSpinY;
-        d.vz += d.pvx * PHYSICS.wallSpinZ;
-        if (inV > 80) { burst(d.absX, bT, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
-      } else if (d.absY > bB) {
-        d.absY = bB;
-        const inV = d.pvy;
-        d.pvy = -Math.abs(d.pvy) * PHYSICS.wallRestitution;
-        d.vx += inV * PHYSICS.wallSpinY;
-        d.vz -= d.pvx * PHYSICS.wallSpinZ;
-        if (inV > 80) { burst(d.absX, bB, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
+      // Legacy position physics — dice fly around the table when rolling
+      if (d.rolling) {
+        const hs = DICE_SIZE / 2;
+        const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
+        const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
+        d.absX += d.pvx * dt;
+        d.absY += d.pvy * dt;
+        const inAir = d.bounceY < -0.5;
+        const fr = inAir ? Math.pow(PHYSICS.airDrag, dt) : Math.pow(PHYSICS.groundFriction, dt);
+        d.pvx *= fr; d.pvy *= fr;
+        if (d.absX < bL) {
+          d.absX = bL;
+          const inV = -d.pvx;
+          d.pvx = Math.abs(d.pvx) * PHYSICS.wallRestitution;
+          d.vy += inV * PHYSICS.wallSpinY; d.vz += d.pvy * PHYSICS.wallSpinZ;
+          if (inV > 80) { burst(bL, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
+        } else if (d.absX > bR) {
+          d.absX = bR;
+          const inV = d.pvx;
+          d.pvx = -Math.abs(d.pvx) * PHYSICS.wallRestitution;
+          d.vy -= inV * PHYSICS.wallSpinY; d.vz -= d.pvy * PHYSICS.wallSpinZ;
+          if (inV > 80) { burst(bR, d.absY, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
+        }
+        if (d.absY < bT) {
+          d.absY = bT;
+          const inV = -d.pvy;
+          d.pvy = Math.abs(d.pvy) * PHYSICS.wallRestitution;
+          d.vx -= inV * PHYSICS.wallSpinY; d.vz += d.pvx * PHYSICS.wallSpinZ;
+          if (inV > 80) { burst(d.absX, bT, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
+        } else if (d.absY > bB) {
+          d.absY = bB;
+          const inV = d.pvy;
+          d.pvy = -Math.abs(d.pvy) * PHYSICS.wallRestitution;
+          d.vx += inV * PHYSICS.wallSpinY; d.vz -= d.pvx * PHYSICS.wallSpinZ;
+          if (inV > 80) { burst(d.absX, bB, '#c89960', 3, 2); playTone(140, 'square', 0.03, 0.04); }
+        }
       }
     }
     // Glide between holding tray and last board position based on lock state
@@ -3960,8 +4109,8 @@ function loop(now) {
     }
   }
 
-  // Dice-to-dice collision (cubes → AABB separation + rotational impulse)
-  {
+  // Dice-to-dice collision — handled by Rapier when active, otherwise manual AABB
+  if (!rapierWorld) {
     const hs   = DICE_SIZE / 2;
     const bL   = 18 + hs, bR = W - 18 - hs;
     const bT   = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
@@ -4106,6 +4255,7 @@ function loop(now) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────
+initRapier(); // fire-and-forget — game starts immediately; Rapier activates when ready
 loadScores();
 loadUnlocks();
 if (incoming.fromPortal) {
