@@ -6,6 +6,20 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 960
 const H = canvas.height;  // 540
 
+// ─── Rotate-hint (mobile portrait only) ──────────────────────────────
+// CSS media queries can't reliably distinguish a touch phone from a
+// desktop browser in a narrow window, so we drive visibility from JS.
+const _rotateHint = document.getElementById('rotate-hint');
+const _isTouchDevice = navigator.maxTouchPoints > 0;
+function _updateRotateHint() {
+  if (!_rotateHint) return;
+  const portrait = window.innerHeight > window.innerWidth;
+  _rotateHint.style.display = (_isTouchDevice && portrait) ? 'flex' : 'none';
+}
+window.addEventListener('resize', _updateRotateHint);
+window.addEventListener('orientationchange', _updateRotateHint);
+_updateRotateHint();
+
 // ─── Physics constants (edit via physics-editor.html) ────────────────
 const PHYSICS = (()=>{
   const saved = localStorage.getItem('ff_physics');
