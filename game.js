@@ -762,6 +762,8 @@ const MAX_HELD        = 5;   // max dice that can be held/played in one hand
 const MAX_DICE        = 10;  // cap on total pool size
 const MAX_ORACLES     = 6;
 const SCORES_KEY      = 'fortunefallacy_scores';
+// Replace with your Firebase Realtime Database URL (e.g. https://your-project-default-rtdb.firebaseio.com/scores)
+const FIREBASE_URL    = 'https://fortunefallacy-9908c-default-rtdb.firebaseio.com/scores';
 
 // ─── Combo definitions ────────────────────────────────────────────────
 // test(valueCounts, longestRun): valueCounts = sorted desc count array
@@ -1050,6 +1052,10 @@ let lastHandMeta = { lastReroll: false };
 
 let shopChoices = [];
 let highScores  = [];
+let onlineScores  = [];
+let onlineLoading = false;
+let onlineFetched = false;
+let scoresTab     = 'global';
 
 let hoverX = -1, hoverY = -1;
 let scoringState    = null; // { chips, mult } — live display during hand scoring
@@ -1139,6 +1145,37 @@ function saveScore(name, score, mode) {
   highScores.sort((a,b) => b.score - a.score);
   highScores = highScores.slice(0, 10);
   localStorage.setItem(SCORES_KEY, JSON.stringify(highScores));
+  submitOnlineScore(name, score, mode);
+}
+
+async function fetchOnlineScores() {
+  if (onlineLoading || FIREBASE_URL === 'YOUR_FIREBASE_URL_HERE') return;
+  onlineLoading = true;
+  try {
+    const res = await fetch(`${FIREBASE_URL}.json?limitToLast=200`);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    onlineScores = data
+      ? Object.values(data).sort((a, b) => b.score - a.score).slice(0, 10)
+      : [];
+  } catch {
+    onlineScores = [];
+  } finally {
+    onlineLoading = false;
+    onlineFetched = true;
+  }
+}
+
+async function submitOnlineScore(name, score, mode) {
+  if (FIREBASE_URL === 'YOUR_FIREBASE_URL_HERE') return;
+  try {
+    await fetch(`${FIREBASE_URL}.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score, mode, date: Date.now() }),
+    });
+    onlineFetched = false;
+  } catch { /* silently fail */ }
 }
 function endlessUnlocked() {
   try { return !!localStorage.getItem('fortunefallacy_endless'); } catch { return false; }
@@ -1967,7 +2004,13 @@ function handleClick(mx, my) {
     return;
   }
   if (screen === 'scores') {
-    if (inRect(mx,my,{x:W/2-100,y:H-68,w:200,h:40})) screen='title';
+    if (inRect(mx,my,{x:W/2-100,y:H-68,w:200,h:40})) { screen='title'; return; }
+    if (inRect(mx,my,{x:W/2-85,y:77,w:80,h:22})) { scoresTab='local'; return; }
+    if (inRect(mx,my,{x:W/2+5,y:77,w:80,h:22})) {
+      scoresTab='global';
+      if (!onlineFetched && !onlineLoading) fetchOnlineScores();
+      return;
+    }
     return;
   }
   if (screen === 'win') {
@@ -3765,25 +3808,45 @@ function epLabel() { return (nextTarget?.title ?? 'Jam Hub').slice(0,14); }
 
 // ─── SCREEN: Scores ───────────────────────────────────────────────────
 function drawScores(t) {
+  if (scoresTab === 'global' && !onlineFetched && !onlineLoading) fetchOnlineScores();
+
   drawBG(t);
   txt('HIGH SCORES', W/2, 66, {size:34,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
+
+  // Tab buttons
+  ['local','global'].forEach((tab, i) => {
+    const tx     = W/2 + (i === 0 ? -85 : 5);
+    const active = scoresTab === tab;
+    drawRoundRect(tx, 77, 80, 22, 5,
+      active ? 'rgba(200,153,96,0.15)' : 'transparent',
+      active ? '#c89960' : 'rgba(200,153,96,0.3)', 1);
+    txt(tab.toUpperCase(), tx + 40, 91,
+      {size:10, color: active ? '#c89960' : 'rgba(200,153,96,0.5)', align:'center', bold:active});
+  });
 
   const headers = ['#','Name','Score','Mode'];
   const cxs     = [W/2-230, W/2-170, W/2+50, W/2+185];
   headers.forEach((h,i) => txt(h, cxs[i], 116, {size:11,color:'#9a3826',align:'left',bold:true}));
 
-  if (highScores.length === 0) {
+  const list = scoresTab === 'global' ? onlineScores : highScores;
+
+  if (scoresTab === 'global' && onlineLoading) {
+    txt('Loading…', W/2, 210, {size:16,color:'rgba(200,170,120,0.55)',align:'center'});
+  } else if (scoresTab === 'global' && FIREBASE_URL === 'YOUR_FIREBASE_URL_HERE') {
+    txt('Online scores not configured.', W/2, 210, {size:14,color:'rgba(200,170,120,0.45)',align:'center'});
+  } else if (list.length === 0) {
     txt('No scores yet — go play!', W/2, 210, {size:16,color:'rgba(200,170,120,0.55)',align:'center'});
+  } else {
+    list.slice(0,8).forEach((s,i) => {
+      const y   = 144 + i*38;
+      const col = i===0 ? '#c89960' : 'rgba(230,210,160,0.85)';
+      if (i===0) drawRoundRect(W/2-248,y-24,496,34,6,'rgba(200,153,96,0.06)','#c89960',1);
+      txt(String(i+1),    cxs[0], y, {size:14,color:col,align:'left',bold:i===0});
+      txt(s.name||'?',    cxs[1], y, {size:14,color:col,align:'left',bold:i===0});
+      txt(Number(s.score).toLocaleString(), cxs[2], y, {size:14,color:col,align:'left',bold:i===0});
+      txt(s.mode||'run',  cxs[3], y, {size:11,color:'rgba(200,170,120,0.55)',align:'left'});
+    });
   }
-  highScores.slice(0,8).forEach((s,i) => {
-    const y   = 144 + i*38;
-    const col = i===0 ? '#c89960' : 'rgba(230,210,160,0.85)';
-    if (i===0) drawRoundRect(W/2-248,y-24,496,34,6,'rgba(200,153,96,0.06)','#c89960',1);
-    txt(String(i+1),    cxs[0], y, {size:14,color:col,align:'left',bold:i===0});
-    txt(s.name||'?',    cxs[1], y, {size:14,color:col,align:'left',bold:i===0});
-    txt(Number(s.score).toLocaleString(), cxs[2], y, {size:14,color:col,align:'left',bold:i===0});
-    txt(s.mode||'run',  cxs[3], y, {size:11,color:'rgba(200,170,120,0.55)',align:'left'});
-  });
 
   drawBtn({x:W/2-100,y:H-68,w:200,h:40}, '← Back to Menu', true);
 }
