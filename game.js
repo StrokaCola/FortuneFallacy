@@ -763,7 +763,7 @@ const MAX_DICE        = 10;  // cap on total pool size
 const MAX_ORACLES     = 6;
 const SCORES_KEY      = 'fortunefallacy_scores';
 // Replace with your Firebase Realtime Database URL (e.g. https://your-project-default-rtdb.firebaseio.com/scores)
-const FIREBASE_URL    = 'YOUR_FIREBASE_URL_HERE';
+const FIREBASE_URL    = 'https://fortunefallacy-9908c-default-rtdb.firebaseio.com/scores';
 
 // ─── Combo definitions ────────────────────────────────────────────────
 // test(valueCounts, longestRun): valueCounts = sorted desc count array
