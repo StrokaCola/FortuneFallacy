@@ -2051,10 +2051,11 @@ function pointerUp(mx, my) {
       const item = trayOrder.splice(dragTraySlot, 1)[0];
       trayOrder.splice(best, 0, item);
       SFX.unlock();
-      dragOccurred = true;  // real reorder — suppress click
     }
-    // If dropped back on the same slot, don't suppress the click so a
-    // shaky tap still toggles the die's lock state
+    // Always suppress the click when a visual drag occurred — even if the die
+    // was dropped back on the same slot.  A true tap never reaches this branch
+    // (pendingDragSlot is cancelled before dragTraySlot is ever set).
+    dragOccurred = true;
     dragTraySlot = -1;
   }
 }
@@ -2105,6 +2106,13 @@ canvas.addEventListener('touchend', e => {
     dragOccurred = false;
   }
 }, { passive: false });
+canvas.addEventListener('touchcancel', () => {
+  // OS interrupted the gesture (notification, edge swipe, etc.) — clean up
+  dragSlider      = null;
+  pendingDragSlot = -1;
+  dragTraySlot    = -1;
+  dragOccurred    = false;
+}, { passive: true });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
