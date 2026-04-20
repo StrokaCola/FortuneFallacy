@@ -1991,7 +1991,7 @@ function canvasXY(clientX, clientY) {
 function pointerMove(mx, my) {
   hoverX = mx; hoverY = my;
   // Promote pending press to active drag once the pointer has moved far enough
-  if (pendingDragSlot !== -1 && Math.hypot(mx - dragStartX, my - dragStartY) > 12) {
+  if (pendingDragSlot !== -1 && Math.hypot(mx - dragStartX, my - dragStartY) > 22) {
     dragTraySlot    = pendingDragSlot;
     pendingDragSlot = -1;
     // Teleport die to cursor so the glide-back on release starts from here, not the old slot
@@ -2051,8 +2051,10 @@ function pointerUp(mx, my) {
       const item = trayOrder.splice(dragTraySlot, 1)[0];
       trayOrder.splice(best, 0, item);
       SFX.unlock();
+      dragOccurred = true;  // real reorder — suppress click
     }
-    dragOccurred = true;
+    // If dropped back on the same slot, don't suppress the click so a
+    // shaky tap still toggles the die's lock state
     dragTraySlot = -1;
   }
 }
@@ -2359,8 +2361,9 @@ function handleClick(mx, my) {
     if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { paused=!paused; return; }
     if (rolledOnce && !handInProgress) {
       for (let i = 0; i < dice.length; i++) {
-        const hs = DICE_SIZE / 2;
-        if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:DICE_SIZE, h:DICE_SIZE})) {
+        // Locked dice in the tray get the full slot as their touch target; board dice use die size
+        const hs = dice[i].locked ? HOLD_SLOT_W / 2 : DICE_SIZE / 2;
+        if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:hs*2, h:hs*2})) {
           if (!dice[i].locked && heldCount() >= MAX_HELD) {
             floatText(dice[i].absX, dice[i].absY - 30, `Held full (${MAX_HELD})`, '#ff8844', 12);
             return;
