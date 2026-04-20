@@ -1098,12 +1098,13 @@ let scoresTab     = 'global';
 let hoverX = -1, hoverY = -1;
 
 // ─── Tray order / drag state ──────────────────────────────────────────
-let trayOrder     = [];   // dice indices in held-tray slot order
-let traySelSlot   = -1;
-let dragTraySlot  = -1;   // slot currently being dragged (-1 = none)
-let dragStartX    = 0;
-let dragStartY    = 0;
-let dragOccurred  = false; // suppresses click event after a real drag
+let trayOrder       = [];   // dice indices in held-tray slot order
+let traySelSlot     = -1;
+let pendingDragSlot = -1;   // slot pressed but not yet confirmed as drag
+let dragTraySlot    = -1;   // active visual drag (-1 = none)
+let dragStartX      = 0;
+let dragStartY      = 0;
+let dragOccurred    = false; // suppresses click event after a real drag
 
 let scoringState    = null; // { chips, mult } — live display during hand scoring
 let rollCollisions  = [];  // unique die-pair collisions recorded during current hand
@@ -1269,11 +1270,12 @@ function initDice() {
       pvx: 0, pvy: 0, physBody: null,
     };
   });
-  rolledOnce   = false;
-  trayOrder    = [];
-  traySelSlot  = -1;
-  dragTraySlot = -1;
-  dragOccurred = false;
+  rolledOnce      = false;
+  trayOrder       = [];
+  traySelSlot     = -1;
+  pendingDragSlot = -1;
+  dragTraySlot    = -1;
+  dragOccurred    = false;
 }
 
 function startRun(isEndless = false) {
@@ -1988,6 +1990,14 @@ function canvasXY(clientX, clientY) {
 
 function pointerMove(mx, my) {
   hoverX = mx; hoverY = my;
+  // Promote pending press to active drag once the pointer has moved far enough
+  if (pendingDragSlot !== -1 && Math.hypot(mx - dragStartX, my - dragStartY) > 12) {
+    dragTraySlot    = pendingDragSlot;
+    pendingDragSlot = -1;
+    // Teleport die to cursor so the glide-back on release starts from here, not the old slot
+    const di = trayOrder[dragTraySlot];
+    if (di !== undefined && dice[di]) { dice[di].absX = mx; dice[di].absY = my; }
+  }
   if (dragSlider) {
     const pw=680, px=(W-pw)/2;
     const tx = px+76, tw = pw-152;
@@ -2004,6 +2014,7 @@ function pointerMove(mx, my) {
 }
 
 function pointerDown(mx, my) {
+  hoverX = mx; hoverY = my;
   if (paused && pauseTab === 'audio') {
     const pw=680, ph=480, px=(W-pw)/2, py=(H-ph)/2;
     const tx=px+76, tw=pw-152;
@@ -2011,15 +2022,15 @@ function pointerDown(mx, my) {
     if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my1)<=12) { dragSlider='music'; }
     if (mx>=tx-8 && mx<=tx+tw+8 && Math.abs(my-my2)<=12) { dragSlider='sfx';   }
   }
-  // Tray drag: start dragging a held die slot
+  // Record press on a tray slot — drag activates in pointerMove once threshold is crossed
   if (screen === 'game' && rolledOnce && !handInProgress && trayOrder.length > 1) {
     const slotTop = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
     for (let slot = 0; slot < trayOrder.length; slot++) {
       const slotX = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP);
       if (mx >= slotX && mx <= slotX + HOLD_SLOT_W && my >= slotTop && my <= slotTop + HOLD_SLOT_W) {
-        dragTraySlot = slot;
-        dragStartX   = mx;
-        dragStartY   = my;
+        pendingDragSlot = slot;
+        dragStartX      = mx;
+        dragStartY      = my;
         break;
       }
     }
@@ -2027,23 +2038,21 @@ function pointerDown(mx, my) {
 }
 
 function pointerUp(mx, my) {
-  dragSlider = null;
+  dragSlider      = null;
+  pendingDragSlot = -1;   // cancel any uncommitted press
   if (dragTraySlot !== -1) {
-    const moved = Math.hypot(mx - dragStartX, my - dragStartY) > 6;
-    if (moved) {
-      let best = dragTraySlot, bestDist = Infinity;
-      for (let slot = 0; slot < trayOrder.length; slot++) {
-        const cx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2;
-        const d  = Math.abs(mx - cx);
-        if (d < bestDist) { bestDist = d; best = slot; }
-      }
-      if (best !== dragTraySlot) {
-        const item = trayOrder.splice(dragTraySlot, 1)[0];
-        trayOrder.splice(best, 0, item);
-        SFX.unlock();
-      }
-      dragOccurred = true;
+    let best = dragTraySlot, bestDist = Infinity;
+    for (let slot = 0; slot < trayOrder.length; slot++) {
+      const cx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2;
+      const d  = Math.abs(mx - cx);
+      if (d < bestDist) { bestDist = d; best = slot; }
     }
+    if (best !== dragTraySlot) {
+      const item = trayOrder.splice(dragTraySlot, 1)[0];
+      trayOrder.splice(best, 0, item);
+      SFX.unlock();
+    }
+    dragOccurred = true;
     dragTraySlot = -1;
   }
 }
