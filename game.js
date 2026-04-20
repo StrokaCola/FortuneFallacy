@@ -1096,6 +1096,15 @@ let onlineFetched = false;
 let scoresTab     = 'global';
 
 let hoverX = -1, hoverY = -1;
+
+// ─── Tray order / drag state ──────────────────────────────────────────
+let trayOrder     = [];   // dice indices in held-tray slot order
+let traySelSlot   = -1;
+let dragTraySlot  = -1;   // slot currently being dragged (-1 = none)
+let dragStartX    = 0;
+let dragStartY    = 0;
+let dragOccurred  = false; // suppresses click event after a real drag
+
 let scoringState    = null; // { chips, mult } — live display during hand scoring
 let rollCollisions  = [];  // unique die-pair collisions recorded during current hand
 
