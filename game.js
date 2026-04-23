@@ -246,6 +246,23 @@ const SFX = {
     playNoise(0.4, 0.06, 0, 300);
     [261,330,523,659].forEach((f,i)=>{ playTone(f,'sine',0.32,0.08,i*0.08); playTone(f*1.01,'sine',0.26,0.03,i*0.08+0.01); });
   },
+  // Ascending pitched tones for sequential oracle reveal steps
+  multStep(stepIdx = 0) {
+    const pent = [220, 247, 277, 330, 370, 415, 494, 554, 659, 740];
+    const f = pent[Math.min(stepIdx, pent.length - 1)];
+    playTone(f,       'sine',     0.18, 0.11, 0);
+    playTone(f * 1.5, 'sine',     0.13, 0.05, 0.020);
+    playTone(f * 2,   'triangle', 0.10, 0.03, 0.038);
+  },
+  // Triumphant chord when mult reaches a big threshold
+  bigMult() {
+    const base = 261;
+    playTone(base,       'triangle', 0.42, 0.15, 0.000);
+    playTone(base * 1.5, 'triangle', 0.38, 0.12, 0.045);
+    playTone(base * 2,   'sine',     0.34, 0.09, 0.090);
+    playTone(base * 2.5, 'sine',     0.28, 0.07, 0.135);
+    playNoise(0.08, 0.04, 0.000, 650);
+  },
 };
 
 // ─── Particles ────────────────────────────────────────────────────────
@@ -606,14 +623,18 @@ function drawBanner() {
 let comboPop = null;
 
 function showComboPop(text, color) {
-  comboPop = { text, color, scale: 2.2, alpha: 1, timer: 1.6 };
+  comboPop = { text, color, scale: 0.05, alpha: 1, timer: 2.0 };
+  if (typeof gsap !== 'undefined') {
+    gsap.to(comboPop, { scale: 1.0, duration: 0.38, ease: 'back.out(2.5)' });
+  } else {
+    comboPop.scale = 1.0;
+  }
 }
 
 function updateComboPop(dt) {
   if (!comboPop) return;
-  comboPop.scale  = Math.max(1, comboPop.scale - dt * 7);
   comboPop.timer -= dt;
-  if (comboPop.timer < 0.4) comboPop.alpha = comboPop.timer / 0.4;
+  if (comboPop.timer < 0.5) comboPop.alpha = comboPop.timer / 0.5;
   if (comboPop.timer <= 0) comboPop = null;
 }
 
@@ -621,8 +642,8 @@ function drawComboPop() {
   if (!comboPop) return;
   ctx.save();
   ctx.globalAlpha  = comboPop.alpha;
-  ctx.fillStyle    = comboPop.color; ctx.shadowColor = comboPop.color; ctx.shadowBlur = 12;
-  ctx.font         = `bold ${Math.floor(38 * comboPop.scale)}px ui-sans-serif,sans-serif`;
+  ctx.fillStyle    = comboPop.color; ctx.shadowColor = comboPop.color; ctx.shadowBlur = 16 + comboPop.scale * 8;
+  ctx.font         = `bold ${Math.floor(44 * comboPop.scale)}px ui-sans-serif,sans-serif`;
   ctx.textAlign    = 'center';
   ctx.fillText(comboPop.text, W/2, H/2 - 30);
   ctx.restore();
@@ -1898,7 +1919,7 @@ function playHand() {
   // chips starts with the combo's base chip bonus; die faces add on top one at a time
   let chips = combo.chips;
   let mult  = combo.mult;
-  scoringState = { chips, mult };
+  scoringState = { chips, mult, displayChips: chips, displayMult: mult };
 
   SFX.playHand();
 
@@ -1906,6 +1927,10 @@ function playHand() {
     SFX.combo(combo.tier);
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
+    if (tier >= 4) {
+      screenFlash(0.10 + (tier - 4) * 0.08);
+      screenShake(3 + (tier - 4) * 1.5);
+    }
     if (tier >= 6) {
       screenFlash(0.4);
       screenShake((tier >= 7 ? 10 : 6) + scoreIntensity(roundScore) * 6);
@@ -2009,6 +2034,11 @@ function playHand() {
       scoringState.chips = chips;
       scoringState.chipPunch = 1;
       if (upg && upg.multPenalty) scoringState.multPunch = 1;
+      if (typeof gsap !== 'undefined') {
+        gsap.to(scoringState, { displayChips: chips, displayMult: mult, duration: 0.18, ease: 'power2.out', overwrite: true });
+      } else {
+        scoringState.displayChips = chips; scoringState.displayMult = mult;
+      }
 
       const multDelta = mult - multBefore;
 
@@ -2076,220 +2106,265 @@ function playHand() {
       setTimeout(() => { d.scoring = false; setTimeout(scoreNext, 60); }, 150);
     }
 
+    // Reveal each oracle effect one-by-one (Balatro-style sequential mult buildup)
     function applyModifiers() {
-      // Crystal Ball: +chips per non-locked die
+      const steps = [];
+
+      function addStep(label, color, execFn) {
+        steps.push({ label, color, exec: execFn });
+      }
+
+      // Crystal Ball: +chips per unlocked die
       const cb = heldOracles.find(o => o.id === 'crystal_ball');
       if (cb) {
         const bonus = dice.filter(d => !d.locked).length * (cb.rerollBonus || 0);
-        if (bonus > 0) {
-          chips += bonus;
-          floatText(W/2, H/2 - 60, `+${bonus} Crystal`, '#88ffdd', 14);
-        }
+        if (bonus > 0) addStep(`Crystal Ball +${bonus}`, '#88ffdd', () => { chips += bonus; });
       }
 
-      // Legendary collision oracles
+      // Collision oracles
       if (rollCollisions.length > 0) {
         const newtons = heldOracles.find(o => o.id === 'newtons_gambit');
         if (newtons) {
           const factor = Math.pow(1.3, rollCollisions.length);
-          mult *= factor;
-          floatText(W/2, H/2 - 80, `×${factor.toFixed(2)} Newton!`, '#ff6644', 16);
-          screenShake(5);
+          addStep(`×${factor.toFixed(2)} Newton!`, '#ff6644', () => { mult *= factor; screenShake(5); });
         }
         const kinetic = heldOracles.find(o => o.id === 'kinetic_fusion');
         if (kinetic) {
           const bonus = rollCollisions.reduce((s, c) => s + c.faces[0] + c.faces[1], 0);
-          chips += bonus;
-          floatText(W/2, H/2 - 100, `+${bonus} Kinetic!`, '#ff4488', 16);
+          addStep(`+${bonus} Kinetic!`, '#ff4488', () => { chips += bonus; });
         }
         const resonance = heldOracles.find(o => o.id === 'resonance_field');
         if (resonance) {
           const matching = rollCollisions.filter(c => c.faces[0] === c.faces[1]).length;
           if (matching > 0) {
             const factor = Math.pow(2, matching);
-            mult *= factor;
-            floatText(W/2, H/2 - 120, `×${factor} Resonance!`, '#44ffcc', 18);
+            addStep(`×${factor} Resonance!`, '#44ffcc', () => { mult *= factor; });
           }
         }
-        scoringState.chips = chips;
-        scoringState.mult  = mult;
       }
 
-      // The Fallacy streak multiplier
+      // Fallacy streak
       const fallacyO = heldOracles.find(o => o.id === 'the_fallacy');
       if (fallacyO && comboStreak.count >= 3) {
-        mult *= 3;
-        floatText(W/2, H/2 - 80, '×3 FALLACY!', '#ff88cc', 22);
-        comboStreak.count = 0;
+        addStep('×3 FALLACY!', '#ff88cc', () => { mult *= 3; comboStreak.count = 0; });
       }
 
-      // Blood Dice: +8 Mult — costs 1 shard per hand
+      // Blood Dice
       const bloodO = heldOracles.find(o => o.id === 'blood_dice');
       if (bloodO) {
-        mult += 8;
-        if (shards > 0) {
-          shards--;
-          floatText(W/2, H/2 - 65, '-1 ◆ Blood Tax', '#cc0000', 13);
-        }
-        floatText(W/2, H/2 - 48, '+8 Blood Mult', '#aa0000', 14);
-        scoringState.mult = mult; scoringState.multPunch = 1;
+        addStep('+8 Blood Mult', '#aa0000', () => {
+          mult += 8;
+          if (shards > 0) { shards--; floatText(W/2, H/2 - 65, '-1 ◆ Blood Tax', '#cc0000', 13); }
+        });
       }
 
-      // All other oracle effects (compound mult via × operations)
-      const multAtOracleStart = mult;
+      // All oracle apply() calls — one step per oracle
       for (const o of heldOracles) {
-        if (o.apply) [chips, mult] = o.apply(combo, faces, chips, mult, lastHandMeta);
+        if (!o.apply) continue;
+        const captured = o;
+        addStep(captured.name || 'Oracle', captured.color || '#ff9944', () => {
+          [chips, mult] = captured.apply(combo, faces, chips, mult, lastHandMeta);
+        });
       }
-      scoringState.chips = chips;
-      scoringState.mult  = mult;
 
-      // Mirror Pair: pairs count as triples (bonus mult per pair)
+      // Mirror Pair
       const mirrorPairO = heldOracles.find(o => o.id === 'mirror_pair');
       if (mirrorPairO) {
-        const cnt = {}; faces.forEach(v=>cnt[v]=(cnt[v]||0)+1);
-        const pairCount = Object.values(cnt).filter(n=>n>=2).length;
-        if (pairCount > 0) {
-          const threeBonus = COMBOS.find(c=>c.id==='three_kind').mult;
-          mult += threeBonus * pairCount;
-          floatText(W/2, H/2 - 95, `+${threeBonus*pairCount} Mirror Pair!`, '#88ccff', 16);
-          scoringState.mult = mult; scoringState.multPunch = 1;
-        }
-      }
-
-      // Straight Multiplier: any straight → mult gains this hand are doubled
-      const strMult = heldOracles.find(o => o.id === 'straight_multiplier');
-      if (strMult && (combo.id === 'sm_straight' || combo.id === 'lg_straight')) {
-        const gained = mult - combo.mult;
-        if (gained > 0) {
-          mult = combo.mult + gained * 2;
-          floatText(W/2, H/2 - 110, `STRAIGHT ×2 Mults!`, '#44ccff', 18);
-          scoringState.mult = mult; scoringState.multPunch = 1;
-        }
-      }
-
-      // Fragile Fortune: ×3 Mult (via apply) but all ≤ 3 = game over
-      const fragileO = heldOracles.find(o => o.id === 'fragile_fortune');
-      if (fragileO && faces.every(v=>v<=3)) {
-        floatText(W/2, H/2 - 30, 'FORTUNE SHATTERED', '#ff2200', 28, {life:3, glow:60, popScale:3.2});
-        screenFlash(0.95); screenShake(22);
-        SFX.fail();
-        setTimeout(() => {
-          const name = nameEntry.trim() || incoming.username || 'Wanderer';
-          saveScore(name, totalFateScore, endless ? 'endless' : 'run');
-          loadScores(); screen = 'scores';
-        }, 2200);
-      }
-
-      // Feedback Loop: final mult^1.15 (applied dead-last)
-      const feedbackO = heldOracles.find(o => o.id === 'feedback_loop');
-      if (feedbackO && mult > 1) {
-        const before = mult;
-        mult = Math.pow(mult, 1.15);
-        floatText(W/2, H/2 - 125, `Feedback ×${mult.toFixed(1)}`, '#ffffff', 16);
-        scoringState.mult = mult; scoringState.multPunch = 1;
-      }
-
-      scoringState.chips = chips;
-      scoringState.mult  = mult;
-
-      const handScore = Math.max(chips, 0) * Math.max(mult, 1);
-      const newTotal  = roundScore + handScore;
-
-      const multSI = Math.min(1, Math.log2(Math.max(1, mult)) / 4);
-      const multTxtSize = 22 + Math.min(48, mult * 4);
-      SFX.mult(mult);
-      floatText(W/2, H/2 + 30, `×${mult} Mult`, '#ff9944', multTxtSize,
-        { glow: 12 + multSI * 50, popScale: 2.0 + multSI * 1.6, life: 1.6 + multSI * 0.6 });
-      if (mult >= 8) floatText(W/2, H/2 + 5, 'MULTIPLIER!', '#ffcc44', 20, {life:1.5, glow:32, popScale:2.4});
-
-      const mBN = 18 + Math.floor(multSI * 70);
-      burst(W/2, H/2 + 30, '#ff9944',  mBN,                    5.5 + multSI * 8);
-      burst(W/2, H/2 + 30, '#ffffff',  Math.floor(mBN * 0.55), 7.5 + multSI * 8);
-      if (multSI > 0.15) burst(W/2, H/2 + 30, '#ffcc66', Math.floor(mBN * 0.35), 10 + multSI * 6);
-      if (multSI > 0.50) burst(W/2, H/2,       '#ff6622', Math.floor(mBN * 0.20), 14 + multSI * 5);
-
-      ring(W/2, H/2 + 30, '#ff9944', 50 + mult * 7,  0.38 + multSI * 0.22);
-      ring(W/2, H/2 + 30, '#ffffff', 32 + mult * 4,  0.28 + multSI * 0.16);
-      if (mult >= 2) ring(W/2, H/2, 'rgba(255,153,68,0.28)', 90 + mult * 9, 0.55);
-      if (mult >= 3) ring(W/2, H/2, '#ff9944', 140 + mult * 12, 0.68);
-
-      shockwave(W/2, H/2 + 30, '#ff9944', 2 + Math.floor(multSI * 4), 40, 50, 58);
-      if (multSI > 0.5) shockwave(W/2, H/2, 'rgba(255,200,100,0.30)', 3, 80, 60, 75);
-
-      if (mult >= 3) spark(W/2, H/2 + 30, '#ff9944', 8  + Math.floor(mult * 2.2), 9  + multSI * 12);
-      if (mult >= 4) spark(W/2, H/2 + 30, '#ffffff', Math.floor(mult * 1.1),       12 + multSI * 9);
-      if (mult >= 6) spark(W/2, H/2,       '#ffcc44', Math.floor(mult * 0.8),       15 + multSI * 8);
-
-      if (multSI > 0.25) screenFlash(0.06 + multSI * 0.38);
-      screenShake(8 + multSI * 26 + scoreIntensity(mult * chips) * 12);
-
-      setTimeout(() => {
-        const si = scoreIntensity(handScore);
-        const scoreSize = 22 + Math.min(62, Math.log10(Math.max(1, handScore)) * 13);
-        floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize,
-          { glow: 14 + si * 60, popScale: 2.2 + si * 1.8, life: 1.8 + si * 0.8, vy: 2.8 });
-
-        const scoreBN = 24 + Math.floor(si * 120);
-        burst(W/2, H/2 + 60, '#c89960',  scoreBN,                     6   + si * 9);
-        burst(W/2, H/2 + 60, '#ffffff',  Math.floor(scoreBN * 0.60),   9   + si * 10);
-        burst(W/2, H/2,       '#c89960', Math.floor(scoreBN * 0.40),   7   + si * 8);
-        if (si > 0.20) burst(W/2, H/2 + 60, '#ffee88', Math.floor(scoreBN * 0.40), 12 + si * 8);
-        if (si > 0.45) burst(W/2, H/2 + 60, '#ff8844', Math.floor(scoreBN * 0.25), 16 + si * 7);
-        if (si > 0.70) burst(W/2, H/2,       '#ffffff', Math.floor(scoreBN * 0.20), 20 + si * 6);
-
-        ring(W/2, H/2 + 60, '#c89960', 60  + si * 130, 0.50 + si * 0.24);
-        ring(W/2, H/2 + 60, '#ffffff', 40  + si *  90, 0.38 + si * 0.22);
-        ring(W/2, H/2,       '#c89960', 100 + si * 150, 0.65 + si * 0.20);
-        if (si > 0.20) ring(W/2, H/2, 'rgba(255,255,255,0.22)', 150 + si * 120, 0.80);
-        if (si > 0.55) ring(W/2, H/2, '#ffee88', 200 + si * 100, 0.90);
-
-        shockwave(W/2, H/2 + 60, '#c89960', 3 + Math.floor(si * 5), 50,  55, 55);
-        shockwave(W/2, H/2,       '#ffffff', 3 + Math.floor(si * 4), 80,  65, 65);
-        if (si > 0.40) shockwave(W/2, H/2, '#ffee88', 3, 130, 70, 80);
-        if (si > 0.70) shockwave(W/2, H/2, 'rgba(255,100,50,0.35)', 4, 100, 80, 60);
-
-        spark(W/2, H/2 + 60, '#c89960', 10 + Math.floor(si * 45), 11 + si * 15);
-        spark(W/2, H/2 + 60, '#ffffff', 6  + Math.floor(si * 30), 14 + si * 12);
-        if (si > 0.35) spark(W/2, H/2, '#ffee88',  Math.floor(si * 28), 17 + si * 10);
-        if (si > 0.60) spark(W/2, H/2, '#ff8844',  Math.floor(si * 20), 20 + si * 9);
-        if (si > 0.80) spark(W/2, H/2, '#ffffff',  Math.floor(si * 15), 24 + si * 8);
-
-        screenShake(11 + si * 42);
-        screenFlash(Math.min(0.95, 0.18 + si * 0.77));
-        SFX.bigScore(handScore);
-
-        animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
-          lastHandScore = handScore;
-          roundScore = newTotal; displayRoundScore = newTotal;
-          handsLeft--; rerollsLeft = REROLLS_PER_HAND;
-          rolledOnce = false; handInProgress = false; scoringState = null;
-          // Track run stats for unlock conditions
-          if (combo.id === 'five_of_a_kind') runStats.fiveOfAKindScored = true;
-          runStats.handsPlayed++;
-          runStats.combosScored[combo.id] = (runStats.combosScored[combo.id] || 0) + 1;
-          if (!lastHandMeta.lastReroll) runStats._noRerollCur++;
-          else runStats._noRerollCur = 0;
-          runStats.maxNoRerollStreak = Math.max(runStats.maxNoRerollStreak, runStats._noRerollCur);
-          checkUnlocks();
-          initDice();
-
-          if (roundScore >= currentTarget()) {
-            if (handsLeft === HANDS_PER_ROUND - 1) firstHandSpectrumGoal = runGoal;
-            advanceGoal();
-          } else if (handsLeft <= 0) {
-            setTimeout(() => {
-              SFX.fail();
-              const name = nameEntry.trim() || incoming.username || 'Wanderer';
-              saveScore(name, totalFateScore, endless ? 'endless' : 'run');
-              loadScores();
-              screen = 'scores';
-            }, 800);
+        addStep('Mirror Pair', '#88ccff', () => {
+          const cnt = {}; faces.forEach(v => cnt[v] = (cnt[v] || 0) + 1);
+          const pairCount = Object.values(cnt).filter(n => n >= 2).length;
+          if (pairCount > 0) {
+            const threeBonus = COMBOS.find(c => c.id === 'three_kind').mult;
+            mult += threeBonus * pairCount;
           }
         });
-      }, 500);
+      }
+
+      // Straight Multiplier
+      const strMult = heldOracles.find(o => o.id === 'straight_multiplier');
+      if (strMult && (combo.id === 'sm_straight' || combo.id === 'lg_straight')) {
+        addStep('Straight ×2 Mults!', '#44ccff', () => {
+          const gained = mult - combo.mult;
+          if (gained > 0) mult = combo.mult + gained * 2;
+        });
+      }
+
+      // Feedback Loop (dead-last)
+      const feedbackO = heldOracles.find(o => o.id === 'feedback_loop');
+      if (feedbackO) {
+        addStep('Feedback Loop', '#ffffff', () => {
+          if (mult > 1) mult = Math.pow(mult, 1.15);
+        });
+      }
+
+      // Execute each step sequentially with visual + audio feedback
+      let stepIdx = 0;
+      function nextStep() {
+        if (stepIdx >= steps.length) { finalizeHand(); return; }
+        const step = steps[stepIdx++];
+        const chipsBefore = chips;
+        const multBefore  = mult;
+
+        step.exec();
+
+        const chipsDelta = chips - chipsBefore;
+        const multDelta  = mult - multBefore;
+        const hasEffect  = Math.abs(multDelta) > 0.001 || chipsDelta > 0;
+
+        if (hasEffect) {
+          scoringState.chips = chips;
+          scoringState.mult  = mult;
+          if (multDelta > 0.001) scoringState.multPunch = 1;
+          if (chipsDelta > 0)    scoringState.chipPunch = 1;
+          if (typeof gsap !== 'undefined') {
+            gsap.to(scoringState, { displayChips: chips, displayMult: mult, duration: 0.22, ease: 'power2.out', overwrite: true });
+          } else {
+            scoringState.displayChips = chips; scoringState.displayMult = mult;
+          }
+
+          const stepY = H / 2 - 82;
+          floatText(W / 2, stepY, step.label, step.color, 15, { glow: 20, popScale: 2.0, life: 1.15 });
+
+          if (multDelta > 0.001) {
+            const multStr = mult >= 100 ? `×${Math.round(mult)}` : `×${mult.toFixed(1)}`;
+            floatText(W / 2, stepY + 32, multStr, '#ff9944', 28, { glow: 36, popScale: 3.0, life: 1.5 });
+            if (mult >= 10) SFX.bigMult();
+            else SFX.multStep(stepIdx - 1);
+          } else if (chipsDelta > 0) {
+            floatText(W / 2, stepY + 32, `+${Math.floor(chipsDelta)}`, '#c89960', 24, { glow: 26, popScale: 2.5, life: 1.3 });
+            SFX.multStep(stepIdx - 1);
+          }
+
+          burst(W / 2, H / 2, step.color, 14 + Math.min(20, Math.floor(Math.abs(multDelta) * 0.8)), 5 + stepIdx * 0.5);
+          ring(W / 2, H / 2, step.color, 72 + stepIdx * 12, 0.38);
+          if (Math.abs(multDelta) > 3) shockwave(W / 2, H / 2, step.color, 2, 52, 46, 62);
+
+          setTimeout(nextStep, 340);
+        } else {
+          nextStep();
+        }
+      }
+
+      nextStep();
+
+      function finalizeHand() {
+        // Fragile Fortune: all dice ≤ 3 → game over
+        const fragileO = heldOracles.find(o => o.id === 'fragile_fortune');
+        if (fragileO && faces.every(v => v <= 3)) {
+          floatText(W/2, H/2 - 30, 'FORTUNE SHATTERED', '#ff2200', 28, {life:3, glow:60, popScale:3.2});
+          screenFlash(0.95); screenShake(22);
+          SFX.fail();
+          setTimeout(() => {
+            const name = nameEntry.trim() || incoming.username || 'Wanderer';
+            saveScore(name, totalFateScore, endless ? 'endless' : 'run');
+            loadScores(); screen = 'scores';
+          }, 2200);
+        }
+
+        scoringState.chips = chips;
+        scoringState.mult  = mult;
+
+        const handScore = Math.max(chips, 0) * Math.max(mult, 1);
+        const newTotal  = roundScore + handScore;
+
+        const multSI = Math.min(1, Math.log2(Math.max(1, mult)) / 4);
+        const multTxtSize = 22 + Math.min(48, mult * 4);
+        SFX.mult(mult);
+        floatText(W/2, H/2 + 30, `×${mult} Mult`, '#ff9944', multTxtSize,
+          { glow: 12 + multSI * 50, popScale: 2.0 + multSI * 1.6, life: 1.6 + multSI * 0.6 });
+        if (mult >= 8) floatText(W/2, H/2 + 5, 'MULTIPLIER!', '#ffcc44', 20, {life:1.5, glow:32, popScale:2.4});
+
+        const mBN = 18 + Math.floor(multSI * 70);
+        burst(W/2, H/2 + 30, '#ff9944',  mBN,                    5.5 + multSI * 8);
+        burst(W/2, H/2 + 30, '#ffffff',  Math.floor(mBN * 0.55), 7.5 + multSI * 8);
+        if (multSI > 0.15) burst(W/2, H/2 + 30, '#ffcc66', Math.floor(mBN * 0.35), 10 + multSI * 6);
+        if (multSI > 0.50) burst(W/2, H/2,       '#ff6622', Math.floor(mBN * 0.20), 14 + multSI * 5);
+
+        ring(W/2, H/2 + 30, '#ff9944', 50 + mult * 7,  0.38 + multSI * 0.22);
+        ring(W/2, H/2 + 30, '#ffffff', 32 + mult * 4,  0.28 + multSI * 0.16);
+        if (mult >= 2) ring(W/2, H/2, 'rgba(255,153,68,0.28)', 90 + mult * 9, 0.55);
+        if (mult >= 3) ring(W/2, H/2, '#ff9944', 140 + mult * 12, 0.68);
+
+        shockwave(W/2, H/2 + 30, '#ff9944', 2 + Math.floor(multSI * 4), 40, 50, 58);
+        if (multSI > 0.5) shockwave(W/2, H/2, 'rgba(255,200,100,0.30)', 3, 80, 60, 75);
+
+        if (mult >= 3) spark(W/2, H/2 + 30, '#ff9944', 8  + Math.floor(mult * 2.2), 9  + multSI * 12);
+        if (mult >= 4) spark(W/2, H/2 + 30, '#ffffff', Math.floor(mult * 1.1),       12 + multSI * 9);
+        if (mult >= 6) spark(W/2, H/2,       '#ffcc44', Math.floor(mult * 0.8),       15 + multSI * 8);
+
+        if (multSI > 0.25) screenFlash(0.06 + multSI * 0.38);
+        screenShake(8 + multSI * 26 + scoreIntensity(mult * chips) * 12);
+
+        setTimeout(() => {
+          const si = scoreIntensity(handScore);
+          const scoreSize = 22 + Math.min(62, Math.log10(Math.max(1, handScore)) * 13);
+          floatText(W/2, H/2 + 60, `= ${handScore.toLocaleString()}`, '#fff', scoreSize,
+            { glow: 14 + si * 60, popScale: 2.2 + si * 1.8, life: 1.8 + si * 0.8, vy: 2.8 });
+
+          const scoreBN = 24 + Math.floor(si * 120);
+          burst(W/2, H/2 + 60, '#c89960',  scoreBN,                     6   + si * 9);
+          burst(W/2, H/2 + 60, '#ffffff',  Math.floor(scoreBN * 0.60),   9   + si * 10);
+          burst(W/2, H/2,       '#c89960', Math.floor(scoreBN * 0.40),   7   + si * 8);
+          if (si > 0.20) burst(W/2, H/2 + 60, '#ffee88', Math.floor(scoreBN * 0.40), 12 + si * 8);
+          if (si > 0.45) burst(W/2, H/2 + 60, '#ff8844', Math.floor(scoreBN * 0.25), 16 + si * 7);
+          if (si > 0.70) burst(W/2, H/2,       '#ffffff', Math.floor(scoreBN * 0.20), 20 + si * 6);
+
+          ring(W/2, H/2 + 60, '#c89960', 60  + si * 130, 0.50 + si * 0.24);
+          ring(W/2, H/2 + 60, '#ffffff', 40  + si *  90, 0.38 + si * 0.22);
+          ring(W/2, H/2,       '#c89960', 100 + si * 150, 0.65 + si * 0.20);
+          if (si > 0.20) ring(W/2, H/2, 'rgba(255,255,255,0.22)', 150 + si * 120, 0.80);
+          if (si > 0.55) ring(W/2, H/2, '#ffee88', 200 + si * 100, 0.90);
+
+          shockwave(W/2, H/2 + 60, '#c89960', 3 + Math.floor(si * 5), 50,  55, 55);
+          shockwave(W/2, H/2,       '#ffffff', 3 + Math.floor(si * 4), 80,  65, 65);
+          if (si > 0.40) shockwave(W/2, H/2, '#ffee88', 3, 130, 70, 80);
+          if (si > 0.70) shockwave(W/2, H/2, 'rgba(255,100,50,0.35)', 4, 100, 80, 60);
+
+          spark(W/2, H/2 + 60, '#c89960', 10 + Math.floor(si * 45), 11 + si * 15);
+          spark(W/2, H/2 + 60, '#ffffff', 6  + Math.floor(si * 30), 14 + si * 12);
+          if (si > 0.35) spark(W/2, H/2, '#ffee88',  Math.floor(si * 28), 17 + si * 10);
+          if (si > 0.60) spark(W/2, H/2, '#ff8844',  Math.floor(si * 20), 20 + si * 9);
+          if (si > 0.80) spark(W/2, H/2, '#ffffff',  Math.floor(si * 15), 24 + si * 8);
+
+          screenShake(11 + si * 42);
+          screenFlash(Math.min(0.95, 0.18 + si * 0.77));
+          SFX.bigScore(handScore);
+
+          animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
+            lastHandScore = handScore;
+            roundScore = newTotal; displayRoundScore = newTotal;
+            handsLeft--; rerollsLeft = REROLLS_PER_HAND;
+            rolledOnce = false; handInProgress = false; scoringState = null;
+            // Track run stats for unlock conditions
+            if (combo.id === 'five_of_a_kind') runStats.fiveOfAKindScored = true;
+            runStats.handsPlayed++;
+            runStats.combosScored[combo.id] = (runStats.combosScored[combo.id] || 0) + 1;
+            if (!lastHandMeta.lastReroll) runStats._noRerollCur++;
+            else runStats._noRerollCur = 0;
+            runStats.maxNoRerollStreak = Math.max(runStats.maxNoRerollStreak, runStats._noRerollCur);
+            checkUnlocks();
+            initDice();
+
+            if (roundScore >= currentTarget()) {
+              if (handsLeft === HANDS_PER_ROUND - 1) firstHandSpectrumGoal = runGoal;
+              advanceGoal();
+            } else if (handsLeft <= 0) {
+              setTimeout(() => {
+                SFX.fail();
+                const name = nameEntry.trim() || incoming.username || 'Wanderer';
+                saveScore(name, totalFateScore, endless ? 'endless' : 'run');
+                loadScores();
+                screen = 'scores';
+              }, 800);
+            }
+          });
+        }, 500);
+      }
     }
 
-    setTimeout(scoreNext, 300);
+    // Higher tier combos hold longer before scoring — builds anticipation like Balatro
+    const scoringDelay = 250 + combo.tier * 50;
+    setTimeout(scoreNext, scoringDelay);
   }, 100);
 }
 
@@ -3838,6 +3913,8 @@ function drawGame(t) {
   // Combo name (before play) or live chips × mult counter (during scoring)
   if (handInProgress && scoringState) {
     const { chips, mult } = scoringState;
+    const dispChips = Math.round(scoringState.displayChips ?? chips);
+    const dispMult  = scoringState.displayMult ?? mult;
     const chipPunch = scoringState.chipPunch || 0;
     const multPunch = scoringState.multPunch || 0;
     const chipScale = 1 + chipPunch * 0.45;
@@ -3851,7 +3928,7 @@ function drawGame(t) {
     ctx.translate(cx2 - 58, sy); ctx.scale(chipScale, chipScale);
     ctx.fillStyle = '#c89960'; ctx.shadowColor = '#c89960'; ctx.shadowBlur = 3 + chipPunch * 10;
     ctx.font = 'bold 22px ui-sans-serif,sans-serif';
-    ctx.fillText(chips, 0, 0);
+    ctx.fillText(dispChips, 0, 0);
     ctx.restore();
     ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(200,153,96,0.55)';
     ctx.font = '9px ui-sans-serif,sans-serif';
@@ -3863,7 +3940,8 @@ function drawGame(t) {
     ctx.translate(cx2 + 58, sy); ctx.scale(multScale, multScale);
     ctx.fillStyle = '#ee3388'; ctx.shadowColor = '#ee3388'; ctx.shadowBlur = 3 + multPunch * 10;
     ctx.font = 'bold 22px ui-sans-serif,sans-serif';
-    ctx.fillText(mult, 0, 0);
+    const multStr = dispMult < 10 ? dispMult.toFixed(1) : Math.round(dispMult).toString();
+    ctx.fillText(multStr, 0, 0);
     ctx.restore();
     ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(238,51,136,0.55)';
     ctx.font = '9px ui-sans-serif,sans-serif';
