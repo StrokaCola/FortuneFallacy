@@ -1,9 +1,9 @@
 :root {
-  --bg: #040410;
-  --accent: #6622cc;
-  --accent2: #22aadd;
-  --accent3: #5a5888;
-  --fg: #d0d8f8;
+  --bg: #08060a;
+  --accent: #8b6914;
+  --accent2: #6688aa;
+  --accent3: #4a3e34;
+  --fg: #ecdec8;
 }
 
 * { box-sizing: border-box; }
@@ -21,22 +21,22 @@ body {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse at 32% 12%, rgba(90,30,220,0.22), transparent 48%),
-    radial-gradient(ellipse at 68% 88%, rgba(0,100,180,0.12), transparent 48%),
+    radial-gradient(ellipse at 30% 20%, rgba(90,60,20,0.15), transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(40,55,80,0.10), transparent 50%),
     var(--bg);
 }
 
 #game {
   max-width: 95vw;
   max-height: 95vh;
-  background: #040410;
-  border: 1px solid rgba(110,44,220,0.65);
+  background: #08060a;
+  border: 1px solid rgba(180,140,60,0.45);
   border-radius: 12px;
   box-shadow:
-    0 0 0 1px rgba(15,8,45,0.95),
-    0 0 28px rgba(110,44,240,0.45),
-    0 0 65px rgba(70,18,200,0.25),
-    0 0 130px rgba(30,6,80,0.18),
-    inset 0 0 40px rgba(0,0,0,0.70);
+    0 0 0 1px rgba(30,20,8,0.95),
+    0 0 28px rgba(160,110,30,0.30),
+    0 0 65px rgba(100,70,15,0.18),
+    0 0 130px rgba(40,25,5,0.15),
+    inset 0 0 40px rgba(0,0,0,0.75);
   cursor: pointer;
 }
