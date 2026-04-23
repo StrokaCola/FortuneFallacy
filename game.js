@@ -1048,7 +1048,7 @@ const DICE_UPGRADES = [
   { id:'platinum', name:'Platinum Die', shortName:'PLAT', icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3x' },
   { id:'brass', name:'Brass Die', shortName:'BRASS', icon:'⚄', color:'#98935d', cost:4, desc:'+2 Mult', multBonus:2 },
   { id:'copper', name:'Copper Die', shortName:'COPPER', icon:'⚄', color:'#b68d5d', cost:5, desc:'Tends to Roll Higher Numbers', rollMin:4, rollMax:6 },
-  { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multipier', scoreMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} }
+  { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multiplier', multMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} }
 ];
 
 // ─── Rune definitions ─────────────────────────────────────────────────
@@ -1570,6 +1570,7 @@ function previewHand() {
       if (upg.voidBonus !== undefined)                 { add = 0; mult += upg.voidBonus; }
       if (upg.scoreMultiplier !== undefined)            add = Math.round(add * upg.scoreMultiplier);
       if (upg.multBonus !== undefined)                 mult += upg.multBonus;
+      if (upg.multMultiplier !== undefined)            mult *= upg.multMultiplier;
       if (upg.multPenalty !== undefined)               mult = Math.max(1, mult - upg.multPenalty);
       if (upg.rerollMult)                              mult += rerollsLeft;
     }
@@ -1661,6 +1662,7 @@ function playHand() {
         if (upg.scoreMultiplier !== undefined)             add = Math.round(add * upg.scoreMultiplier);
         if (upg.rerollMult)                                { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
         if (upg.multBonus !== undefined)                   { mult += upg.multBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.multMultiplier !== undefined)              { mult *= upg.multMultiplier; scoringState.mult = mult; scoringState.multPunch = 1; }
         if (upg.multPenalty !== undefined)                 { mult = Math.max(1, mult - upg.multPenalty); scoringState.mult = mult; }
         if (upg.shardsBonus !== undefined)                 { shards += upg.shardsBonus; floatText(d.absX, d.absY - 60, `+${upg.shardsBonus} ◆`, '#b8a874', 13); }
       }
@@ -2955,7 +2957,8 @@ function oracleTooltipBody(o) {
 
 function upgradeTooltipBody(u) {
   const parts = [u.desc];
-  if (u.scoreMultiplier) parts.push(`Score multiplier: ×${u.scoreMultiplier}`);
+  if (u.scoreMultiplier)  parts.push(`Score multiplier: ×${u.scoreMultiplier}`);
+  if (u.multMultiplier)   parts.push(`Mult multiplier: ×${u.multMultiplier}`);
   if (u.multPenalty)     parts.push(`Mult penalty: −${u.multPenalty}`);
   return parts.join('\n\n');
 }
