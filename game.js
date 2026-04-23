@@ -24,18 +24,18 @@ const PHYSICS = (()=>{
     spinCoupling:        0.30,
     spinFriction:        0.25,
     gravity:              260,
-    floorRestitution:    0.48,
+    floorRestitution:    0.25,
     hopThreshold:          60,
-    maxHops:                4,
-    hopBaseVel:            12,
-    hopRandVel:             6,
-    hopSpeedFactor:      0.012,
+    maxHops:                2,
+    hopBaseVel:             5,
+    hopRandVel:             2,
+    hopSpeedFactor:      0.005,
     landingSpinX:          12,
     landingSpinZ:          10,
-    landingFriction:     0.84,
-    airDrag:             0.72,
-    groundFriction:      0.12,
-    wallRestitution:     0.78,
+    landingFriction:     0.60,
+    airDrag:             0.48,
+    groundFriction:      0.04,
+    wallRestitution:     0.42,
     wallSpinY:           0.03,
     wallSpinZ:          0.022,
     collisionRestitution: 0.82,
@@ -516,13 +516,13 @@ async function initRapier() {
   // Floor — top surface at y = 0
   world.createCollider(
     R.ColliderDesc.cuboid(tHW + 1, 0.1, tHD + 1)
-      .setTranslation(0, -0.1, 0).setRestitution(0.55).setFriction(0.25)
+      .setTranslation(0, -0.1, 0).setRestitution(0.25).setFriction(0.80)
   );
   // Four walls
-  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation(-tHW - 0.1, wH, 0).setRestitution(0.55).setFriction(0.1));
-  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation( tHW + 0.1, wH, 0).setRestitution(0.55).setFriction(0.1));
-  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH, -tHD - 0.1).setRestitution(0.55).setFriction(0.1));
-  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH,  tHD + 0.1).setRestitution(0.55).setFriction(0.1));
+  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation(-tHW - 0.1, wH, 0).setRestitution(0.35).setFriction(0.4));
+  world.createCollider(R.ColliderDesc.cuboid(0.1, wH, tHD + 1).setTranslation( tHW + 0.1, wH, 0).setRestitution(0.35).setFriction(0.4));
+  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH, -tHD - 0.1).setRestitution(0.35).setFriction(0.4));
+  world.createCollider(R.ColliderDesc.cuboid(tHW + 1, wH, 0.1).setTranslation(0, wH,  tHD + 0.1).setRestitution(0.35).setFriction(0.4));
 
   rapierWorld = world;
   console.log('Rapier3D ready — physics world active');
@@ -1739,12 +1739,12 @@ function rollDice() {
       d.physBody = rapierWorld.createRigidBody(
         R.RigidBodyDesc.dynamic()
           .setTranslation(physX, physY, physZ)
-          .setLinearDamping(0.05)
-          .setAngularDamping(0.3)
+          .setLinearDamping(1.4)
+          .setAngularDamping(0.6)
       );
       rapierWorld.createCollider(
         R.ColliderDesc.cuboid(RAPIER_DIE_HALF, RAPIER_DIE_HALF, RAPIER_DIE_HALF)
-          .setRestitution(0.5).setFriction(0.3),
+          .setRestitution(0.25).setFriction(0.70),
         d.physBody
       );
       // Velocity: X/Z = table throw, Y = upward bounce launch
@@ -4967,7 +4967,7 @@ function loop(now) {
     if (d.landT   !== undefined && !d.rolling) d.landT   += dt;
     if (d.revealT !== undefined && !d.rolling) d.revealT += dt;
     if (d.alignEasing && !d.rolling) {
-      const et   = Math.min(1, d.landT / 0.18);
+      const et   = Math.min(1, d.landT / 0.45);
       const ease = 1 - Math.pow(1 - et, 3); // ease-out-cubic
       d.rx = d.sfRx + (d.tRx - d.sfRx) * ease;
       d.ry = d.sfRy + (d.tRy - d.sfRy) * ease;
