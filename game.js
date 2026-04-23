@@ -1037,6 +1037,89 @@ const ALL_ORACLES = [
       const trip = Object.keys(counts).find(k=>counts[k]>=3);
       return trip ? [b * +trip, m] : [b,m];
     } },
+
+  // ─── New: Core Multiplier Engines ──────────────────────────────────────
+  { id:'even_engine',    name:'Even Engine',       tier:'common',   icon:'⟴', color:'#88aaff',
+    effect:'+0.5 Mult per even die',
+    flavor:'"Balance is just exploitation with better PR."',
+    apply(combo,f,b,m) { return [b, m + f.filter(v=>v%2===0).length * 0.5]; } },
+
+  { id:'odd_engine',     name:'Odd Engine',        tier:'common',   icon:'⟳', color:'#cc88ff',
+    effect:'+0.5 Mult per odd die',
+    flavor:'"The odd ones out always had more to offer."',
+    apply(combo,f,b,m) { return [b, m + f.filter(v=>v%2!==0).length * 0.5]; } },
+
+  { id:'sum_greed',      name:'Sum Greed',         tier:'common',   icon:'Σ', color:'#88cc88',
+    effect:'Every 5 total pips → +1 Mult',
+    flavor:'"Five more. Always five more."',
+    apply(combo,f,b,m) { return [b, m + Math.floor(f.reduce((a,v)=>a+v,0)/5)]; } },
+
+  { id:'hoarder',        name:'Hoarder',           tier:'common',   icon:'💎', color:'#aaccff',
+    effect:'Unused rerolls → +1 Mult each',
+    flavor:'"Saving up is its own multiplier."',
+    apply(combo,f,b,m) { return [b, m + rerollsLeft]; } },
+
+  { id:'high_roller',    name:'High Roller',       tier:'uncommon', icon:'🎯', color:'#ffaa44',
+    effect:'+1 Mult per die showing 5 or 6',
+    flavor:'"Go big. Anything else is wasted potential."',
+    apply(combo,f,b,m) { return [b, m + f.filter(v=>v>=5).length]; } },
+
+  { id:'pair_amplifier', name:'Pair Amplifier',    tier:'uncommon', icon:'⟨⟩', color:'#ff88aa',
+    effect:'Each pair in hand → +2 Mult',
+    flavor:'"Two of anything becomes something more."',
+    apply(combo,f,b,m) {
+      const cnt={}; f.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+      return [b, m + Object.values(cnt).filter(n=>n>=2).length * 2];
+    } },
+
+  { id:'double_or_nothing', name:'Double or Nothing', tier:'uncommon', icon:'⚖', color:'#ff4466',
+    effect:'50%: Mult ×2 — 50%: Mult = 0',
+    flavor:'"You love the thrill. Be honest."',
+    apply(combo,f,b,m) { return Math.random()<0.5 ? [b, m*2] : [b, 0]; } },
+
+  // ─── New: Transformative (modify dice before combo detection) ──────────
+  { id:'loaded_dice',    name:'Loaded Dice',       tier:'uncommon', icon:'⚔', color:'#cc6644',
+    effect:'All 1s count as 6s',
+    flavor:'"The house always wins — because it stacked them."',
+    transform(faces) { return faces.map(v=>v===1?6:v); } },
+
+  { id:'echo_die',       name:'Echo Die',          tier:'uncommon', icon:'≡', color:'#88ddcc',
+    effect:'Highest die value is duplicated for combo scoring',
+    flavor:'"One repeat. Make it magnificent."',
+    transform(faces) { const mx=Math.max(...faces); return [...faces, mx]; } },
+
+  { id:'lowest_rises',   name:'Lowest Rises',      tier:'uncommon', icon:'↑', color:'#aaffaa',
+    effect:'Lowest die becomes the highest die',
+    flavor:'"The bottom always sees the top eventually."',
+    transform(faces) {
+      const mn=Math.min(...faces), mx=Math.max(...faces);
+      let done=false;
+      return faces.map(v=>{if(!done&&v===mn){done=true;return mx;}return v;});
+    } },
+
+  // ─── New: High-Power Engines ───────────────────────────────────────────
+  { id:'six_fever',      name:'Six Fever',         tier:'rare',     icon:'⑥', color:'#ff3300',
+    effect:'Each 6 in hand doubles total Mult (compounds)',
+    flavor:'"Once you catch it, you never want the cure."',
+    apply(combo,f,b,m) {
+      const sixes = f.filter(v=>v===6).length;
+      return [b, m * Math.pow(2, sixes)];
+    } },
+
+  { id:'diversity_bonus',name:'Diversity Bonus',   tier:'rare',     icon:'◆', color:'#dd88ff',
+    effect:'All unique faces → Mult ×5',
+    flavor:'"Spread the risk. Multiply the reward."',
+    apply(combo,f,b,m) { return new Set(f).size===f.length ? [b, m*5] : [b,m]; } },
+
+  { id:'chaos_engine',   name:'Chaos Engine',      tier:'rare',     icon:'⚡', color:'#ff6600',
+    effect:'Random ×0.5 to ×5 Mult each hand',
+    flavor:'"It doesn\'t know what it\'s doing. Neither do you."',
+    apply(combo,f,b,m) { return [b, m * (0.5 + Math.random()*4.5)]; } },
+
+  // ─── New: Legendary / Cursed ───────────────────────────────────────────
+  { id:'fragile_fortune',name:'Fragile Fortune',   tier:'legendary',icon:'💀', color:'#cc2200',
+    effect:'Mult ×3 — but all dice ≤ 3 ends your run instantly',
+    flavor:'"Triple or nothing. And we mean nothing."' },
 ];
 
 // ─── Dice upgrade definitions ─────────────────────────────────────────
@@ -1048,7 +1131,21 @@ const DICE_UPGRADES = [
   { id:'platinum', name:'Platinum Die', shortName:'PLAT', icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3x' },
   { id:'brass', name:'Brass Die', shortName:'BRASS', icon:'⚄', color:'#98935d', cost:4, desc:'+2 Mult', multBonus:2 },
   { id:'copper', name:'Copper Die', shortName:'COPPER', icon:'⚄', color:'#b68d5d', cost:5, desc:'Tends to Roll Higher Numbers', rollMin:4, rollMax:6 },
-  { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multiplier', multMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} }
+  { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multiplier', multMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} },
+  // ─── New dice upgrades ────────────────────────────────────────────────
+  { id:'fever_die',   name:'Fever Die',    shortName:'FEVR', icon:'⑥', color:'#ff3300', cost:6,
+    desc:'Face 6 → double chip contribution', sixDoubler:true },
+  { id:'explode_die', name:'Exploding',    shortName:'BOMB', icon:'💥', color:'#ff6600', cost:7,
+    desc:'Face 6 → scores one extra time', explodingDie:true },
+  { id:'roulette_die',name:'Roulette',     shortName:'ROUL', icon:'🎡', color:'#cc44cc', cost:5,
+    desc:'At roll: picks the best of 3 rolls', roulette:3,
+    visual:{shape:'round',decoration:'text',label:'?'} },
+  { id:'glass_die',   name:'Glass Cannon', shortName:'GLAS', icon:'💎', color:'#eeeeff', cost:8,
+    desc:'First hand this round: ×10 chips — others: 0', glassCannon:true },
+  { id:'burn_die',    name:'Burning',      shortName:'BURN', icon:'🔥', color:'#ff5500', cost:5,
+    desc:'+3 Mult if face is 5 or 6', highFaceMult:3 },
+  { id:'chaos_die',   name:'Chaos',        shortName:'CHAS', icon:'⚡', color:'#ff8800', cost:6,
+    desc:'Random ×0.5 to ×4 Mult when scoring', chaosMultRange:[0.5,4] },
 ];
 
 // ─── Rune definitions ─────────────────────────────────────────────────
@@ -1077,6 +1174,28 @@ const ALL_RUNES = [
     desc:'+3 Chips per die collision',   collisionBonus:3 },
   { id:'sovereign', name:'Sovereign', tier:'legendary',icon:'♛', color:'#ffaa44', cost:12,
     desc:'Scores three times',           triggers:3 },
+
+  // ─── New runes ────────────────────────────────────────────────────────
+  { id:'even_engine_r',  name:'Even Engine',  tier:'common',   icon:'⟴', color:'#88aaff', cost:3,
+    desc:'+0.5 Mult if face is even',    evenMult:0.5 },
+  { id:'odd_engine_r',   name:'Odd Engine',   tier:'common',   icon:'⟳', color:'#cc88ff', cost:3,
+    desc:'+0.5 Mult if face is odd',     oddMult:0.5 },
+  { id:'loaded_r',       name:'Loaded',       tier:'common',   icon:'⚔', color:'#cc6644', cost:3,
+    desc:'1s always count as 6',         faceRemap:{from:1,to:6} },
+  { id:'high_roller_r',  name:'High Roller',  tier:'uncommon', icon:'🎯', color:'#ffaa44', cost:5,
+    desc:'+1 Mult if face shows 5 or 6', highFaceMult:1 },
+  { id:'snake_cult_r',   name:'Snake Cult',   tier:'uncommon', icon:'①', color:'#ff4444', cost:5,
+    desc:'+2 Mult if face is 1',         snakeEyes:2 },
+  { id:'middle_r',       name:'Middle Path',  tier:'uncommon', icon:'◉', color:'#ddcc44', cost:4,
+    desc:'Face becomes 3 or 4 randomly', middleBias:true },
+  { id:'burn_r',         name:'Burning',      tier:'uncommon', icon:'🔥', color:'#ff6622', cost:5,
+    desc:'+2 Mult if face is 5 or 6',   highFaceMult:2 },
+  { id:'pair_seeker_r',  name:'Pair Seeker',  tier:'rare',     icon:'⟨⟩', color:'#ff88aa', cost:6,
+    desc:'+2 Mult if this face forms a pair', pairMult:2 },
+  { id:'wild_r',         name:'Wild Face',    tier:'rare',     icon:'★', color:'#ffffaa', cost:7,
+    desc:'Always scores as face value 6', wildFace:true },
+  { id:'chaos_r',        name:'Chaos',        tier:'rare',     icon:'⚡', color:'#ff6600', cost:6,
+    desc:'Random ×0.5 to ×4 Mult when scoring', chaosMultRange:[0.5,4] },
 ];
 const RUNE_TIERS = { common:'#778899', uncommon:'#44bb66', rare:'#9955ee', legendary:'#c89960' };
 const MAX_RUNE_SLOTS = 2;
@@ -1098,6 +1217,26 @@ const UNLOCKABLE_DICE = [
     scoreMultiplier:2, multPenalty:1,
     unlock:{ id:'runic_die',  label:'Clear Goal 5', req:{type:'clear_goal',value:5} },
     visual:{ shape:'hex', decoration:'text', label:'✦' } },
+  { id:'snake_die',  name:'Snake Die',  shortName:'SNKE', icon:'①', color:'#ff4444', cost:7,
+    desc:'Face 1 → +4 Mult (Snake Eyes Engine)',
+    snakeEyes:4,
+    unlock:{ id:'snake_die',  label:'Clear Goal 2', req:{type:'clear_goal',value:2} },
+    visual:{ shape:'round', decoration:'text', label:'①' } },
+  { id:'pair_die',   name:'Pair Die',   shortName:'PAIR', icon:'⟨⟩', color:'#ff88aa', cost:6,
+    desc:'+3 Mult if this die forms a pair with another',
+    pairMult:3,
+    unlock:{ id:'pair_die',   label:'Score Two Pair 3 times', req:{type:'score_hands',value:10} },
+    visual:{ shape:'round', decoration:'text', label:'⟨⟩' } },
+  { id:'mirror_die', name:'Mirror Die', shortName:'MIRR', icon:'◈', color:'#88ddff', cost:6,
+    desc:'Always copies the highest face in your hand',
+    mirror:true,
+    unlock:{ id:'mirror_die', label:'Clear Goal 3', req:{type:'clear_goal',value:3} },
+    visual:{ shape:'round', decoration:'outline', outlineShape:'diamond' } },
+  { id:'frozen_die', name:'Frozen Die', shortName:'FRZN', icon:'❄', color:'#88eeff', cost:7,
+    desc:'Cannot reroll — ×2 Mult',
+    noReroll:true, multMultiplier:2,
+    unlock:{ id:'frozen_die', label:'Clear Goal 4', req:{type:'clear_goal',value:4} },
+    visual:{ shape:'hex', decoration:'text', label:'❄' } },
 ];
 
 const UNLOCKABLE_RUNES = [
@@ -1110,6 +1249,12 @@ const UNLOCKABLE_RUNES = [
   { id:'rune_overload', name:'Overload', tier:'legendary',icon:'⚡', color:'#ff4400', cost:12,
     desc:'Score ×3 — cannot reroll this die', scoreMultiplier:3, noReroll:true,
     unlock:{ id:'rune_overload', label:'Clear Goal 6', req:{type:'clear_goal',value:6} } },
+  { id:'frozen_r',     name:'Frozen',   tier:'rare',     icon:'❄', color:'#88eeff', cost:7,
+    desc:'Cannot reroll — but ×2 Mult', noReroll:true, multMultiplier:2,
+    unlock:{ id:'frozen_r',     label:'Clear Goal 4', req:{type:'clear_goal',value:4} } },
+  { id:'glass_r',      name:'Glass Cannon', tier:'legendary',icon:'💎',color:'#ffffff', cost:10,
+    desc:'First hand ×10 chips — all others score 0', glassCannon:true,
+    unlock:{ id:'glass_r',      label:'Score a Four of a Kind', req:{type:'score_combo',value:'four_kind'} } },
 ];
 
 const UNLOCKABLE_ORACLES = [
@@ -1135,6 +1280,86 @@ const UNLOCKABLE_ORACLES = [
       const types = new Set(diceUpgrades.filter(Boolean).map(d => d.id)).size;
       return [chips + types * 3, mult];
     } },
+
+  // ─── New unlockable oracles ───────────────────────────────────────────
+  { id:'greed_counter',  name:'Greed Counter',     tier:'uncommon', icon:'📈', color:'#44dd88',
+    effect:'+0.3 Mult per round survived (stacks across the run)',
+    flavor:'"Compound interest for the reckless."',
+    unlock:{ id:'greed_counter',  label:'Clear Goal 2', req:{type:'clear_goal',value:2} },
+    apply(combo,f,b,m,meta) { return [b, m + meta.goalIdx * 0.3]; } },
+
+  { id:'reverse_world',  name:'Reverse World',     tier:'rare',     icon:'↯', color:'#aa66ff',
+    effect:'1↔6, 2↔5, 3↔4 — dice are flipped before scoring',
+    flavor:'"Up is down. Six is one. Make it work."',
+    unlock:{ id:'reverse_world',  label:'Score a Large Straight', req:{type:'score_combo',value:'lg_straight'} },
+    transform(faces) {
+      const map={1:6,2:5,3:4,4:3,5:2,6:1};
+      return faces.map(v=>map[v]||v);
+    } },
+
+  { id:'middle_bias',    name:'Middle Bias',       tier:'uncommon', icon:'◉', color:'#ddcc44',
+    effect:'All dice become 3 or 4 (randomly) before scoring',
+    flavor:'"Extremes are overrated. Mediocrity, weaponized."',
+    unlock:{ id:'middle_bias',    label:'Clear Goal 3', req:{type:'clear_goal',value:3} },
+    transform(faces) { return faces.map(()=>Math.random()<0.5?3:4); } },
+
+  { id:'risk_investor',  name:'Risk Investor',     tier:'rare',     icon:'💹', color:'#ffcc00',
+    effect:'Used zero rerolls this hand → Mult ×4',
+    flavor:'"Maximum yield from minimum action."',
+    unlock:{ id:'risk_investor',  label:'Play 3 hands without rerolling', req:{type:'no_reroll_streak',value:3} },
+    apply(combo,f,b,m) { return rerollsLeft===REROLLS_PER_HAND ? [b, m*4] : [b,m]; } },
+
+  { id:'gamblers_fallacy',name:"Gambler's Fallacy",tier:'uncommon', icon:'🎰', color:'#cc8844',
+    effect:'Last hand scored below 300 → +5 Mult',
+    flavor:'"A bad run means a good run is due. Right?"',
+    unlock:{ id:'gamblers_fallacy',label:'Clear Goal 3', req:{type:'clear_goal',value:3} },
+    apply(combo,f,b,m) { return lastHandScore<300 ? [b, m+5] : [b,m]; } },
+
+  { id:'mirror_pair',    name:'Mirror Pair',       tier:'rare',     icon:'⫥', color:'#88ccff',
+    effect:'Pairs are counted as Triples for bonus scoring',
+    flavor:'"See double. Score triple."',
+    unlock:{ id:'mirror_pair',    label:'Clear Goal 4', req:{type:'clear_goal',value:4} } },
+
+  { id:'triple_reactor', name:'Triple Reactor',    tier:'rare',     icon:'⚛', color:'#ff8844',
+    effect:'Three of a Kind or better → Mult ×2',
+    flavor:'"Three is the critical mass."',
+    unlock:{ id:'triple_reactor', label:'Clear Goal 5', req:{type:'clear_goal',value:5} },
+    apply(combo,f,b,m) {
+      return ['three_kind','four_kind','five_kind'].includes(combo.id) ? [b, m*2] : [b,m];
+    } },
+
+  { id:'full_house_overload',name:'Full House Overload',tier:'legendary',icon:'🏠',color:'#ffaa22',
+    effect:'Full House → Mult ×10 instead of base',
+    flavor:'"The house always overloads in the end."',
+    unlock:{ id:'full_house_overload',label:'Score a Full House', req:{type:'score_combo',value:'full_house'} },
+    apply(combo,f,b,m) { return combo.id==='full_house' ? [b, m*10] : [b,m]; } },
+
+  { id:'straight_multiplier',name:'Straight Multiplier',tier:'rare',icon:'⬌',color:'#44ccff',
+    effect:'Any Straight → doubles all Mult gains this hand',
+    flavor:'"In a straight line, everything doubles."',
+    unlock:{ id:'straight_multiplier',label:'Clear Goal 5', req:{type:'clear_goal',value:5} } },
+
+  { id:'matching_flood', name:'Matching Flood',    tier:'legendary',icon:'🌊', color:'#4488ff',
+    effect:'Five of a Kind → Mult ×20',
+    flavor:'"When everything matches, it drowns the numbers."',
+    unlock:{ id:'matching_flood', label:'Score a Five of a Kind', req:{type:'score_combo',value:'five_kind'} },
+    apply(combo,f,b,m) { return combo.id==='five_kind' ? [b, m*20] : [b,m]; } },
+
+  { id:'chain_reactor',  name:'Chain Reactor',     tier:'legendary',icon:'⛓', color:'#ff44cc',
+    effect:'Each Oracle you hold → Mult ×1.2 (compounds)',
+    flavor:'"Every piece of the engine feeds the next."',
+    unlock:{ id:'chain_reactor',  label:'Hold 4 Oracles at once', req:{type:'own_oracles',value:4} },
+    apply(combo,f,b,m) { return [b, m * Math.pow(1.2, heldOracles.length)]; } },
+
+  { id:'feedback_loop',  name:'Feedback Loop',     tier:'legendary',icon:'∞', color:'#ffffff',
+    effect:'Final Mult is raised to the power of 1.15',
+    flavor:'"The output feeds back in. It compounds. It consumes."',
+    unlock:{ id:'feedback_loop',  label:'Clear Goal 7', req:{type:'clear_goal',value:7} } },
+
+  { id:'blood_dice',     name:'Blood Dice',        tier:'legendary',icon:'🩸', color:'#aa0000',
+    effect:'+8 Mult — costs 1 Shard per hand played',
+    flavor:'"Power has a price. Pay it."',
+    unlock:{ id:'blood_dice',     label:'Clear Goal 6', req:{type:'clear_goal',value:6} } },
 ];
 
 // ─── Combo tier colours ───────────────────────────────────────────────
@@ -1162,6 +1387,7 @@ let handInProgress = false;
 let heldOracles  = [];
 let comboStreak  = { id: null, count: 0 };
 let lastHandMeta = { lastReroll: false };
+let lastHandScore = 0;  // for Gambler's Fallacy oracle
 
 let shopStock = { oracles: [], runes: [], upgrades: [] };
 let shopTab   = 'oracles';
@@ -1224,6 +1450,8 @@ function evalUnlockReq(req) {
     case 'own_upgrades':  return diceUpgrades.filter(Boolean).length >= req.value;
     case 'score_hands':   return runStats.handsPlayed >= req.value;
     case 'win_run':       return runStats.runCompleted;
+    case 'no_reroll_streak': return runStats.maxNoRerollStreak >= req.value;
+    case 'own_oracles':   return heldOracles.length >= req.value;
     default:              return false;
   }
 }
@@ -1516,6 +1744,13 @@ function rollDice() {
     } else {
       // Legacy path: predetermine face now
       d.face = d.faceMin + Math.floor(Math.random() * (d.faceMax - d.faceMin + 1));
+      // Roulette: roll N times, keep best
+      if (rupg && rupg.roulette > 1) {
+        for (let r = 1; r < rupg.roulette; r++) {
+          const roll = d.faceMin + Math.floor(Math.random() * (d.faceMax - d.faceMin + 1));
+          if (roll > d.face) d.face = roll;
+        }
+      }
       const [trx, try_, trz] = FACE_ROT[d.face];
       d.tRx = trx; d.tRy = try_; d.tRz = trz;
     }
@@ -1556,34 +1791,69 @@ function rollDice() {
 function previewHand() {
   if (!rolledOnce || handInProgress || trayOrder.length === 0) return null;
   const entries = trayOrder.map(i => ({die: dice[i], upg: diceUpgrades[i], idx: i}));
-  const faces   = entries.map(e => e.die.face);
+  // Apply oracle transforms
+  let faces = entries.map(e => e.die.face);
+  for (const o of heldOracles) { if (o.transform) faces = o.transform(faces); }
   const combo   = detectCombo(faces);
   let chips = combo.chips;
   let mult  = combo.mult;
-  for (const {die, upg, idx} of entries) {
+  for (let ei = 0; ei < entries.length; ei++) {
+    const {die, upg, idx} = entries[ei];
     let add = die.face;
     if (upg) {
       if (upg.scoreMin !== undefined)                  add = Math.max(add, upg.scoreMin);
       if (upg.faceRemap && add === upg.faceRemap.from) add = upg.faceRemap.to;
       if (upg.invert)                                  add = 7 - die.face;
       if (upg.mirror)                                  add = Math.max(...faces);
+      if (upg.middleBias)                              add = 4;  // average of 3/4
+      if (upg.wildFace)                                add = 6;
+      if (upg.sixDoubler && die.face === 6)            add *= 2;
+      if (upg.glassCannon)                             add = handsLeft===HANDS_PER_ROUND ? Math.round(add*10) : 0;
       if (upg.voidBonus !== undefined)                 { add = 0; mult += upg.voidBonus; }
       if (upg.scoreMultiplier !== undefined)            add = Math.round(add * upg.scoreMultiplier);
       if (upg.multBonus !== undefined)                 mult += upg.multBonus;
       if (upg.multMultiplier !== undefined)            mult *= upg.multMultiplier;
       if (upg.multPenalty !== undefined)               mult = Math.max(1, mult - upg.multPenalty);
       if (upg.rerollMult)                              mult += rerollsLeft;
+      if (upg.highFaceMult !== undefined && die.face >= 5) mult += upg.highFaceMult;
+      if (upg.evenMult !== undefined && die.face % 2 === 0) mult += upg.evenMult;
+      if (upg.oddMult !== undefined && die.face % 2 !== 0)  mult += upg.oddMult;
+      if (upg.snakeEyes !== undefined && die.face === 1)     mult += upg.snakeEyes;
+      if (upg.pairMult !== undefined) {
+        const cnt={}; entries.forEach(e=>cnt[e.die.face]=(cnt[e.die.face]||0)+1);
+        if ((cnt[die.face]||0)>=2) mult += upg.pairMult;
+      }
     }
     for (const rune of (diceRunes[idx] || [])) {
       if (!rune) continue;
-      if (rune.chipBonus  !== undefined) add  += rune.chipBonus;
+      if (rune.scoreBonus !== undefined) add  += rune.scoreBonus;
       if (rune.multBonus  !== undefined) mult += rune.multBonus;
+      if (rune.multMultiplier !== undefined) mult *= rune.multMultiplier;
       if (rune.mirror)                   add   = Math.max(...faces);
+      if (rune.middleBias)               add   = 4;
+      if (rune.wildFace)                 add   = 6;
+      if (rune.faceRemap && add === rune.faceRemap.from) add = rune.faceRemap.to;
+      if (rune.glassCannon)              add = handsLeft===HANDS_PER_ROUND ? Math.round(add*10) : 0;
       if (rune.rerollMult)               mult += rerollsLeft;
+      if (rune.highFaceMult !== undefined && die.face >= 5) mult += rune.highFaceMult;
+      if (rune.evenMult !== undefined && die.face % 2 === 0) mult += rune.evenMult;
+      if (rune.oddMult !== undefined && die.face % 2 !== 0)  mult += rune.oddMult;
+      if (rune.snakeEyes !== undefined && die.face === 1)     mult += rune.snakeEyes;
+      if (rune.pairMult !== undefined) {
+        const cnt={}; entries.forEach(e=>cnt[e.die.face]=(cnt[e.die.face]||0)+1);
+        if ((cnt[die.face]||0)>=2) mult += rune.pairMult;
+      }
     }
     const baseT = (upg && upg.triggers > 1) ? upg.triggers : 1;
     const runeT = (diceRunes[idx] || []).reduce((s,r) => s + (r && r.triggers > 1 ? r.triggers-1 : 0), 0);
-    chips += add * (baseT + runeT);
+    const explodeT = (upg && upg.explodingDie && die.face === 6) ? 1 : 0;
+    chips += add * (baseT + runeT + explodeT);
+  }
+  // Oracle apply preview (skip chaotic ones like double_or_nothing)
+  for (const o of heldOracles) {
+    if (o.apply && o.id !== 'double_or_nothing' && o.id !== 'chaos_engine') {
+      [chips, mult] = o.apply(combo, faces, chips, mult, lastHandMeta);
+    }
   }
   chips = Math.max(0, chips);
   mult  = Math.max(1, mult);
@@ -1597,7 +1867,11 @@ function playHand() {
   if (heldEntries.length === 0) return;
   handInProgress = true;
 
-  const faces = heldEntries.map(e => e.die.face);
+  // Apply oracle face transforms before combo detection (Loaded Dice, Reverse World, etc.)
+  let faces = heldEntries.map(e => e.die.face);
+  for (const o of heldOracles) {
+    if (o.transform) faces = o.transform(faces);
+  }
   const combo = detectCombo(faces);
   lastHandMeta.lastReroll = (rerollsLeft === 0);
   lastHandMeta.lockedHeld = heldEntries.length;
@@ -1636,7 +1910,8 @@ function playHand() {
       const dieIdx  = dice.indexOf(entry.die);
       const baseT   = (entry.upg && entry.upg.triggers > 1) ? entry.upg.triggers : 1;
       const runeT   = (diceRunes[dieIdx] || []).reduce((s, r) => s + (r && r.triggers > 1 ? r.triggers - 1 : 0), 0);
-      const t       = baseT + runeT;
+      const explodeT = (entry.upg && entry.upg.explodingDie && entry.die.face === 6) ? 1 : 0;
+      const t       = baseT + runeT + explodeT;
       for (let ti = 0; ti < t; ti++) scoreQueue.push(entry);
     }
     let dieIdx = 0;
@@ -1665,6 +1940,23 @@ function playHand() {
         if (upg.multMultiplier !== undefined)              { mult *= upg.multMultiplier; scoringState.mult = mult; scoringState.multPunch = 1; }
         if (upg.multPenalty !== undefined)                 { mult = Math.max(1, mult - upg.multPenalty); scoringState.mult = mult; }
         if (upg.shardsBonus !== undefined)                 { shards += upg.shardsBonus; floatText(d.absX, d.absY - 60, `+${upg.shardsBonus} ◆`, '#b8a874', 13); }
+        // New upgrade properties
+        if (upg.sixDoubler && d.face === 6)                add *= 2;
+        if (upg.middleBias)                                add = Math.random()<0.5?3:4;
+        if (upg.wildFace)                                  add = 6;
+        if (upg.glassCannon) { if(handsLeft===HANDS_PER_ROUND){add=Math.round(add*10);}else{add=0;} }
+        if (upg.highFaceMult !== undefined && d.face >= 5) { mult += upg.highFaceMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.evenMult !== undefined && d.face % 2 === 0){ mult += upg.evenMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.oddMult !== undefined && d.face % 2 !== 0) { mult += upg.oddMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.snakeEyes !== undefined && d.face === 1)   { mult += upg.snakeEyes; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (upg.pairMult !== undefined) {
+          const cnt={}; heldEntries.forEach(e=>cnt[e.die.face]=(cnt[e.die.face]||0)+1);
+          if ((cnt[d.face]||0)>=2) { mult += upg.pairMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        }
+        if (upg.chaosMultRange) {
+          const [mn,mx]=upg.chaosMultRange; mult *= mn+Math.random()*(mx-mn);
+          scoringState.mult = mult; scoringState.multPunch = 1;
+        }
       }
       // Apply equipped rune effects
       const _dieIdx = dice.indexOf(d);
@@ -1676,9 +1968,28 @@ function playHand() {
         if (rune.volatile !== undefined)        add = 1 + Math.floor(Math.random() * rune.volatile);
         if (rune.mirror)                        add = Math.max(...heldEntries.map(e => e.die.face));
         if (rune.collisionBonus !== undefined)  add += rollCollisions.length * rune.collisionBonus;
+        // New rune face transforms (apply before scoreMultiplier)
+        if (rune.middleBias)                    add = Math.random()<0.5?3:4;
+        if (rune.wildFace)                      add = 6;
+        if (rune.faceRemap && add === rune.faceRemap.from) add = rune.faceRemap.to;
+        if (rune.glassCannon) { if(handsLeft===HANDS_PER_ROUND){add=Math.round(add*10);}else{add=0;} }
         if (rune.scoreMultiplier !== undefined) add = Math.round(add * rune.scoreMultiplier);
         if (rune.rerollMult)                    { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
         if (rune.multBonus !== undefined)       { mult += rune.multBonus; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.multMultiplier !== undefined)  { mult *= rune.multMultiplier; scoringState.mult = mult; scoringState.multPunch = 1; }
+        // New rune mult properties
+        if (rune.highFaceMult !== undefined && d.face >= 5) { mult += rune.highFaceMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.evenMult !== undefined && d.face % 2 === 0){ mult += rune.evenMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.oddMult !== undefined && d.face % 2 !== 0) { mult += rune.oddMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.snakeEyes !== undefined && d.face === 1)   { mult += rune.snakeEyes; scoringState.mult = mult; scoringState.multPunch = 1; }
+        if (rune.pairMult !== undefined) {
+          const cnt={}; heldEntries.forEach(e=>cnt[e.die.face]=(cnt[e.die.face]||0)+1);
+          if ((cnt[d.face]||0)>=2) { mult += rune.pairMult; scoringState.mult = mult; scoringState.multPunch = 1; }
+        }
+        if (rune.chaosMultRange) {
+          const [mn,mx]=rune.chaosMultRange; mult *= mn+Math.random()*(mx-mn);
+          scoringState.mult = mult; scoringState.multPunch = 1;
+        }
         if (rune.shardsBonus !== undefined)     { shards += rune.shardsBonus; floatText(d.absX, d.absY - 75, `+${rune.shardsBonus} ◆`, rune.color, 11); }
       }
       chips += add;
@@ -1799,10 +2110,72 @@ function playHand() {
         comboStreak.count = 0;
       }
 
+      // Blood Dice: +8 Mult — costs 1 shard per hand
+      const bloodO = heldOracles.find(o => o.id === 'blood_dice');
+      if (bloodO) {
+        mult += 8;
+        if (shards > 0) {
+          shards--;
+          floatText(W/2, H/2 - 65, '-1 ◆ Blood Tax', '#cc0000', 13);
+        }
+        floatText(W/2, H/2 - 48, '+8 Blood Mult', '#aa0000', 14);
+        scoringState.mult = mult; scoringState.multPunch = 1;
+      }
+
       // All other oracle effects (compound mult via × operations)
+      const multAtOracleStart = mult;
       for (const o of heldOracles) {
         if (o.apply) [chips, mult] = o.apply(combo, faces, chips, mult, lastHandMeta);
       }
+      scoringState.chips = chips;
+      scoringState.mult  = mult;
+
+      // Mirror Pair: pairs count as triples (bonus mult per pair)
+      const mirrorPairO = heldOracles.find(o => o.id === 'mirror_pair');
+      if (mirrorPairO) {
+        const cnt = {}; faces.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+        const pairCount = Object.values(cnt).filter(n=>n>=2).length;
+        if (pairCount > 0) {
+          const threeBonus = COMBOS.find(c=>c.id==='three_kind').mult;
+          mult += threeBonus * pairCount;
+          floatText(W/2, H/2 - 95, `+${threeBonus*pairCount} Mirror Pair!`, '#88ccff', 16);
+          scoringState.mult = mult; scoringState.multPunch = 1;
+        }
+      }
+
+      // Straight Multiplier: any straight → mult gains this hand are doubled
+      const strMult = heldOracles.find(o => o.id === 'straight_multiplier');
+      if (strMult && (combo.id === 'sm_straight' || combo.id === 'lg_straight')) {
+        const gained = mult - combo.mult;
+        if (gained > 0) {
+          mult = combo.mult + gained * 2;
+          floatText(W/2, H/2 - 110, `STRAIGHT ×2 Mults!`, '#44ccff', 18);
+          scoringState.mult = mult; scoringState.multPunch = 1;
+        }
+      }
+
+      // Fragile Fortune: ×3 Mult (via apply) but all ≤ 3 = game over
+      const fragileO = heldOracles.find(o => o.id === 'fragile_fortune');
+      if (fragileO && faces.every(v=>v<=3)) {
+        floatText(W/2, H/2 - 30, 'FORTUNE SHATTERED', '#ff2200', 28, {life:3, glow:60, popScale:3.2});
+        screenFlash(0.95); screenShake(22);
+        SFX.fail();
+        setTimeout(() => {
+          const name = nameEntry.trim() || incoming.username || 'Wanderer';
+          saveScore(name, totalFateScore, endless ? 'endless' : 'run');
+          loadScores(); screen = 'scores';
+        }, 2200);
+      }
+
+      // Feedback Loop: final mult^1.15 (applied dead-last)
+      const feedbackO = heldOracles.find(o => o.id === 'feedback_loop');
+      if (feedbackO && mult > 1) {
+        const before = mult;
+        mult = Math.pow(mult, 1.15);
+        floatText(W/2, H/2 - 125, `Feedback ×${mult.toFixed(1)}`, '#ffffff', 16);
+        scoringState.mult = mult; scoringState.multPunch = 1;
+      }
+
       scoringState.chips = chips;
       scoringState.mult  = mult;
 
@@ -1873,6 +2246,7 @@ function playHand() {
         SFX.bigScore(handScore);
 
         animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
+          lastHandScore = handScore;
           roundScore = newTotal; displayRoundScore = newTotal;
           handsLeft--; rerollsLeft = REROLLS_PER_HAND;
           rolledOnce = false; handInProgress = false; scoringState = null;
