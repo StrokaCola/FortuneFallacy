@@ -1149,7 +1149,8 @@ const ALL_ORACLES = [
   // ─── New: Legendary / Cursed ───────────────────────────────────────────
   { id:'fragile_fortune',name:'Fragile Fortune',   tier:'legendary',icon:'💀', color:'#cc2200',
     effect:'Mult ×3 — but all dice ≤ 3 ends your run instantly',
-    flavor:'"Triple or nothing. And we mean nothing."' },
+    flavor:'"Triple or nothing. And we mean nothing."',
+    apply(combo, f, b, m) { return [b, m * 3]; } },
 ];
 
 // ─── Dice upgrade definitions ─────────────────────────────────────────
@@ -1158,7 +1159,7 @@ const DICE_UPGRADES = [
   { id:'lead', name:'Lead Die', shortName:'LEAD', icon:'⬡', color:'#4d4d4d', cost:5, desc:'Triggers 2x, but cannot be rerolled', noReroll:true, triggers:2 },
   { id:'gold', name:'Gold Die', shortName:'Gold', icon:'⚄', color:'#e1a523', cost:8, desc:'Triggers Twice', triggers:2, visual:{shape:'round',decoration:'text',label:'⚄',overlayOutline:'diamond'} },
   { id:'Aluminum', name:'Aluminum Die', shortName:'ALUMINUM', icon:'⚄', color:'#888899', cost:2, desc:'Tends to roll lower numbers', rollMin:1, rollMax:3, visual:{shape:'round',decoration:'pips',label:'⚄',pipPattern:'triangle'} },
-  { id:'platinum', name:'Platinum Die', shortName:'PLAT', icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3x' },
+  { id:'platinum', name:'Platinum Die', shortName:'PLAT', icon:'⚄', color:'#ffffff', cost:10, desc:'Triggers 3x', triggers:3 },
   { id:'brass', name:'Brass Die', shortName:'BRASS', icon:'⚄', color:'#98935d', cost:4, desc:'+2 Mult', multBonus:2 },
   { id:'copper', name:'Copper Die', shortName:'COPPER', icon:'⚄', color:'#b68d5d', cost:5, desc:'Tends to Roll Higher Numbers', rollMin:4, rollMax:6 },
   { id:'silver', name:'Silver', shortName:'SILVER', icon:'⚄', color:'#b5b5b5', cost:5, desc:'x1.5 Multiplier', multMultiplier:1.5, visual:{shape:'round',decoration:'outline',label:'⚄',outlineShape:'diamond'} },
@@ -1298,7 +1299,7 @@ const UNLOCKABLE_ORACLES = [
     flavor:'"Keep moving. Never stop."',
     unlock:{ id:'momentum',     label:'Clear Goal 4', req:{type:'clear_goal',value:4} },
     apply(combo, faces, chips, mult, meta) {
-      if (!meta.lastReroll) momentumStreak++;
+      if (rerollsLeft === REROLLS_PER_HAND) momentumStreak++;
       else momentumStreak = 0;
       return [chips, mult + Math.max(0, momentumStreak - 1)];
     } },
