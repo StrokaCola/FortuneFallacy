@@ -433,7 +433,8 @@ function floatText(x, y, text, color, size = 18, opts = {}) {
     x, y, vy: -(opts.vy || 2.2), text, color, size, alpha: 1,
     life: opts.life || 1.5, age: 0, scale: 1, ts: 0,
     rot: (Math.random()-0.5) * 0.2,
-    glow: opts.glow || 6, popScale: opts.popScale || 1.8,
+    glow: opts.glow || 8, popScale: opts.popScale || 2.2,
+    serif: opts.serif || false,
   });
 }
 
@@ -458,12 +459,13 @@ function drawFloaters() {
     ctx.globalAlpha = Math.max(0, f.alpha);
     ctx.translate(f.x, f.y); ctx.rotate(f.rot || 0);
     const sz = f.size * (f.scale || 1);
-    ctx.font = `bold ${sz.toFixed(1)}px ui-sans-serif,sans-serif`;
+    const fontFace = f.serif ? SERIF : SANS;
+    ctx.font = `bold ${sz.toFixed(1)}px ${fontFace}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.lineWidth = Math.max(2, sz * 0.18);
-    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.80)';
     ctx.strokeText(f.text, 0, 0);
-    ctx.shadowColor = f.color; ctx.shadowBlur = f.glow || 6;
+    ctx.shadowColor = f.color; ctx.shadowBlur = f.glow || 8;
     ctx.fillStyle = f.color;
     ctx.fillText(f.text, 0, 0);
     ctx.restore();
@@ -472,18 +474,37 @@ function drawFloaters() {
 
 // ─── Score ticker ─────────────────────────────────────────────────────
 function animateTicker(from, to, duration, onTick, onDone) {
-  const start = performance.now();
-  const diff  = to - from;
-  function step(now) {
-    const t      = Math.min(1, (now - start) / (duration * 1000));
-    const eased  = 1 - Math.pow(1 - t, 3);
-    const cur    = Math.floor(from + diff * eased);
-    onTick(cur);
-    SFX.tick(cur);
-    if (t < 1) requestAnimationFrame(step);
-    else { onTick(to); if (onDone) onDone(); }
+  if (typeof gsap !== 'undefined') {
+    const proxy = { val: from };
+    gsap.to(proxy, {
+      val: to,
+      duration,
+      ease: 'power2.out',
+      onUpdate() {
+        const cur = Math.floor(proxy.val);
+        onTick(cur);
+        SFX.tick(cur);
+      },
+      onComplete() {
+        onTick(to);
+        if (onDone) onDone();
+      },
+    });
+  } else {
+    // Fallback for when GSAP hasn't loaded
+    const start = performance.now();
+    const diff  = to - from;
+    function step(now) {
+      const t      = Math.min(1, (now - start) / (duration * 1000));
+      const eased  = 1 - Math.pow(1 - t, 3);
+      const cur    = Math.floor(from + diff * eased);
+      onTick(cur);
+      SFX.tick(cur);
+      if (t < 1) requestAnimationFrame(step);
+      else { onTick(to); if (onDone) onDone(); }
+    }
+    requestAnimationFrame(step);
   }
-  requestAnimationFrame(step);
 }
 
 // ─── Screen flash ─────────────────────────────────────────────────────
@@ -599,11 +620,18 @@ let banner = null;
 
 function showBanner(text, color = '#c89960') {
   banner = { text, color, y: -60, targetY: 55, alpha: 1, timer: 2.2 };
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo(banner, { y: -60 }, { y: 55, duration: 0.38, ease: 'back.out(1.6)',
+      onComplete() { ring(W/2, banner.y, color, 80, 0.5); }
+    });
+  }
 }
 
 function updateBanner(dt) {
   if (!banner) return;
-  banner.y += (banner.targetY - banner.y) * 0.18;
+  if (typeof gsap === 'undefined') {
+    banner.y += (banner.targetY - banner.y) * 0.18;
+  }
   banner.timer -= dt;
   if (banner.timer < 0.5) banner.alpha = banner.timer / 0.5;
   if (banner.timer <= 0) banner = null;
@@ -613,8 +641,9 @@ function drawBanner() {
   if (!banner) return;
   ctx.save();
   ctx.globalAlpha = banner.alpha;
-  ctx.fillStyle   = banner.color; ctx.shadowColor = banner.color; ctx.shadowBlur = 10;
-  ctx.font        = 'bold 36px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
+  ctx.shadowColor = banner.color; ctx.shadowBlur = 14;
+  ctx.fillStyle   = banner.color;
+  ctx.font        = `bold 34px ${SERIF}`; ctx.textAlign = 'center';
   ctx.fillText(banner.text, W/2, banner.y);
   ctx.restore();
 }
@@ -642,9 +671,15 @@ function drawComboPop() {
   if (!comboPop) return;
   ctx.save();
   ctx.globalAlpha  = comboPop.alpha;
-  ctx.fillStyle    = comboPop.color; ctx.shadowColor = comboPop.color; ctx.shadowBlur = 16 + comboPop.scale * 8;
-  ctx.font         = `bold ${Math.floor(44 * comboPop.scale)}px ui-sans-serif,sans-serif`;
+  ctx.shadowColor  = comboPop.color;
+  ctx.shadowBlur   = 16 + comboPop.scale * 10;
+  ctx.fillStyle    = comboPop.color;
+  ctx.font         = `bold ${Math.floor(44 * comboPop.scale)}px ${SERIF}`;
   ctx.textAlign    = 'center';
+  // Dark outline for readability at large sizes
+  ctx.lineWidth    = Math.max(2, 3 * comboPop.scale);
+  ctx.strokeStyle  = 'rgba(0,0,0,0.70)';
+  ctx.strokeText(comboPop.text, W/2, H/2 - 30);
   ctx.fillText(comboPop.text, W/2, H/2 - 30);
   ctx.restore();
 }
@@ -668,17 +703,70 @@ function drawRoundRect(x, y, w, h, r, fill, stroke, lw = 2) {
 
 // ─── Ornament helpers ─────────────────────────────────────────────────
 const SERIF = "'Cinzel Decorative',Cinzel,'Palatino Linotype',Georgia,serif";
+const SANS  = "'Exo 2','ui-sans-serif',sans-serif";
 
-// Draws a dark-stone layered frame with corner sigils and an inner hairline.
-function ornamentFrame(x, y, w, h, accent = '#5522bb', opts = {}) {
-  const { bg = 'rgba(4,4,16,0.96)', inner = 'rgba(100,60,220,0.25)', corner = 8 } = opts;
-  // Outer void-stone fill with a gentle vertical gradient
+// Procedural stone texture — generated once, tiled as a canvas pattern
+let stonePattern = null;
+function buildStonePattern() {
+  const sz = 128;
+  const oc = document.createElement('canvas');
+  oc.width = oc.height = sz;
+  const ox = oc.getContext('2d');
+  // Fallback if simplex-noise hasn't loaded
+  const hasNoise = typeof SimplexNoise !== 'undefined';
+  const noise = hasNoise ? new SimplexNoise() : null;
+  const img = ox.createImageData(sz, sz);
+  for (let y = 0; y < sz; y++) {
+    for (let x = 0; x < sz; x++) {
+      let n = 0;
+      if (noise) {
+        n = (noise.noise2D(x / 32, y / 32) + noise.noise2D(x / 16, y / 16) * 0.5) / 1.5;
+      } else {
+        // Simple hash fallback
+        n = ((Math.sin(x * 0.31 + y * 0.17) + Math.sin(x * 0.07 - y * 0.23)) * 0.5);
+      }
+      const v = Math.floor(28 + n * 16);
+      const i = (y * sz + x) * 4;
+      img.data[i]     = Math.min(255, v + 6);
+      img.data[i + 1] = Math.min(255, v + 2);
+      img.data[i + 2] = Math.max(0,   v - 3);
+      img.data[i + 3] = 255;
+    }
+  }
+  ox.putImageData(img, 0, 0);
+  stonePattern = canvas.getContext('2d').createPattern(oc, 'repeat');
+}
+
+// Draws a carved-stone layered frame with corner sigils and an inner hairline.
+function ornamentFrame(x, y, w, h, accent = '#a07830', opts = {}) {
+  const { bg = 'rgba(18,14,10,0.97)', inner = 'rgba(160,120,48,0.18)', corner = 8 } = opts;
+  ctx.save();
+  // Stone base gradient
   const g = ctx.createLinearGradient(x, y, x, y + h);
   g.addColorStop(0, bg);
-  g.addColorStop(1, 'rgba(3,2,12,0.97)');
-  drawRoundRect(x, y, w, h, 10, g, accent, 1.5);
-  // Inner hairline border (double-stroke look)
-  ctx.save();
+  g.addColorStop(1, 'rgba(10,8,6,0.98)');
+  roundRect(x, y, w, h, 10);
+  ctx.fillStyle = g;
+  ctx.fill();
+  // Subtle stone texture overlay
+  if (stonePattern) {
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle = stonePattern;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // Outer border in warm gold
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1.5;
+  roundRect(x, y, w, h, 10);
+  ctx.stroke();
+  // Top-edge carved highlight
+  ctx.strokeStyle = 'rgba(220,180,80,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y + 1); ctx.lineTo(x + w - 12, y + 1);
+  ctx.stroke();
+  // Inner hairline border
   ctx.strokeStyle = inner;
   ctx.lineWidth = 1;
   roundRect(x + 4, y + 4, w - 8, h - 8, 7);
@@ -764,7 +852,7 @@ const STARS = Array.from({ length: 280 }, () => ({
 }));
 
 function drawBG(t) {
-  ctx.fillStyle = '#040410';
+  ctx.fillStyle = '#08060a';
   ctx.fillRect(0, 0, W, H);
 
   // Star field — drawn first so everything layers on top
@@ -791,34 +879,34 @@ function drawBG(t) {
   ctx.shadowBlur = 0;
   ctx.restore();
 
-  // Electric void bloom from top-center
+  // Warm amber bloom from top-center — ancient torch light on stone ceiling
   const g1 = ctx.createRadialGradient(W*0.5, -H*0.05, 20, W*0.5, H*0.4, W*0.75);
-  g1.addColorStop(0,   'rgba(90,35,220,0.18)');
-  g1.addColorStop(0.5, 'rgba(55,18,140,0.07)');
+  g1.addColorStop(0,   'rgba(100,70,20,0.14)');
+  g1.addColorStop(0.5, 'rgba(70,45,12,0.06)');
   g1.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
 
-  // Deep cyan seep from bottom
+  // Cool moonstone seep from bottom
   const g2 = ctx.createRadialGradient(W*0.5, H*1.05, 10, W*0.5, H*0.85, W*0.6);
-  g2.addColorStop(0,   'rgba(0,90,170,0.10)');
+  g2.addColorStop(0,   'rgba(50,80,120,0.09)');
   g2.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  // Slow void pulse
+  // Slow stone pulse — warm sepia tone shift
   const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = `rgba(${Math.floor(165*pulse)},${Math.floor(170*pulse)},${Math.floor(220*pulse)},1)`;
+  ctx.fillStyle = `rgba(${Math.floor(200*pulse)},${Math.floor(185*pulse)},${Math.floor(160*pulse)},1)`;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // Arcane rings — slow-rotating concentric circles with tick marks and glow
+  // Ancient rune rings — slow-rotating concentric stone-carved circles
   ctx.save();
   const ringDefs = [
-    { r: 148, color: '#9944ff', shadowColor: 'rgba(140,60,255,0.6)', ticks: 6, speed:  0.040, tickLen: 8 },
-    { r: 196, color: '#4455dd', shadowColor: 'rgba(60,80,220,0.4)', ticks: 12, speed: 0.018, tickLen: 4 },
-    { r: 240, color: '#22ccee', shadowColor: 'rgba(30,180,230,0.5)', ticks: 8, speed: -0.025, tickLen: 8 },
-    { r: 332, color: '#6633cc', shadowColor: 'rgba(90,40,200,0.4)', ticks: 6, speed:  0.016, tickLen: 6 },
+    { r: 148, color: '#c89960', shadowColor: 'rgba(200,153,96,0.5)',  ticks: 6,  speed:  0.040, tickLen: 8 },
+    { r: 196, color: '#8b6914', shadowColor: 'rgba(139,105,20,0.4)',  ticks: 12, speed:  0.018, tickLen: 4 },
+    { r: 240, color: '#6688aa', shadowColor: 'rgba(102,136,170,0.4)', ticks: 8,  speed: -0.025, tickLen: 8 },
+    { r: 332, color: '#a07040', shadowColor: 'rgba(160,112,64,0.35)', ticks: 6,  speed:  0.016, tickLen: 6 },
   ];
   const arcPulse = 0.8 + 0.2 * Math.sin(t * 0.55);
   for (const rd of ringDefs) {
@@ -849,14 +937,14 @@ function drawBG(t) {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // Drifting void motes — violet and cyan circles
+  // Drifting stone motes — warm amber embers and cool moonstone wisps
   for (const s of EMBERS) {
     const a = 0.07 + 0.12 * Math.sin(t * 0.9 + s.ph);
     const y = (s.y - t * 5 * s.drift) % H;
     const yy = y < 0 ? y + H : y;
     ctx.fillStyle = s.cyan
-      ? `rgba(34,170,220,${a.toFixed(2)})`
-      : `rgba(110,55,230,${a.toFixed(2)})`;
+      ? `rgba(160,185,220,${a.toFixed(2)})`
+      : `rgba(200,140,40,${a.toFixed(2)})`;
     ctx.beginPath();
     ctx.arc(s.x, yy, s.r, 0, Math.PI * 2);
     ctx.fill();
@@ -874,7 +962,7 @@ function txt(text, x, y, style) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle   = color;
-  ctx.font        = `${bold?'bold ':'' }${size}px ui-sans-serif,sans-serif`;
+  ctx.font        = `${bold?'bold ':'' }${size}px ${SANS}`;
   ctx.textAlign   = align;
   if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = 4; }
   ctx.fillText(text, x, y);
@@ -1396,6 +1484,42 @@ const UNLOCKABLE_ORACLES = [
 // ─── Combo tier colours ───────────────────────────────────────────────
 // tier 0→8: chance → pair → two-pair → three-kind → sm-straight → full-house → lg-straight → four-kind → five-kind
 const COMBO_COLORS = ['#556677','#5577bb','#6688cc','#7799dd','#88aaee','#dd4477','#cc44ff','#ff8833','#ffffff'];
+
+// ─── Screen slide transitions ─────────────────────────────────────────
+const shopSlide = { x: 0 };  // horizontal offset for shop/rune overlay screens
+let   slideBlocking = false; // prevents clicks mid-transition
+
+function slideIn(targetScreen) {
+  screen = targetScreen;
+  shopSlide.x = W;
+  slideBlocking = false;
+  if (typeof gsap !== 'undefined') {
+    gsap.to(shopSlide, { x: 0, duration: 0.38, ease: 'power3.out' });
+  } else {
+    shopSlide.x = 0;
+  }
+}
+
+function slideOut(targetScreen) {
+  if (slideBlocking) return;
+  slideBlocking = true;
+  if (typeof gsap !== 'undefined') {
+    gsap.to(shopSlide, {
+      x: -W,
+      duration: 0.28,
+      ease: 'power2.in',
+      onComplete() {
+        screen = targetScreen;
+        shopSlide.x = 0;
+        slideBlocking = false;
+      },
+    });
+  } else {
+    screen = targetScreen;
+    shopSlide.x = 0;
+    slideBlocking = false;
+  }
+}
 
 // ─── Game state ───────────────────────────────────────────────────────
 let screen = 'title';
@@ -2435,7 +2559,7 @@ function openShop() {
   shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, 3);
 
   shopTab = 'oracles';
-  screen = 'shop';
+  slideIn('shop');
 }
 
 function openForge() {
@@ -2625,7 +2749,7 @@ function handleClick(mx, my) {
     if (inRect(mx,my,{x:px+454, y:py+48, w:206, h:28})) { pauseTab='audio';       return; }
     // Quick Access buttons
     if (pauseTab === 'quick') {
-      if (inRect(mx,my,{x:px+60,y:py+130,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; screen='rune'; return; }
+      if (inRect(mx,my,{x:px+60,y:py+130,w:560,h:60})) { runeOrigin='game'; runeSelInv=null; runeSelSlot=null; paused=false; slideIn('rune'); return; }
       if (inRect(mx,my,{x:px+60,y:py+220,w:560,h:60})) { paused=false; triggerExitPortal(); return; }
     }
     // Resume button
@@ -2669,8 +2793,9 @@ function handleClick(mx, my) {
     return;
   }
   if (screen === 'shop') {
+    if (slideBlocking) return;
     // Continue button
-    if (inRect(mx,my,{x:W/2-240,y:H-54,w:190,h:40})) { screen='hub'; return; }
+    if (inRect(mx,my,{x:W/2-240,y:H-54,w:190,h:40})) { slideOut('hub'); return; }
     // Tab switching
     if (inRect(mx,my,{x:W/2-260,y:72,w:162,h:34})) { shopTab='oracles';  return; }
     if (inRect(mx,my,{x:W/2-82, y:72,w:154,h:34})) { shopTab='runes';    return; }
@@ -2780,13 +2905,14 @@ function handleClick(mx, my) {
   }
   if (screen === 'hub') {
     const BY = H - 84;
-    if (inRect(mx,my,{x:W/2-310,y:BY,w:260,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; screen='rune'; return; }
+    if (inRect(mx,my,{x:W/2-310,y:BY,w:260,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; slideIn('rune'); return; }
     if (inRect(mx,my,{x:W/2+50, y:BY,w:260,h:50})) { startRound(); screen='game'; return; }
     return;
   }
   if (screen === 'rune') {
+    if (slideBlocking) return;
     // Back button
-    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; screen=o; if(o==='game') paused=true; return; }
+    if (inRect(mx,my,{x:W/2-80,y:H-58,w:160,h:40})) { const o=runeOrigin; runeOrigin='hub'; slideOut(o); if(o==='game') paused=true; return; }
     const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
     const sc = dieCardW / 148;
     // Rune slot clicks
@@ -3110,7 +3236,7 @@ function drawDie3D(die, cx, cy, size, upg) {
     // Top face upgrade decoration — icon label
     if (isTop && upg && upg.icon) {
       ctx.save();
-      ctx.font      = `bold ${(hs * 0.55)|0}px ui-sans-serif,sans-serif`;
+      ctx.font      = `bold ${(hs * 0.55)|0}px ${SANS}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = 0.18;
@@ -3273,7 +3399,7 @@ function drawDie3D(die, cx, cy, size, upg) {
   if (die.locked) {
     ctx.fillStyle   = 'rgba(80,40,0,0.95)';
     ctx.shadowColor = '#c89960'; ctx.shadowBlur = 2;
-    ctx.font        = 'bold 8px ui-sans-serif,sans-serif';
+    ctx.font        = `bold 8px ${SANS}`;
     ctx.textAlign   = 'center';
     ctx.fillText('HELD', cx, cy + by + hs + 14);
     ctx.shadowBlur  = 0;
@@ -3284,46 +3410,66 @@ function drawDie3D(die, cx, cy, size, upg) {
 
 // ─── Board surface ────────────────────────────────────────────────────
 function drawBoard(cx, topY, width, height) {
-  // Shallow dice tray viewed from above — outer wooden rim + inner felt floor
+  // Carved stone dice table viewed from above — granite rim + dark stone floor
   const bx = cx - width/2, bw = width, bh = height;
-  const RIM = 11; // rim width in pixels
+  const RIM = 11;
   ctx.save();
 
-  // Outer rim — dark wood/lacquer with top-left highlight
+  // Outer rim — cool granite with chiseled highlight
   const rimGrad = ctx.createLinearGradient(bx, topY, bx + bw, topY + bh);
-  rimGrad.addColorStop(0,   'rgba(55,28,8,0.98)');
-  rimGrad.addColorStop(0.45,'rgba(38,18,5,0.98)');
-  rimGrad.addColorStop(1,   'rgba(22,10,3,0.98)');
+  rimGrad.addColorStop(0,   'rgba(42,40,48,0.98)');
+  rimGrad.addColorStop(0.45,'rgba(30,28,34,0.98)');
+  rimGrad.addColorStop(1,   'rgba(18,16,20,0.98)');
   roundRect(bx, topY, bw, bh, 13);
   ctx.fillStyle = rimGrad;
   ctx.fill();
 
-  // Rim top-edge highlight (light catching the upper edge of the tray wall)
-  ctx.strokeStyle = 'rgba(120,70,28,0.55)';
+  // Stone texture on rim
+  if (stonePattern) {
+    ctx.globalAlpha = 0.09;
+    ctx.fillStyle = stonePattern;
+    roundRect(bx, topY, bw, bh, 13);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Rim chiseled top-edge highlight
+  ctx.strokeStyle = 'rgba(180,160,100,0.30)';
   ctx.lineWidth   = 1.2;
   roundRect(bx + 1, topY + 1, bw - 2, bh - 2, 13);
   ctx.stroke();
 
-  // Inner shadow cast by the rim onto the felt (inset bevel)
+  // Inner shadow cast by rim (inset bevel)
   const bevelGrad = ctx.createLinearGradient(bx + RIM, topY + RIM, bx + RIM + 10, topY + RIM + 10);
-  bevelGrad.addColorStop(0, 'rgba(0,0,0,0.45)');
+  bevelGrad.addColorStop(0, 'rgba(0,0,0,0.55)');
   bevelGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = bevelGrad;
   roundRect(bx + RIM, topY + RIM, bw - RIM*2, bh - RIM*2, 5);
   ctx.fill();
 
-  // Inner felt floor — dark cosmic surface
+  // Stone floor — warm dark surface
   const ix = bx + RIM, iy = topY + RIM, iw = bw - RIM*2, ih = bh - RIM*2;
-  const feltGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
-  feltGrad.addColorStop(0,   'rgba(16,8,40,0.97)');
-  feltGrad.addColorStop(0.55,'rgba(7,4,20,0.98)');
-  feltGrad.addColorStop(1,   'rgba(2,1,8,0.99)');
+  const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
+  floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
+  floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
+  floorGrad.addColorStop(1,   'rgba(8,6,4,0.99)');
   ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-  ctx.fillStyle = feltGrad;
+  ctx.fillStyle = floorGrad;
   ctx.fill();
 
-  // Orthographic grid on felt — regular spacing, no perspective convergence
-  ctx.strokeStyle = 'rgba(80,50,160,0.055)';
+  // Stone texture on floor
+  if (stonePattern) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+    ctx.clip();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = stonePattern;
+    ctx.fillRect(ix, iy, iw, ih);
+    ctx.restore();
+  }
+
+  // Faint gold grid — ancient carved measurement lines
+  ctx.strokeStyle = 'rgba(180,150,80,0.04)';
   ctx.lineWidth   = 0.7;
   const GRID = 32;
   for (let x = ix + (GRID - ((ix) % GRID || GRID)); x < ix + iw; x += GRID) {
@@ -3333,10 +3479,10 @@ function drawBoard(cx, topY, width, height) {
     ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix + iw, y); ctx.stroke();
   }
 
-  // Felt surface inner glow — subtle magical rim along the inner edge
-  ctx.shadowColor = 'rgba(100,55,220,0.22)';
+  // Inner amber glow — warm torch light reflecting off stone
+  ctx.shadowColor = 'rgba(160,110,30,0.20)';
   ctx.shadowBlur  = 6;
-  ctx.strokeStyle = 'rgba(90,50,200,0.28)';
+  ctx.strokeStyle = 'rgba(140,100,30,0.22)';
   ctx.lineWidth   = 1;
   ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
   ctx.stroke();
@@ -3349,26 +3495,44 @@ function drawBoard(cx, topY, width, height) {
 function drawBtn(r, label, enabled, hot = false) {
   const hover = inRect(hoverX, hoverY, r) && enabled;
   const isActive = hot && hover;
-  const bg    = !enabled ? '#080614' : isActive ? '#1c0850' : hot ? '#150638' : hover ? '#110530' : '#0c0420';
-  const bdr   = !enabled ? '#1c1438' : isActive ? '#aa66ff' : hot ? '#8844ee' : hover ? '#6633cc' : '#3a2670';
+  const bg    = !enabled ? '#0c0a08' : isActive ? '#281e0e' : hot ? '#1e1608' : hover ? '#1a1408' : '#110e06';
+  const bdr   = !enabled ? '#2a2018' : isActive ? '#e8b870' : hot ? '#c89960' : hover ? '#a07830' : '#5a4010';
   ctx.save();
   const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
   grd.addColorStop(0, bg);
-  grd.addColorStop(1, 'rgba(0,0,0,0.5)');
+  grd.addColorStop(1, 'rgba(0,0,0,0.55)');
   drawRoundRect(r.x, r.y, r.w, r.h, 8, grd, bdr, 1.5);
+  // Stone texture on button
+  if (stonePattern && enabled) {
+    ctx.save();
+    roundRect(r.x, r.y, r.w, r.h, 8);
+    ctx.clip();
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = stonePattern;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+  }
+  // Carved top-edge highlight
+  if (enabled) {
+    ctx.strokeStyle = isActive ? 'rgba(232,184,112,0.30)' : 'rgba(220,180,80,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(r.x + 10, r.y + 1); ctx.lineTo(r.x + r.w - 10, r.y + 1);
+    ctx.stroke();
+  }
   // Inner hairline
   ctx.strokeStyle = enabled
-    ? (isActive ? 'rgba(160,100,255,0.35)' : 'rgba(110,66,200,0.20)')
-    : 'rgba(80,60,130,0.10)';
+    ? (isActive ? 'rgba(232,184,112,0.30)' : 'rgba(160,120,48,0.15)')
+    : 'rgba(60,50,35,0.10)';
   ctx.lineWidth = 1;
   roundRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6, 6);
   ctx.stroke();
-  // Glow on active/hover
+  // Gold glow on active/hover
   if (enabled && (hover || hot)) {
-    ctx.shadowColor = isActive ? '#aa66ff' : '#7733ee';
+    ctx.shadowColor = isActive ? '#e8b870' : '#c89960';
     ctx.shadowBlur  = isActive ? 18 : 9;
   }
-  ctx.fillStyle = enabled ? (isActive ? '#eedeff' : hot ? '#d8c8f8' : hover ? '#c8b8ee' : '#b8aad8') : '#443860';
+  ctx.fillStyle = enabled ? (isActive ? '#fff8e8' : hot ? '#f0dea8' : hover ? '#e8d498' : '#c8b878') : '#5a4830';
   ctx.font      = `bold 15px ${SERIF}`;
   ctx.textAlign = 'center';
   ctx.fillText(label, r.x + r.w/2, r.y + r.h/2 + 5);
@@ -3382,7 +3546,7 @@ function drawTooltip(info, mx, my) {
   const pad = 9, lineH = 14, maxW = 240;
   ctx.save();
   // Wrap body
-  ctx.font = '11px ui-sans-serif,sans-serif';
+  ctx.font = `11px ${SANS}`;
   const paragraphs = (body || '').split('\n');
   const lines = [];
   for (const para of paragraphs) {
@@ -3398,9 +3562,9 @@ function drawTooltip(info, mx, my) {
     }
     if (cur) lines.push(cur);
   }
-  ctx.font = 'bold 12px ui-sans-serif,sans-serif';
+  ctx.font = `bold 12px ${SANS}`;
   const titleW = ctx.measureText(title).width;
-  ctx.font = '11px ui-sans-serif,sans-serif';
+  ctx.font = `11px ${SANS}`;
   let bodyMaxW = 0;
   for (const l of lines) bodyMaxW = Math.max(bodyMaxW, ctx.measureText(l).width);
   let costH = 0;
@@ -3415,15 +3579,15 @@ function drawTooltip(info, mx, my) {
   if (ty < 4) ty = 4;
   drawRoundRect(tx, ty, tooltipW, tooltipH, 6, 'rgba(10, 4, 2, 0.96)', color, 1.5);
   ctx.fillStyle = color;
-  ctx.font = 'bold 12px ui-sans-serif,sans-serif';
+  ctx.font = `bold 12px ${SANS}`;
   ctx.textAlign = 'left';
   ctx.fillText(title, tx + pad, ty + 16);
   ctx.fillStyle = '#e0d3b8';
-  ctx.font = '11px ui-sans-serif,sans-serif';
+  ctx.font = `11px ${SANS}`;
   lines.forEach((l, i) => ctx.fillText(l, tx + pad, ty + 32 + i * lineH));
   if (meta.cost != null) {
     ctx.fillStyle = '#b8a874';
-    ctx.font = 'bold 10px ui-sans-serif,sans-serif';
+    ctx.font = `bold 10px ${SANS}`;
     ctx.fillText(`◆ ${meta.cost} Shards`, tx + pad, ty + tooltipH - 7);
   }
   ctx.restore();
@@ -3485,7 +3649,7 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
     ctx.strokeStyle = oracle.color; ctx.lineWidth = 3;
     roundRect(x, y, w, h, 12); ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = oracle.color; ctx.font = 'bold 8px ui-sans-serif,sans-serif';
+    ctx.fillStyle = oracle.color; ctx.font = `bold 8px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText('✦ LEGENDARY ✦', x+w/2, y+11);
   } else if (!owned && oracle.tier) {
@@ -3508,19 +3672,19 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
 
   ctx.fillStyle   = oracle.color;
   ctx.shadowColor = oracle.color; ctx.shadowBlur = 3;
-  ctx.font        = `${owned ? 16 : 26}px ui-sans-serif,sans-serif`;
+  ctx.font        = `${owned ? 16 : 26}px ${SANS}`;
   ctx.textAlign   = 'center';
   ctx.fillText(oracle.icon, x+(owned?22:w/2), y+(owned?h/2+6:34));
 
   ctx.shadowBlur = 0;
   ctx.fillStyle  = '#fff';
-  ctx.font       = `bold ${owned?9:13}px ui-sans-serif,sans-serif`;
+  ctx.font       = `bold ${owned?9:13}px ${SANS}`;
   if (owned) {
     ctx.textAlign = 'left';
     const label = oracle.name.length > 16 ? oracle.name.slice(0,15)+'…' : oracle.name;
     ctx.fillText(label, x+38, y+h/2-2);
     ctx.fillStyle = oracle.color;
-    ctx.font = `8px ui-sans-serif,sans-serif`;
+    ctx.font = `8px ${SANS}`;
     const eff = oracle.effect.length > 32 ? oracle.effect.slice(0,31)+'…' : oracle.effect;
     ctx.fillText(eff, x+38, y+h/2+10);
   } else {
@@ -3529,9 +3693,9 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
   }
 
   if (!owned) {
-    ctx.fillStyle = '#c89960'; ctx.font = '11px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#c89960'; ctx.font = `11px ${SANS}`; ctx.textAlign = 'center';
     wrapText(x+10, y+76, oracle.effect, w-20, 15);
-    ctx.fillStyle = 'rgba(200,180,255,0.55)'; ctx.font = 'italic 10px ui-sans-serif,sans-serif';
+    ctx.fillStyle = 'rgba(200,180,255,0.55)'; ctx.font = `italic 10px ${SANS}`;
     wrapText(x+10, y+126, oracle.flavor, w-20, 14);
   }
   ctx.restore();
@@ -3549,7 +3713,7 @@ function drawPortalRing(x, y, r, color, pulse, label, active) {
   ctx.beginPath(); ctx.arc(x, y, r-7+Math.sin(pulse+1)*3, 0, Math.PI*2); ctx.stroke();
   ctx.restore();
   ctx.globalAlpha = a;
-  ctx.fillStyle = '#fff'; ctx.font = '9px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff'; ctx.font = `9px ${SANS}`; ctx.textAlign = 'center';
   ctx.fillText(label, x, y+r+13);
   ctx.globalAlpha = 1;
 }
@@ -3645,7 +3809,7 @@ function drawHowToPlay(t) {
   // Table header
   ctx.save();
   ctx.fillStyle = 'rgba(200,153,96,0.45)';
-  ctx.font = 'bold 10px ui-sans-serif,sans-serif';
+  ctx.font = `bold 10px ${SANS}`;
   ctx.textAlign = 'left';
   ctx.fillText('COMBO',  rx + 6,   ry);
   ctx.fillText('CHIPS',  rx + 248, ry);
@@ -3884,12 +4048,12 @@ function drawGame(t) {
       ctx.textAlign = 'center';
       if (upg) {
         ctx.fillStyle = upg.color; ctx.shadowColor = upg.color; ctx.shadowBlur = 2;
-        ctx.font = '11px ui-sans-serif,sans-serif';
+        ctx.font = `11px ${SANS}`;
         ctx.fillText(upg.icon, d.absX, labelY);
       }
       if (equippedRunes.length) {
         ctx.shadowBlur = 0;
-        ctx.font = '8px ui-sans-serif,sans-serif';
+        ctx.font = `8px ${SANS}`;
         const spacing = 9;
         const totalW = (equippedRunes.length - 1) * spacing;
         equippedRunes.forEach((r, ri) => {
@@ -3928,24 +4092,24 @@ function drawGame(t) {
     ctx.save();
     ctx.translate(cx2 - 58, sy); ctx.scale(chipScale, chipScale);
     ctx.fillStyle = '#c89960'; ctx.shadowColor = '#c89960'; ctx.shadowBlur = 3 + chipPunch * 10;
-    ctx.font = 'bold 22px ui-sans-serif,sans-serif';
+    ctx.font = `bold 22px ${SANS}`;
     ctx.fillText(dispChips, 0, 0);
     ctx.restore();
     ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(200,153,96,0.55)';
-    ctx.font = '9px ui-sans-serif,sans-serif';
+    ctx.font = `9px ${SANS}`;
     ctx.fillText('points', cx2 - 58, sy + 13);
-    ctx.fillStyle = 'rgba(230,210,160,0.7)'; ctx.font = 'bold 15px ui-sans-serif,sans-serif';
+    ctx.fillStyle = 'rgba(230,210,160,0.7)'; ctx.font = `bold 15px ${SANS}`;
     ctx.fillText('×', cx2, sy - 2);
     // Mult with punch scale
     ctx.save();
     ctx.translate(cx2 + 58, sy); ctx.scale(multScale, multScale);
     ctx.fillStyle = '#ee3388'; ctx.shadowColor = '#ee3388'; ctx.shadowBlur = 3 + multPunch * 10;
-    ctx.font = 'bold 22px ui-sans-serif,sans-serif';
+    ctx.font = `bold 22px ${SANS}`;
     const multStr = dispMult < 10 ? dispMult.toFixed(1) : Math.round(dispMult).toString();
     ctx.fillText(multStr, 0, 0);
     ctx.restore();
     ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(238,51,136,0.55)';
-    ctx.font = '9px ui-sans-serif,sans-serif';
+    ctx.font = `9px ${SANS}`;
     ctx.fillText('mult', cx2 + 58, sy + 13);
     ctx.restore();
     // Decay punches
@@ -4285,7 +4449,7 @@ function drawShop(t) {
       ctx.restore();
       ctx.save();
       ctx.textAlign = 'center';
-      ctx.font = `28px ui-sans-serif,sans-serif`;
+      ctx.font = `28px ${SANS}`;
       ctx.fillStyle = tierCol; ctx.shadowColor = tierCol; ctx.shadowBlur = 6;
       ctx.fillText(r.icon, rx+rW/2, ry+38);
       ctx.restore();
@@ -4394,7 +4558,7 @@ function drawHub(t) {
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, mapY, 20, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = cleared ? '#0a0820' : current ? '#fff' : '#4a3880';
-    ctx.font = 'bold 12px ui-sans-serif,sans-serif'; ctx.textAlign = 'center';
+    ctx.font = `bold 12px ${SANS}`; ctx.textAlign = 'center';
     ctx.fillText(cleared ? '✓' : String(i+1), gx, mapY+5);
     const lbl = nodes[i]>=10000 ? (nodes[i]/1000|0)+'k' : nodes[i]>=1000 ? (nodes[i]/1000).toFixed(1)+'k' : String(nodes[i]);
     txt(lbl, gx, mapY+38, {size:10,color:cleared?'#c89960':current?'#aa66ff':'rgba(140,120,200,0.5)',align:'center'});
@@ -4563,15 +4727,15 @@ function drawRuneSlotBox(x, y, w, h, rune, selected) {
   drawRoundRect(x, y, w, h, 7, bg, selected ? '#ffffff' : col, selected ? 2.5 : 1.5);
   if (rune) {
     ctx.fillStyle = col;
-    ctx.font = `bold 17px ui-sans-serif,sans-serif`;
+    ctx.font = `bold 17px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText(rune.icon, x + w/2, y + h/2 - 4);
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = `9px ui-sans-serif,sans-serif`;
+    ctx.font = `9px ${SANS}`;
     ctx.fillText(rune.name, x + w/2, y + h/2 + 10);
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.font = '18px ui-sans-serif,sans-serif';
+    ctx.font = `18px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText('+', x + w/2, y + h/2 + 6);
   }
@@ -4674,14 +4838,14 @@ function drawRuneTable(t) {
       ctx.restore();
     }
     ctx.fillStyle = col;
-    ctx.font = `bold 22px ui-sans-serif,sans-serif`;
+    ctx.font = `bold 22px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText(rune.icon, rx + 40, ry + 28);
     txt(rune.name, rx + 40, ry + 44, {size:8, color:'rgba(255,255,255,0.65)', align:'center', bold:true});
     txt(rune.tier, rx + 40, ry + 55, {size:7, color: col, align:'center'});
     ctx.save();
     ctx.fillStyle = 'rgba(220,200,160,0.75)';
-    ctx.font = '7px ui-sans-serif,sans-serif';
+    ctx.font = `7px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText(rune.desc, rx + 40, ry + 70, 72);
     ctx.restore();
@@ -4801,7 +4965,7 @@ function drawWin(t) {
 
   ctx.save();
   ctx.textAlign='center'; ctx.shadowColor='#c89960'; ctx.shadowBlur=14;
-  ctx.fillStyle='#c89960'; ctx.font='bold 64px ui-sans-serif,sans-serif';
+  ctx.fillStyle='#c89960'; ctx.font='bold 64px ${SANS}';
   ctx.fillText('FATE DEFIED', W/2, H/2-92); ctx.restore();
 
   txt('All 8 Goals conquered!', W/2, H/2-44, {size:18,color:'#fff',align:'center'});
@@ -4958,7 +5122,7 @@ function drawPause(t) {
     ctx.save();
     if (!unlocked) ctx.globalAlpha = 0.35;
     ctx.fillStyle = '#d0c8b0';
-    ctx.font = '9px ui-sans-serif,sans-serif';
+    ctx.font = `9px ${SANS}`;
     ctx.textAlign = 'left';
     ctx.fillText(desc, cx+10, cy+36, cardW-20);
     ctx.restore();
@@ -5333,9 +5497,19 @@ function loop(now) {
     case 'howto':      drawHowToPlay(t);  break;
     case 'nameentry':  drawNameEntry(t);  break;
     case 'game':       drawGame(t);       break;
-    case 'shop':   drawShop(t);      break;
+    case 'shop': {
+      ctx.save(); ctx.translate(shopSlide.x, 0);
+      drawShop(t);
+      ctx.restore();
+      break;
+    }
     case 'hub':    drawHub(t);       break;
-    case 'rune':   drawRuneTable(t); break;
+    case 'rune': {
+      ctx.save(); ctx.translate(shopSlide.x, 0);
+      drawRuneTable(t);
+      ctx.restore();
+      break;
+    }
     case 'win':    drawWin(t);    break;
     case 'scores': drawScores(t); break;
   }
@@ -5347,6 +5521,7 @@ function loop(now) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────
+buildStonePattern();  // generate procedural stone texture for panels and board
 initRapier(); // fire-and-forget — game starts immediately; Rapier activates when ready
 loadScores();
 loadUnlocks();
