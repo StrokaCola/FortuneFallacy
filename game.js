@@ -572,10 +572,10 @@ function eulerToFace(rx, ry, rz) {
   return bestFace;
 }
 
-// Top-down camera: pitch ~60° from horizontal so we look down at the dice tray
-const DIE_CAM_ELEV = Math.PI / 3;             // 60° elevation
-const DIE_CAM_CE   = Math.cos(DIE_CAM_ELEV);  // 0.5
-const DIE_CAM_SE   = Math.sin(DIE_CAM_ELEV);  // ≈0.866
+// Top-down camera: straight overhead so faces appear flat to the player at all times
+const DIE_CAM_ELEV = Math.PI / 2;             // 90° elevation — pure top-down
+const DIE_CAM_CE   = Math.cos(DIE_CAM_ELEV);  // 0
+const DIE_CAM_SE   = Math.sin(DIE_CAM_ELEV);  // 1
 
 // ─── Banner ───────────────────────────────────────────────────────────
 let banner = null;
@@ -1671,7 +1671,11 @@ function settleDie(d, dIdx) {
   d.pvx = 0; d.pvy = 0;
   d.homeX = d.absX; d.homeY = d.absY;
   const [trx, try_, trz] = FACE_ROT[d.face];
-  d.rx = trx; d.ry = try_; d.rz = trz;
+  d.sfRx = d.rx; d.sfRy = d.ry; d.sfRz = d.rz;
+  d.tRx  = nearestCanon(d.rx, trx);
+  d.tRy  = nearestCanon(d.ry, try_);
+  d.tRz  = nearestCanon(d.rz, trz);
+  d.alignEasing = true;
   d.landT = 0;
   d.revealT = 0;
   d.bounceVY = -PHYSICS.landBounceVel;
@@ -2864,15 +2868,10 @@ function drawDie3D(die, cx, cy, size, upg) {
   const glowColor = upgColor || '#7733ee';
 
   // Project an object-space point through die rotation then camera pitch
-  // Settled dice transition to top-down (90°) so the face appears flat to the player
-  const settleT  = die.rolling ? 0 : Math.min(1, (die.landT || 0) / 0.25);
-  const camElev  = DIE_CAM_ELEV + (Math.PI / 2 - DIE_CAM_ELEV) * settleT;
-  const camCE    = Math.cos(camElev);
-  const camSE    = Math.sin(camElev);
   const project = (ox, oy, oz, perspF) => {
     const [wx, wy, wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-    const cvy = wy * camCE - wz * camSE; // camera Y (screen up/down)
-    const cvz = wy * camSE + wz * camCE; // camera Z (depth toward cam)
+    const cvy = wy * DIE_CAM_CE - wz * DIE_CAM_SE; // camera Y (screen up/down)
+    const cvz = wy * DIE_CAM_SE + wz * DIE_CAM_CE; // camera Z (depth toward cam)
     const p   = 1 + cvz * perspF;
     return [cx + wx * hs * p, cy + by + cvy * hs * p];
   };
@@ -2882,8 +2881,8 @@ function drawDie3D(die, cx, cy, size, upg) {
     const [wnx, wny, wnz] = rotate3(...cf.normal, die.rx, die.ry, die.rz);
     // Camera-space normal
     const cnx =  wnx;
-    const cny =  wny * camCE - wnz * camSE;
-    const cnz =  wny * camSE + wnz * camCE;
+    const cny =  wny * DIE_CAM_CE - wnz * DIE_CAM_SE;
+    const cnz =  wny * DIE_CAM_SE + wnz * DIE_CAM_CE;
     if (cnz <= 0) continue; // back-face cull in camera space
 
     // 4 quad corners
@@ -4967,6 +4966,14 @@ function loop(now) {
     if (d.scoring) d.scoringT += dt; else d.scoringT = 0;
     if (d.landT   !== undefined && !d.rolling) d.landT   += dt;
     if (d.revealT !== undefined && !d.rolling) d.revealT += dt;
+    if (d.alignEasing && !d.rolling) {
+      const et   = Math.min(1, d.landT / 0.18);
+      const ease = 1 - Math.pow(1 - et, 3); // ease-out-cubic
+      d.rx = d.sfRx + (d.tRx - d.sfRx) * ease;
+      d.ry = d.sfRy + (d.tRy - d.sfRy) * ease;
+      d.rz = d.sfRz + (d.tRz - d.sfRz) * ease;
+      if (et >= 1) { d.rx = d.tRx; d.ry = d.tRy; d.rz = d.tRz; d.alignEasing = false; }
+    }
     if (d.rolling) {
       d.rollT += dt;
       const prog = Math.min(1, d.rollT / d.rollDur);
