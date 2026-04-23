@@ -540,14 +540,21 @@ const CUBE_FACES = [
 ];
 
 const PI2 = Math.PI * 2;
-// Canonical rotations (rx,ry,rz) to show each face to viewer
+// Canonical Euler rotations so each face's normal points in world +Y (top-down "up")
 const FACE_ROT = {
-  1: [0, 0, 0],
-  6: [0, Math.PI, 0],
-  2: [0, -Math.PI/2, 0],
-  5: [0,  Math.PI/2, 0],
-  3: [-Math.PI/2, 0, 0],
-  4: [ Math.PI/2, 0, 0],
+  4: [0,           0, 0          ],  // face 4 normal [0,1,0] already points +Y
+  3: [Math.PI,     0, 0          ],  // face 3 normal [0,-1,0] → flip around X
+  1: [-Math.PI/2,  0, 0          ],  // face 1 normal [0,0,1]  → tilt forward
+  6: [ Math.PI/2,  0, 0          ],  // face 6 normal [0,0,-1] → tilt backward
+  2: [0,           0, Math.PI/2  ],  // face 2 normal [1,0,0]  → tilt right
+  5: [0,           0, -Math.PI/2 ],  // face 5 normal [-1,0,0] → tilt left
+};
+
+// Object-space face normals (must match CUBE_FACES definitions)
+const FACE_NORMALS_OBJ = {
+  1: [0, 0, 1], 6: [0, 0, -1],
+  2: [1, 0, 0], 5: [-1, 0, 0],
+  3: [0, -1, 0], 4: [0, 1, 0],
 };
 
 function nearestCanon(cur, target) {
@@ -555,18 +562,20 @@ function nearestCanon(cur, target) {
   return target + n * PI2;
 }
 
-// Given accumulated render Euler angles, return the nearest canonical face (1-6)
+// Return face whose normal points most toward world +Y (top-down camera "up")
 function eulerToFace(rx, ry, rz) {
-  let bestFace = 1, bestErr = Infinity;
-  for (const [face, rot] of Object.entries(FACE_ROT)) {
-    const dx = nearestCanon(rx, rot[0]) - rx;
-    const dy = nearestCanon(ry, rot[1]) - ry;
-    const dz = nearestCanon(rz, rot[2]) - rz;
-    const err = dx*dx + dy*dy + dz*dz;
-    if (err < bestErr) { bestErr = err; bestFace = +face; }
+  let bestFace = 1, bestDot = -Infinity;
+  for (const [face, n] of Object.entries(FACE_NORMALS_OBJ)) {
+    const [, wy] = rotate3(...n, rx, ry, rz);
+    if (wy > bestDot) { bestDot = wy; bestFace = +face; }
   }
   return bestFace;
 }
+
+// Top-down camera: pitch ~60° from horizontal so we look down at the dice tray
+const DIE_CAM_ELEV = Math.PI / 3;             // 60° elevation
+const DIE_CAM_CE   = Math.cos(DIE_CAM_ELEV);  // 0.5
+const DIE_CAM_SE   = Math.sin(DIE_CAM_ELEV);  // ≈0.866
 
 // ─── Banner ───────────────────────────────────────────────────────────
 let banner = null;
@@ -1328,7 +1337,7 @@ function initDice() {
     const c = i % perRow;
     return {
       face: 1, locked: false, scoring: false,
-      rx: 0, ry: 0, rz: 0,
+      rx: -Math.PI/2, ry: 0, rz: 0,
       vx: 0, vy: 0, vz: 0,
       rolling: false, rollT: 0, rollDur: 0.8,
       settling: false, sfRx: 0, sfRy: 0, sfRz: 0,
@@ -2480,45 +2489,58 @@ function drawDie3D(die, cx, cy, size, upg) {
   // Glow/flash color for this die
   const glowColor = upgColor || '#7733ee';
 
+  // Project an object-space point through die rotation then camera pitch
+  const project = (ox, oy, oz, perspF) => {
+    const [wx, wy, wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
+    const cvy = wy * DIE_CAM_CE - wz * DIE_CAM_SE; // camera Y (screen up/down)
+    const cvz = wy * DIE_CAM_SE + wz * DIE_CAM_CE; // camera Z (depth toward cam)
+    const p   = 1 + cvz * perspF;
+    return [cx + wx * hs * p, cy + by + cvy * hs * p];
+  };
+
   const rendered = [];
   for (const cf of CUBE_FACES) {
-    const [nx, ny, nz] = rotate3(...cf.normal, die.rx, die.ry, die.rz);
-    if (nz <= 0) continue; // back-face cull
+    const [wnx, wny, wnz] = rotate3(...cf.normal, die.rx, die.ry, die.rz);
+    // Camera-space normal
+    const cnx =  wnx;
+    const cny =  wny * DIE_CAM_CE - wnz * DIE_CAM_SE;
+    const cnz =  wny * DIE_CAM_SE + wnz * DIE_CAM_CE;
+    if (cnz <= 0) continue; // back-face cull in camera space
 
-    // 4 quad corners in object space
-    const quads = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([su,sv]) => {
-      const ox = cf.normal[0] + cf.u[0]*su + cf.v[0]*sv;
-      const oy = cf.normal[1] + cf.u[1]*su + cf.v[1]*sv;
-      const oz = cf.normal[2] + cf.u[2]*su + cf.v[2]*sv;
-      const [wx,wy,wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-      const p = 1 + wz * 0.18; // perspective
-      return [cx + wx*hs*p, cy + by + wy*hs*p];
-    });
+    // 4 quad corners
+    const quads = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([su,sv]) =>
+      project(
+        cf.normal[0] + cf.u[0]*su + cf.v[0]*sv,
+        cf.normal[1] + cf.u[1]*su + cf.v[1]*sv,
+        cf.normal[2] + cf.u[2]*su + cf.v[2]*sv,
+        0.18
+      )
+    );
 
-    // Pip world positions
+    // Pip screen positions
     const pips = (PIP_LAYOUTS[cf.n] || []).map(([pu,pv]) => {
       const ux = (pu-0.5)*1.4, vv = (pv-0.5)*1.4;
-      const ox = cf.normal[0] + cf.u[0]*ux + cf.v[0]*vv;
-      const oy = cf.normal[1] + cf.u[1]*ux + cf.v[1]*vv;
-      const oz = cf.normal[2] + cf.u[2]*ux + cf.v[2]*vv;
-      const [wx,wy,wz] = rotate3(ox, oy, oz, die.rx, die.ry, die.rz);
-      const p = 1 + wz * 0.35;
-      return [cx + wx*hs*p, cy + by + wy*hs*p];
+      return project(
+        cf.normal[0] + cf.u[0]*ux + cf.v[0]*vv,
+        cf.normal[1] + cf.u[1]*ux + cf.v[1]*vv,
+        cf.normal[2] + cf.u[2]*ux + cf.v[2]*vv,
+        0.35
+      );
     });
 
-    rendered.push({ quads, pips, nx, ny, nz, faceN: cf.n });
+    rendered.push({ quads, pips, wnx, wny, wnz, cnx, cny, cnz, faceN: cf.n });
   }
-  rendered.sort((a,b) => a.nz - b.nz); // painter: draw furthest first
+  rendered.sort((a,b) => a.cnz - b.cnz); // painter: furthest (lowest cnz) first
 
   const CH = 0.16; // chamfer fraction
 
   ctx.save();
   for (const fd of rendered) {
-    // Directional lighting
-    const diffuse = Math.max(0, fd.nx * 0.413 + fd.ny * (-0.566) + fd.nz * 0.713);
-    const br      = 0.18 + 0.82 * diffuse;
-    const spec    = Math.pow(Math.max(0, fd.nx * 0.223 + fd.ny * (-0.306) + fd.nz * 0.925), 28);
-    const isTop   = fd.nz > 0.7;
+    // Directional lighting — key light from above-left in world space
+    const diffuse = Math.max(0, fd.wnx * 0.25 + fd.wny * 0.92 + fd.wnz * 0.30);
+    const br      = 0.22 + 0.78 * diffuse;
+    const spec    = Math.pow(Math.max(0, fd.wnx * 0.08 + fd.wny * 0.99 + fd.wnz * 0.08), 24);
+    const isTop   = fd.cnz > 0.7; // face most facing the top-down camera
     const q       = fd.quads;
 
     // Face center
@@ -2528,11 +2550,11 @@ function drawDie3D(die, cx, cy, size, upg) {
     // Chamfered face path
     chamferPath(q, CH);
 
-    // Diffuse gradient along light direction
+    // Diffuse gradient: lit from upper-left in screen space
     const gSpan  = hs * 1.0;
     const grad   = ctx.createLinearGradient(
-      fcx + 0.413*gSpan, fcy - 0.566*gSpan,
-      fcx - 0.413*gSpan, fcy + 0.566*gSpan
+      fcx - 0.32*gSpan, fcy - 0.22*gSpan,
+      fcx + 0.32*gSpan, fcy + 0.22*gSpan
     );
     const brLit  = Math.min(1, br + spec * 0.55);
     const brDark = br * 0.68;
@@ -2555,7 +2577,7 @@ function drawDie3D(die, cx, cy, size, upg) {
 
     // Specular gloss overlay
     if (spec > 0.04) {
-      const litX = fcx + 0.413 * hs * 0.42, litY = fcy - 0.566 * hs * 0.42;
+      const litX = fcx - 0.30 * hs * 0.42, litY = fcy - 0.28 * hs * 0.42;
       const sg   = ctx.createRadialGradient(litX, litY, 0, litX, litY, hs * 0.9);
       sg.addColorStop(0,   `rgba(255,255,255,${(spec * 0.52).toFixed(3)})`);
       sg.addColorStop(0.4, `rgba(255,255,255,${(spec * 0.10).toFixed(3)})`);
@@ -2586,7 +2608,7 @@ function drawDie3D(die, cx, cy, size, upg) {
     // Rim light — cinematic back-light from bottom-left opposite to key light
     // Strongest on side faces that face the rim direction but are camera-visible
     if (!isTop) {
-      const rimDot = Math.max(0, fd.nx * (-0.55) + fd.ny * 0.62 + fd.nz * 0.08);
+      const rimDot = Math.max(0, fd.wnx * (-0.60) + fd.wny * (-0.22) + fd.wnz * 0.77);
       if (rimDot > 0.05) {
         ctx.save();
         chamferPath(q, CH * 1.6);
@@ -2779,18 +2801,18 @@ function drawDie3D(die, cx, cy, size, upg) {
     ctx.restore();
   }
 
-  // Drop shadow on board
+  // Drop shadow — top-down view: shadow is circular, stays at table position
   {
-    const lift = Math.max(0, -by);
-    const sr   = hs * (0.92 - Math.min(0.25, lift * 0.04));
-    const sh   = hs * (0.26 + Math.min(0.1, lift * 0.015));
-    const sg   = ctx.createRadialGradient(cx + 3, cy + hs * 1.05, 2, cx + 3, cy + hs * 1.05, sr);
-    sg.addColorStop(0, `rgba(0,0,0,${0.45 - Math.min(0.18, lift * 0.03)})`);
-    sg.addColorStop(0.6, 'rgba(0,0,0,0.18)');
-    sg.addColorStop(1, 'rgba(0,0,0,0)');
+    const lift  = Math.max(0, -(die.bounceY || 0));
+    const sr    = hs * (0.90 - Math.min(0.22, lift * 0.003));
+    const alpha = 0.52 - Math.min(0.24, lift * 0.0022);
+    const sg    = ctx.createRadialGradient(cx, cy, 0, cx, cy, sr);
+    sg.addColorStop(0,    `rgba(0,0,0,${alpha.toFixed(3)})`);
+    sg.addColorStop(0.55, `rgba(0,0,0,${(alpha * 0.32).toFixed(3)})`);
+    sg.addColorStop(1,    'rgba(0,0,0,0)');
     ctx.fillStyle = sg;
     ctx.beginPath();
-    ctx.ellipse(cx + 3, cy + hs * 1.05, sr, sh, 0, 0, Math.PI*2);
+    ctx.ellipse(cx, cy, sr, sr * 0.82, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -2808,48 +2830,64 @@ function drawDie3D(die, cx, cy, size, upg) {
 
 // ─── Board surface ────────────────────────────────────────────────────
 function drawBoard(cx, topY, width, height) {
-  // Obsidian divination table under the dice
+  // Shallow dice tray viewed from above — outer wooden rim + inner felt floor
   const bx = cx - width/2, bw = width, bh = height;
+  const RIM = 11; // rim width in pixels
   ctx.save();
-  // Deep void-stone — cool dark core fading to near-black edges
-  const gr = ctx.createRadialGradient(cx, topY + bh*0.4, 10, cx, topY + bh*0.4, bw*0.55);
-  gr.addColorStop(0,   'rgba(18,10,48,0.92)');
-  gr.addColorStop(0.6, 'rgba(8,5,22,0.94)');
-  gr.addColorStop(1,   'rgba(2,1,8,0.96)');
-  roundRect(bx, topY, bw, bh, 14);
-  ctx.fillStyle = gr;
+
+  // Outer rim — dark wood/lacquer with top-left highlight
+  const rimGrad = ctx.createLinearGradient(bx, topY, bx + bw, topY + bh);
+  rimGrad.addColorStop(0,   'rgba(55,28,8,0.98)');
+  rimGrad.addColorStop(0.45,'rgba(38,18,5,0.98)');
+  rimGrad.addColorStop(1,   'rgba(22,10,3,0.98)');
+  roundRect(bx, topY, bw, bh, 13);
+  ctx.fillStyle = rimGrad;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(100,44,220,0.45)';
-  ctx.lineWidth   = 1.5;
+
+  // Rim top-edge highlight (light catching the upper edge of the tray wall)
+  ctx.strokeStyle = 'rgba(120,70,28,0.55)';
+  ctx.lineWidth   = 1.2;
+  roundRect(bx + 1, topY + 1, bw - 2, bh - 2, 13);
   ctx.stroke();
 
-  // Violet inner glow border
-  ctx.shadowColor = 'rgba(120,60,255,0.18)';
-  ctx.shadowBlur  = 8;
-  ctx.strokeStyle = 'rgba(100,55,210,0.20)';
+  // Inner shadow cast by the rim onto the felt (inset bevel)
+  const bevelGrad = ctx.createLinearGradient(bx + RIM, topY + RIM, bx + RIM + 10, topY + RIM + 10);
+  bevelGrad.addColorStop(0, 'rgba(0,0,0,0.45)');
+  bevelGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = bevelGrad;
+  roundRect(bx + RIM, topY + RIM, bw - RIM*2, bh - RIM*2, 5);
+  ctx.fill();
+
+  // Inner felt floor — dark cosmic surface
+  const ix = bx + RIM, iy = topY + RIM, iw = bw - RIM*2, ih = bh - RIM*2;
+  const feltGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
+  feltGrad.addColorStop(0,   'rgba(16,8,40,0.97)');
+  feltGrad.addColorStop(0.55,'rgba(7,4,20,0.98)');
+  feltGrad.addColorStop(1,   'rgba(2,1,8,0.99)');
+  ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+  ctx.fillStyle = feltGrad;
+  ctx.fill();
+
+  // Orthographic grid on felt — regular spacing, no perspective convergence
+  ctx.strokeStyle = 'rgba(80,50,160,0.055)';
+  ctx.lineWidth   = 0.7;
+  const GRID = 32;
+  for (let x = ix + (GRID - ((ix) % GRID || GRID)); x < ix + iw; x += GRID) {
+    ctx.beginPath(); ctx.moveTo(x, iy); ctx.lineTo(x, iy + ih); ctx.stroke();
+  }
+  for (let y = iy + (GRID - ((iy) % GRID || GRID)); y < iy + ih; y += GRID) {
+    ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix + iw, y); ctx.stroke();
+  }
+
+  // Felt surface inner glow — subtle magical rim along the inner edge
+  ctx.shadowColor = 'rgba(100,55,220,0.22)';
+  ctx.shadowBlur  = 6;
+  ctx.strokeStyle = 'rgba(90,50,200,0.28)';
   ctx.lineWidth   = 1;
-  roundRect(bx+4, topY+4, bw-8, bh-8, 11);
+  ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
   ctx.stroke();
   ctx.shadowBlur  = 0;
 
-  // Grid lines converging to vanishing point
-  ctx.strokeStyle = 'rgba(100,70,200,0.09)';
-  ctx.lineWidth   = 0.8;
-  const lines = 8;
-  for (let i = 0; i <= lines; i++) {
-    const f  = i / lines;
-    const xp = bx + bw * f;
-    const yTop = topY + 4;
-    const yBot = topY + bh - 4;
-    ctx.beginPath();
-    ctx.moveTo(xp, yTop);
-    ctx.lineTo(cx + (xp-cx)*0.55, topY + bh*0.5);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(xp, yBot);
-    ctx.lineTo(cx + (xp-cx)*0.55, topY + bh*0.5);
-    ctx.stroke();
-  }
   ctx.restore();
 }
 
@@ -4555,10 +4593,10 @@ function loop(now) {
       const prog = Math.min(1, d.rollT / d.rollDur);
 
       if (d.physBody) {
-        // Rapier drives angular velocity; remap rapier axes → render axes
-        // rapier X→render X, rapier Z→render Y, rapier Y→render Z
+        // Rapier drives angular velocity; direct axis mapping: rapier XYZ → render XYZ
+        // (Rapier Y = physical up = render Y, consistent with top-down FACE_ROT)
         const av = d.physBody.angvel();
-        d.vx = av.x; d.vy = av.z; d.vz = av.y;
+        d.vx = av.x; d.vy = av.y; d.vz = av.z;
         d.rx += d.vx * dt; d.ry += d.vy * dt; d.rz += d.vz * dt;
         d.settling = false;
       } else if (prog < PHYSICS.tumblePhase) {
