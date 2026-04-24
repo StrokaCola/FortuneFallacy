@@ -2,6 +2,7 @@
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
+import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
