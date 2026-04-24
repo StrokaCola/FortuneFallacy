@@ -17,6 +17,8 @@ import {
   consumePendingFlag,
 } from './systems/consumables.js';
 import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
+import { getVoucherEffect, grantRandomVoucher } from './systems/vouchers.js';
+import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -2664,6 +2666,14 @@ function playHand() {
             roundScore = newTotal; displayRoundScore = newTotal;
             handsLeft--; rerollsLeft = REROLLS_PER_HAND;
             rolledOnce = false; handInProgress = false; scoringState = null;
+            // Voucher: Gemstone Mine pays out shards per hand played.
+            {
+              const perHand = getVoucherEffect('shardsPerHand', 0);
+              if (perHand > 0) {
+                shards += perHand;
+                floatText(W/2, H/2 + 80, `+ ${perHand} ◆`, '#9ce0ff', 14, { rise:30, life:1.4 });
+              }
+            }
             // Track run stats for unlock conditions
             if (combo.id === 'five_of_a_kind') runStats.fiveOfAKindScored = true;
             runStats.handsPlayed++;
@@ -2743,6 +2753,12 @@ function advanceGoal() {
         const tier = wasBoss ? (Math.random() < 0.5 ? 'rare' : 'uncommon') : null;
         const granted = grantRandomConsumable(tier);
         if (granted) floatText(W/2, H/2 + 30, `+ ${granted.icon} ${granted.name}`, granted.color, 15, { rise:40, life:2.0 });
+      }
+      // Boss Blind also grants a Voucher choice from Ante 2 onwards.
+      if (wasBoss && runGoal >= 3) {
+        const anteIdx = Math.floor(justCleared / 3) + 1;
+        const voucher = grantRandomVoucher(anteIdx);
+        if (voucher) floatText(W/2, H/2 + 56, `+ ${voucher.icon} ${voucher.name}`, '#ffdd88', 14, { rise:40, life:2.4 });
       }
     }
     // Check unlocks after goal advance
@@ -4707,6 +4723,41 @@ function drawGame(t) {
 
   drawParticles();
   drawRings();
+  // ── Owned Vouchers strip — tiny icons above the consumable row ──
+  {
+    const store = gs();
+    const owned = store.vouchers || [];
+    if (owned.length > 0) {
+      const icn = 22, gp = 4;
+      const totalW = owned.length * icn + (owned.length - 1) * gp;
+      const vx0 = CP.x + (CP.w - totalW) / 2;
+      const vy  = CP.y + CP.h - 112;
+      for (let i = 0; i < owned.length; i++) {
+        const def = lookupVoucher(owned[i]);
+        if (!def) continue;
+        const vx = vx0 + i * (icn + gp);
+        const hov = inRect(hoverX, hoverY, { x:vx, y:vy, w:icn, h:icn });
+        drawRoundRect(vx, vy, icn, icn, 4,
+          hov ? 'rgba(80,60,20,0.9)' : 'rgba(30,24,12,0.8)',
+          '#c89960', hov ? 2 : 1);
+        ctx.save();
+        ctx.shadowColor = '#c89960';
+        ctx.shadowBlur  = hov ? 6 : 2;
+        txt(def.icon || '✦', vx + icn/2, vy + 16, {size:13, color:'#ffdd88', align:'center'});
+        ctx.restore();
+        if (hov) {
+          // Defer tooltip to processTooltips via a minimal inline draw
+          const tipW = 180, tipH = 42;
+          const tipX = Math.min(W - tipW - 4, vx - tipW/2 + icn/2);
+          const tipY = vy - tipH - 4;
+          drawRoundRect(tipX, tipY, tipW, tipH, 6, 'rgba(10,6,20,0.95)', '#c89960', 1);
+          txt(def.name, tipX + 8, tipY + 14, {size:10, color:'#ffdd88', align:'left', bold:true});
+          txt(def.description, tipX + 8, tipY + 30, {size:8, color:'#ecdec8', align:'left', italic:true});
+        }
+      }
+    }
+  }
+
   // ── Consumable hand (Phase 5) — four-slot strip just above the button row ──
   {
     const store = gs();
