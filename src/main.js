@@ -3807,25 +3807,34 @@ function drawBoard(cx, topY, width, height) {
   roundRect(bx + RIM, topY + RIM, bw - RIM*2, bh - RIM*2, 5);
   ctx.fill();
 
-  // Stone floor — warm dark surface
+  // Stone floor — when Three.js dice are active, keep interior transparent so
+  // the #three canvas shows through; only fill opaquely in Canvas-2D fallback.
   const ix = bx + RIM, iy = topY + RIM, iw = bw - RIM*2, ih = bh - RIM*2;
-  const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
-  floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
-  floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
-  floorGrad.addColorStop(1,   'rgba(8,6,4,0.99)');
-  ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-  ctx.fillStyle = floorGrad;
-  ctx.fill();
-
-  // Stone texture on floor
-  if (stonePattern) {
-    ctx.save();
+  if (!gs().useThreeDice) {
+    const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
+    floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
+    floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
+    floorGrad.addColorStop(1,   'rgba(8,6,4,0.99)');
     ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-    ctx.clip();
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = stonePattern;
-    ctx.fillRect(ix, iy, iw, ih);
-    ctx.restore();
+    ctx.fillStyle = floorGrad;
+    ctx.fill();
+    if (stonePattern) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+      ctx.clip();
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = stonePattern;
+      ctx.fillRect(ix, iy, iw, ih);
+      ctx.restore();
+    }
+  } else {
+    // Subtle vignette only — thin darkened edge so dice don't float in void
+    const edgeGrad = ctx.createRadialGradient(cx, topY + bh*0.5, bw*0.3, cx, topY + bh*0.5, bw*0.6);
+    edgeGrad.addColorStop(0,   'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(1,   'rgba(0,0,0,0.35)');
+    ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+    ctx.fillStyle = edgeGrad;
+    ctx.fill();
   }
 
   // Faint gold grid — ancient carved measurement lines
@@ -4346,6 +4355,62 @@ function drawNameEntry(t) {
   drawBtn({x:W/2-90,y:H-68,w:180,h:40}, '← Back', true, false);
 }
 
+// ─── Consumable tray (left panel, below oracle slots) ─────────────────
+// Layout anchor: below the last oracle slot, centred in LP.
+const CONS_SW   = 38, CONS_SH = 46, CONS_GAP = 5;
+function consSlotPos(slots) {
+  const totalW = slots * CONS_SW + (slots - 1) * CONS_GAP;
+  const sx0 = LP.x + (LP.w - totalW) / 2;
+  const cardH = 50;
+  const sy = LP.y + 38 + MAX_ORACLES * (cardH + 4) + 14;
+  return { sx0, sy, totalW };
+}
+
+function drawConsumableTray(_t) {
+  const store = gs();
+  const slots = store.consumableSlots || 4;
+  const cards = store.consumables || [];
+  const { sx0, sy, totalW } = consSlotPos(slots);
+
+  // Header label
+  txt('CONSUMABLES', sx0 + totalW / 2, sy - 5,
+    { size: 7, color: 'rgba(200,170,220,0.45)', align: 'center', bold: true });
+
+  for (let i = 0; i < slots; i++) {
+    const sx  = sx0 + i * (CONS_SW + CONS_GAP);
+    const card = cards[i];
+    const hov  = inRect(hoverX, hoverY, { x: sx, y: sy, w: CONS_SW, h: CONS_SH });
+    if (!card) {
+      ctx.save();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(120,90,170,0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx, sy, CONS_SW, CONS_SH);
+      ctx.restore();
+    } else {
+      const def = lookupConsumable(card.id) || {};
+      const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
+      drawRoundRect(sx, sy, CONS_SW, CONS_SH, 6,
+        targeting ? 'rgba(120,60,200,0.6)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(25,12,42,0.85)',
+        def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
+      ctx.save();
+      ctx.shadowColor = def.color || '#cc88ff';
+      ctx.shadowBlur  = 4;
+      txt(def.icon || '?', sx + CONS_SW / 2, sy + 20, { size: 18, color: def.color || '#cc88ff', align: 'center' });
+      ctx.restore();
+      txt((def.name || '').slice(0, 7), sx + CONS_SW / 2, sy + 38,
+        { size: 6.5, color: '#ecdec8', align: 'center' });
+    }
+  }
+
+  if (store.consumableTargeting) {
+    const tt = store.consumableTargeting.targetType || 'target';
+    txt(`Click a ${tt.replace('_', ' ')}… (Esc)`,
+      LP.x + LP.w / 2, sy + CONS_SH + 14,
+      { size: 8, color: '#cc88ff', align: 'center', italic: true });
+  }
+}
+
 // ─── SCREEN: Game ─────────────────────────────────────────────────────
 function drawGame(t) {
   drawBG(t);
@@ -4852,55 +4917,9 @@ function drawGame(t) {
     }
   }
 
-  // ── Consumable hand (Phase 5) — four-slot strip just above the button row ──
-  {
-    const store = gs();
-    const slots = store.consumableSlots || 4;
-    const cards = store.consumables || [];
-    const sw = 40, sh = 52, gap = 6;
-    const totalW = slots * sw + (slots - 1) * gap;
-    const sx0 = CP.x + (CP.w - totalW) / 2;
-    const sy  = CP.y + CP.h - 84;
-    // Strip background
-    drawRoundRect(sx0 - 8, sy - 4, totalW + 16, sh + 10, 8,
-      'rgba(10,6,20,0.55)', 'rgba(90,60,140,0.35)', 1);
-    txt('CONSUMABLES', sx0 + totalW/2, sy - 8, {size:7, color:'rgba(200,170,220,0.5)', align:'center', bold:true});
-    for (let i = 0; i < slots; i++) {
-      const sx = sx0 + i * (sw + gap);
-      const card = cards[i];
-      const hov = inRect(hoverX, hoverY, { x:sx, y:sy, w:sw, h:sh });
-      if (!card) {
-        // Empty slot — dashed outline
-        ctx.save();
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(120,90,170,0.28)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sx, sy, sw, sh);
-        ctx.restore();
-      } else {
-        const def = lookupConsumable(card.id) || {};
-        const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
-        drawRoundRect(sx, sy, sw, sh, 6,
-          targeting ? 'rgba(120,60,200,0.55)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(30,16,50,0.85)',
-          def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
-        // Icon
-        ctx.save();
-        ctx.shadowColor = def.color || '#cc88ff';
-        ctx.shadowBlur  = 5;
-        txt(def.icon || '?', sx + sw/2, sy + 22, {size:20, color:def.color || '#cc88ff', align:'center'});
-        ctx.restore();
-        // Name (compact)
-        const name = (def.name || '').slice(0, 8);
-        txt(name, sx + sw/2, sy + 41, {size:7, color:'#ecdec8', align:'center'});
-      }
-    }
-    // Targeting hint
-    if (store.consumableTargeting) {
-      const tt = store.consumableTargeting.targetType || 'target';
-      txt(`Click a ${tt.replace('_', ' ')}… (Esc to cancel)`,
-        CP.x + CP.w/2, sy - 24, {size:9, color:'#cc88ff', align:'center', italic:true});
-    }
-  }
+  // ── Consumable hand (Phase 5) — drawn in left panel below oracle slots ──
+  // (See drawConsumableTray() called from the left-panel section above)
+  drawConsumableTray(t);
 
   drawFloaters();
   drawComboPop();
@@ -4916,13 +4935,10 @@ function drawGame(t) {
 function consumableSlotAt(mx, my) {
   const store = gs();
   const slots = store.consumableSlots || 4;
-  const sw = 40, sh = 52, gap = 6;
-  const totalW = slots * sw + (slots - 1) * gap;
-  const sx0 = CP.x + (CP.w - totalW) / 2;
-  const sy  = CP.y + CP.h - 84;
+  const { sx0, sy } = consSlotPos(slots);
   for (let i = 0; i < slots; i++) {
-    const sx = sx0 + i * (sw + gap);
-    if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) return i;
+    const sx = sx0 + i * (CONS_SW + CONS_GAP);
+    if (mx >= sx && mx <= sx + CONS_SW && my >= sy && my <= sy + CONS_SH) return i;
   }
   return -1;
 }
