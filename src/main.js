@@ -4,7 +4,7 @@
 import { createNoise2D } from 'simplex-noise';
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
 import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
-import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
+import { initDice3D, isDice3DReady, tickDice3D, setActiveSkin } from './rendering/dice3d.js';
 import {
   BLIND_GOAL_TARGETS, anteFromGoal, blindIndexFromGoal,
   onRoundStart as blindsOnRoundStart,
@@ -6100,7 +6100,7 @@ initRapier(); // fire-and-forget — game starts immediately; Rapier activates w
 {
   const threeCanvas = document.getElementById('three');
   const ok = initDice3D(threeCanvas);
-  if (ok) ss({ useThreeDice: true });
+  if (ok) { ss({ useThreeDice: true }); setActiveSkin(localStorage.getItem('ff_diceSkin') || 'ivory'); }
 }
 loadScores();
 loadUnlocks();
