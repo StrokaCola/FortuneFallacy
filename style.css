@@ -20,23 +20,45 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(ellipse at 30% 20%, rgba(90,60,20,0.15), transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(40,55,80,0.10), transparent 50%),
-    var(--bg);
+  background: var(--bg);
 }
 
-#game {
+#game-wrapper {
+  position: relative;
   max-width: 95vw;
   max-height: 95vh;
-  background: #08060a;
-  border: 1px solid rgba(180,140,60,0.45);
+  /* Maintain 960×540 aspect ratio */
+  aspect-ratio: 960 / 540;
+  /* Reserve the exact space; children fill it absolutely */
+  width:  960px;
+  height: 540px;
   border-radius: 12px;
   box-shadow:
     0 0 0 1px rgba(30,20,8,0.95),
     0 0 28px rgba(160,110,30,0.30),
     0 0 65px rgba(100,70,15,0.18),
-    0 0 130px rgba(40,25,5,0.15),
-    inset 0 0 40px rgba(0,0,0,0.75);
+    0 0 130px rgba(40,25,5,0.15);
+}
+
+#bg,
+#game {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width:  100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
+#bg {
+  /* WebGL nebula — bottom layer */
+  background: #08060a;
+}
+
+#game {
+  /* 2D game — transparent so #bg shows through */
+  background: transparent;
+  border: 1px solid rgba(180,140,60,0.45);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.75);
   cursor: pointer;
 }

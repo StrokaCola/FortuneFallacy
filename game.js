@@ -1,10 +1,16 @@
 // FortuneFallacy — Vibe Coding Game Jam #1
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
+import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
+
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 960
 const H = canvas.height;  // 540
+
+// ─── WebGL background initialisation ─────────────────────────────────
+const bgCanvas = document.getElementById('bg');
+if (bgCanvas) initBg(bgCanvas);
 
 // ─── Physics constants (edit via physics-editor.html) ────────────────
 const PHYSICS = (()=>{
@@ -509,7 +515,10 @@ function animateTicker(from, to, duration, onTick, onDone) {
 
 // ─── Screen flash ─────────────────────────────────────────────────────
 let flashAlpha = 0;
-function screenFlash(a = 0.4) { flashAlpha = Math.max(flashAlpha, a); }
+function screenFlash(a = 0.4) {
+  flashAlpha = Math.max(flashAlpha, a);
+  if (a >= 0.2) flashBg(a * 0.65);   // pulse the WebGL nebula on significant flashes
+}
 
 // ─── Screen shake ─────────────────────────────────────────────────────
 let shakeAmp = 0;
@@ -852,8 +861,14 @@ const STARS = Array.from({ length: 280 }, () => ({
 }));
 
 function drawBG(t) {
-  ctx.fillStyle = '#08060a';
-  ctx.fillRect(0, 0, W, H);
+  // When WebGL bg is active we clear to transparent so the nebula shows through.
+  // Otherwise fall back to the solid dark fill so nothing looks broken.
+  if (bgActive()) {
+    ctx.clearRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#08060a';
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Star field — drawn first so everything layers on top
   ctx.save();
@@ -892,13 +907,16 @@ function drawBG(t) {
   g2.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  // Slow stone pulse — warm sepia tone shift
-  const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
-  ctx.save();
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = `rgba(${Math.floor(200*pulse)},${Math.floor(185*pulse)},${Math.floor(160*pulse)},1)`;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
+  // Slow stone pulse — warm sepia tone shift (skip when WebGL bg is active; multiply
+  // on a transparent canvas has no effect and would tint the clear incorrectly)
+  if (!bgActive()) {
+    const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(${Math.floor(200*pulse)},${Math.floor(185*pulse)},${Math.floor(160*pulse)},1)`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 
   // Ancient rune rings — slow-rotating concentric stone-carved circles
   ctx.save();
@@ -992,6 +1010,8 @@ const MAX_HELD        = 5;   // max dice that can be held/played in one hand
 const MAX_DICE        = 10;  // cap on total pool size
 const MAX_ORACLES     = 6;
 const SCORES_KEY      = 'fortunefallacy_scores';
+const SAVE_KEY_RUN    = 'fortunefallacy_activerun';
+const SAVE_VERSION    = 1;
 // Replace with your Firebase Realtime Database URL (e.g. https://your-project-default-rtdb.firebaseio.com/scores)
 const FIREBASE_URL    = 'https://fortunefallacy-9908c-default-rtdb.firebaseio.com/scores';
 
@@ -1626,6 +1646,140 @@ function checkUnlocks() {
   if (any) saveUnlocks();
 }
 
+// ─── Save / Resume Active Run ─────────────────────────────────────────
+const SAVE_MIGRATIONS = { 1: x => x };
+const SAVEABLE_SCREENS = new Set(['hub','game','shop','forge','rune']);
+
+function _oracleById(id)  { return [...ALL_ORACLES,  ...UNLOCKABLE_ORACLES].find(o => o.id === id) || null; }
+function _upgradeById(id) { return [...DICE_UPGRADES, ...UNLOCKABLE_DICE   ].find(u => u.id === id) || null; }
+function _runeById(id)    { return [...ALL_RUNES,    ...UNLOCKABLE_RUNES ].find(r => r.id === id) || null; }
+
+function serializeRunState() {
+  return {
+    version: SAVE_VERSION,
+    savedAt: Date.now(),
+    screen,
+    endless,
+    runGoal,
+    totalFateScore,
+    roundScore,
+    handsLeft,
+    rerollsLeft,
+    shards,
+    hubEarnedShards,
+    playerName,
+    heldOracles:   heldOracles.map(o => o && o.id).filter(Boolean),
+    diceUpgrades:  diceUpgrades.map(u => u ? u.id : null),
+    diceRunes:     diceRunes.map(slots => (slots || []).map(r => r ? r.id : null)),
+    runeInventory: runeInventory.map(r => r && r.id).filter(Boolean),
+    shopTab,
+    shopStock: {
+      oracles:  (shopStock.oracles  || []).map(o => o && o.id).filter(Boolean),
+      runes:    (shopStock.runes    || []).map(r => r && r.id).filter(Boolean),
+      upgrades: (shopStock.upgrades || []).map(u => u && u.id).filter(Boolean),
+    },
+    forgeTab,
+    forgeChoices: {
+      upgrades: (forgeChoices.upgrades || []).map(u => u && u.id).filter(Boolean),
+      oracles:  (forgeChoices.oracles  || []).map(o => o && o.id).filter(Boolean),
+    },
+    comboStreak: { id: comboStreak.id, count: comboStreak.count | 0 },
+    lastHandScore: lastHandScore | 0,
+    momentumStreak: momentumStreak | 0,
+    runStats: JSON.parse(JSON.stringify(runStats)),
+  };
+}
+
+function restoreRunState(raw) {
+  if (!raw || typeof raw !== 'object') return false;
+  let blob = raw;
+  while ((blob.version | 0) < SAVE_VERSION) {
+    const next = SAVE_MIGRATIONS[(blob.version | 0) + 1];
+    if (!next) return false;
+    blob = next(blob);
+    blob.version = (blob.version | 0) + 1;
+  }
+  if (blob.version !== SAVE_VERSION) return false;
+  try {
+    screen            = SAVEABLE_SCREENS.has(blob.screen) ? blob.screen : 'hub';
+    endless           = !!blob.endless;
+    runGoal           = blob.runGoal | 0;
+    totalFateScore    = blob.totalFateScore | 0;
+    roundScore        = blob.roundScore | 0;
+    displayRoundScore = blob.roundScore | 0;
+    displayScoreBounce    = 0;
+    firstHandSpectrumGoal = -1;
+    handsLeft         = blob.handsLeft | 0;
+    rerollsLeft       = blob.rerollsLeft | 0;
+    shards            = blob.shards | 0;
+    hubEarnedShards   = blob.hubEarnedShards | 0;
+    if (blob.playerName) { playerName = blob.playerName; nameEntry = playerName; }
+    heldOracles   = (blob.heldOracles   || []).map(_oracleById ).filter(Boolean);
+    diceUpgrades  = (blob.diceUpgrades  || []).map(id => id ? _upgradeById(id) : null);
+    diceRunes     = (blob.diceRunes     || []).map(slots => (slots || []).map(id => id ? _runeById(id) : null));
+    runeInventory = (blob.runeInventory || []).map(_runeById).filter(Boolean);
+    if (diceUpgrades.length === 0) diceUpgrades = Array(DICE_COUNT).fill(null);
+    while (diceRunes.length < diceUpgrades.length) diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
+    shopTab      = blob.shopTab || 'oracles';
+    shopStock    = {
+      oracles:  (blob.shopStock?.oracles  || []).map(_oracleById ).filter(Boolean),
+      runes:    (blob.shopStock?.runes    || []).map(_runeById   ).filter(Boolean),
+      upgrades: (blob.shopStock?.upgrades || []).map(_upgradeById).filter(Boolean),
+    };
+    forgeTab     = blob.forgeTab || 'dice';
+    forgeChoices = {
+      upgrades: (blob.forgeChoices?.upgrades || []).map(_upgradeById).filter(Boolean),
+      oracles:  (blob.forgeChoices?.oracles  || []).map(_oracleById ).filter(Boolean),
+    };
+    forgeSelectedUpgrade = null;
+    comboStreak   = blob.comboStreak    || { id: null, count: 0 };
+    lastHandScore = blob.lastHandScore  | 0;
+    momentumStreak= blob.momentumStreak | 0;
+    runStats      = blob.runStats       || { fiveOfAKindScored:false, totalShardsSpent:0, maxNoRerollStreak:0, _noRerollCur:0, handsPlayed:0, combosScored:{}, runCompleted:false };
+    runeSelInv    = null;
+    runeSelSlot   = null;
+    traySelSlot   = -1;
+    handInProgress = false;
+    scoringState   = null;
+    lastHandMeta   = { lastReroll: false };
+    rolledOnce     = false;
+    initDice();
+    return true;
+  } catch (e) {
+    console.warn('[FortuneFallacy] restoreRunState failed:', e);
+    return false;
+  }
+}
+
+function saveActiveRun() {
+  if (handInProgress) return;                        // never save mid-hand
+  if (!SAVEABLE_SCREENS.has(screen)) return;
+  if (screen === 'game' && handsLeft <= 0) return;   // failure-pending — let clearActiveRun win
+  try {
+    localStorage.setItem(SAVE_KEY_RUN, JSON.stringify(serializeRunState()));
+  } catch (e) { /* quota / private mode — silently ignore */ }
+}
+
+function clearActiveRun() {
+  try { localStorage.removeItem(SAVE_KEY_RUN); } catch {}
+}
+
+function hasActiveRun() {
+  try { return !!localStorage.getItem(SAVE_KEY_RUN); } catch { return false; }
+}
+
+function loadActiveRun() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY_RUN);
+    if (!raw) return false;
+    return restoreRunState(JSON.parse(raw));
+  } catch (e) {
+    console.warn('[FortuneFallacy] loadActiveRun failed:', e);
+    clearActiveRun();
+    return false;
+  }
+}
+
 // ─── Hover tooltip state ──────────────────────────────────────────────
 let hoverState        = { id: null, since: 0 };
 let frameHoverTarget  = null;
@@ -1757,6 +1911,7 @@ function confirmPlayerName() {
   nameEntry  = playerName;
   localStorage.setItem('fortunefallacy_player', playerName);
   screen = 'hub';
+  saveActiveRun();
 }
 
 function startRound() {
@@ -2382,7 +2537,9 @@ function playHand() {
           setTimeout(() => {
             const name = nameEntry.trim() || incoming.username || 'Wanderer';
             saveScore(name, totalFateScore, endless ? 'endless' : 'run');
-            loadScores(); screen = 'scores';
+            loadScores();
+            clearActiveRun();
+            screen = 'scores';
           }, 2200);
         }
 
@@ -2479,8 +2636,11 @@ function playHand() {
                 const name = nameEntry.trim() || incoming.username || 'Wanderer';
                 saveScore(name, totalFateScore, endless ? 'endless' : 'run');
                 loadScores();
+                clearActiveRun();
                 screen = 'scores';
               }, 800);
+            } else {
+              saveActiveRun();
             }
           });
         }, 500);
@@ -2517,6 +2677,7 @@ function advanceGoal() {
       checkUnlocks();
       nameEntry       = '';
       nameEntryActive = false;
+      clearActiveRun();
       screen = 'win';
       return;
     }
@@ -2560,6 +2721,7 @@ function openShop() {
 
   shopTab = 'oracles';
   slideIn('shop');
+  saveActiveRun();
 }
 
 function openForge() {
@@ -2589,6 +2751,7 @@ function openForge() {
   forgeTab = 'dice';
   forgeSelectedUpgrade = null;
   screen = 'forge';
+  saveActiveRun();
 }
 
 // ─── Portal state ─────────────────────────────────────────────────────
@@ -2716,6 +2879,12 @@ canvas.addEventListener('click', e => {
   handleClick(mx, my);
 });
 
+// Autosave when the tab is backgrounded or closed
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveActiveRun();
+});
+window.addEventListener('pagehide', () => saveActiveRun());
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (paused) { paused = false; e.preventDefault(); return; }
@@ -2737,7 +2906,10 @@ document.addEventListener('keydown', e => {
     else if (e.key.length === 1 && nameEntry.length < 16) nameEntry += e.key;
     return;
   }
-  if (screen === 'title') startRun(false);
+  if (screen === 'title') {
+    if (hasActiveRun() && loadActiveRun()) return;
+    startRun(false);
+  }
 });
 
 function handleClick(mx, my) {
@@ -2762,10 +2934,18 @@ function handleClick(mx, my) {
   }
   if (screen === 'title') {
     const tfy = (H - 360) / 2;
-    if (inRect(mx,my,{x:W/2-130,y:tfy+200,w:260,h:48})) { startRun(false); return; }
-    if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { startRun(true); return; }
-    if (inRect(mx,my,{x:W/2-235,y:tfy+304,w:210,h:36})) { loadScores(); screen='scores'; return; }
-    if (inRect(mx,my,{x:W/2+25, y:tfy+304,w:210,h:36})) { screen='howto'; return; }
+    const hasSave = hasActiveRun();
+    if (hasSave) {
+      if (inRect(mx,my,{x:W/2-130,y:tfy+188,w:260,h:46})) { if (loadActiveRun()) return; startRun(false); return; }
+      if (inRect(mx,my,{x:W/2-130,y:tfy+240,w:260,h:38})) { clearActiveRun(); startRun(false); return; }
+      if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+284,w:260,h:34})) { clearActiveRun(); startRun(true); return; }
+    } else {
+      if (inRect(mx,my,{x:W/2-130,y:tfy+200,w:260,h:48})) { startRun(false); return; }
+      if (endlessUnlocked() && inRect(mx,my,{x:W/2-130,y:tfy+256,w:260,h:42})) { startRun(true); return; }
+    }
+    if (inRect(mx,my,{x:W/2-235,y:tfy+326,w:210,h:30})) { loadScores(); screen='scores'; return; }
+    if (inRect(mx,my,{x:W/2+25, y:tfy+326,w:210,h:30})) { screen='howto'; return; }
+    if (hasSave) { if (loadActiveRun()) return; }
     startRun(false);
     return;
   }
@@ -2906,7 +3086,7 @@ function handleClick(mx, my) {
   if (screen === 'hub') {
     const BY = H - 84;
     if (inRect(mx,my,{x:W/2-310,y:BY,w:260,h:50})) { runeOrigin='hub'; runeSelInv=null; runeSelSlot=null; slideIn('rune'); return; }
-    if (inRect(mx,my,{x:W/2+50, y:BY,w:260,h:50})) { startRound(); screen='game'; return; }
+    if (inRect(mx,my,{x:W/2+50, y:BY,w:260,h:50})) { startRound(); screen='game'; saveActiveRun(); return; }
     return;
   }
   if (screen === 'rune') {
@@ -3913,18 +4093,26 @@ function drawTitle(t) {
   ctx.fillText('☽', fx + fw - 48, fy + fh - 16);
   ctx.restore();
 
-  drawBtn({x:W/2-130,y:fy + 200,w:260,h:48}, '▶  Begin New Run', true, true);
-  if (endlessUnlocked())
-    drawBtn({x:W/2-130,y:fy + 256,w:260,h:42}, '∞  Endless Mode', true);
-  drawBtn({x:W/2-235,y:fy + 304,w:210,h:36}, '🏆  High Scores', true);
-  drawBtn({x:W/2+25, y:fy + 304,w:210,h:36}, '?  How to Play', true);
+  const hasSave = hasActiveRun();
+  if (hasSave) {
+    drawBtn({x:W/2-130,y:fy + 188,w:260,h:46}, '▶  Resume Run',     true, true);
+    drawBtn({x:W/2-130,y:fy + 240,w:260,h:38}, '✦  Begin New Run',  true);
+    if (endlessUnlocked())
+      drawBtn({x:W/2-130,y:fy + 284,w:260,h:34}, '∞  Endless Mode', true);
+  } else {
+    drawBtn({x:W/2-130,y:fy + 200,w:260,h:48}, '▶  Begin New Run', true, true);
+    if (endlessUnlocked())
+      drawBtn({x:W/2-130,y:fy + 256,w:260,h:42}, '∞  Endless Mode', true);
+  }
+  drawBtn({x:W/2-235,y:fy + 326,w:210,h:30}, '🏆  High Scores', true);
+  drawBtn({x:W/2+25, y:fy + 326,w:210,h:30}, '?  How to Play', true);
 
   const pulse = 0.5 + 0.4*Math.sin(t*2.3);
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = `rgba(200,170,120,${pulse})`;
   ctx.font = `italic 11px ${SERIF}`;
-  ctx.fillText('— press any key to begin —', W/2, H - 26);
+  ctx.fillText(hasSave ? '— press any key to resume —' : '— press any key to begin —', W/2, H - 26);
   ctx.restore();
 }
 
@@ -5484,6 +5672,9 @@ function loop(now) {
   updateFloaters(dt);
   updateComboPop(dt);
   updateBanner(dt);
+
+  // Tick the WebGL background nebula
+  tickBg(t, screen);
 
   // Apply screen shake via canvas transform
   ctx.save();
