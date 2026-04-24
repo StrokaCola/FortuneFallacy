@@ -194,16 +194,23 @@ export function flashBg(amount = 0.8) {
 
 /**
  * Call once per animation frame from the main game loop.
- * @param {number} time   elapsed seconds (same `t` passed to draw functions)
- * @param {string} screen current game screen name
+ * @param {number} time     elapsed seconds (same `t` passed to draw functions)
+ * @param {string} screen   current game screen name
+ * @param {number} intensity 0..1 round-progress driver that blends the mode
+ *                           toward crimson (3) so the world "heats up" as the
+ *                           player closes on the target.
  */
-export function tickBg(time, screen) {
+export function tickBg(time, screen, intensity = 0) {
   if (!_active) return;
 
   // Decay flash
   _flash = Math.max(0, _flash - 0.025);
 
-  const mode = SCREEN_MODES[screen] ?? 0;
+  const baseMode = SCREEN_MODES[screen] ?? 0;
+  // Intensity pulls the mode toward 3 (crimson); the pull weight is small so
+  // it shifts colour hue without blowing out the base mode entirely.
+  const clampI = Math.max(0, Math.min(1, intensity));
+  const mode = baseMode + (3 - baseMode) * clampI * 0.45;
   const cw = _canvas.width;
   const ch = _canvas.height;
 

@@ -2,6 +2,27 @@
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
+import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
+import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
+import {
+  BLIND_GOAL_TARGETS, anteFromGoal, blindIndexFromGoal,
+  onRoundStart as blindsOnRoundStart,
+  onRoundCleared as blindsOnRoundCleared,
+  bossDisablesOracles, bossForbidsRerolls, bossAutoUnlocks,
+  bossCapsHandSizeTo4, bossBlocksOneRuneXforms,
+  resetBlindRun, blindClearReward,
+} from './systems/blinds.js';
+import {
+  wireConsumableBridge, useConsumable, grantRandomConsumable,
+  consumePendingFlag,
+} from './systems/consumables.js';
+import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
+import { getVoucherEffect, grantRandomVoucher } from './systems/vouchers.js';
+import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
+import {
+  ensureToneStarted,
+  sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind,
+} from './systems/audio.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -89,7 +110,7 @@ function getMaster() {
 }
 
 // ─── Background music ─────────────────────────────────────────────────
-const bgMusic    = new Audio('./bg-music.mp3');
+const bgMusic    = new Audio('/bg-music.mp3');
 bgMusic.loop     = true;
 bgMusic.volume   = musicVolume;
 let   bgStarted  = false;
@@ -545,8 +566,10 @@ let RAPIER_LIB = null;  // set after dynamic import resolves
 
 async function initRapier() {
   try {
-    const mod = await import('./rapier/rapier.mjs');
-    await mod.init({ module_or_path: './rapier/rapier_wasm3d_bg.wasm' });
+    const rapierUrl = new URL('/rapier/rapier.mjs', window.location.origin).href;
+    const wasmUrl   = new URL('/rapier/rapier_wasm3d_bg.wasm', window.location.origin).href;
+    const mod = await import(/* @vite-ignore */ rapierUrl);
+    await mod.init({ module_or_path: wasmUrl });
     RAPIER_LIB = mod;
   } catch (e) {
     console.warn('Rapier unavailable, using legacy physics:', e.message);
@@ -1002,7 +1025,9 @@ function wrapText(x, y, text, maxW, lineH) {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────
-const GOAL_TARGETS    = [300, 800, 2000, 5000, 11000, 20000, 35000, 50000];
+// Extended from the original 8 flat goals to 12 (4 antes × 3 blinds).
+// Values come from src/data/blinds.js so the blind system stays in sync.
+const GOAL_TARGETS    = BLIND_GOAL_TARGETS;
 const HANDS_PER_ROUND = 3;
 const REROLLS_PER_HAND = 2;
 const DICE_COUNT      = 5;   // starting pool size (grows via forge)
@@ -1898,6 +1923,8 @@ function startRun(isEndless = false) {
   momentumStreak = 0;
   nameEntry   = playerName;
   screen      = 'nameentry';
+  // Blind/Ante system — fresh boss pool & counters each run
+  resetBlindRun();
 }
 
 function grantRune(tier = 'common') {
@@ -1924,6 +1951,21 @@ function startRound() {
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
+  // Determine the blind for this round — sets activeBlind in the store.
+  // Boss Blinds (every 3rd round) apply their debuffs via hasBlindDebuff().
+  blindsOnRoundStart(runGoal);
+  // Boss Blind reveal: dramatic Tone.js sting + banner + screen flash.
+  {
+    const ab = gs().activeBlind;
+    if (ab && ab.isBoss) {
+      sfxBossReveal();
+      showBanner(`${ab.icon}  ${ab.name}`, ab.color || '#ff4466');
+      screenFlash(0.55);
+      screenShake(16);
+      burst(W/2, H/2, ab.color || '#ff4466', 36, 7);
+      burst(W/2, H/2, '#ffffff', 16, 9);
+    }
+  }
   initDice();
 }
 
@@ -1991,6 +2033,10 @@ function settleDie(d, dIdx) {
   if (!dice.some(x => x.rolling)) {
     rolledOnce = true;
     screenShake(8 + scoreIntensity(roundScore) * 8);
+    // Boss Blind "The Devil": all locked dice unlock after each roll.
+    if (bossAutoUnlocks()) {
+      for (const x of dice) x.locked = false;
+    }
   }
 }
 
@@ -2286,10 +2332,13 @@ function playHand() {
         if (rune.volatile !== undefined)        add = 1 + Math.floor(Math.random() * rune.volatile);
         if (rune.mirror)                        add = Math.max(...heldEntries.map(e => e.die.face));
         if (rune.collisionBonus !== undefined)  add += rollCollisions.length * rune.collisionBonus;
+        // Boss "The Serpent" blocks face transforms on 1s — applies only
+        // when `add` is currently 1 (pre-transform). Guard the transforms below.
+        const _serpent = bossBlocksOneRuneXforms() && add === 1;
         // New rune face transforms (apply before scoreMultiplier)
-        if (rune.middleBias)                    add = Math.random()<0.5?3:4;
-        if (rune.wildFace)                      add = 6;
-        if (rune.faceRemap && add === rune.faceRemap.from) add = rune.faceRemap.to;
+        if (rune.middleBias && !_serpent)       add = Math.random()<0.5?3:4;
+        if (rune.wildFace   && !_serpent)       add = 6;
+        if (rune.faceRemap && !_serpent && add === rune.faceRemap.from) add = rune.faceRemap.to;
         if (rune.glassCannon) { if(handsLeft===HANDS_PER_ROUND){add=Math.round(add*10);}else{add=0;} }
         if (rune.scoreMultiplier !== undefined) add = Math.round(add * rune.scoreMultiplier);
         if (rune.rerollMult)                    { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
@@ -2438,13 +2487,16 @@ function playHand() {
         });
       }
 
-      // All oracle apply() calls — one step per oracle
-      for (const o of heldOracles) {
-        if (!o.apply) continue;
-        const captured = o;
-        addStep(captured.name || 'Oracle', captured.color || '#ff9944', () => {
-          [chips, mult] = captured.apply(combo, faces, chips, mult, lastHandMeta);
-        });
+      // All oracle apply() calls — one step per oracle.
+      // Boss Blind "The High Priestess": oracles do not apply this round.
+      if (!bossDisablesOracles()) {
+        for (const o of heldOracles) {
+          if (!o.apply) continue;
+          const captured = o;
+          addStep(captured.name || 'Oracle', captured.color || '#ff9944', () => {
+            [chips, mult] = captured.apply(combo, faces, chips, mult, lastHandMeta);
+          });
+        }
       }
 
       // Mirror Pair
@@ -2543,6 +2595,22 @@ function playHand() {
           }, 2200);
         }
 
+        // The Hermit consumable doubles chips for the current hand.
+        if (consumePendingFlag('doubleChipsPending')) {
+          chips *= 2;
+          floatText(W/2, H/2 - 30, '✦ Chips Doubled', '#ddcc88', 18, { rise: 40, life: 1.4 });
+        }
+        // The Star consumable grants each oracle a +1 Mult bonus (roughly;
+        // implemented as a simple additive mult bump per held oracle so it
+        // stays predictable without re-running the oracle pipeline).
+        if (consumePendingFlag('starActive') && !bossDisablesOracles()) {
+          const starBonus = Math.max(0, heldOracles.length);
+          if (starBonus > 0) {
+            mult += starBonus;
+            floatText(W/2, H/2 - 10, `★ +${starBonus} Mult`, '#ffee88', 16, { rise: 40, life: 1.4 });
+          }
+        }
+
         scoringState.chips = chips;
         scoringState.mult  = mult;
 
@@ -2617,6 +2685,14 @@ function playHand() {
             roundScore = newTotal; displayRoundScore = newTotal;
             handsLeft--; rerollsLeft = REROLLS_PER_HAND;
             rolledOnce = false; handInProgress = false; scoringState = null;
+            // Voucher: Gemstone Mine pays out shards per hand played.
+            {
+              const perHand = getVoucherEffect('shardsPerHand', 0);
+              if (perHand > 0) {
+                shards += perHand;
+                floatText(W/2, H/2 + 80, `+ ${perHand} ◆`, '#9ce0ff', 14, { rise:30, life:1.4 });
+              }
+            }
             // Track run stats for unlock conditions
             if (combo.id === 'five_of_a_kind') runStats.fiveOfAKindScored = true;
             runStats.handsPlayed++;
@@ -2669,6 +2745,8 @@ function advanceGoal() {
 
   setTimeout(() => {
     const clearedTarget = currentTarget();
+    // Clear the active blind from the store on round-clear (HUD will hide it)
+    blindsOnRoundCleared();
     runGoal++;
     if (!endless && runGoal >= GOAL_TARGETS.length) {
       SFX.win();
@@ -2685,6 +2763,26 @@ function advanceGoal() {
     const earned = Math.max(3, Math.floor(5 + (roundScore - clearedTarget) / 200));
     shards += earned;
     hubEarnedShards = earned;
+    // Blind-clear consumable reward: ~40% chance per Small/Big Blind,
+    // guaranteed after a Boss Blind. Caps at consumableSlots (default 4).
+    {
+      const justCleared = runGoal - 1;
+      const wasBoss = ((justCleared) % 3) === 2;
+      if (wasBoss || Math.random() < 0.4) {
+        const tier = wasBoss ? (Math.random() < 0.5 ? 'rare' : 'uncommon') : null;
+        const granted = grantRandomConsumable(tier);
+        if (granted) floatText(W/2, H/2 + 30, `+ ${granted.icon} ${granted.name}`, granted.color, 15, { rise:40, life:2.0 });
+      }
+      // Boss Blind also grants a Voucher choice from Ante 2 onwards.
+      if (wasBoss && runGoal >= 3) {
+        const anteIdx = Math.floor(justCleared / 3) + 1;
+        const voucher = grantRandomVoucher(anteIdx);
+        if (voucher) {
+          floatText(W/2, H/2 + 56, `+ ${voucher.icon} ${voucher.name}`, '#ffdd88', 14, { rise:40, life:2.4 });
+          sfxVoucherBuy();
+        }
+      }
+    }
     // Check unlocks after goal advance
     checkUnlocks();
     forgeChoices = { upgrades: [], oracles: [] };
@@ -2987,9 +3085,13 @@ function handleClick(mx, my) {
       const cX0=W/2-cTotal/2;
       for (let i=0;i<shopStock.oracles.length;i++) {
         const ox=cX0+i*(cW+cGap);
-        const cost=oracleCost(shopStock.oracles[i]);
+        let cost=oracleCost(shopStock.oracles[i]);
+        // Voucher "Clearance Sale" discounts all shop prices.
+        cost = Math.max(1, Math.ceil(cost * getVoucherEffect('priceMult', 1)));
         if (inRect(mx,my,{x:ox+18,y:134+cH+6,w:cW-36,h:32})) {
-          if (shards>=cost && heldOracles.length<MAX_ORACLES) {
+          // Voucher "Astral Plane" grants +1 Oracle slot.
+          const oracleCap = MAX_ORACLES + getVoucherEffect('extraOracleSlot', 0);
+          if (shards>=cost && heldOracles.length<oracleCap) {
             shards-=cost;
             runStats.totalShardsSpent+=cost;
             const o=shopStock.oracles.splice(i,1)[0];
@@ -3158,8 +3260,10 @@ function handleClick(mx, my) {
       for (let i = 0; i < dice.length; i++) {
         const hs = DICE_SIZE / 2;
         if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:DICE_SIZE, h:DICE_SIZE})) {
-          if (!dice[i].locked && heldCount() >= MAX_HELD) {
-            floatText(dice[i].absX, dice[i].absY - 30, `Held full (${MAX_HELD})`, '#ff8844', 12);
+          // Boss Blind "The Fool" caps effective hand size to 4.
+          const handCap = bossCapsHandSizeTo4() ? 4 : MAX_HELD;
+          if (!dice[i].locked && heldCount() >= handCap) {
+            floatText(dice[i].absX, dice[i].absY - 30, `Held full (${handCap})`, '#ff8844', 12);
             return;
           }
           dice[i].locked = !dice[i].locked;
@@ -3180,7 +3284,48 @@ function handleClick(mx, my) {
     }
     if (inRect(mx,my,BTN_ROLL) && !handInProgress) {
       if (!rolledOnce) { rollDice(); return; }
-      if (rerollsLeft > 0) { rerollsLeft--; rollDice(); return; }
+      // Boss Blind "The Tower": rerolls forbidden for this blind.
+      if (bossForbidsRerolls()) { SFX.fail(); showBanner('⌀ No rerolls this blind', '#cc2244'); return; }
+      if (rerollsLeft > 0) {
+        // The Magician consumable can make a single reroll free.
+        if (consumePendingFlag('freeRerollPending')) {
+          floatText(W/2, H/2 - 50, '✦ Free Reroll', '#cc88ff', 14, { rise: 30, life: 1.2 });
+        } else {
+          rerollsLeft--;
+        }
+        rollDice();
+        return;
+      }
+    }
+
+    // Consumable slot click — use or enter targeting mode.
+    {
+      const st = gs();
+      const targeting = st.consumableTargeting;
+      const slotIdx = consumableSlotAt(mx, my);
+      if (slotIdx >= 0) {
+        if (targeting && targeting.index === slotIdx) {
+          // Click the active targeting card again to cancel
+          gameActions.cancelTargeting();
+        } else if (st.consumables[slotIdx]) {
+          useConsumable(slotIdx);
+          sfxConsumeCard();
+        }
+        return;
+      }
+      // If we're in die-targeting mode and clicked a die
+      if (targeting && targeting.targetType === 'die') {
+        const half = DICE_SIZE * 0.48;
+        for (let i = 0; i < dice.length; i++) {
+          const d = dice[i];
+          if (mx >= d.absX - half && mx <= d.absX + half &&
+              my >= d.absY - half && my <= d.absY + half) {
+            useConsumable(targeting.index, [i]);
+            sfxConsumeCard();
+            return;
+          }
+        }
+      }
     }
     if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
     // Exit portal (endless only — in main run it shows on win screen)
@@ -3819,9 +3964,40 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
               oracle.name, oracleTooltipBody(oracle), meta);
   }
   ctx.save();
-  if (hover) { ctx.shadowColor = oracle.color; ctx.shadowBlur = 8; }
+  // Phase 8e: subtle breathing on available shop cards (not owned).
+  // Phase 8h: hover elevation with +4% scale and richer shadow.
+  if (!owned) {
+    const tVis = performance.now() / 1000;
+    const breathe = 1 + 0.015 * Math.sin(tVis * 1.8 + (x + y) * 0.017);
+    const scale = hover ? breathe * 1.04 : breathe;
+    ctx.translate(x + w/2, y + h/2);
+    ctx.scale(scale, scale);
+    ctx.translate(-(x + w/2), -(y + h/2));
+  }
+  if (hover) { ctx.shadowColor = oracle.color; ctx.shadowBlur = 14; }
   const bg = owned ? '#0a0820' : hover ? '#120a30' : '#0c0820';
   drawRoundRect(x, y, w, h, 12, bg, oracle.color, owned ? 1.5 : 2);
+
+  // Phase 8a: Holographic iridescent shimmer on legendary cards.
+  if (oracle.tier === 'legendary') {
+    const tVis = performance.now() / 1000;
+    const shim = ((tVis * 0.32) % 1.6) - 0.3;  // sweep 0→1 with offset
+    const hue = (tVis * 36) % 360;
+    const g = ctx.createLinearGradient(
+      x + shim * w - w * 0.35, y,
+      x + shim * w + w * 0.35, y + h
+    );
+    g.addColorStop(0,   `hsla(${hue},85%,62%,0)`);
+    g.addColorStop(0.4, `hsla(${(hue+60)%360},90%,74%,0.22)`);
+    g.addColorStop(0.6, `hsla(${(hue+120)%360},85%,72%,0.16)`);
+    g.addColorStop(1,   `hsla(${(hue+200)%360},80%,66%,0)`);
+    const prevOp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = g;
+    roundRect(x + 2, y + 2, w - 4, h - 4, 10);
+    ctx.fill();
+    ctx.globalCompositeOperation = prevOp;
+  }
 
   // Legendary badge
   if (oracle.tier === 'legendary' && !owned) {
@@ -4223,10 +4399,12 @@ function drawGame(t) {
     }
   }
 
-  // Dice (3D) — positions driven by absX/absY physics
+  // Dice (3D) — positions driven by absX/absY physics.
+  // Three.js owns the die body when useThreeDice is true; Canvas-2D is a fallback.
+  const _useThree = gs().useThreeDice;
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
-    drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
+    if (!_useThree) drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
     const upg = diceUpgrades[i];
     // Upgrade icon + rune dots below die
     {
@@ -4518,8 +4696,44 @@ function drawGame(t) {
   }
 
   txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+148, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt('Total Score', RP.x+RP.w/2, RP.y+166, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, RP.y+184, {size:15,color:'#e6c590',align:'center',bold:true});
+
+  // Active Blind HUD — shown during rounds. Boss Blinds get special treatment.
+  {
+    const ab = gs().activeBlind;
+    if (ab) {
+      const bh = 28;
+      const by = RP.y + 162;
+      const isBoss = ab.isBoss;
+      const col = ab.color || (isBoss ? '#ff4466' : '#b8a874');
+      drawRoundRect(RP.x+8, by, RP.w-16, bh, 6,
+        isBoss ? 'rgba(40,10,20,0.75)' : 'rgba(20,16,30,0.55)',
+        col, isBoss ? 2 : 1);
+      // Icon + name on one line; breathe the boss icon
+      const breathe = isBoss ? 1 + 0.08 * Math.sin(t * 3.2) : 1;
+      ctx.save();
+      ctx.translate(RP.x+22, by+bh/2);
+      ctx.scale(breathe, breathe);
+      ctx.translate(-(RP.x+22), -(by+bh/2));
+      txt(ab.icon || '✦', RP.x+22, by+bh/2+5, {size:16, color:col, align:'center', shadow:col});
+      ctx.restore();
+      txt(ab.name, RP.x+40, by+bh/2+4, {size:11, color:'#ecdec8', align:'left', bold:isBoss});
+      if (isBoss) {
+        // Keep the description compact; full description shown on hover tooltip (future).
+        const short = (ab.description || '').length > 34
+          ? (ab.description || '').slice(0, 34) + '…'
+          : (ab.description || '');
+        txt(short, RP.x+RP.w/2, by+bh+11, {size:8, color:'rgba(220,180,180,0.75)', align:'center', italic:true});
+      }
+    }
+  }
+
+  // Shift the Total Score labels down when a boss description is present
+  {
+    const ab = gs().activeBlind;
+    const totalY = RP.y + (ab && ab.isBoss ? 206 : 184);
+    txt('Total Score', RP.x+RP.w/2, totalY - 18, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
+    txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, totalY, {size:15,color:'#e6c590',align:'center',bold:true});
+  }
 
   // Hand preview panel (right side, shows estimate of current held hand)
   if (rolledOnce && !handInProgress) {
@@ -4568,6 +4782,91 @@ function drawGame(t) {
 
   drawParticles();
   drawRings();
+  // ── Owned Vouchers strip — tiny icons above the consumable row ──
+  {
+    const store = gs();
+    const owned = store.vouchers || [];
+    if (owned.length > 0) {
+      const icn = 22, gp = 4;
+      const totalW = owned.length * icn + (owned.length - 1) * gp;
+      const vx0 = CP.x + (CP.w - totalW) / 2;
+      const vy  = CP.y + CP.h - 112;
+      for (let i = 0; i < owned.length; i++) {
+        const def = lookupVoucher(owned[i]);
+        if (!def) continue;
+        const vx = vx0 + i * (icn + gp);
+        const hov = inRect(hoverX, hoverY, { x:vx, y:vy, w:icn, h:icn });
+        drawRoundRect(vx, vy, icn, icn, 4,
+          hov ? 'rgba(80,60,20,0.9)' : 'rgba(30,24,12,0.8)',
+          '#c89960', hov ? 2 : 1);
+        ctx.save();
+        ctx.shadowColor = '#c89960';
+        ctx.shadowBlur  = hov ? 6 : 2;
+        txt(def.icon || '✦', vx + icn/2, vy + 16, {size:13, color:'#ffdd88', align:'center'});
+        ctx.restore();
+        if (hov) {
+          // Defer tooltip to processTooltips via a minimal inline draw
+          const tipW = 180, tipH = 42;
+          const tipX = Math.min(W - tipW - 4, vx - tipW/2 + icn/2);
+          const tipY = vy - tipH - 4;
+          drawRoundRect(tipX, tipY, tipW, tipH, 6, 'rgba(10,6,20,0.95)', '#c89960', 1);
+          txt(def.name, tipX + 8, tipY + 14, {size:10, color:'#ffdd88', align:'left', bold:true});
+          txt(def.description, tipX + 8, tipY + 30, {size:8, color:'#ecdec8', align:'left', italic:true});
+        }
+      }
+    }
+  }
+
+  // ── Consumable hand (Phase 5) — four-slot strip just above the button row ──
+  {
+    const store = gs();
+    const slots = store.consumableSlots || 4;
+    const cards = store.consumables || [];
+    const sw = 40, sh = 52, gap = 6;
+    const totalW = slots * sw + (slots - 1) * gap;
+    const sx0 = CP.x + (CP.w - totalW) / 2;
+    const sy  = CP.y + CP.h - 84;
+    // Strip background
+    drawRoundRect(sx0 - 8, sy - 4, totalW + 16, sh + 10, 8,
+      'rgba(10,6,20,0.55)', 'rgba(90,60,140,0.35)', 1);
+    txt('CONSUMABLES', sx0 + totalW/2, sy - 8, {size:7, color:'rgba(200,170,220,0.5)', align:'center', bold:true});
+    for (let i = 0; i < slots; i++) {
+      const sx = sx0 + i * (sw + gap);
+      const card = cards[i];
+      const hov = inRect(hoverX, hoverY, { x:sx, y:sy, w:sw, h:sh });
+      if (!card) {
+        // Empty slot — dashed outline
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = 'rgba(120,90,170,0.28)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.restore();
+      } else {
+        const def = lookupConsumable(card.id) || {};
+        const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
+        drawRoundRect(sx, sy, sw, sh, 6,
+          targeting ? 'rgba(120,60,200,0.55)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(30,16,50,0.85)',
+          def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
+        // Icon
+        ctx.save();
+        ctx.shadowColor = def.color || '#cc88ff';
+        ctx.shadowBlur  = 5;
+        txt(def.icon || '?', sx + sw/2, sy + 22, {size:20, color:def.color || '#cc88ff', align:'center'});
+        ctx.restore();
+        // Name (compact)
+        const name = (def.name || '').slice(0, 8);
+        txt(name, sx + sw/2, sy + 41, {size:7, color:'#ecdec8', align:'center'});
+      }
+    }
+    // Targeting hint
+    if (store.consumableTargeting) {
+      const tt = store.consumableTargeting.targetType || 'target';
+      txt(`Click a ${tt.replace('_', ' ')}… (Esc to cancel)`,
+        CP.x + CP.w/2, sy - 24, {size:9, color:'#cc88ff', align:'center', italic:true});
+    }
+  }
+
   drawFloaters();
   drawComboPop();
   drawBanner();
@@ -4576,6 +4875,21 @@ function drawGame(t) {
     ctx.save(); ctx.globalAlpha=flashAlpha; ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
     flashAlpha = Math.max(0, flashAlpha - 0.035);
   }
+}
+
+// Hit-test the consumable strip for click handling. Returns index or -1.
+function consumableSlotAt(mx, my) {
+  const store = gs();
+  const slots = store.consumableSlots || 4;
+  const sw = 40, sh = 52, gap = 6;
+  const totalW = slots * sw + (slots - 1) * gap;
+  const sx0 = CP.x + (CP.w - totalW) / 2;
+  const sy  = CP.y + CP.h - 84;
+  for (let i = 0; i < slots; i++) {
+    const sx = sx0 + i * (sw + gap);
+    if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) return i;
+  }
+  return -1;
 }
 
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
@@ -5674,7 +5988,20 @@ function loop(now) {
   updateBanner(dt);
 
   // Tick the WebGL background nebula
-  tickBg(t, screen);
+  // Intensity drives background hue — pulls toward crimson as the player
+  // closes on their target, so the world visibly "heats up" under pressure.
+  let _bgIntensity = 0;
+  if (screen === 'game') {
+    const tgt = currentTarget();
+    if (tgt > 0) _bgIntensity = Math.min(1, roundScore / tgt);
+  }
+  tickBg(t, screen, _bgIntensity);
+
+  // Three.js dice tick — renders to #three canvas layered between #bg and #game.
+  // Only shows dice on the game screen; everywhere else they hide.
+  if (isDice3DReady()) {
+    tickDice3D(dice, diceUpgrades, screen === 'game');
+  }
 
   // Apply screen shake via canvas transform
   ctx.save();
@@ -5714,8 +6041,61 @@ function loop(now) {
 // ─── Boot ─────────────────────────────────────────────────────────────
 buildStonePattern();  // generate procedural stone texture for panels and board
 initRapier(); // fire-and-forget — game starts immediately; Rapier activates when ready
+// Three.js dice renderer — tries WebGL2; if it fails we silently fall back
+// to the Canvas-2D dice drawn inside drawGame()
+{
+  const threeCanvas = document.getElementById('three');
+  const ok = initDice3D(threeCanvas);
+  if (ok) ss({ useThreeDice: true });
+}
 loadScores();
 loadUnlocks();
+
+// Wire the consumables bridge so consumable apply(ctx, …) can mutate
+// legacy game state (dice, shards, oracles, runes) via concrete closures.
+wireConsumableBridge({
+  setDieFace: (idx, face) => {
+    if (dice[idx]) { dice[idx].face = face; SFX.unlock(); screenFlash(0.08); }
+  },
+  addShards: (n) => { shards = Math.max(0, shards + n); },
+  duplicateOracle: () => {
+    const cap = MAX_ORACLES + getVoucherEffect('extraOracleSlot', 0);
+    if (heldOracles.length === 0 || heldOracles.length >= cap) return false;
+    const src = heldOracles[Math.floor(Math.random() * heldOracles.length)];
+    heldOracles.push({ ...src });
+    return true;
+  },
+  handsLeft:    () => handsLeft,
+  setHandsLeft: (n) => { handsLeft = Math.max(0, n); },
+  rerollAllDice: (n) => {
+    for (const d of dice) {
+      let best = 1;
+      for (let i = 0; i < n; i++) best = Math.max(best, 1 + Math.floor(Math.random() * 6));
+      d.face = best;
+    }
+  },
+  destroyDice: (count) => {
+    for (let i = 0; i < count && dice.length > 1; i++) {
+      const idx = Math.floor(Math.random() * dice.length);
+      // Preserve upgrade/rune refunds implicit in sellDie pattern — minimal form:
+      dice.splice(idx, 1);
+      if (diceUpgrades[idx] !== undefined) diceUpgrades.splice(idx, 1);
+      if (diceRunes[idx]    !== undefined) diceRunes.splice(idx, 1);
+    }
+  },
+  convertAllDice: (face) => {
+    for (const d of dice) d.face = face;
+  },
+  addRuneToDie: (idx, slot, rune) => {
+    if (!diceRunes[idx]) return;
+    diceRunes[idx][slot] = rune;
+  },
+  pickRandomRune: () => {
+    if (!ALL_RUNES || ALL_RUNES.length === 0) return null;
+    return { ...ALL_RUNES[Math.floor(Math.random() * ALL_RUNES.length)] };
+  },
+});
+
 if (incoming.fromPortal) {
   playerName = incoming.username || playerName;
   nameEntry  = playerName;
