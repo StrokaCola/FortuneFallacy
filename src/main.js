@@ -18,7 +18,7 @@ import {
   consumePendingFlag,
 } from './systems/consumables.js';
 import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
-import { getVoucherEffect, grantRandomVoucher } from './systems/vouchers.js';
+import { getVoucherEffect, grantRandomVoucher, tryClaimFreeFirstReroll } from './systems/vouchers.js';
 import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
 import {
   ensureToneStarted,
@@ -1036,7 +1036,7 @@ const MAX_DICE        = 10;  // cap on total pool size
 const MAX_ORACLES     = 6;
 const SCORES_KEY      = 'fortunefallacy_scores';
 const SAVE_KEY_RUN    = 'fortunefallacy_activerun';
-const SAVE_VERSION    = 1;
+const SAVE_VERSION    = 2;
 // Replace with your Firebase Realtime Database URL (e.g. https://your-project-default-rtdb.firebaseio.com/scores)
 const FIREBASE_URL    = 'https://fortunefallacy-9908c-default-rtdb.firebaseio.com/scores';
 
@@ -1672,7 +1672,17 @@ function checkUnlocks() {
 }
 
 // ─── Save / Resume Active Run ─────────────────────────────────────────
-const SAVE_MIGRATIONS = { 1: x => x };
+const SAVE_MIGRATIONS = {
+  1: x => x,
+  2: b => {
+    // v1 → v2: add stub fields for new systems
+    b.consumables        = b.consumables        || [];
+    b.vouchers           = b.vouchers           || [];
+    b.currentAnte        = b.currentAnte        || 0;
+    b.currentBlindIndex  = b.currentBlindIndex  || 0;
+    return b;
+  },
+};
 const SAVEABLE_SCREENS = new Set(['hub','game','shop','forge','rune']);
 
 function _oracleById(id)  { return [...ALL_ORACLES,  ...UNLOCKABLE_ORACLES].find(o => o.id === id) || null; }
@@ -1712,6 +1722,10 @@ function serializeRunState() {
     lastHandScore: lastHandScore | 0,
     momentumStreak: momentumStreak | 0,
     runStats: JSON.parse(JSON.stringify(runStats)),
+    consumables: (gs().consumables || []).map(c => ({ id: c.id, type: c.type })),
+    vouchers:    gs().vouchers || [],
+    currentAnte: gs().currentAnte || 0,
+    currentBlindIndex: gs().currentBlindIndex || 0,
   };
 }
 
@@ -1744,7 +1758,7 @@ function restoreRunState(raw) {
     diceRunes     = (blob.diceRunes     || []).map(slots => (slots || []).map(id => id ? _runeById(id) : null));
     runeInventory = (blob.runeInventory || []).map(_runeById).filter(Boolean);
     if (diceUpgrades.length === 0) diceUpgrades = Array(DICE_COUNT).fill(null);
-    while (diceRunes.length < diceUpgrades.length) diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
+    while (diceRunes.length < diceUpgrades.length) diceRunes.push(Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
     shopTab      = blob.shopTab || 'oracles';
     shopStock    = {
       oracles:  (blob.shopStock?.oracles  || []).map(_oracleById ).filter(Boolean),
@@ -1769,6 +1783,13 @@ function restoreRunState(raw) {
     lastHandMeta   = { lastReroll: false };
     rolledOnce     = false;
     initDice();
+    // Hydrate Zustand store with persisted consumables/vouchers/blind state
+    ss({
+      consumables:       (blob.consumables || []).map(c => ({ id: c.id, type: c.type })),
+      vouchers:          blob.vouchers    || [],
+      currentAnte:       blob.currentAnte || 0,
+      currentBlindIndex: blob.currentBlindIndex || 0,
+    });
     return true;
   } catch (e) {
     console.warn('[FortuneFallacy] restoreRunState failed:', e);
@@ -1914,8 +1935,8 @@ function startRun(isEndless = false) {
   heldOracles    = [];
   comboStreak    = { id:null, count:0 };
   shards         = 0;
-  diceUpgrades   = Array(DICE_COUNT).fill(null);
-  diceRunes      = Array.from({length: DICE_COUNT}, () => Array(MAX_RUNE_SLOTS).fill(null));
+  diceUpgrades   = Array(getVoucherEffect('startingDice', DICE_COUNT)).fill(null);
+  diceRunes      = Array.from({length: getVoucherEffect('startingDice', DICE_COUNT)}, () => Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
   runeInventory  = [];
   runeSelInv  = null;
   runeSelSlot = null;
@@ -2801,7 +2822,7 @@ function openShop() {
     for (let i = 0; i < n; i++) oPool.push(o);
   });
   const pickedO = [];
-  while (pickedO.length < 3 && oPool.length > 0) {
+  while (pickedO.length < getVoucherEffect('shopSlots', 3) && oPool.length > 0) {
     const i = Math.floor(Math.random() * oPool.length);
     const o = oPool[i];
     if (!pickedO.find(p => p.id === o.id)) pickedO.push(o);
@@ -2811,13 +2832,15 @@ function openShop() {
 
   // Runes — random selection from all available
   const allRunesFull = [...ALL_RUNES, ...UNLOCKABLE_RUNES.filter(r => isUnlocked(r.unlock.id))];
-  shopStock.runes = [...allRunesFull].sort(() => Math.random() - 0.5).slice(0, 3);
+  shopStock.runes = [...allRunesFull].sort(() => Math.random() - 0.5).slice(0, getVoucherEffect('shopSlots', 3));
 
   // Dice upgrades — random selection
   const allDice = [...DICE_UPGRADES, ...UNLOCKABLE_DICE.filter(d => isUnlocked(d.unlock.id))];
-  shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, 3);
+  shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, getVoucherEffect('shopSlots', 3));
 
   shopTab = 'oracles';
+  // Reset free-reroll claim so the Restock voucher fires once per shop visit
+  ss({ freeRerollClaimedThisShop: false });
   slideIn('shop');
   saveActiveRun();
 }
@@ -3101,15 +3124,19 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allO=[...ALL_ORACLES,...UNLOCKABLE_ORACLES.filter(o=>isUnlocked(o.unlock.id))];
-        const unowned=allO.filter(o=>!heldOracles.find(h=>h.id===o.id));
-        const wts={common:3,uncommon:2,rare:1.3,legendary:0.5};
-        const wp=[]; unowned.forEach(o=>{const n=Math.round((wts[o.tier||'common'])*2);for(let i=0;i<n;i++)wp.push(o);});
-        const picked=[]; while(picked.length<3&&wp.length>0){const i=Math.floor(Math.random()*wp.length);const o=wp[i];if(!picked.find(p=>p.id===o.id))picked.push(o);wp.splice(i,1);}
-        shopStock.oracles=picked;
-        SFX.roll(); burst(W/2+170,H-34,'#aa66ff',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allO=[...ALL_ORACLES,...UNLOCKABLE_ORACLES.filter(o=>isUnlocked(o.unlock.id))];
+          const unowned=allO.filter(o=>!heldOracles.find(h=>h.id===o.id));
+          const wts={common:3,uncommon:2,rare:1.3,legendary:0.5};
+          const wp=[]; unowned.forEach(o=>{const n=Math.round((wts[o.tier||'common'])*2);for(let i=0;i<n;i++)wp.push(o);});
+          const picked=[]; while(picked.length<getVoucherEffect('shopSlots',3)&&wp.length>0){const i=Math.floor(Math.random()*wp.length);const o=wp[i];if(!picked.find(p=>p.id===o.id))picked.push(o);wp.splice(i,1);}
+          shopStock.oracles=picked;
+          SFX.roll(); burst(W/2+170,H-34,'#aa66ff',10,4);
+        }
+        return;
       }
     }
 
@@ -3133,11 +3160,15 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allR=[...ALL_RUNES,...UNLOCKABLE_RUNES.filter(r=>isUnlocked(r.unlock.id))];
-        shopStock.runes=allR.sort(()=>Math.random()-0.5).slice(0,3);
-        SFX.roll(); burst(W/2+170,H-34,'#55cc88',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allR=[...ALL_RUNES,...UNLOCKABLE_RUNES.filter(r=>isUnlocked(r.unlock.id))];
+          shopStock.runes=allR.sort(()=>Math.random()-0.5).slice(0,getVoucherEffect('shopSlots',3));
+          SFX.roll(); burst(W/2+170,H-34,'#55cc88',10,4);
+        }
+        return;
       }
     }
 
@@ -3154,7 +3185,7 @@ function handleClick(mx, my) {
             shards-=upg.cost;
             runStats.totalShardsSpent+=upg.cost;
             diceUpgrades.push({...upg});
-            diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
+            diceRunes.push(Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
             shopStock.upgrades.splice(i,1);
             SFX.oracle(); burst(mx,my,upg.color,14,4.5);
             floatText(mx,my-18,`+${upg.shortName} die`,upg.color,13);
@@ -3163,11 +3194,15 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allD=[...DICE_UPGRADES,...UNLOCKABLE_DICE.filter(d=>isUnlocked(d.unlock.id))];
-        shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,3);
-        SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allD=[...DICE_UPGRADES,...UNLOCKABLE_DICE.filter(d=>isUnlocked(d.unlock.id))];
+          shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,getVoucherEffect('shopSlots',3));
+          SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4);
+        }
+        return;
       }
       // Sell pool dice
       const N=diceUpgrades.length;
@@ -3204,7 +3239,7 @@ function handleClick(mx, my) {
       const slotW = Math.round(dieCardW/2 - 14*sc);
       const slotH = Math.round(46*sc);
       const slotY = dieCardY + dieCardH - Math.round(58*sc);
-      for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+      for (let si = 0; si < getVoucherEffect('runeSlots', MAX_RUNE_SLOTS); si++) {
         const sx = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
         if (inRect(mx,my,{x:sx,y:slotY,w:slotW,h:slotH})) {
           if (runeSelInv !== null) {
@@ -5300,7 +5335,7 @@ function drawRuneTable(t) {
     const slotW = Math.round(dieCardW/2 - 14*sc);
     const slotH = Math.round(46*sc);
     const slotY = cy + dieCardH - Math.round(58*sc);
-    for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+    for (let si = 0; si < getVoucherEffect('runeSlots', MAX_RUNE_SLOTS); si++) {
       const sx  = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
       const rune = diceRunes[di] && diceRunes[di][si];
       const selSlot = runeSelSlot && runeSelSlot.die === di && runeSelSlot.slot === si;
