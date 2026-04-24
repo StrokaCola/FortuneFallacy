@@ -33,7 +33,7 @@ export async function ensureToneStarted() {
 export function initMusic(initialVolume = 0.5) {
   if (bgHowl) return bgHowl;
   bgHowl = new Howl({
-    src: ['/bg-music.mp3'],
+    src: [`${import.meta.env.BASE_URL}bg-music.mp3`],
     loop: true,
     volume: clamp01(initialVolume),
     html5: true,  // stream rather than decode into memory

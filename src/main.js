@@ -110,7 +110,7 @@ function getMaster() {
 }
 
 // ─── Background music ─────────────────────────────────────────────────
-const bgMusic    = new Audio('/bg-music.mp3');
+const bgMusic    = new Audio(`${import.meta.env.BASE_URL}bg-music.mp3`);
 bgMusic.loop     = true;
 bgMusic.volume   = musicVolume;
 let   bgStarted  = false;
@@ -566,8 +566,9 @@ let RAPIER_LIB = null;  // set after dynamic import resolves
 
 async function initRapier() {
   try {
-    const rapierUrl = new URL('/rapier/rapier.mjs', window.location.origin).href;
-    const wasmUrl   = new URL('/rapier/rapier_wasm3d_bg.wasm', window.location.origin).href;
+    const base      = import.meta.env.BASE_URL;
+    const rapierUrl = `${base}rapier/rapier.mjs`;
+    const wasmUrl   = `${base}rapier/rapier_wasm3d_bg.wasm`;
     const mod = await import(/* @vite-ignore */ rapierUrl);
     await mod.init({ module_or_path: wasmUrl });
     RAPIER_LIB = mod;
