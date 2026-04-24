@@ -28,15 +28,11 @@ import { W, H, CP, BOARD_H, PHYS_SCALE } from '../data/constants.js';
 
 export const DICE_SKINS = {
   ivory: {
-  "id": "Plain",
-  "name": "Plain Die",
-  "baseColor": "#f0ead8",
-  "pipColor": "#100a04",
-  "roughness": 0.38,
-  "metalness": 0.08,
-  "cornerRadius": 0.1,
-  "glbUrl": public/Plain
-},
+    id: 'ivory', name: 'Ivory',
+    baseColor: '#f0ead8', pipColor: '#100a04',
+    roughness: 0.38, metalness: 0.08, cornerRadius: 0.10,
+    glbUrl: null,
+  },
   obsidian: {
     id: 'obsidian', name: 'Obsidian',
     baseColor: '#1a1218', pipColor: '#d4a820',
@@ -95,10 +91,13 @@ let ambient    = null;
 let dirLight   = null;
 let rimLight   = null;
 let fillLight  = null;
+let underLight = null;
 let diceMeshes = [];
 let faceTextureCache = new Map();
 let ready      = false;
 let clock      = null;
+let trayFloor   = null;
+let cameraState = { x: 0, z: 0, zoom: 1.02, lift: 8.1, dolly: 3.3 };
 
 // Custom GLB geometry loaded via loadDiceModel(). When non-null, dice use
 // this geometry instead of the procedural RoundedBoxGeometry.
@@ -185,8 +184,10 @@ export function initDice3D(canvas) {
   const halfW = (W / 2) / WORLD_PX_PER_UNIT;
   const halfH = (H / 2) / WORLD_PX_PER_UNIT;
   camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 100);
-  camera.position.set(0, 8, 3.2);
+  camera.position.set(0, cameraState.lift, cameraState.dolly);
+  camera.zoom = cameraState.zoom;
   camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
 
   // ── Lights ────────────────────────────────────────────────────────────
   ambient = new THREE.AmbientLight(0xfff5e0, 0.40);
@@ -215,6 +216,10 @@ export function initDice3D(canvas) {
   rimLight = new THREE.PointLight(0xcc88ff, 1.0, 14, 1.5);
   rimLight.position.set(4.5, 3.5, -1.2);
   scene.add(rimLight);
+
+  underLight = new THREE.PointLight(0x7f4dff, 0.32, 12, 2);
+  underLight.position.set(0, 0.35, 0.5);
+  scene.add(underLight);
 
   // ── 3D Tray ───────────────────────────────────────────────────────────
   _initTray();
@@ -263,13 +268,17 @@ function _initTray() {
 
   // Felt floor
   const feltMat = new THREE.MeshStandardMaterial({
-    color: 0x0e0b07, roughness: 0.94, metalness: 0.0,
+    color: 0x120e09,
+    roughness: 0.95,
+    metalness: 0.0,
+    emissive: 0x12090f,
+    emissiveIntensity: 0.18,
   });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HW * 2, HD * 2), feltMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.01;
-  floor.receiveShadow = true;
-  scene.add(floor);
+  trayFloor = new THREE.Mesh(new THREE.PlaneGeometry(HW * 2, HD * 2), feltMat);
+  trayFloor.rotation.x = -Math.PI / 2;
+  trayFloor.position.y = -0.01;
+  trayFloor.receiveShadow = true;
+  scene.add(trayFloor);
 
   // Dark wood wall material
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c0f06, roughness: 0.72, metalness: 0.05 });
@@ -327,6 +336,19 @@ function _initTray() {
   const frameGeo = new THREE.BufferGeometry().setFromPoints(framePts);
   const frameMat = new THREE.LineBasicMaterial({ color: 0xb8860b, transparent: true, opacity: 0.35 });
   scene.add(new THREE.Line(frameGeo, frameMat));
+
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(Math.max(HW, HD) * 0.88, Math.max(HW, HD) * 1.14, 96),
+    new THREE.MeshBasicMaterial({
+      color: 0x8a54ff,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+    })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.y = 0.012;
+  scene.add(halo);
 }
 
 // ─── Face textures ────────────────────────────────────────────────────────
@@ -499,11 +521,20 @@ function _rebuildAllMeshes() {
 function _toWorldX(absX) { return (absX - PHYS_CX_PX) / WORLD_PX_PER_UNIT; }
 function _toWorldZ(absY) { return (absY - PHYS_CZ_PX)  / WORLD_PX_PER_UNIT; }
 
+function _expLerp(current, target, dt, rate) {
+  return current + (target - current) * (1 - Math.exp(-rate * dt));
+}
+
+function _clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 // ─── Per-frame tick ───────────────────────────────────────────────────────
 export function tickDice3D(dice, diceUpgrades, visible) {
   if (!ready || !dice) return;
 
-  const t    = clock.getElapsedTime();
+  const dt   = Math.min(clock.getDelta(), 0.05);
+  const t    = clock.elapsedTime;
   const skin = getActiveSkin();
 
   // Sync mesh count
@@ -518,6 +549,47 @@ export function tickDice3D(dice, diceUpgrades, visible) {
     m.geometry.dispose();
     for (const mat of m.material) mat.dispose();
   }
+
+  let activeCount = 0;
+  let centroidX = 0;
+  let centroidZ = 0;
+  let energy = 0;
+  for (let i = 0; i < dice.length; i++) {
+    const d = dice[i];
+    centroidX += _toWorldX(d.absX);
+    centroidZ += _toWorldZ(d.absY);
+    if (d.rolling) {
+      activeCount++;
+      energy += Math.hypot(d.pvx || 0, d.pvy || 0) / WORLD_PX_PER_UNIT;
+      energy += Math.max(0, -(d.bounceY || 0)) * 0.12;
+    }
+  }
+  if (dice.length > 0) {
+    centroidX /= dice.length;
+    centroidZ /= dice.length;
+  }
+  const action = _clamp(energy / Math.max(1, dice.length) / 8, 0, 1);
+  const targetCamX = _clamp(centroidX * 0.18, -0.45, 0.45);
+  const targetCamZ = _clamp(centroidZ * 0.12, -0.24, 0.24);
+  const targetZoom = activeCount > 0 ? 0.96 - action * 0.04 : 1.03;
+  const targetLift = 8.15 + action * 0.55;
+  const targetDolly = 3.25 + action * 0.18;
+  cameraState.x = _expLerp(cameraState.x, targetCamX, dt, 4.5);
+  cameraState.z = _expLerp(cameraState.z, targetCamZ, dt, 4.5);
+  cameraState.zoom = _expLerp(cameraState.zoom, targetZoom, dt, 3.5);
+  cameraState.lift = _expLerp(cameraState.lift, targetLift, dt, 3.2);
+  cameraState.dolly = _expLerp(cameraState.dolly, targetDolly, dt, 3.2);
+  camera.position.set(cameraState.x, cameraState.lift, cameraState.dolly);
+  camera.lookAt(cameraState.x * 0.25, 0, cameraState.z);
+  camera.zoom = cameraState.zoom;
+  camera.updateProjectionMatrix();
+
+  dirLight.position.x = _expLerp(dirLight.position.x, 4 + cameraState.x * 0.8, dt, 2.8);
+  dirLight.position.z = _expLerp(dirLight.position.z, 6 + cameraState.z * 0.5, dt, 2.8);
+  rimLight.intensity = _expLerp(rimLight.intensity, 1.0 + action * 0.35, dt, 4.0);
+  fillLight.intensity = _expLerp(fillLight.intensity, 0.45 + action * 0.18, dt, 4.0);
+  if (underLight) underLight.intensity = _expLerp(underLight.intensity, 0.32 + action * 0.28, dt, 4.0);
+  if (trayFloor) trayFloor.material.emissiveIntensity = _expLerp(trayFloor.material.emissiveIntensity, 0.18 + action * 0.12, dt, 3.5);
 
   for (let i = 0; i < dice.length; i++) {
     const d    = dice[i];
@@ -576,6 +648,10 @@ export function tickDice3D(dice, diceUpgrades, visible) {
       if (st < 0.08)      sp = 1 + 0.28 * (st / 0.08);
       else if (st < 0.18) sp = 1.28 - 0.18 * ((st - 0.08) / 0.10);
       else                sp = 1.10 - 0.10 * Math.min(1, (st - 0.18) / 0.10);
+    }
+    if (!d.rolling && d.revealT != null) {
+      const reveal = Math.max(0, 1 - Math.min(1, d.revealT / 0.22));
+      sp += Math.sin(reveal * Math.PI) * 0.08;
     }
     mesh.scale.setScalar(sp);
   }

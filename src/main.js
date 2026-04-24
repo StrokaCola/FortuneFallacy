@@ -38,20 +38,20 @@ if (bgCanvas) initBg(bgCanvas);
 const PHYSICS = (()=>{
   const saved = localStorage.getItem('ff_physics');
   const defaults = {
-    throwSpeedX:          700,
-    throwSpeedY:          400,
-    launchBounceBase:      55,
-    launchBounceRand:      20,
-    initSpinXY:            70,
-    initSpinZ:             40,
-    rollDurBase:         0.65,
-    rollDurStagger:     0.055,
-    rollDurRand:         0.10,
-    tumblePhase:         0.78,
-    tumbleRate:         0.055,
-    spinCoupling:        0.30,
-    spinFriction:        0.25,
-    gravity:              260,
+    throwSpeedX:          760,
+    throwSpeedY:          470,
+    launchBounceBase:      62,
+    launchBounceRand:      18,
+    initSpinXY:            64,
+    initSpinZ:             52,
+    rollDurBase:         0.74,
+    rollDurStagger:     0.065,
+    rollDurRand:         0.08,
+    tumblePhase:         0.82,
+    tumbleRate:         0.070,
+    spinCoupling:        0.36,
+    spinFriction:        0.20,
+    gravity:              290,
     floorRestitution:    0.25,
     hopThreshold:          60,
     maxHops:                2,
@@ -61,19 +61,19 @@ const PHYSICS = (()=>{
     landingSpinX:          12,
     landingSpinZ:          10,
     landingFriction:     0.60,
-    airDrag:             0.48,
-    groundFriction:      0.04,
-    wallRestitution:     0.42,
+    airDrag:             0.52,
+    groundFriction:      0.06,
+    wallRestitution:     0.46,
     wallSpinY:           0.03,
     wallSpinZ:          0.022,
-    collisionRestitution: 0.82,
+    collisionRestitution: 0.88,
     collisionGap:           2,
     collisionSpin:       0.09,
     collisionHopThreshold: 35,
     collisionHopBase:       5,
     collisionHopFactor:  0.022,
-    landBounceVel:          9,
-    glideSpeed:         0.001,
+    landBounceVel:         11,
+    glideResponse:        15,
   };
   if (!saved) return defaults;
   try { return Object.assign({}, defaults, JSON.parse(saved)); } catch { return defaults; }
@@ -733,6 +733,70 @@ function drawRoundRect(x, y, w, h, r, fill, stroke, lw = 2) {
   roundRect(x, y, w, h, r);
   if (fill)   { ctx.fillStyle = fill;     ctx.fill(); }
   if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+}
+
+function drawInsetPanel(x, y, w, h, accent = '#c89960', opts = {}) {
+  const {
+    fillTop = 'rgba(18,12,8,0.92)',
+    fillBot = 'rgba(8,6,4,0.95)',
+    alpha = 1,
+    radius = 10,
+  } = opts;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const g = ctx.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0, fillTop);
+  g.addColorStop(1, fillBot);
+  drawRoundRect(x, y, w, h, radius, g, `rgba(0,0,0,0.35)`, 1);
+  ctx.strokeStyle = accent;
+  ctx.globalAlpha = alpha * 0.42;
+  ctx.lineWidth = 1;
+  roundRect(x + 1.5, y + 1.5, w - 3, h - 3, Math.max(4, radius - 2));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStatChip(x, y, w, h, label, value, accent = '#c89960') {
+  drawInsetPanel(x, y, w, h, accent, {
+    fillTop: 'rgba(26,18,10,0.88)',
+    fillBot: 'rgba(10,7,4,0.94)',
+    radius: 9,
+  });
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(220,205,180,0.58)';
+  ctx.font = `bold 8px ${SANS}`;
+  ctx.fillText(label.toUpperCase(), x + w / 2, y + 12);
+  ctx.fillStyle = '#f3e4c7';
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 8;
+  ctx.font = `bold 17px ${SERIF}`;
+  ctx.fillText(String(value), x + w / 2, y + 31);
+  ctx.restore();
+}
+
+function drawScreenHeader(title, subtitle, accent, icon = '✦', opts = {}) {
+  const { badge = null, badgeAccent = '#c89960' } = opts;
+  drawInsetPanel(24, 18, W - 48, 62, accent, {
+    fillTop: 'rgba(16,10,24,0.90)',
+    fillBot: 'rgba(8,6,14,0.96)',
+    radius: 14,
+  });
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = accent;
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 12;
+  ctx.font = `bold 22px ${SERIF}`;
+  ctx.fillText(`${icon} ${title} ${icon}`, W / 2, 44);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(220,208,190,0.68)';
+  ctx.font = `bold 10px ${SANS}`;
+  ctx.fillText(subtitle, W / 2, 62);
+  ctx.restore();
+  if (badge) {
+    drawStatChip(W - 122, 26, 88, 38, badge.label, badge.value, badgeAccent);
+  }
 }
 
 // ─── Ornament helpers ─────────────────────────────────────────────────
@@ -2014,6 +2078,45 @@ function goalLabel() {
   return endless ? `Endless ${runGoal + 1}` : `Goal ${runGoal + 1} / ${GOAL_TARGETS.length}`;
 }
 
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function normalizedBoardOffset(d) {
+  const cx = CP.x + CP.w * 0.5;
+  const cy = BOARD_Y + BOARD_H * 0.5;
+  const nx = (d.absX - cx) / Math.max(1, CP.w * 0.5 - DICE_SIZE);
+  const ny = (d.absY - cy) / Math.max(1, BOARD_H * 0.5 - DICE_SIZE);
+  const len = Math.hypot(nx, ny);
+  if (len < 0.001) {
+    const a = Math.random() * Math.PI * 2;
+    return { x: Math.cos(a), y: Math.sin(a) };
+  }
+  return { x: nx / len, y: ny / len };
+}
+
+function computeRollLaunch(d, idx, total) {
+  const outward = normalizedBoardOffset(d);
+  const inwardX = -outward.x;
+  const inwardY = -outward.y;
+  const tangentX = -inwardY;
+  const tangentY = inwardX;
+  const lane = total > 1 ? (idx / (total - 1)) * 2 - 1 : 0;
+  const inwardMag = PHYSICS.throwSpeedX * randRange(0.72, 0.92);
+  const tangentMag = PHYSICS.throwSpeedX * (lane * 0.18 + randRange(-0.08, 0.08));
+  const chaosMag = PHYSICS.throwSpeedX * randRange(0.04, 0.10);
+  const chaosA = Math.random() * Math.PI * 2;
+  const chaosX = Math.cos(chaosA) * chaosMag;
+  const chaosY = Math.sin(chaosA) * chaosMag;
+  return {
+    lane,
+    outwardX: outward.x,
+    outwardY: outward.y,
+    vx: inwardX * inwardMag + tangentX * tangentMag + chaosX,
+    vy: inwardY * (PHYSICS.throwSpeedY * randRange(0.68, 0.92)) + tangentY * (tangentMag * 0.62) + chaosY * 0.55,
+  };
+}
+
 // ─── Natural settle (Rapier path) ─────────────────────────────────────
 function settleDie(d, dIdx) {
   if (!d.rolling) return;
@@ -2074,6 +2177,7 @@ function rollDice() {
   targets.forEach((d, i) => {
     const dIdx = dice.indexOf(d);
     const rupg = diceUpgrades[dIdx];
+    const launch = computeRollLaunch(d, i, targets.length);
     d.faceMin = rupg?.rollMin ?? 1;
     d.faceMax = rupg?.rollMax ?? 6;
     d.rolling = true;
@@ -2082,19 +2186,15 @@ function rollDice() {
     d.settling = false;
     d.settleFrames = 0;
     // Wild spin
-    d.vx = (Math.random() - 0.5) * PHYSICS.initSpinXY;
-    d.vy = (Math.random() - 0.5) * PHYSICS.initSpinXY;
-    d.vz = (Math.random() - 0.5) * PHYSICS.initSpinZ;
+    d.vx = -launch.outwardY * PHYSICS.initSpinXY * randRange(0.65, 1.05) + randRange(-8, 8);
+    d.vy =  launch.outwardX * PHYSICS.initSpinXY * randRange(0.65, 1.05) + randRange(-8, 8);
+    d.vz = (Math.random() - 0.5) * PHYSICS.initSpinZ + launch.lane * 8;
     // Anticipation bounce — stronger launch
     d.bounceY  = 0;
     d.bounceVY = -(PHYSICS.launchBounceBase + Math.random() * PHYSICS.launchBounceRand);
-    // Table throw — guaranteed minimum speed so every die travels visibly
-    const throwAngle = Math.random() * Math.PI * 2;
-    const throwMin   = PHYSICS.throwSpeedX * 0.45;
-    const throwMax   = PHYSICS.throwSpeedX * 1.0;
-    const throwMag   = throwMin + Math.random() * (throwMax - throwMin);
-    d.pvx = Math.cos(throwAngle) * throwMag;
-    d.pvy = Math.sin(throwAngle) * throwMag * (PHYSICS.throwSpeedY / PHYSICS.throwSpeedX);
+    // Deliberate inward toss with a little side-slip reads better than pure noise.
+    d.pvx = launch.vx;
+    d.pvy = launch.vy;
     d.bounceCount = 0;
     if (rapierWorld && RAPIER_LIB) {
       // Rapier path: face determined on natural settle — set placeholder for safety
@@ -2110,18 +2210,20 @@ function rollDice() {
           .setLinearDamping(1.4)
           .setAngularDamping(0.6)
       );
+      d.physBody.enableCcd(true);
       rapierWorld.createCollider(
         R.ColliderDesc.cuboid(RAPIER_DIE_HALF, RAPIER_DIE_HALF, RAPIER_DIE_HALF)
-          .setRestitution(0.25).setFriction(0.70),
+          .setRestitution(0.22).setFriction(0.78),
         d.physBody
       );
       // Velocity: X/Z = table throw, Y = upward bounce launch
       d.physBody.setLinvel({ x: d.pvx / PHYS_SCALE, y: -d.bounceVY / PHYS_SCALE, z: d.pvy / PHYS_SCALE }, true);
       // Angular velocity coupled to throw direction so die looks like it's rolling
       const physVX = d.pvx / PHYS_SCALE, physVZ = d.pvy / PHYS_SCALE;
-      const rollX = physVZ / RAPIER_DIE_HALF + (Math.random() - 0.5) * 6;
-      const rollZ = -physVX / RAPIER_DIE_HALF + (Math.random() - 0.5) * 6;
-      d.physBody.setAngvel({ x: rollX, y: (Math.random() - 0.5) * 4, z: rollZ }, true);
+      const spinScale = randRange(0.85, 1.18);
+      const rollX = physVZ / RAPIER_DIE_HALF * spinScale + randRange(-2.5, 2.5);
+      const rollZ = -physVX / RAPIER_DIE_HALF * spinScale + randRange(-2.5, 2.5);
+      d.physBody.setAngvel({ x: rollX, y: randRange(-2.0, 2.0), z: rollZ }, true);
     } else {
       // Legacy path: predetermine face now
       d.face = d.faceMin + Math.floor(Math.random() * (d.faceMax - d.faceMin + 1));
@@ -3864,16 +3966,27 @@ function drawBoard(cx, topY, width, height) {
 }
 
 // ─── Button drawing ───────────────────────────────────────────────────
-function drawBtn(r, label, enabled, hot = false) {
+function drawBtn(r, label, enabled, hot = false, opts = {}) {
+  const { sublabel = '', accent = null } = opts;
   const hover = inRect(hoverX, hoverY, r) && enabled;
   const isActive = hot && hover;
+  const borderAccent = accent || (hot ? '#c89960' : '#8b6a2a');
   const bg    = !enabled ? '#0c0a08' : isActive ? '#281e0e' : hot ? '#1e1608' : hover ? '#1a1408' : '#110e06';
-  const bdr   = !enabled ? '#2a2018' : isActive ? '#e8b870' : hot ? '#c89960' : hover ? '#a07830' : '#5a4010';
+  const bdr   = !enabled ? '#2a2018' : isActive ? '#e8b870' : hover ? borderAccent : '#5a4010';
   ctx.save();
   const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
   grd.addColorStop(0, bg);
-  grd.addColorStop(1, 'rgba(0,0,0,0.55)');
+  grd.addColorStop(0.52, enabled ? 'rgba(38,28,14,0.94)' : 'rgba(16,12,8,0.94)');
+  grd.addColorStop(1, 'rgba(0,0,0,0.70)');
   drawRoundRect(r.x, r.y, r.w, r.h, 8, grd, bdr, 1.5);
+  if (enabled) {
+    const sheen = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h * 0.7);
+    sheen.addColorStop(0, isActive ? 'rgba(255,245,220,0.20)' : hover ? 'rgba(255,245,220,0.12)' : 'rgba(255,245,220,0.07)');
+    sheen.addColorStop(1, 'rgba(255,245,220,0)');
+    ctx.fillStyle = sheen;
+    roundRect(r.x + 1, r.y + 1, r.w - 2, Math.max(10, r.h * 0.58), 7);
+    ctx.fill();
+  }
   // Stone texture on button
   if (stonePattern && enabled) {
     ctx.save();
@@ -3901,13 +4014,19 @@ function drawBtn(r, label, enabled, hot = false) {
   ctx.stroke();
   // Gold glow on active/hover
   if (enabled && (hover || hot)) {
-    ctx.shadowColor = isActive ? '#e8b870' : '#c89960';
+    ctx.shadowColor = isActive ? '#e8b870' : borderAccent;
     ctx.shadowBlur  = isActive ? 18 : 9;
   }
   ctx.fillStyle = enabled ? (isActive ? '#fff8e8' : hot ? '#f0dea8' : hover ? '#e8d498' : '#c8b878') : '#5a4830';
-  ctx.font      = `bold 15px ${SERIF}`;
+  ctx.font      = `bold ${sublabel ? 14 : 15}px ${SERIF}`;
   ctx.textAlign = 'center';
-  ctx.fillText(label, r.x + r.w/2, r.y + r.h/2 + 5);
+  ctx.fillText(label, r.x + r.w/2, r.y + (sublabel ? r.h/2 + 1 : r.h/2 + 5));
+  if (sublabel) {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = enabled ? 'rgba(235,220,190,0.62)' : 'rgba(120,104,84,0.72)';
+    ctx.font = `bold 8px ${SANS}`;
+    ctx.fillText(sublabel.toUpperCase(), r.x + r.w / 2, r.y + r.h - 9);
+  }
   ctx.restore();
 }
 
@@ -4440,14 +4559,25 @@ function drawGame(t) {
 
   // Center panel
   ornamentFrame(CP.x, CP.y, CP.w, CP.h, '#2a1880');
-  // Ornate title with goal label (replaces plain header)
+  drawInsetPanel(CP.x + 10, CP.y + 10, CP.w - 20, 52, '#8a6fe0', {
+    fillTop: 'rgba(18,14,30,0.88)',
+    fillBot: 'rgba(9,8,18,0.94)',
+    radius: 12,
+  });
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#c89960';
-  ctx.font = `bold 20px ${SERIF}`;
+  ctx.font = `bold 19px ${SERIF}`;
   ctx.fillText(goalLabel(), CP.x + CP.w/2, CP.y + 30);
+  ctx.fillStyle = 'rgba(230,220,245,0.62)';
+  ctx.font = `bold 9px ${SANS}`;
+  ctx.fillText(`ROUND TARGET ${currentTarget().toLocaleString()}`, CP.x + CP.w/2, CP.y + 45);
   ctx.restore();
-  panelHeader(CP.x + CP.w/2, CP.y + 46, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
+  panelHeader(CP.x + CP.w/2, CP.y + 72, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
+  drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, '#7f69ff');
+  drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, '#c89960');
+  drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, '#d9a14c');
+  drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, '#66c8ff');
 
   // Board surface behind dice
   drawBoard(CP.x + CP.w/2, BOARD_Y, CP.w - 16, BOARD_H);
@@ -4456,16 +4586,17 @@ function drawGame(t) {
   {
     const trayX = HOLD_X0 - 10;
     const trayW = HOLD_TOTAL + 20;
-    const trayBG = ctx.createLinearGradient(0, HOLD_Y, 0, HOLD_Y + HOLD_H);
-    trayBG.addColorStop(0, 'rgba(22,13,7,0.55)');
-    trayBG.addColorStop(1, 'rgba(12,6,3,0.7)');
-    drawRoundRect(trayX, HOLD_Y, trayW, HOLD_H, 8, trayBG, 'rgba(200,153,96,0.22)', 1);
+    drawInsetPanel(trayX, HOLD_Y, trayW, HOLD_H, '#c89960', {
+      fillTop: 'rgba(22,13,7,0.58)',
+      fillBot: 'rgba(10,6,3,0.76)',
+      radius: 9,
+    });
     // Label
     ctx.save();
-    ctx.fillStyle = 'rgba(200,170,120,0.55)';
-    ctx.font = `bold 9px ${SERIF}`;
+    ctx.fillStyle = 'rgba(220,196,150,0.64)';
+    ctx.font = `bold 8px ${SANS}`;
     ctx.textAlign = 'center';
-    ctx.fillText('— HELD —', CP.x + CP.w/2, HOLD_Y - 4);
+    ctx.fillText(`HELD DICE ${trayOrder.length}/${MAX_HELD}`, CP.x + CP.w/2, HOLD_Y - 5);
     ctx.restore();
     // Slot outlines
     const held = heldCount();
@@ -4600,7 +4731,17 @@ function drawGame(t) {
   const prev = canPlay ? previewHand() : null;
   const oneShot = prev && (prev.total + roundScore >= currentTarget());
 
-  drawBtn(BTN_ROLL, rolledOnce ? `Reroll  (${rerollsLeft} left)` : 'Roll Dice', canRoll);
+  drawInsetPanel(CP.x + 22, BTN_ROLL.y - 10, CP.w - 44, 66, oneShot ? '#cc66ff' : '#c89960', {
+    fillTop: 'rgba(18,13,9,0.84)',
+    fillBot: 'rgba(8,6,4,0.90)',
+    radius: 11,
+    alpha: 0.95,
+  });
+
+  drawBtn(BTN_ROLL, rolledOnce ? 'Reroll Dice' : 'Roll Dice', canRoll, false, {
+    sublabel: rolledOnce ? `${rerollsLeft} remaining` : 'launch the next throw',
+    accent: '#c89960',
+  });
 
   // One-shot glow + lightning on Play Hand button
   if (oneShot) {
@@ -4629,7 +4770,10 @@ function drawGame(t) {
       }
     }
   }
-  drawBtn(BTN_PLAY, 'Play Hand  ✦', canPlay, canPlay || oneShot);
+  drawBtn(BTN_PLAY, 'Play Hand  ✦', canPlay, canPlay || oneShot, {
+    sublabel: prev ? `${prev.combo.name} for ${Math.floor(prev.total).toLocaleString()}` : 'score selected dice',
+    accent: oneShot ? '#cc66ff' : '#8877cc',
+  });
 
   if (rolledOnce && !handInProgress)
     txt(trayOrder.length > 1 ? 'Click dice to hold · ◀▶ to reorder' : 'Click dice to hold / release them',
@@ -4670,10 +4814,12 @@ function drawGame(t) {
     ctx.restore();
   }
   txt('/ '+currentTarget().toLocaleString(), RP.x+RP.w/2, RP.y+74, {size:11,color:'rgba(200,180,255,0.55)',align:'center'});
+  drawStatChip(RP.x + 12, RP.y + 108, 82, 36, 'Need', Math.max(0, currentTarget() - Math.floor(displayRoundScore)).toLocaleString(), '#cc6688');
+  drawStatChip(RP.x + RP.w - 94, RP.y + 108, 82, 36, 'Rate', `${Math.round(Math.min(999, (displayRoundScore / Math.max(1, currentTarget())) * 100))}%`, '#66c8ff');
 
   // Progress bar
   const prog = Math.min(1, displayRoundScore/currentTarget());
-  const bx=RP.x+12, by=RP.y+84, bw=RP.w-24, bh=14;
+  const bx=RP.x+12, by=RP.y+154, bw=RP.w-24, bh=14;
   const isLava = firstHandSpectrumGoal === runGoal;
   drawRoundRect(bx, by, bw, bh, 5, '#0a0818', '#2a1866');
   if (prog>0) {
@@ -4784,28 +4930,28 @@ function drawGame(t) {
 
   // Goal dots
   if (!endless) {
-    txt('Run Progress', RP.x+RP.w/2, RP.y+116, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
+    txt('Run Progress', RP.x+RP.w/2, RP.y+186, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
     for (let i = 0; i < GOAL_TARGETS.length; i++) {
       const dx = RP.x + 14 + i*(RP.w-28)/(GOAL_TARGETS.length-1);
       ctx.save();
       if (i<runGoal) { ctx.fillStyle='#c89960'; ctx.shadowColor='#c89960'; ctx.shadowBlur=2; }
       else if (i===runGoal) { ctx.fillStyle='#7733ee'; ctx.shadowColor='#7733ee'; ctx.shadowBlur=4; }
       else { ctx.fillStyle='#1a1240'; }
-      ctx.beginPath(); ctx.arc(dx, RP.y+128, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(dx, RP.y+198, 5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   } else {
-    txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+120, {size:13,color:'#8844ee',align:'center',bold:true});
+    txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+190, {size:13,color:'#8844ee',align:'center',bold:true});
   }
 
-  txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+148, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
+  txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+218, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Active Blind HUD — shown during rounds. Boss Blinds get special treatment.
   {
     const ab = gs().activeBlind;
     if (ab) {
       const bh = 28;
-      const by = RP.y + 162;
+      const by = RP.y + 232;
       const isBoss = ab.isBoss;
       const col = ab.color || (isBoss ? '#ff4466' : '#b8a874');
       drawRoundRect(RP.x+8, by, RP.w-16, bh, 6,
@@ -4949,16 +5095,28 @@ function consumableSlotAt(mx, my) {
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
 function drawShop(t) {
   drawBG(t);
-  txt('THE SHOP', W/2, 42, {size:24,color:'#aa66ff',align:'center',bold:true,shadow:'#aa66ff'});
+  drawScreenHeader('The Shop', `Goal ${runGoal} cleared  ·  spend shards before continuing`, '#aa66ff', '✦', {
+    badge: { label: 'Shards', value: shards },
+    badgeAccent: '#b8a874',
+  });
   txt(`Goal ${runGoal} cleared!  ·  Spend your shards before continuing.`, W/2, 60, {size:11,color:'rgba(180,160,255,0.55)',align:'center'});
-  drawRoundRect(W-158, 14, 144, 34, 8, 'rgba(200,153,96,0.08)', '#b8a874', 1.5);
+  
   txt(`◆ ${shards} Shards`, W - 86, 36, {size:13,color:'#b8a874',align:'center',bold:true});
 
   // Tabs
-  const tabY = 72;
+  const tabY = 92;
+  drawInsetPanel(W/2 - 274, tabY - 8, 548, 50, '#6f58d6', {
+    fillTop: 'rgba(18,12,30,0.80)',
+    fillBot: 'rgba(10,8,18,0.88)',
+    radius: 12,
+  });
   drawBtn({x:W/2-260, y:tabY, w:162, h:34}, '⚡ Anomalies', true, shopTab==='oracles');
   drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, '⬡ Runes',     true, shopTab==='runes');
   drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, '⚄ Dice',      true, shopTab==='upgrades');
+
+  drawBtn({x:W/2-260, y:tabY, w:162, h:34}, 'âš¡ Anomalies', true, shopTab==='oracles', { sublabel:'passives', accent:'#aa66ff' });
+  drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, 'â¬¡ Runes',     true, shopTab==='runes',   { sublabel:'socketables', accent:'#66ddaa' });
+  drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, 'âš„ Dice',      true, shopTab==='upgrades',{ sublabel:'pool growth', accent:'#c89960' });
 
   const rerollCost = 3;
   const canReroll  = shards >= rerollCost;
@@ -5087,7 +5245,7 @@ function drawHub(t) {
   txt(runGoal === 0 ? 'Choose your path — press Next Goal to begin' : `Goal ${runGoal} cleared  ·  +${hubEarnedShards} Shards earned`, W/2, 72, {size:13,color:'#b8a874',align:'center'});
 
   // Shard badge (top right)
-  drawRoundRect(W-158, 14, 144, 34, 8, 'rgba(200,153,96,0.08)', '#b8a874', 1.5);
+  
   txt(`◆ ${shards} Shards`, W-86, 36, {size:13,color:'#b8a874',align:'center',bold:true});
 
   // Goal map
@@ -5306,8 +5464,10 @@ function hexToRgb(hex) {
 
 function drawRuneTable(t) {
   drawBG(t);
-  txt('✦ RUNE TABLE', W/2, 44, {size:24, color:'#cc88ff', align:'center', bold:true, shadow:'#9944cc'});
-  txt('Enchant your dice — select a rune then click a slot', W/2, 68, {size:12, color:'rgba(180,160,220,0.7)', align:'center'});
+  drawScreenHeader('Rune Table', 'Select a rune, then socket it into a die slot', '#cc88ff', '✦', {
+    badge: { label: 'Runes', value: runeInventory.length },
+    badgeAccent: '#cc88ff',
+  });
 
   const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
   const sc = dieCardW / 148;
@@ -5369,6 +5529,11 @@ function drawRuneTable(t) {
 
   // Inventory section
   const invY = dieCardY + dieCardH + 12;
+  drawInsetPanel(60, invY - 18, W - 120, 130, '#8e62d6', {
+    fillTop: 'rgba(18,10,30,0.66)',
+    fillBot: 'rgba(10,8,18,0.78)',
+    radius: 12,
+  });
   txt('YOUR RUNES', 80, invY - 8, {size:9, color:'rgba(180,160,220,0.55)', align:'left', bold:true});
 
   if (runeInventory.length === 0) {
@@ -5420,19 +5585,27 @@ function drawRuneTable(t) {
   }
 
   // Back button
-  drawBtn({x:W/2-80, y:H-58, w:160, h:40}, '← Back to Map', true, true);
+  drawBtn({x:W/2-80, y:H-58, w:160, h:40}, '← Back to Map', true, true, { sublabel:'return to route', accent:'#cc88ff' });
 
   drawParticles(); drawFloaters();
 }
 
 function drawForge(t) {
   drawBG(t);
-  txt('THE FORGE', W/2, 42, {size:24,color:'#b35838',align:'center',bold:true,shadow:'#b35838'});
+  drawScreenHeader('The Forge', 'Shape your pool before the next round', '#b35838', '✦', {
+    badge: { label: 'Shards', value: shards },
+    badgeAccent: '#b8a874',
+  });
   drawRoundRect(W-158,14,144,34,8,'rgba(200,153,96,0.08)','#b8a874',1.5);
   txt(`◆ ${shards} Shards`, W-86, 36, {size:13,color:'#b8a874',align:'center',bold:true});
 
   // Tabs
-  const tabY = 64;
+  const tabY = 92;
+  drawInsetPanel(W/2 - 190, tabY - 8, 380, 50, '#8f5a42', {
+    fillTop: 'rgba(28,16,10,0.82)',
+    fillBot: 'rgba(16,10,8,0.90)',
+    radius: 12,
+  });
   drawBtn({x:W/2-170,y:tabY,w:160,h:34}, '⚄ Dice Upgrades', true, forgeTab==='dice');
   drawBtn({x:W/2+10, y:tabY,w:160,h:34}, '⚡ Anomaly Store', true, forgeTab==='oracles');
 
@@ -5831,9 +6004,9 @@ function loop(now) {
       // Natural settle: both linear and angular speed below threshold for 8 consecutive frames
       const linSpd = Math.hypot(lv.x, lv.y, lv.z);
       const angSpd = Math.hypot(d.vx, d.vy, d.vz); // set from angvel earlier this frame
-      const isStill = linSpd < 0.15 && angSpd < 0.3;
+      const isStill = linSpd < 0.12 && angSpd < 0.22;
       d.settleFrames = isStill ? (d.settleFrames | 0) + 1 : 0;
-      if (d.settleFrames >= 8 || d.rollT > 5.0) settleDie(d, i);
+      if (d.settleFrames >= 10 || d.rollT > 5.0) settleDie(d, i);
     } else {
       // Legacy bounce physics — gravity + multi-hop while tumbling
       const speed2 = Math.hypot(d.pvx, d.pvy);
@@ -5914,7 +6087,7 @@ function loop(now) {
         const dist = Math.hypot(tx - d.absX, ty - d.absY);
         if (dist < 0.5) { d.absX = tx; d.absY = ty; }
         else {
-          const lerp = 1 - Math.pow(0.00001, dt);
+          const lerp = 1 - Math.exp(-Math.max(1, PHYSICS.glideResponse || 15) * dt);
           d.absX += (tx - d.absX) * lerp;
           d.absY += (ty - d.absY) * lerp;
         }
@@ -6158,3 +6331,7 @@ if (incoming.fromPortal) {
 }
 
 requestAnimationFrame(loop);
+
+
+
+
