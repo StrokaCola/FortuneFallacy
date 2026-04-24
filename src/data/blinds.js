@@ -7,12 +7,17 @@ export const BLIND_DEFS = [
 ];
 
 // Per-ante base chip targets (before blind multiplier).
-// Ante 1 matches the original GOAL_TARGETS[0..2]. Antes 2-4 scale up.
+// Tuned so each Small Blind opens a new ante just slightly harder than the
+// previous ante's Boss (Balatro-style rhythm). With blind multipliers:
+//   Ante 1: 300 / 900 / 2000   — roughly matches the original jam Goals 1-3
+//   Ante 2: 1200 / 3000 / 7000
+//   Ante 3: 4000 / 9000 / 20000
+//   Ante 4: 12000 / 25000 / 60000
 export const ANTE_BASE_TARGETS = [
-  [300,   800,   2000  ], // Ante 1
-  [2000,  5000,  11000 ], // Ante 2
-  [11000, 20000, 35000 ], // Ante 3
-  [35000, 50000, 100000], // Ante 4
+  [300,   600,   1000 ], // Ante 1 → 300, 900, 2000
+  [1200,  2000,  3500 ], // Ante 2 → 1200, 3000, 7000
+  [4000,  6000,  10000], // Ante 3 → 4000, 9000, 20000
+  [12000, 16000, 30000], // Ante 4 → 12000, 24000, 60000
 ];
 
 // Boss Blind roster. Each has a debuff list keyed on `src/systems/blinds.js`.

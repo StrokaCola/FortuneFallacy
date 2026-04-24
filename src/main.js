@@ -4,6 +4,14 @@
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
 import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
 import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
+import {
+  BLIND_GOAL_TARGETS, anteFromGoal, blindIndexFromGoal,
+  onRoundStart as blindsOnRoundStart,
+  onRoundCleared as blindsOnRoundCleared,
+  bossDisablesOracles, bossForbidsRerolls, bossAutoUnlocks,
+  bossCapsHandSizeTo4, bossBlocksOneRuneXforms,
+  resetBlindRun, blindClearReward,
+} from './systems/blinds.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -1006,7 +1014,9 @@ function wrapText(x, y, text, maxW, lineH) {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────
-const GOAL_TARGETS    = [300, 800, 2000, 5000, 11000, 20000, 35000, 50000];
+// Extended from the original 8 flat goals to 12 (4 antes × 3 blinds).
+// Values come from src/data/blinds.js so the blind system stays in sync.
+const GOAL_TARGETS    = BLIND_GOAL_TARGETS;
 const HANDS_PER_ROUND = 3;
 const REROLLS_PER_HAND = 2;
 const DICE_COUNT      = 5;   // starting pool size (grows via forge)
@@ -1902,6 +1912,8 @@ function startRun(isEndless = false) {
   momentumStreak = 0;
   nameEntry   = playerName;
   screen      = 'nameentry';
+  // Blind/Ante system — fresh boss pool & counters each run
+  resetBlindRun();
 }
 
 function grantRune(tier = 'common') {
@@ -1928,6 +1940,9 @@ function startRound() {
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
+  // Determine the blind for this round — sets activeBlind in the store.
+  // Boss Blinds (every 3rd round) apply their debuffs via hasBlindDebuff().
+  blindsOnRoundStart(runGoal);
   initDice();
 }
 
@@ -1995,6 +2010,10 @@ function settleDie(d, dIdx) {
   if (!dice.some(x => x.rolling)) {
     rolledOnce = true;
     screenShake(8 + scoreIntensity(roundScore) * 8);
+    // Boss Blind "The Devil": all locked dice unlock after each roll.
+    if (bossAutoUnlocks()) {
+      for (const x of dice) x.locked = false;
+    }
   }
 }
 
@@ -2442,13 +2461,16 @@ function playHand() {
         });
       }
 
-      // All oracle apply() calls — one step per oracle
-      for (const o of heldOracles) {
-        if (!o.apply) continue;
-        const captured = o;
-        addStep(captured.name || 'Oracle', captured.color || '#ff9944', () => {
-          [chips, mult] = captured.apply(combo, faces, chips, mult, lastHandMeta);
-        });
+      // All oracle apply() calls — one step per oracle.
+      // Boss Blind "The High Priestess": oracles do not apply this round.
+      if (!bossDisablesOracles()) {
+        for (const o of heldOracles) {
+          if (!o.apply) continue;
+          const captured = o;
+          addStep(captured.name || 'Oracle', captured.color || '#ff9944', () => {
+            [chips, mult] = captured.apply(combo, faces, chips, mult, lastHandMeta);
+          });
+        }
       }
 
       // Mirror Pair
@@ -2673,6 +2695,8 @@ function advanceGoal() {
 
   setTimeout(() => {
     const clearedTarget = currentTarget();
+    // Clear the active blind from the store on round-clear (HUD will hide it)
+    blindsOnRoundCleared();
     runGoal++;
     if (!endless && runGoal >= GOAL_TARGETS.length) {
       SFX.win();
@@ -3184,6 +3208,8 @@ function handleClick(mx, my) {
     }
     if (inRect(mx,my,BTN_ROLL) && !handInProgress) {
       if (!rolledOnce) { rollDice(); return; }
+      // Boss Blind "The Tower": rerolls forbidden for this blind.
+      if (bossForbidsRerolls()) { SFX.fail(); showBanner('⌀ No rerolls this blind', '#cc2244'); return; }
       if (rerollsLeft > 0) { rerollsLeft--; rollDice(); return; }
     }
     if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
@@ -4524,8 +4550,44 @@ function drawGame(t) {
   }
 
   txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+148, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt('Total Score', RP.x+RP.w/2, RP.y+166, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
-  txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, RP.y+184, {size:15,color:'#e6c590',align:'center',bold:true});
+
+  // Active Blind HUD — shown during rounds. Boss Blinds get special treatment.
+  {
+    const ab = gs().activeBlind;
+    if (ab) {
+      const bh = 28;
+      const by = RP.y + 162;
+      const isBoss = ab.isBoss;
+      const col = ab.color || (isBoss ? '#ff4466' : '#b8a874');
+      drawRoundRect(RP.x+8, by, RP.w-16, bh, 6,
+        isBoss ? 'rgba(40,10,20,0.75)' : 'rgba(20,16,30,0.55)',
+        col, isBoss ? 2 : 1);
+      // Icon + name on one line; breathe the boss icon
+      const breathe = isBoss ? 1 + 0.08 * Math.sin(t * 3.2) : 1;
+      ctx.save();
+      ctx.translate(RP.x+22, by+bh/2);
+      ctx.scale(breathe, breathe);
+      ctx.translate(-(RP.x+22), -(by+bh/2));
+      txt(ab.icon || '✦', RP.x+22, by+bh/2+5, {size:16, color:col, align:'center', shadow:col});
+      ctx.restore();
+      txt(ab.name, RP.x+40, by+bh/2+4, {size:11, color:'#ecdec8', align:'left', bold:isBoss});
+      if (isBoss) {
+        // Keep the description compact; full description shown on hover tooltip (future).
+        const short = (ab.description || '').length > 34
+          ? (ab.description || '').slice(0, 34) + '…'
+          : (ab.description || '');
+        txt(short, RP.x+RP.w/2, by+bh+11, {size:8, color:'rgba(220,180,180,0.75)', align:'center', italic:true});
+      }
+    }
+  }
+
+  // Shift the Total Score labels down when a boss description is present
+  {
+    const ab = gs().activeBlind;
+    const totalY = RP.y + (ab && ab.isBoss ? 206 : 184);
+    txt('Total Score', RP.x+RP.w/2, totalY - 18, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
+    txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, totalY, {size:15,color:'#e6c590',align:'center',bold:true});
+  }
 
   // Hand preview panel (right side, shows estimate of current held hand)
   if (rolledOnce && !handInProgress) {
