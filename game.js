@@ -1,10 +1,16 @@
 // FortuneFallacy — Vibe Coding Game Jam #1
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
+import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
+
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 960
 const H = canvas.height;  // 540
+
+// ─── WebGL background initialisation ─────────────────────────────────
+const bgCanvas = document.getElementById('bg');
+if (bgCanvas) initBg(bgCanvas);
 
 // ─── Physics constants (edit via physics-editor.html) ────────────────
 const PHYSICS = (()=>{
@@ -509,7 +515,10 @@ function animateTicker(from, to, duration, onTick, onDone) {
 
 // ─── Screen flash ─────────────────────────────────────────────────────
 let flashAlpha = 0;
-function screenFlash(a = 0.4) { flashAlpha = Math.max(flashAlpha, a); }
+function screenFlash(a = 0.4) {
+  flashAlpha = Math.max(flashAlpha, a);
+  if (a >= 0.2) flashBg(a * 0.65);   // pulse the WebGL nebula on significant flashes
+}
 
 // ─── Screen shake ─────────────────────────────────────────────────────
 let shakeAmp = 0;
@@ -852,8 +861,14 @@ const STARS = Array.from({ length: 280 }, () => ({
 }));
 
 function drawBG(t) {
-  ctx.fillStyle = '#08060a';
-  ctx.fillRect(0, 0, W, H);
+  // When WebGL bg is active we clear to transparent so the nebula shows through.
+  // Otherwise fall back to the solid dark fill so nothing looks broken.
+  if (bgActive()) {
+    ctx.clearRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#08060a';
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Star field — drawn first so everything layers on top
   ctx.save();
@@ -892,13 +907,16 @@ function drawBG(t) {
   g2.addColorStop(1,   'rgba(0,0,0,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  // Slow stone pulse — warm sepia tone shift
-  const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
-  ctx.save();
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = `rgba(${Math.floor(200*pulse)},${Math.floor(185*pulse)},${Math.floor(160*pulse)},1)`;
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
+  // Slow stone pulse — warm sepia tone shift (skip when WebGL bg is active; multiply
+  // on a transparent canvas has no effect and would tint the clear incorrectly)
+  if (!bgActive()) {
+    const pulse = 0.975 + 0.025 * Math.sin(t * 0.7);
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(${Math.floor(200*pulse)},${Math.floor(185*pulse)},${Math.floor(160*pulse)},1)`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 
   // Ancient rune rings — slow-rotating concentric stone-carved circles
   ctx.save();
@@ -5654,6 +5672,9 @@ function loop(now) {
   updateFloaters(dt);
   updateComboPop(dt);
   updateBanner(dt);
+
+  // Tick the WebGL background nebula
+  tickBg(t, screen);
 
   // Apply screen shake via canvas transform
   ctx.save();
