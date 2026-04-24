@@ -28,11 +28,15 @@ import { W, H, CP, BOARD_H, PHYS_SCALE } from '../data/constants.js';
 
 export const DICE_SKINS = {
   ivory: {
-    id: 'ivory', name: 'Ivory Casino',
-    baseColor: '#f0ead8', pipColor: '#100a04',
-    roughness: 0.38, metalness: 0.08, cornerRadius: 0.10,
-    glbUrl: null,
-  },
+  "id": "Plain",
+  "name": "Plain Die",
+  "baseColor": "#f0ead8",
+  "pipColor": "#100a04",
+  "roughness": 0.38,
+  "metalness": 0.08,
+  "cornerRadius": 0.1,
+  "glbUrl": public/Plain
+},
   obsidian: {
     id: 'obsidian', name: 'Obsidian',
     baseColor: '#1a1218', pipColor: '#d4a820',
