@@ -3,6 +3,7 @@
 
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
 import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
+import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -4226,10 +4227,12 @@ function drawGame(t) {
     }
   }
 
-  // Dice (3D) — positions driven by absX/absY physics
+  // Dice (3D) — positions driven by absX/absY physics.
+  // Three.js owns the die body when useThreeDice is true; Canvas-2D is a fallback.
+  const _useThree = gs().useThreeDice;
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
-    drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
+    if (!_useThree) drawDie3D(d, d.absX, d.absY, DICE_SIZE, diceUpgrades[i]);
     const upg = diceUpgrades[i];
     // Upgrade icon + rune dots below die
     {
@@ -5679,6 +5682,12 @@ function loop(now) {
   // Tick the WebGL background nebula
   tickBg(t, screen);
 
+  // Three.js dice tick — renders to #three canvas layered between #bg and #game.
+  // Only shows dice on the game screen; everywhere else they hide.
+  if (isDice3DReady()) {
+    tickDice3D(dice, diceUpgrades, screen === 'game');
+  }
+
   // Apply screen shake via canvas transform
   ctx.save();
   if (shakeAmp > 0.1) {
@@ -5717,6 +5726,13 @@ function loop(now) {
 // ─── Boot ─────────────────────────────────────────────────────────────
 buildStonePattern();  // generate procedural stone texture for panels and board
 initRapier(); // fire-and-forget — game starts immediately; Rapier activates when ready
+// Three.js dice renderer — tries WebGL2; if it fails we silently fall back
+// to the Canvas-2D dice drawn inside drawGame()
+{
+  const threeCanvas = document.getElementById('three');
+  const ok = initDice3D(threeCanvas);
+  if (ok) ss({ useThreeDice: true });
+}
 loadScores();
 loadUnlocks();
 if (incoming.fromPortal) {
