@@ -3773,25 +3773,37 @@ function drawBoard(cx, topY, width, height) {
   roundRect(bx + RIM, topY + RIM, bw - RIM*2, bh - RIM*2, 5);
   ctx.fill();
 
-  // Stone floor — warm dark surface
+  // Stone floor — when Three.js dice are active, punch a transparent hole
+  // so the #three canvas shows through. ornamentFrame() fills the entire
+  // center panel (incl. this rect) with ~0.97 alpha first; clearRect zeros
+  // it out regardless of composite op. Otherwise fill opaquely as before.
   const ix = bx + RIM, iy = topY + RIM, iw = bw - RIM*2, ih = bh - RIM*2;
-  const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
-  floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
-  floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
-  floorGrad.addColorStop(1,   'rgba(8,6,4,0.99)');
-  ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-  ctx.fillStyle = floorGrad;
-  ctx.fill();
-
-  // Stone texture on floor
-  if (stonePattern) {
-    ctx.save();
+  if (gs().useThreeDice) {
+    ctx.clearRect(ix, iy, iw, ih);
+    // Subtle edge vignette so dice don't float in a hard-edged void
+    const edgeGrad = ctx.createRadialGradient(cx, topY + bh*0.5, bw*0.3, cx, topY + bh*0.5, bw*0.6);
+    edgeGrad.addColorStop(0,   'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(1,   'rgba(0,0,0,0.28)');
     ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-    ctx.clip();
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = stonePattern;
-    ctx.fillRect(ix, iy, iw, ih);
-    ctx.restore();
+    ctx.fillStyle = edgeGrad;
+    ctx.fill();
+  } else {
+    const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
+    floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
+    floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
+    floorGrad.addColorStop(1,   'rgba(8,6,4,0.99)');
+    ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+    ctx.fillStyle = floorGrad;
+    ctx.fill();
+    if (stonePattern) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+      ctx.clip();
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = stonePattern;
+      ctx.fillRect(ix, iy, iw, ih);
+      ctx.restore();
+    }
   }
 
   // Faint gold grid — ancient carved measurement lines
