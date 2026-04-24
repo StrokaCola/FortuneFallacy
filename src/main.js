@@ -12,6 +12,11 @@ import {
   bossCapsHandSizeTo4, bossBlocksOneRuneXforms,
   resetBlindRun, blindClearReward,
 } from './systems/blinds.js';
+import {
+  wireConsumableBridge, useConsumable, grantRandomConsumable,
+  consumePendingFlag,
+} from './systems/consumables.js';
+import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -2569,6 +2574,22 @@ function playHand() {
           }, 2200);
         }
 
+        // The Hermit consumable doubles chips for the current hand.
+        if (consumePendingFlag('doubleChipsPending')) {
+          chips *= 2;
+          floatText(W/2, H/2 - 30, '✦ Chips Doubled', '#ddcc88', 18, { rise: 40, life: 1.4 });
+        }
+        // The Star consumable grants each oracle a +1 Mult bonus (roughly;
+        // implemented as a simple additive mult bump per held oracle so it
+        // stays predictable without re-running the oracle pipeline).
+        if (consumePendingFlag('starActive') && !bossDisablesOracles()) {
+          const starBonus = Math.max(0, heldOracles.length);
+          if (starBonus > 0) {
+            mult += starBonus;
+            floatText(W/2, H/2 - 10, `★ +${starBonus} Mult`, '#ffee88', 16, { rise: 40, life: 1.4 });
+          }
+        }
+
         scoringState.chips = chips;
         scoringState.mult  = mult;
 
@@ -2713,6 +2734,17 @@ function advanceGoal() {
     const earned = Math.max(3, Math.floor(5 + (roundScore - clearedTarget) / 200));
     shards += earned;
     hubEarnedShards = earned;
+    // Blind-clear consumable reward: ~40% chance per Small/Big Blind,
+    // guaranteed after a Boss Blind. Caps at consumableSlots (default 4).
+    {
+      const justCleared = runGoal - 1;
+      const wasBoss = ((justCleared) % 3) === 2;
+      if (wasBoss || Math.random() < 0.4) {
+        const tier = wasBoss ? (Math.random() < 0.5 ? 'rare' : 'uncommon') : null;
+        const granted = grantRandomConsumable(tier);
+        if (granted) floatText(W/2, H/2 + 30, `+ ${granted.icon} ${granted.name}`, granted.color, 15, { rise:40, life:2.0 });
+      }
+    }
     // Check unlocks after goal advance
     checkUnlocks();
     forgeChoices = { upgrades: [], oracles: [] };
@@ -3210,7 +3242,46 @@ function handleClick(mx, my) {
       if (!rolledOnce) { rollDice(); return; }
       // Boss Blind "The Tower": rerolls forbidden for this blind.
       if (bossForbidsRerolls()) { SFX.fail(); showBanner('⌀ No rerolls this blind', '#cc2244'); return; }
-      if (rerollsLeft > 0) { rerollsLeft--; rollDice(); return; }
+      if (rerollsLeft > 0) {
+        // The Magician consumable can make a single reroll free.
+        if (consumePendingFlag('freeRerollPending')) {
+          floatText(W/2, H/2 - 50, '✦ Free Reroll', '#cc88ff', 14, { rise: 30, life: 1.2 });
+        } else {
+          rerollsLeft--;
+        }
+        rollDice();
+        return;
+      }
+    }
+
+    // Consumable slot click — use or enter targeting mode.
+    {
+      const st = gs();
+      const targeting = st.consumableTargeting;
+      const slotIdx = consumableSlotAt(mx, my);
+      if (slotIdx >= 0) {
+        if (targeting && targeting.index === slotIdx) {
+          // Click the active targeting card again to cancel
+          gameActions.cancelTargeting();
+        } else if (st.consumables[slotIdx]) {
+          useConsumable(slotIdx);
+          SFX.oracle();
+        }
+        return;
+      }
+      // If we're in die-targeting mode and clicked a die
+      if (targeting && targeting.targetType === 'die') {
+        const half = DICE_SIZE * 0.48;
+        for (let i = 0; i < dice.length; i++) {
+          const d = dice[i];
+          if (mx >= d.absX - half && mx <= d.absX + half &&
+              my >= d.absY - half && my <= d.absY + half) {
+            useConsumable(targeting.index, [i]);
+            SFX.oracle();
+            return;
+          }
+        }
+      }
     }
     if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
     // Exit portal (endless only — in main run it shows on win screen)
@@ -4636,6 +4707,56 @@ function drawGame(t) {
 
   drawParticles();
   drawRings();
+  // ── Consumable hand (Phase 5) — four-slot strip just above the button row ──
+  {
+    const store = gs();
+    const slots = store.consumableSlots || 4;
+    const cards = store.consumables || [];
+    const sw = 40, sh = 52, gap = 6;
+    const totalW = slots * sw + (slots - 1) * gap;
+    const sx0 = CP.x + (CP.w - totalW) / 2;
+    const sy  = CP.y + CP.h - 84;
+    // Strip background
+    drawRoundRect(sx0 - 8, sy - 4, totalW + 16, sh + 10, 8,
+      'rgba(10,6,20,0.55)', 'rgba(90,60,140,0.35)', 1);
+    txt('CONSUMABLES', sx0 + totalW/2, sy - 8, {size:7, color:'rgba(200,170,220,0.5)', align:'center', bold:true});
+    for (let i = 0; i < slots; i++) {
+      const sx = sx0 + i * (sw + gap);
+      const card = cards[i];
+      const hov = inRect(hoverX, hoverY, { x:sx, y:sy, w:sw, h:sh });
+      if (!card) {
+        // Empty slot — dashed outline
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = 'rgba(120,90,170,0.28)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.restore();
+      } else {
+        const def = lookupConsumable(card.id) || {};
+        const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
+        drawRoundRect(sx, sy, sw, sh, 6,
+          targeting ? 'rgba(120,60,200,0.55)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(30,16,50,0.85)',
+          def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
+        // Icon
+        ctx.save();
+        ctx.shadowColor = def.color || '#cc88ff';
+        ctx.shadowBlur  = 5;
+        txt(def.icon || '?', sx + sw/2, sy + 22, {size:20, color:def.color || '#cc88ff', align:'center'});
+        ctx.restore();
+        // Name (compact)
+        const name = (def.name || '').slice(0, 8);
+        txt(name, sx + sw/2, sy + 41, {size:7, color:'#ecdec8', align:'center'});
+      }
+    }
+    // Targeting hint
+    if (store.consumableTargeting) {
+      const tt = store.consumableTargeting.targetType || 'target';
+      txt(`Click a ${tt.replace('_', ' ')}… (Esc to cancel)`,
+        CP.x + CP.w/2, sy - 24, {size:9, color:'#cc88ff', align:'center', italic:true});
+    }
+  }
+
   drawFloaters();
   drawComboPop();
   drawBanner();
@@ -4644,6 +4765,21 @@ function drawGame(t) {
     ctx.save(); ctx.globalAlpha=flashAlpha; ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
     flashAlpha = Math.max(0, flashAlpha - 0.035);
   }
+}
+
+// Hit-test the consumable strip for click handling. Returns index or -1.
+function consumableSlotAt(mx, my) {
+  const store = gs();
+  const slots = store.consumableSlots || 4;
+  const sw = 40, sh = 52, gap = 6;
+  const totalW = slots * sw + (slots - 1) * gap;
+  const sx0 = CP.x + (CP.w - totalW) / 2;
+  const sy  = CP.y + CP.h - 84;
+  for (let i = 0; i < slots; i++) {
+    const sx = sx0 + i * (sw + gap);
+    if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) return i;
+  }
+  return -1;
 }
 
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
@@ -5797,6 +5933,51 @@ initRapier(); // fire-and-forget — game starts immediately; Rapier activates w
 }
 loadScores();
 loadUnlocks();
+
+// Wire the consumables bridge so consumable apply(ctx, …) can mutate
+// legacy game state (dice, shards, oracles, runes) via concrete closures.
+wireConsumableBridge({
+  setDieFace: (idx, face) => {
+    if (dice[idx]) { dice[idx].face = face; SFX.unlock(); screenFlash(0.08); }
+  },
+  addShards: (n) => { shards = Math.max(0, shards + n); },
+  duplicateOracle: () => {
+    if (heldOracles.length === 0 || heldOracles.length >= MAX_ORACLES) return false;
+    const src = heldOracles[Math.floor(Math.random() * heldOracles.length)];
+    heldOracles.push({ ...src });
+    return true;
+  },
+  handsLeft:    () => handsLeft,
+  setHandsLeft: (n) => { handsLeft = Math.max(0, n); },
+  rerollAllDice: (n) => {
+    for (const d of dice) {
+      let best = 1;
+      for (let i = 0; i < n; i++) best = Math.max(best, 1 + Math.floor(Math.random() * 6));
+      d.face = best;
+    }
+  },
+  destroyDice: (count) => {
+    for (let i = 0; i < count && dice.length > 1; i++) {
+      const idx = Math.floor(Math.random() * dice.length);
+      // Preserve upgrade/rune refunds implicit in sellDie pattern — minimal form:
+      dice.splice(idx, 1);
+      if (diceUpgrades[idx] !== undefined) diceUpgrades.splice(idx, 1);
+      if (diceRunes[idx]    !== undefined) diceRunes.splice(idx, 1);
+    }
+  },
+  convertAllDice: (face) => {
+    for (const d of dice) d.face = face;
+  },
+  addRuneToDie: (idx, slot, rune) => {
+    if (!diceRunes[idx]) return;
+    diceRunes[idx][slot] = rune;
+  },
+  pickRandomRune: () => {
+    if (!ALL_RUNES || ALL_RUNES.length === 0) return null;
+    return { ...ALL_RUNES[Math.floor(Math.random() * ALL_RUNES.length)] };
+  },
+});
+
 if (incoming.fromPortal) {
   playerName = incoming.username || playerName;
   nameEntry  = playerName;
