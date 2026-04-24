@@ -1,6 +1,7 @@
 // FortuneFallacy — Vibe Coding Game Jam #1
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
+import { createNoise2D } from 'simplex-noise';
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
 import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
 import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
@@ -745,15 +746,13 @@ function buildStonePattern() {
   const oc = document.createElement('canvas');
   oc.width = oc.height = sz;
   const ox = oc.getContext('2d');
-  // Fallback if simplex-noise hasn't loaded
-  const hasNoise = typeof SimplexNoise !== 'undefined';
-  const noise = hasNoise ? new SimplexNoise() : null;
+  const noise2D = createNoise2D();
   const img = ox.createImageData(sz, sz);
   for (let y = 0; y < sz; y++) {
     for (let x = 0; x < sz; x++) {
       let n = 0;
-      if (noise) {
-        n = (noise.noise2D(x / 32, y / 32) + noise.noise2D(x / 16, y / 16) * 0.5) / 1.5;
+      if (noise2D) {
+        n = (noise2D(x / 32, y / 32) + noise2D(x / 16, y / 16) * 0.5) / 1.5;
       } else {
         // Simple hash fallback
         n = ((Math.sin(x * 0.31 + y * 0.17) + Math.sin(x * 0.07 - y * 0.23)) * 0.5);
