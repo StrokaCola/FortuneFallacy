@@ -1,6 +1,7 @@
 // FortuneFallacy — Vibe Coding Game Jam #1
 // Balatro-style dice roguelike. Roll. Score. Defy the fallacy.
 
+import { createNoise2D } from 'simplex-noise';
 import { initBg, bgActive, tickBg, flashBg } from './bg-shader.js';
 import { getState as gs, setState as ss, actions as gameActions, subscribe as gameSubscribe, serializeStoreSlice, hydrateStoreSlice } from './state/store.js';
 import { initDice3D, isDice3DReady, tickDice3D } from './rendering/dice3d.js';
@@ -17,7 +18,7 @@ import {
   consumePendingFlag,
 } from './systems/consumables.js';
 import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
-import { getVoucherEffect, grantRandomVoucher } from './systems/vouchers.js';
+import { getVoucherEffect, grantRandomVoucher, tryClaimFreeFirstReroll } from './systems/vouchers.js';
 import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
 import {
   ensureToneStarted,
@@ -745,15 +746,13 @@ function buildStonePattern() {
   const oc = document.createElement('canvas');
   oc.width = oc.height = sz;
   const ox = oc.getContext('2d');
-  // Fallback if simplex-noise hasn't loaded
-  const hasNoise = typeof SimplexNoise !== 'undefined';
-  const noise = hasNoise ? new SimplexNoise() : null;
+  const noise2D = createNoise2D();
   const img = ox.createImageData(sz, sz);
   for (let y = 0; y < sz; y++) {
     for (let x = 0; x < sz; x++) {
       let n = 0;
-      if (noise) {
-        n = (noise.noise2D(x / 32, y / 32) + noise.noise2D(x / 16, y / 16) * 0.5) / 1.5;
+      if (noise2D) {
+        n = (noise2D(x / 32, y / 32) + noise2D(x / 16, y / 16) * 0.5) / 1.5;
       } else {
         // Simple hash fallback
         n = ((Math.sin(x * 0.31 + y * 0.17) + Math.sin(x * 0.07 - y * 0.23)) * 0.5);
@@ -1037,7 +1036,7 @@ const MAX_DICE        = 10;  // cap on total pool size
 const MAX_ORACLES     = 6;
 const SCORES_KEY      = 'fortunefallacy_scores';
 const SAVE_KEY_RUN    = 'fortunefallacy_activerun';
-const SAVE_VERSION    = 1;
+const SAVE_VERSION    = 2;
 // Replace with your Firebase Realtime Database URL (e.g. https://your-project-default-rtdb.firebaseio.com/scores)
 const FIREBASE_URL    = 'https://fortunefallacy-9908c-default-rtdb.firebaseio.com/scores';
 
@@ -1673,7 +1672,17 @@ function checkUnlocks() {
 }
 
 // ─── Save / Resume Active Run ─────────────────────────────────────────
-const SAVE_MIGRATIONS = { 1: x => x };
+const SAVE_MIGRATIONS = {
+  1: x => x,
+  2: b => {
+    // v1 → v2: add stub fields for new systems
+    b.consumables        = b.consumables        || [];
+    b.vouchers           = b.vouchers           || [];
+    b.currentAnte        = b.currentAnte        || 0;
+    b.currentBlindIndex  = b.currentBlindIndex  || 0;
+    return b;
+  },
+};
 const SAVEABLE_SCREENS = new Set(['hub','game','shop','forge','rune']);
 
 function _oracleById(id)  { return [...ALL_ORACLES,  ...UNLOCKABLE_ORACLES].find(o => o.id === id) || null; }
@@ -1713,6 +1722,10 @@ function serializeRunState() {
     lastHandScore: lastHandScore | 0,
     momentumStreak: momentumStreak | 0,
     runStats: JSON.parse(JSON.stringify(runStats)),
+    consumables: (gs().consumables || []).map(c => ({ id: c.id, type: c.type })),
+    vouchers:    gs().vouchers || [],
+    currentAnte: gs().currentAnte || 0,
+    currentBlindIndex: gs().currentBlindIndex || 0,
   };
 }
 
@@ -1745,7 +1758,7 @@ function restoreRunState(raw) {
     diceRunes     = (blob.diceRunes     || []).map(slots => (slots || []).map(id => id ? _runeById(id) : null));
     runeInventory = (blob.runeInventory || []).map(_runeById).filter(Boolean);
     if (diceUpgrades.length === 0) diceUpgrades = Array(DICE_COUNT).fill(null);
-    while (diceRunes.length < diceUpgrades.length) diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
+    while (diceRunes.length < diceUpgrades.length) diceRunes.push(Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
     shopTab      = blob.shopTab || 'oracles';
     shopStock    = {
       oracles:  (blob.shopStock?.oracles  || []).map(_oracleById ).filter(Boolean),
@@ -1770,6 +1783,13 @@ function restoreRunState(raw) {
     lastHandMeta   = { lastReroll: false };
     rolledOnce     = false;
     initDice();
+    // Hydrate Zustand store with persisted consumables/vouchers/blind state
+    ss({
+      consumables:       (blob.consumables || []).map(c => ({ id: c.id, type: c.type })),
+      vouchers:          blob.vouchers    || [],
+      currentAnte:       blob.currentAnte || 0,
+      currentBlindIndex: blob.currentBlindIndex || 0,
+    });
     return true;
   } catch (e) {
     console.warn('[FortuneFallacy] restoreRunState failed:', e);
@@ -1915,8 +1935,8 @@ function startRun(isEndless = false) {
   heldOracles    = [];
   comboStreak    = { id:null, count:0 };
   shards         = 0;
-  diceUpgrades   = Array(DICE_COUNT).fill(null);
-  diceRunes      = Array.from({length: DICE_COUNT}, () => Array(MAX_RUNE_SLOTS).fill(null));
+  diceUpgrades   = Array(getVoucherEffect('startingDice', DICE_COUNT)).fill(null);
+  diceRunes      = Array.from({length: getVoucherEffect('startingDice', DICE_COUNT)}, () => Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
   runeInventory  = [];
   runeSelInv  = null;
   runeSelSlot = null;
@@ -2802,7 +2822,7 @@ function openShop() {
     for (let i = 0; i < n; i++) oPool.push(o);
   });
   const pickedO = [];
-  while (pickedO.length < 3 && oPool.length > 0) {
+  while (pickedO.length < getVoucherEffect('shopSlots', 3) && oPool.length > 0) {
     const i = Math.floor(Math.random() * oPool.length);
     const o = oPool[i];
     if (!pickedO.find(p => p.id === o.id)) pickedO.push(o);
@@ -2812,13 +2832,15 @@ function openShop() {
 
   // Runes — random selection from all available
   const allRunesFull = [...ALL_RUNES, ...UNLOCKABLE_RUNES.filter(r => isUnlocked(r.unlock.id))];
-  shopStock.runes = [...allRunesFull].sort(() => Math.random() - 0.5).slice(0, 3);
+  shopStock.runes = [...allRunesFull].sort(() => Math.random() - 0.5).slice(0, getVoucherEffect('shopSlots', 3));
 
   // Dice upgrades — random selection
   const allDice = [...DICE_UPGRADES, ...UNLOCKABLE_DICE.filter(d => isUnlocked(d.unlock.id))];
-  shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, 3);
+  shopStock.upgrades = [...allDice].sort(() => Math.random() - 0.5).slice(0, getVoucherEffect('shopSlots', 3));
 
   shopTab = 'oracles';
+  // Reset free-reroll claim so the Restock voucher fires once per shop visit
+  ss({ freeRerollClaimedThisShop: false });
   slideIn('shop');
   saveActiveRun();
 }
@@ -3102,15 +3124,19 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allO=[...ALL_ORACLES,...UNLOCKABLE_ORACLES.filter(o=>isUnlocked(o.unlock.id))];
-        const unowned=allO.filter(o=>!heldOracles.find(h=>h.id===o.id));
-        const wts={common:3,uncommon:2,rare:1.3,legendary:0.5};
-        const wp=[]; unowned.forEach(o=>{const n=Math.round((wts[o.tier||'common'])*2);for(let i=0;i<n;i++)wp.push(o);});
-        const picked=[]; while(picked.length<3&&wp.length>0){const i=Math.floor(Math.random()*wp.length);const o=wp[i];if(!picked.find(p=>p.id===o.id))picked.push(o);wp.splice(i,1);}
-        shopStock.oracles=picked;
-        SFX.roll(); burst(W/2+170,H-34,'#aa66ff',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allO=[...ALL_ORACLES,...UNLOCKABLE_ORACLES.filter(o=>isUnlocked(o.unlock.id))];
+          const unowned=allO.filter(o=>!heldOracles.find(h=>h.id===o.id));
+          const wts={common:3,uncommon:2,rare:1.3,legendary:0.5};
+          const wp=[]; unowned.forEach(o=>{const n=Math.round((wts[o.tier||'common'])*2);for(let i=0;i<n;i++)wp.push(o);});
+          const picked=[]; while(picked.length<getVoucherEffect('shopSlots',3)&&wp.length>0){const i=Math.floor(Math.random()*wp.length);const o=wp[i];if(!picked.find(p=>p.id===o.id))picked.push(o);wp.splice(i,1);}
+          shopStock.oracles=picked;
+          SFX.roll(); burst(W/2+170,H-34,'#aa66ff',10,4);
+        }
+        return;
       }
     }
 
@@ -3134,11 +3160,15 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allR=[...ALL_RUNES,...UNLOCKABLE_RUNES.filter(r=>isUnlocked(r.unlock.id))];
-        shopStock.runes=allR.sort(()=>Math.random()-0.5).slice(0,3);
-        SFX.roll(); burst(W/2+170,H-34,'#55cc88',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allR=[...ALL_RUNES,...UNLOCKABLE_RUNES.filter(r=>isUnlocked(r.unlock.id))];
+          shopStock.runes=allR.sort(()=>Math.random()-0.5).slice(0,getVoucherEffect('shopSlots',3));
+          SFX.roll(); burst(W/2+170,H-34,'#55cc88',10,4);
+        }
+        return;
       }
     }
 
@@ -3155,7 +3185,7 @@ function handleClick(mx, my) {
             shards-=upg.cost;
             runStats.totalShardsSpent+=upg.cost;
             diceUpgrades.push({...upg});
-            diceRunes.push(Array(MAX_RUNE_SLOTS).fill(null));
+            diceRunes.push(Array(getVoucherEffect('runeSlots', MAX_RUNE_SLOTS)).fill(null));
             shopStock.upgrades.splice(i,1);
             SFX.oracle(); burst(mx,my,upg.color,14,4.5);
             floatText(mx,my-18,`+${upg.shortName} die`,upg.color,13);
@@ -3164,11 +3194,15 @@ function handleClick(mx, my) {
           return;
         }
       }
-      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40}) && shards>=3) {
-        shards-=3;
-        const allD=[...DICE_UPGRADES,...UNLOCKABLE_DICE.filter(d=>isUnlocked(d.unlock.id))];
-        shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,3);
-        SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4); return;
+      if (inRect(mx,my,{x:W/2+100,y:H-54,w:140,h:40})) {
+        const freeRoll = tryClaimFreeFirstReroll();
+        if (freeRoll || shards >= 3) {
+          if (!freeRoll) shards -= 3;
+          const allD=[...DICE_UPGRADES,...UNLOCKABLE_DICE.filter(d=>isUnlocked(d.unlock.id))];
+          shopStock.upgrades=[...allD].sort(()=>Math.random()-0.5).slice(0,getVoucherEffect('shopSlots',3));
+          SFX.roll(); burst(W/2+170,H-34,'#c89960',10,4);
+        }
+        return;
       }
       // Sell pool dice
       const N=diceUpgrades.length;
@@ -3205,7 +3239,7 @@ function handleClick(mx, my) {
       const slotW = Math.round(dieCardW/2 - 14*sc);
       const slotH = Math.round(46*sc);
       const slotY = dieCardY + dieCardH - Math.round(58*sc);
-      for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+      for (let si = 0; si < getVoucherEffect('runeSlots', MAX_RUNE_SLOTS); si++) {
         const sx = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
         if (inRect(mx,my,{x:sx,y:slotY,w:slotW,h:slotH})) {
           if (runeSelInv !== null) {
@@ -4324,6 +4358,62 @@ function drawNameEntry(t) {
   drawBtn({x:W/2-90,y:H-68,w:180,h:40}, '← Back', true, false);
 }
 
+// ─── Consumable tray (left panel, below oracle slots) ─────────────────
+// Layout anchor: below the last oracle slot, centred in LP.
+const CONS_SW   = 38, CONS_SH = 46, CONS_GAP = 5;
+function consSlotPos(slots) {
+  const totalW = slots * CONS_SW + (slots - 1) * CONS_GAP;
+  const sx0 = LP.x + (LP.w - totalW) / 2;
+  const cardH = 50;
+  const sy = LP.y + 38 + MAX_ORACLES * (cardH + 4) + 14;
+  return { sx0, sy, totalW };
+}
+
+function drawConsumableTray(_t) {
+  const store = gs();
+  const slots = store.consumableSlots || 4;
+  const cards = store.consumables || [];
+  const { sx0, sy, totalW } = consSlotPos(slots);
+
+  // Header label
+  txt('CONSUMABLES', sx0 + totalW / 2, sy - 5,
+    { size: 7, color: 'rgba(200,170,220,0.45)', align: 'center', bold: true });
+
+  for (let i = 0; i < slots; i++) {
+    const sx  = sx0 + i * (CONS_SW + CONS_GAP);
+    const card = cards[i];
+    const hov  = inRect(hoverX, hoverY, { x: sx, y: sy, w: CONS_SW, h: CONS_SH });
+    if (!card) {
+      ctx.save();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(120,90,170,0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx, sy, CONS_SW, CONS_SH);
+      ctx.restore();
+    } else {
+      const def = lookupConsumable(card.id) || {};
+      const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
+      drawRoundRect(sx, sy, CONS_SW, CONS_SH, 6,
+        targeting ? 'rgba(120,60,200,0.6)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(25,12,42,0.85)',
+        def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
+      ctx.save();
+      ctx.shadowColor = def.color || '#cc88ff';
+      ctx.shadowBlur  = 4;
+      txt(def.icon || '?', sx + CONS_SW / 2, sy + 20, { size: 18, color: def.color || '#cc88ff', align: 'center' });
+      ctx.restore();
+      txt((def.name || '').slice(0, 7), sx + CONS_SW / 2, sy + 38,
+        { size: 6.5, color: '#ecdec8', align: 'center' });
+    }
+  }
+
+  if (store.consumableTargeting) {
+    const tt = store.consumableTargeting.targetType || 'target';
+    txt(`Click a ${tt.replace('_', ' ')}… (Esc)`,
+      LP.x + LP.w / 2, sy + CONS_SH + 14,
+      { size: 8, color: '#cc88ff', align: 'center', italic: true });
+  }
+}
+
 // ─── SCREEN: Game ─────────────────────────────────────────────────────
 function drawGame(t) {
   drawBG(t);
@@ -4830,55 +4920,9 @@ function drawGame(t) {
     }
   }
 
-  // ── Consumable hand (Phase 5) — four-slot strip just above the button row ──
-  {
-    const store = gs();
-    const slots = store.consumableSlots || 4;
-    const cards = store.consumables || [];
-    const sw = 40, sh = 52, gap = 6;
-    const totalW = slots * sw + (slots - 1) * gap;
-    const sx0 = CP.x + (CP.w - totalW) / 2;
-    const sy  = CP.y + CP.h - 84;
-    // Strip background
-    drawRoundRect(sx0 - 8, sy - 4, totalW + 16, sh + 10, 8,
-      'rgba(10,6,20,0.55)', 'rgba(90,60,140,0.35)', 1);
-    txt('CONSUMABLES', sx0 + totalW/2, sy - 8, {size:7, color:'rgba(200,170,220,0.5)', align:'center', bold:true});
-    for (let i = 0; i < slots; i++) {
-      const sx = sx0 + i * (sw + gap);
-      const card = cards[i];
-      const hov = inRect(hoverX, hoverY, { x:sx, y:sy, w:sw, h:sh });
-      if (!card) {
-        // Empty slot — dashed outline
-        ctx.save();
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(120,90,170,0.28)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sx, sy, sw, sh);
-        ctx.restore();
-      } else {
-        const def = lookupConsumable(card.id) || {};
-        const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
-        drawRoundRect(sx, sy, sw, sh, 6,
-          targeting ? 'rgba(120,60,200,0.55)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(30,16,50,0.85)',
-          def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
-        // Icon
-        ctx.save();
-        ctx.shadowColor = def.color || '#cc88ff';
-        ctx.shadowBlur  = 5;
-        txt(def.icon || '?', sx + sw/2, sy + 22, {size:20, color:def.color || '#cc88ff', align:'center'});
-        ctx.restore();
-        // Name (compact)
-        const name = (def.name || '').slice(0, 8);
-        txt(name, sx + sw/2, sy + 41, {size:7, color:'#ecdec8', align:'center'});
-      }
-    }
-    // Targeting hint
-    if (store.consumableTargeting) {
-      const tt = store.consumableTargeting.targetType || 'target';
-      txt(`Click a ${tt.replace('_', ' ')}… (Esc to cancel)`,
-        CP.x + CP.w/2, sy - 24, {size:9, color:'#cc88ff', align:'center', italic:true});
-    }
-  }
+  // ── Consumable hand (Phase 5) — drawn in left panel below oracle slots ──
+  // (See drawConsumableTray() called from the left-panel section above)
+  drawConsumableTray(t);
 
   drawFloaters();
   drawComboPop();
@@ -4894,13 +4938,10 @@ function drawGame(t) {
 function consumableSlotAt(mx, my) {
   const store = gs();
   const slots = store.consumableSlots || 4;
-  const sw = 40, sh = 52, gap = 6;
-  const totalW = slots * sw + (slots - 1) * gap;
-  const sx0 = CP.x + (CP.w - totalW) / 2;
-  const sy  = CP.y + CP.h - 84;
+  const { sx0, sy } = consSlotPos(slots);
   for (let i = 0; i < slots; i++) {
-    const sx = sx0 + i * (sw + gap);
-    if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) return i;
+    const sx = sx0 + i * (CONS_SW + CONS_GAP);
+    if (mx >= sx && mx <= sx + CONS_SW && my >= sy && my <= sy + CONS_SH) return i;
   }
   return -1;
 }
@@ -5313,7 +5354,7 @@ function drawRuneTable(t) {
     const slotW = Math.round(dieCardW/2 - 14*sc);
     const slotH = Math.round(46*sc);
     const slotY = cy + dieCardH - Math.round(58*sc);
-    for (let si = 0; si < MAX_RUNE_SLOTS; si++) {
+    for (let si = 0; si < getVoucherEffect('runeSlots', MAX_RUNE_SLOTS); si++) {
       const sx  = cx + Math.round(10*sc) + si * (slotW + Math.round(8*sc));
       const rune = diceRunes[di] && diceRunes[di][si];
       const selSlot = runeSelSlot && runeSelSlot.die === di && runeSelSlot.slot === si;
