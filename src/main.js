@@ -89,7 +89,7 @@ function getMaster() {
 }
 
 // ─── Background music ─────────────────────────────────────────────────
-const bgMusic    = new Audio('./bg-music.mp3');
+const bgMusic    = new Audio('/bg-music.mp3');
 bgMusic.loop     = true;
 bgMusic.volume   = musicVolume;
 let   bgStarted  = false;
@@ -545,8 +545,10 @@ let RAPIER_LIB = null;  // set after dynamic import resolves
 
 async function initRapier() {
   try {
-    const mod = await import('./rapier/rapier.mjs');
-    await mod.init({ module_or_path: './rapier/rapier_wasm3d_bg.wasm' });
+    const rapierUrl = new URL('/rapier/rapier.mjs', window.location.origin).href;
+    const wasmUrl   = new URL('/rapier/rapier_wasm3d_bg.wasm', window.location.origin).href;
+    const mod = await import(/* @vite-ignore */ rapierUrl);
+    await mod.init({ module_or_path: wasmUrl });
     RAPIER_LIB = mod;
   } catch (e) {
     console.warn('Rapier unavailable, using legacy physics:', e.message);
