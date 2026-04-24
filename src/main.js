@@ -3807,10 +3807,21 @@ function drawBoard(cx, topY, width, height) {
   roundRect(bx + RIM, topY + RIM, bw - RIM*2, bh - RIM*2, 5);
   ctx.fill();
 
-  // Stone floor — when Three.js dice are active, keep interior transparent so
-  // the #three canvas shows through; only fill opaquely in Canvas-2D fallback.
+  // Stone floor — when Three.js dice are active, punch a transparent hole
+  // so the #three canvas shows through. ornamentFrame() fills the entire
+  // center panel (incl. this rect) with ~0.97 alpha first; clearRect zeros
+  // it out regardless of composite op. Otherwise fill opaquely as before.
   const ix = bx + RIM, iy = topY + RIM, iw = bw - RIM*2, ih = bh - RIM*2;
-  if (!gs().useThreeDice) {
+  if (gs().useThreeDice) {
+    ctx.clearRect(ix, iy, iw, ih);
+    // Subtle edge vignette so dice don't float in a hard-edged void
+    const edgeGrad = ctx.createRadialGradient(cx, topY + bh*0.5, bw*0.3, cx, topY + bh*0.5, bw*0.6);
+    edgeGrad.addColorStop(0,   'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(1,   'rgba(0,0,0,0.28)');
+    ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
+    ctx.fillStyle = edgeGrad;
+    ctx.fill();
+  } else {
     const floorGrad = ctx.createRadialGradient(cx, topY + bh*0.45, 8, cx, topY + bh*0.45, bw*0.52);
     floorGrad.addColorStop(0,   'rgba(30,24,18,0.97)');
     floorGrad.addColorStop(0.55,'rgba(18,14,10,0.98)');
@@ -3827,14 +3838,6 @@ function drawBoard(cx, topY, width, height) {
       ctx.fillRect(ix, iy, iw, ih);
       ctx.restore();
     }
-  } else {
-    // Subtle vignette only — thin darkened edge so dice don't float in void
-    const edgeGrad = ctx.createRadialGradient(cx, topY + bh*0.5, bw*0.3, cx, topY + bh*0.5, bw*0.6);
-    edgeGrad.addColorStop(0,   'rgba(0,0,0,0)');
-    edgeGrad.addColorStop(1,   'rgba(0,0,0,0.35)');
-    ctx.beginPath(); ctx.rect(ix, iy, iw, ih);
-    ctx.fillStyle = edgeGrad;
-    ctx.fill();
   }
 
   // Faint gold grid — ancient carved measurement lines
