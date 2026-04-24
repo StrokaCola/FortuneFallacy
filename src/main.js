@@ -19,6 +19,10 @@ import {
 import { ALL_CONSUMABLES, lookupConsumable } from './data/consumables.js';
 import { getVoucherEffect, grantRandomVoucher } from './systems/vouchers.js';
 import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
+import {
+  ensureToneStarted,
+  sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind,
+} from './systems/audio.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -1950,6 +1954,18 @@ function startRound() {
   // Determine the blind for this round — sets activeBlind in the store.
   // Boss Blinds (every 3rd round) apply their debuffs via hasBlindDebuff().
   blindsOnRoundStart(runGoal);
+  // Boss Blind reveal: dramatic Tone.js sting + banner + screen flash.
+  {
+    const ab = gs().activeBlind;
+    if (ab && ab.isBoss) {
+      sfxBossReveal();
+      showBanner(`${ab.icon}  ${ab.name}`, ab.color || '#ff4466');
+      screenFlash(0.55);
+      screenShake(16);
+      burst(W/2, H/2, ab.color || '#ff4466', 36, 7);
+      burst(W/2, H/2, '#ffffff', 16, 9);
+    }
+  }
   initDice();
 }
 
@@ -2758,7 +2774,10 @@ function advanceGoal() {
       if (wasBoss && runGoal >= 3) {
         const anteIdx = Math.floor(justCleared / 3) + 1;
         const voucher = grantRandomVoucher(anteIdx);
-        if (voucher) floatText(W/2, H/2 + 56, `+ ${voucher.icon} ${voucher.name}`, '#ffdd88', 14, { rise:40, life:2.4 });
+        if (voucher) {
+          floatText(W/2, H/2 + 56, `+ ${voucher.icon} ${voucher.name}`, '#ffdd88', 14, { rise:40, life:2.4 });
+          sfxVoucherBuy();
+        }
       }
     }
     // Check unlocks after goal advance
@@ -3281,7 +3300,7 @@ function handleClick(mx, my) {
           gameActions.cancelTargeting();
         } else if (st.consumables[slotIdx]) {
           useConsumable(slotIdx);
-          SFX.oracle();
+          sfxConsumeCard();
         }
         return;
       }
@@ -3293,7 +3312,7 @@ function handleClick(mx, my) {
           if (mx >= d.absX - half && mx <= d.absX + half &&
               my >= d.absY - half && my <= d.absY + half) {
             useConsumable(targeting.index, [i]);
-            SFX.oracle();
+            sfxConsumeCard();
             return;
           }
         }
