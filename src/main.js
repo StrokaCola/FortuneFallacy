@@ -3955,9 +3955,40 @@ function drawOracleCard(oracle, x, y, w, h, owned = false) {
               oracle.name, oracleTooltipBody(oracle), meta);
   }
   ctx.save();
-  if (hover) { ctx.shadowColor = oracle.color; ctx.shadowBlur = 8; }
+  // Phase 8e: subtle breathing on available shop cards (not owned).
+  // Phase 8h: hover elevation with +4% scale and richer shadow.
+  if (!owned) {
+    const tVis = performance.now() / 1000;
+    const breathe = 1 + 0.015 * Math.sin(tVis * 1.8 + (x + y) * 0.017);
+    const scale = hover ? breathe * 1.04 : breathe;
+    ctx.translate(x + w/2, y + h/2);
+    ctx.scale(scale, scale);
+    ctx.translate(-(x + w/2), -(y + h/2));
+  }
+  if (hover) { ctx.shadowColor = oracle.color; ctx.shadowBlur = 14; }
   const bg = owned ? '#0a0820' : hover ? '#120a30' : '#0c0820';
   drawRoundRect(x, y, w, h, 12, bg, oracle.color, owned ? 1.5 : 2);
+
+  // Phase 8a: Holographic iridescent shimmer on legendary cards.
+  if (oracle.tier === 'legendary') {
+    const tVis = performance.now() / 1000;
+    const shim = ((tVis * 0.32) % 1.6) - 0.3;  // sweep 0→1 with offset
+    const hue = (tVis * 36) % 360;
+    const g = ctx.createLinearGradient(
+      x + shim * w - w * 0.35, y,
+      x + shim * w + w * 0.35, y + h
+    );
+    g.addColorStop(0,   `hsla(${hue},85%,62%,0)`);
+    g.addColorStop(0.4, `hsla(${(hue+60)%360},90%,74%,0.22)`);
+    g.addColorStop(0.6, `hsla(${(hue+120)%360},85%,72%,0.16)`);
+    g.addColorStop(1,   `hsla(${(hue+200)%360},80%,66%,0)`);
+    const prevOp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = g;
+    roundRect(x + 2, y + 2, w - 4, h - 4, 10);
+    ctx.fill();
+    ctx.globalCompositeOperation = prevOp;
+  }
 
   // Legendary badge
   if (oracle.tier === 'legendary' && !owned) {
@@ -5948,7 +5979,14 @@ function loop(now) {
   updateBanner(dt);
 
   // Tick the WebGL background nebula
-  tickBg(t, screen);
+  // Intensity drives background hue — pulls toward crimson as the player
+  // closes on their target, so the world visibly "heats up" under pressure.
+  let _bgIntensity = 0;
+  if (screen === 'game') {
+    const tgt = currentTarget();
+    if (tgt > 0) _bgIntensity = Math.min(1, roundScore / tgt);
+  }
+  tickBg(t, screen, _bgIntensity);
 
   // Three.js dice tick — renders to #three canvas layered between #bg and #game.
   // Only shows dice on the game screen; everywhere else they hide.
