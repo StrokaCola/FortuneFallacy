@@ -4,34 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FortuneFallacy is a Balatro-style dice roguelike built for Ordinary Game Jam #1. The core loop: roll 5 dice → lock/reroll → play a hand → score combos → earn shards → upgrade dice/buy oracles → repeat across 8 escalating goals.
+FortuneFallacy is a Balatro-style dice roguelike. Core loop: roll 5 dice → lock/reroll → play a hand → score combos → earn shards → upgrade dice / buy oracles / spend on consumables & vouchers → advance through 4 antes × 3 blinds (12 rounds), beating a Boss Blind every third round.
 
-**Stack**: Vanilla JS, no build step, no bundler, no framework. Canvas 2D rendering at 960×540. Optional Rapier WASM physics (bundled in `rapier/`). Everything lives in `game.js` (~6500 lines).
+**Stack**: Vite build system. Vanilla JS game logic (no React). Canvas 2D UI + Three.js 3D dice + WebGL nebula background, all layered at 960×540. Tone.js SFX, Howler.js music, Zustand-vanilla store for new-feature state, Rapier3D WASM physics (optional fallback: pure-JS Euler integration). ~6,500 lines in `src/main.js` plus ~12 focused modules under `src/`.
 
 ## Running Locally
 
 ```bash
-python -m http.server 8000
-# then open http://localhost:8000
+npm install       # first time only
+npm run dev       # Vite dev server at http://localhost:5173
+npm run build     # production bundle into dist/
+npm run preview   # serve the built dist/
 ```
 
-Any static file server works. There is no build, no install, no transpile step.
+Use `python -m http.server` directly on `dist/` to smoke-test a production build without Node.
 
 ## Deploying
 
-Push to `main` — GitHub Actions (`.github/workflows/pages.yml`) deploys to GitHub Pages automatically.
+Push to `main` — GitHub Actions (`.github/workflows/pages.yml`) runs `npm ci && npm run build` and publishes `dist/` to GitHub Pages.
 
 ## Architecture
 
 ### File Layout
 
-- `game.js` — entire game: state, physics, rendering, UI, scoring, audio
-- `portal.js` — jam-required Portal Protocol (read URL params on load, redirect out on exit)
-- `index.html` — single canvas `#game` (960×540), loads portal.js then game.js as a module
-- `style.css` — dark cosmic theme, canvas centered with glow border
-- `rapier/` — bundled Rapier3D WASM for physics (imported dynamically)
-- `physics-editor.html` — browser tool for tuning `PHYSICS` constants (saves to localStorage)
-- `editor.html`, `rune-editor.html`, `anomaly-editor.html`, `dice-model-editor.html` — other browser-based dev tools
+- `src/main.js` — bulk of the game (state, physics, rendering, UI, scoring). Still the longest file; focused modules below pull out data and new-feature systems.
+- `src/state/store.js` — Zustand vanilla store. Owns blind/consumable/voucher/transition state; legacy globals in main.js coexist during migration.
+- `src/data/` — pure data tables:
+    - `constants.js`   — W, H, layout rects, dice pool caps, tier/combo colours.
+    - `blinds.js`      — BLIND_DEFS, ANTE_BASE_TARGETS, BOSS_BLINDS, targetForBlind, shuffleBossBlindPool, skip tags.
+    - `consumables.js` — 7 Tarot + 4 Spectral cards with abstract apply(ctx, targets) API.
+    - `vouchers.js`    — 8 permanent run upgrades.
+- `src/systems/` — behaviour modules that bridge data to main.js state:
+    - `blinds.js`      — anteFromGoal, onRoundStart/onRoundCleared, hasBlindDebuff + named helpers.
+    - `consumables.js` — wireConsumableBridge, useConsumable, grantRandomConsumable.
+    - `vouchers.js`    — getVoucherEffect(key, default), grantRandomVoucher.
+    - `audio.js`       — Tone.js SFX (sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind) + Howler.js music helpers.
+- `src/rendering/dice3d.js` — Three.js dice renderer (BoxGeometry, PBR materials, PCFSoft shadows, OrthographicCamera). Reads pose from Rapier/legacy physics; falls back silently to Canvas-2D dice on WebGL failure.
+- `src/bg-shader.js` — WebGL nebula background. `tickBg(t, screen, intensity)` blends mode→crimson as roundScore approaches target.
+- `public/portal.js` — jam Portal Protocol (classic script, not bundled; `window.Portal` is expected).
+- `public/rapier/`  — bundled Rapier3D WASM for physics (dynamic import).
+- `public/bg-music.mp3`, `public/thumbnail.png`, `public/.nojekyll` — static assets served from site root.
+- `index.html` — three-canvas stack: `#bg` (WebGL nebula), `#three` (Three.js dice), `#game` (Canvas 2D UI).
+- `style.css` — dark cosmic theme, canvas stack absolutely positioned.
+- `physics-editor.html`, `editor.html`, `rune-editor.html`, `anomaly-editor.html`, `dice-model-editor.html` — standalone dev tools (unchanged by the overhaul).
 
 ### Game Screens (state machine)
 
@@ -79,16 +94,35 @@ Face detection uses `eulerToFace(rx, ry, rz)` which compares accumulated Euler a
 ### Key Constants
 
 ```js
-GOAL_TARGETS    = [300, 800, 2000, 5000, 11000, 20000, 35000, 50000]
+// 12 goals: 4 antes × (Small, Big, Boss) — computed from ANTE_BASE_TARGETS
+GOAL_TARGETS    = BLIND_GOAL_TARGETS  // alias; see src/systems/blinds.js
 HANDS_PER_ROUND = 3
 REROLLS_PER_HAND = 2
-DICE_COUNT      = 5   // starting pool
+DICE_COUNT      = 5   // starting pool (Voucher Die Caster raises to 6)
 MAX_DICE        = 10  // pool cap
-MAX_ORACLES     = 6
-MAX_RUNE_SLOTS  = 2
+MAX_ORACLES     = 6   // Voucher Astral Plane adds 1
+MAX_RUNE_SLOTS  = 2   // Voucher Forged Links raises to 3
 ```
 
 Canvas: `W = 960`, `H = 540` (hardcoded, not responsive).
+
+### Blind / Ante / Consumable / Voucher Systems
+
+- **Blind** — every 3rd `runGoal` is a Boss. `startRound()` calls
+  `blindsOnRoundStart(runGoal)` which sets `activeBlind` in the store.
+  `hasBlindDebuff(id)` checks the active blind's debuff flags: `no_rerolls`
+  (The Tower), `disable_oracles` (The High Priestess), `auto_unlock_after_roll`
+  (The Devil), `hand_size_cap_4` (The Fool), `no_rune_transforms_on_ones`
+  (The Serpent). Debuffs are read at their respective call sites in main.js
+  (reroll click, oracle-apply loop, post-roll, lock-click, rune-transforms).
+- **Consumable** — held in a 4-slot hand (store: `consumables`). Each
+  definition has `apply(ctx, targets)`; main.js exposes `ctx` via
+  `wireConsumableBridge({ setDieFace, addShards, duplicateOracle, ... })`.
+  Targeting cards set `consumableTargeting` in the store; the next matching
+  click resolves or Esc cancels.
+- **Voucher** — permanent per-run upgrades. Call `getVoucherEffect(key, default)`
+  anywhere you need a voucher-modified value (oracle cap, shop price, shards
+  per hand). Granted after Boss Blind clears from Ante 2 onwards.
 
 ### Particle / FX System
 
@@ -104,7 +138,14 @@ Scale feedback intensity with `scoreIntensity(val)` (log10 scale, 0–1 up to ~5
 
 ### Audio
 
-Web Audio API only — no library. `getMaster()` builds a compressor → gain → sfx-gain → destination chain once. `SFX` object contains named sound functions (`SFX.roll()`, `SFX.lock()`, `SFX.combo(tier)`, etc.). All audio is lazy-initialised on first user interaction.
+Two paths coexist:
+- **Legacy `SFX.*`** (main.js) — raw Web Audio API for the core
+  roll/lock/combo/tick/bigScore family. Still the primary SFX surface.
+- **`src/systems/audio.js`** — Tone.js helpers for richer one-shots
+  (sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind) and
+  Howler.js music helpers ready to replace the `new Audio()` loop.
+  `ensureToneStarted()` is called lazily on first invocation. Each
+  one-shot Tone instrument is disposed ~1.5s after trigger.
 
 ### Persistence
 

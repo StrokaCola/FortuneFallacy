@@ -2332,10 +2332,13 @@ function playHand() {
         if (rune.volatile !== undefined)        add = 1 + Math.floor(Math.random() * rune.volatile);
         if (rune.mirror)                        add = Math.max(...heldEntries.map(e => e.die.face));
         if (rune.collisionBonus !== undefined)  add += rollCollisions.length * rune.collisionBonus;
+        // Boss "The Serpent" blocks face transforms on 1s — applies only
+        // when `add` is currently 1 (pre-transform). Guard the transforms below.
+        const _serpent = bossBlocksOneRuneXforms() && add === 1;
         // New rune face transforms (apply before scoreMultiplier)
-        if (rune.middleBias)                    add = Math.random()<0.5?3:4;
-        if (rune.wildFace)                      add = 6;
-        if (rune.faceRemap && add === rune.faceRemap.from) add = rune.faceRemap.to;
+        if (rune.middleBias && !_serpent)       add = Math.random()<0.5?3:4;
+        if (rune.wildFace   && !_serpent)       add = 6;
+        if (rune.faceRemap && !_serpent && add === rune.faceRemap.from) add = rune.faceRemap.to;
         if (rune.glassCannon) { if(handsLeft===HANDS_PER_ROUND){add=Math.round(add*10);}else{add=0;} }
         if (rune.scoreMultiplier !== undefined) add = Math.round(add * rune.scoreMultiplier);
         if (rune.rerollMult)                    { mult += rerollsLeft; scoringState.mult = mult; scoringState.multPunch = 1; }
@@ -3082,9 +3085,13 @@ function handleClick(mx, my) {
       const cX0=W/2-cTotal/2;
       for (let i=0;i<shopStock.oracles.length;i++) {
         const ox=cX0+i*(cW+cGap);
-        const cost=oracleCost(shopStock.oracles[i]);
+        let cost=oracleCost(shopStock.oracles[i]);
+        // Voucher "Clearance Sale" discounts all shop prices.
+        cost = Math.max(1, Math.ceil(cost * getVoucherEffect('priceMult', 1)));
         if (inRect(mx,my,{x:ox+18,y:134+cH+6,w:cW-36,h:32})) {
-          if (shards>=cost && heldOracles.length<MAX_ORACLES) {
+          // Voucher "Astral Plane" grants +1 Oracle slot.
+          const oracleCap = MAX_ORACLES + getVoucherEffect('extraOracleSlot', 0);
+          if (shards>=cost && heldOracles.length<oracleCap) {
             shards-=cost;
             runStats.totalShardsSpent+=cost;
             const o=shopStock.oracles.splice(i,1)[0];
@@ -3253,8 +3260,10 @@ function handleClick(mx, my) {
       for (let i = 0; i < dice.length; i++) {
         const hs = DICE_SIZE / 2;
         if (inRect(mx,my,{x:dice[i].absX-hs, y:dice[i].absY-hs, w:DICE_SIZE, h:DICE_SIZE})) {
-          if (!dice[i].locked && heldCount() >= MAX_HELD) {
-            floatText(dice[i].absX, dice[i].absY - 30, `Held full (${MAX_HELD})`, '#ff8844', 12);
+          // Boss Blind "The Fool" caps effective hand size to 4.
+          const handCap = bossCapsHandSizeTo4() ? 4 : MAX_HELD;
+          if (!dice[i].locked && heldCount() >= handCap) {
+            floatText(dice[i].absX, dice[i].absY - 30, `Held full (${handCap})`, '#ff8844', 12);
             return;
           }
           dice[i].locked = !dice[i].locked;
@@ -6050,7 +6059,8 @@ wireConsumableBridge({
   },
   addShards: (n) => { shards = Math.max(0, shards + n); },
   duplicateOracle: () => {
-    if (heldOracles.length === 0 || heldOracles.length >= MAX_ORACLES) return false;
+    const cap = MAX_ORACLES + getVoucherEffect('extraOracleSlot', 0);
+    if (heldOracles.length === 0 || heldOracles.length >= cap) return false;
     const src = heldOracles[Math.floor(Math.random() * heldOracles.length)];
     heldOracles.push({ ...src });
     return true;
