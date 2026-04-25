@@ -2122,11 +2122,8 @@ function settleDie(d, dIdx) {
   if (!d.rolling) return;
   if (d.physBody && rapierWorld) {
     const tr = d.physBody.translation();
-    const hs = DICE_SIZE / 2;
-    const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
-    const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
-    d.absX    = Math.max(bL, Math.min(bR, PHYS_CX + tr.x * PHYS_SCALE));
-    d.absY    = Math.max(bT, Math.min(bB, PHYS_CZ + tr.z * PHYS_SCALE));
+    d.absX    = PHYS_CX + tr.x * PHYS_SCALE;
+    d.absY    = PHYS_CZ + tr.z * PHYS_SCALE;
     d.bounceY = 0;
     rapierWorld.removeRigidBody(d.physBody);
     d.physBody = null;
@@ -2136,7 +2133,18 @@ function settleDie(d, dIdx) {
   d.rolling  = false;
   d.settling = false;
   d.pvx = 0; d.pvy = 0;
-  d.homeX = d.absX; d.homeY = d.absY;
+  // Home target = clamped above the tray band so the die glides onto the
+  // play surface (never into the held-dice strip below).
+  {
+    const hs = DICE_SIZE / 2;
+    const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
+    const bT = BOARD_Y + 10 + hs, bB = PLAY_BOTTOM_Y - 4 - hs;
+    d.homeX = Math.max(bL, Math.min(bR, d.absX));
+    d.homeY = Math.max(bT, Math.min(bB, d.absY));
+    // Snap absX/absY into the visible play area but let the glide loop ease
+    // any vertical overshoot upward smoothly.
+    d.absX = Math.max(bL, Math.min(bR, d.absX));
+  }
   const [trx, try_, trz] = FACE_ROT[d.face];
   d.sfRx = d.rx; d.sfRy = d.ry; d.sfRz = d.rz;
   d.tRx  = nearestCanon(d.rx, trx);
@@ -3029,6 +3037,18 @@ const DICE_X0    = CP.x + (CP.w - DICE_ROW_W)/2;
 const BOARD_Y    = DICE_Y - 33;
 const BOARD_H    = 270;
 
+// ─── Held tray ────────────────────────────────────────────────────────
+// Sits inside the felt at the bottom of the board so locked dice glide
+// onto the play surface — no UI panel obscures them. The active rolling
+// region is everything above the tray band.
+const HOLD_H        = 52;
+const HOLD_SLOT_W   = 50;
+const HOLD_GAP      = 12;
+const HOLD_TOTAL    = MAX_HELD * (HOLD_SLOT_W + HOLD_GAP) - HOLD_GAP;
+const HOLD_X0       = CP.x + (CP.w - HOLD_TOTAL) / 2;
+const HOLD_Y        = BOARD_Y + BOARD_H - HOLD_H - 6;
+const PLAY_BOTTOM_Y = HOLD_Y - 6;     // top of tray band, with buffer
+
 // ─── Rapier3D physics constants ────────────────────────────────────────
 const PHYS_SCALE      = 50;       // canvas pixels per physics unit
 const RAPIER_DIE_HALF = DICE_SIZE / 2 / PHYS_SCALE;  // ~0.44 units
@@ -3040,14 +3060,6 @@ function diceRect(i) { return { x: DICE_X0 + i*(DICE_SIZE+DICE_GAP), y: DICE_Y, 
 
 const BTN_ROLL = { x: CP.x + 60,  y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
 const BTN_PLAY = { x: CP.x + 296, y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
-
-// Holding tray — locked dice glide here, below the action buttons
-const HOLD_Y      = BTN_ROLL.y + BTN_ROLL.h + 22;
-const HOLD_H      = 68;
-const HOLD_SLOT_W = 50;
-const HOLD_GAP    = 12;
-const HOLD_TOTAL  = MAX_HELD * (HOLD_SLOT_W + HOLD_GAP) - HOLD_GAP;
-const HOLD_X0     = CP.x + (CP.w - HOLD_TOTAL) / 2;
 function holdSlotCenter(i) {
   return {
     x: HOLD_X0 + i * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2,
@@ -3379,16 +3391,17 @@ function handleClick(mx, my) {
     // Pause button (top-right corner of right panel)
     if (inRect(mx,my,{x:RP.x+RP.w-36,y:RP.y+5,w:28,h:22})) { paused=!paused; return; }
     if (rolledOnce && !handInProgress) {
-      // Tray reorder arrows (shown below each occupied slot when >1 die held)
+      // Tray reorder arrows (shown above each occupied slot when >1 die held)
       if (trayOrder.length > 1) {
-        const arrowY = HOLD_Y + HOLD_H + 4;
+        const arrowY = HOLD_Y - 22;
+        const arrowW = 18, arrowH = 14;
         for (let slot = 0; slot < trayOrder.length; slot++) {
           const sx = HOLD_X0 + slot * (HOLD_SLOT_W + HOLD_GAP);
-          if (slot > 0 && inRect(mx, my, {x:sx, y:arrowY, w:22, h:18})) {
+          if (slot > 0 && inRect(mx, my, {x:sx, y:arrowY, w:arrowW, h:arrowH})) {
             [trayOrder[slot-1], trayOrder[slot]] = [trayOrder[slot], trayOrder[slot-1]];
             SFX.unlock(); return;
           }
-          if (slot < trayOrder.length-1 && inRect(mx, my, {x:sx+HOLD_SLOT_W-22, y:arrowY, w:22, h:18})) {
+          if (slot < trayOrder.length-1 && inRect(mx, my, {x:sx+HOLD_SLOT_W-arrowW, y:arrowY, w:arrowW, h:arrowH})) {
             [trayOrder[slot], trayOrder[slot+1]] = [trayOrder[slot+1], trayOrder[slot]];
             SFX.unlock(); return;
           }
@@ -4582,52 +4595,81 @@ function drawGame(t) {
   // Board surface behind dice
   drawBoard(CP.x + CP.w/2, BOARD_Y, CP.w - 16, BOARD_H);
 
-  // Holding tray — slot frames + label (behind dice, above particles)
+  // Held tray — sits inside the felt at the bottom of the play area.
+  // No heavy panel fill (the 3D dice need to remain visible). A thin
+  // gold separator + slot outlines mark the band; locked dice glide
+  // onto these slots while staying on the play surface.
   {
-    const trayX = HOLD_X0 - 10;
-    const trayW = HOLD_TOTAL + 20;
-    drawInsetPanel(trayX, HOLD_Y, trayW, HOLD_H, '#c89960', {
-      fillTop: 'rgba(22,13,7,0.58)',
-      fillBot: 'rgba(10,6,3,0.76)',
-      radius: 9,
-    });
-    // Label
+    const heldN = trayOrder.length;
+    const sepY  = HOLD_Y - 4;
+    const sepX0 = HOLD_X0 - 18;
+    const sepX1 = HOLD_X0 + HOLD_TOTAL + 18;
     ctx.save();
-    ctx.fillStyle = 'rgba(220,196,150,0.64)';
-    ctx.font = `bold 8px ${SANS}`;
+    const sepGrad = ctx.createLinearGradient(sepX0, sepY, sepX1, sepY);
+    sepGrad.addColorStop(0,    'rgba(200,153,96,0.00)');
+    sepGrad.addColorStop(0.5,  'rgba(200,153,96,0.42)');
+    sepGrad.addColorStop(1,    'rgba(200,153,96,0.00)');
+    ctx.strokeStyle = sepGrad;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sepX0, sepY);
+    ctx.lineTo(sepX1, sepY);
+    ctx.stroke();
+    // Cut-out badge with the held count, centred over the separator
+    ctx.fillStyle = 'rgba(20,14,8,0.92)';
+    roundRect(CP.x + CP.w/2 - 38, sepY - 7, 76, 14, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,153,96,0.45)';
+    ctx.lineWidth = 1;
+    roundRect(CP.x + CP.w/2 - 38, sepY - 7, 76, 14, 4);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(220,196,150,0.85)';
+    ctx.font = `bold 9px ${SANS}`;
     ctx.textAlign = 'center';
-    ctx.fillText(`HELD DICE ${trayOrder.length}/${MAX_HELD}`, CP.x + CP.w/2, HOLD_Y - 5);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`HELD ${heldN}/${MAX_HELD}`, CP.x + CP.w/2, sepY);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
-    // Slot outlines
+
+    // Slot outlines — gold ring for filled slots, faint dashed for empty
     const held = heldCount();
     for (let si = 0; si < MAX_HELD; si++) {
       const sx = HOLD_X0 + si*(HOLD_SLOT_W + HOLD_GAP);
       const sy = HOLD_Y + (HOLD_H - HOLD_SLOT_W) / 2;
       const filled = si < held;
       ctx.save();
-      ctx.strokeStyle = filled ? 'rgba(200,153,96,0.45)' : 'rgba(200,153,96,0.12)';
-      ctx.setLineDash(filled ? [] : [3, 3]);
-      ctx.lineWidth = 1;
-      roundRect(sx, sy, HOLD_SLOT_W, HOLD_SLOT_W, 6);
+      if (filled) {
+        ctx.shadowColor = 'rgba(200,153,96,0.55)';
+        ctx.shadowBlur = 9;
+        ctx.strokeStyle = 'rgba(200,153,96,0.70)';
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.4;
+      } else {
+        ctx.strokeStyle = 'rgba(200,153,96,0.18)';
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+      }
+      roundRect(sx, sy, HOLD_SLOT_W, HOLD_SLOT_W, 7);
       ctx.stroke();
       ctx.restore();
     }
-    // Reorder arrows + slot numbers (shown when 2+ dice held)
+    // Reorder arrows — placed above the tray slots so they don't crowd
+    // the board's lower edge or overlap the action buttons.
     if (rolledOnce && !handInProgress && trayOrder.length > 1) {
-      const arrowY = HOLD_Y + HOLD_H + 4;
+      const arrowY = HOLD_Y - 22;
+      const arrowW = 18, arrowH = 14;
       for (let slot = 0; slot < trayOrder.length; slot++) {
         const sx = HOLD_X0 + slot*(HOLD_SLOT_W + HOLD_GAP);
-        txt(`${slot+1}`, sx + HOLD_SLOT_W/2, arrowY + 13, {size:8, color:'rgba(200,160,255,0.45)', align:'center', bold:true});
         if (slot > 0) {
-          const hov = inRect(hoverX, hoverY, {x:sx, y:arrowY, w:22, h:18});
-          drawRoundRect(sx, arrowY, 22, 18, 4, hov?'rgba(180,140,255,0.22)':'rgba(80,60,120,0.12)', hov?'#aa66ff':'#442280', 1);
-          txt('◀', sx+11, arrowY+13, {size:9, color:hov?'#cc88ff':'#7755aa', align:'center'});
+          const hov = inRect(hoverX, hoverY, {x:sx, y:arrowY, w:arrowW, h:arrowH});
+          drawRoundRect(sx, arrowY, arrowW, arrowH, 4, hov?'rgba(180,140,255,0.28)':'rgba(40,28,68,0.62)', hov?'#aa66ff':'#442280', 1);
+          txt('◀', sx+arrowW/2, arrowY+arrowH-3, {size:9, color:hov?'#cc88ff':'#9077cc', align:'center'});
         }
         if (slot < trayOrder.length-1) {
-          const rx = sx + HOLD_SLOT_W - 22;
-          const hov = inRect(hoverX, hoverY, {x:rx, y:arrowY, w:22, h:18});
-          drawRoundRect(rx, arrowY, 22, 18, 4, hov?'rgba(180,140,255,0.22)':'rgba(80,60,120,0.12)', hov?'#aa66ff':'#442280', 1);
-          txt('▶', rx+11, arrowY+13, {size:9, color:hov?'#cc88ff':'#7755aa', align:'center'});
+          const rx = sx + HOLD_SLOT_W - arrowW;
+          const hov = inRect(hoverX, hoverY, {x:rx, y:arrowY, w:arrowW, h:arrowH});
+          drawRoundRect(rx, arrowY, arrowW, arrowH, 4, hov?'rgba(180,140,255,0.28)':'rgba(40,28,68,0.62)', hov?'#aa66ff':'#442280', 1);
+          txt('▶', rx+arrowW/2, arrowY+arrowH-3, {size:9, color:hov?'#cc88ff':'#9077cc', align:'center'});
         }
       }
     }
@@ -4684,8 +4726,15 @@ function drawGame(t) {
     const multPunch = scoringState.multPunch || 0;
     const chipScale = 1 + chipPunch * 0.45;
     const multScale = 1 + multPunch * 0.45;
-    const sy = BOARD_Y + BOARD_H - 24;
+    const sy = HOLD_Y - 18;
     const cx2 = CP.x + CP.w / 2;
+    // Soft dark chip behind the counter so the live score reads cleanly
+    // over the dice and felt regardless of where dice settled.
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,5,3,0.55)';
+    roundRect(cx2 - 132, sy - 18, 264, 30, 8);
+    ctx.fill();
+    ctx.restore();
     ctx.save();
     ctx.textAlign = 'center';
     // Chips with punch scale
@@ -4720,9 +4769,11 @@ function drawGame(t) {
       const heldFaces = trayOrder.map(i => dice[i].face);
       const combo = detectCombo(heldFaces);
       const col   = COMBO_COLORS[combo.tier]||'#fff';
-      txt(combo.name, CP.x+CP.w/2, BOARD_Y + BOARD_H - 12, {size:15,color:col,align:'center',bold:true,shadow:col});
+      // Lift above the reorder-arrow row when 2+ dice are held.
+      const comboY = trayOrder.length > 1 ? HOLD_Y - 36 : HOLD_Y - 12;
+      txt(combo.name, CP.x+CP.w/2, comboY, {size:15,color:col,align:'center',bold:true,shadow:col});
     } else {
-      txt(`Hold 1–${MAX_HELD} dice to play`, CP.x+CP.w/2, BOARD_Y + BOARD_H - 12, {size:13,color:'rgba(200,170,120,0.55)',align:'center'});
+      txt(`Hold 1–${MAX_HELD} dice to play`, CP.x+CP.w/2, HOLD_Y - 12, {size:13,color:'rgba(200,170,120,0.55)',align:'center'});
     }
   }
 
@@ -6040,7 +6091,7 @@ function loop(now) {
       if (d.rolling) {
         const hs = DICE_SIZE / 2;
         const bL = CP.x + 10 + hs, bR = CP.x + CP.w - 10 - hs;
-        const bT = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
+        const bT = BOARD_Y + 10 + hs, bB = PLAY_BOTTOM_Y - 4 - hs;
         d.absX += d.pvx * dt;
         d.absY += d.pvy * dt;
         const inAir = d.bounceY < -0.5;
@@ -6099,7 +6150,7 @@ function loop(now) {
   if (!rapierWorld) {
     const hs   = DICE_SIZE / 2;
     const bL   = 18 + hs, bR = W - 18 - hs;
-    const bT   = BOARD_Y + 10 + hs, bB = BOARD_Y + BOARD_H - 10 - hs;
+    const bT   = BOARD_Y + 10 + hs, bB = PLAY_BOTTOM_Y - 4 - hs;
     // Visual die footprint is DICE_SIZE * 0.96 (hs = size*0.48). Match the
     // collision box to what the eye sees so dice never bump into empty air.
     const side = DICE_SIZE * 0.96 + PHYSICS.collisionGap;
