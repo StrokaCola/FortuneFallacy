@@ -97,7 +97,7 @@ let faceTextureCache = new Map();
 let ready      = false;
 let clock      = null;
 let trayFloor   = null;
-let cameraState = { x: 0, z: 0, zoom: 1.02, lift: 8.1, dolly: 3.3 };
+let cameraState = { x: 0, z: 0, zoom: 1.02, lift: 9.6, dolly: 1.7 };
 
 // Custom GLB geometry loaded via loadDiceModel(). When non-null, dice use
 // this geometry instead of the procedural RoundedBoxGeometry.
@@ -187,6 +187,11 @@ export function initDice3D(canvas) {
   camera.position.set(0, cameraState.lift, cameraState.dolly);
   camera.zoom = cameraState.zoom;
   camera.lookAt(0, 0, 0);
+  // Shift projection so world origin renders at canvas (PHYS_CX_PX, PHYS_CZ_PX)
+  // instead of canvas center. Keeps 3D tray aligned with 2D UI hit-tests.
+  const _viewOffsetY = H / 2 - PHYS_CZ_PX;
+  const _viewOffsetX = W / 2 - PHYS_CX_PX;
+  camera.setViewOffset(W, H, _viewOffsetX, _viewOffsetY, W, H);
   camera.updateProjectionMatrix();
 
   // ── Lights ────────────────────────────────────────────────────────────
@@ -262,17 +267,17 @@ export function resizeDice3D(w, h) {
 function _initTray() {
   const HW     = PLAY_HALF_W;
   const HD     = PLAY_HALF_D;
-  const WALL_H = 0.52;
-  const WALL_T = 0.14;
-  const RIM_H  = 0.058;
+  const WALL_H = 0.10;   // low rolled edge — keeps dice contained without towering
+  const WALL_T = 0.10;
+  const RIM_H  = 0.030;
 
-  // Felt floor
+  // Felt floor — warm stone tone matching 2D board interior (rgba 30,24,18 ≈ 0x1e1812)
   const feltMat = new THREE.MeshStandardMaterial({
-    color: 0x120e09,
-    roughness: 0.95,
-    metalness: 0.0,
-    emissive: 0x12090f,
-    emissiveIntensity: 0.18,
+    color: 0x1e1812,
+    roughness: 0.92,
+    metalness: 0.04,
+    emissive: 0x140a06,
+    emissiveIntensity: 0.22,
   });
   trayFloor = new THREE.Mesh(new THREE.PlaneGeometry(HW * 2, HD * 2), feltMat);
   trayFloor.rotation.x = -Math.PI / 2;
@@ -280,12 +285,10 @@ function _initTray() {
   trayFloor.receiveShadow = true;
   scene.add(trayFloor);
 
-  // Dark wood wall material
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c0f06, roughness: 0.72, metalness: 0.05 });
-  // Brass rim material
-  const rimMat  = new THREE.MeshStandardMaterial({ color: 0xb8840a, roughness: 0.28, metalness: 0.78 });
-  // Polished gold corner post
-  const cornerMat = new THREE.MeshStandardMaterial({ color: 0xc09010, roughness: 0.22, metalness: 0.85 });
+  // Stone rim base — matches 2D granite rim (rgba 30,28,34 ≈ 0x1e1c22)
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e1c22, roughness: 0.85, metalness: 0.10 });
+  // Brass top rim — softer than before
+  const rimMat  = new THREE.MeshStandardMaterial({ color: 0x8b6a2a, roughness: 0.42, metalness: 0.55 });
 
   const wallDefs = [
     { pos: [-(HW + WALL_T * 0.5),  WALL_H * 0.5, 0],              size: [WALL_T, WALL_H, HD * 2 + WALL_T * 2] },
@@ -299,12 +302,6 @@ function _initTray() {
     { pos: [0, WALL_H + RIM_H * 0.5, -(HD + WALL_T * 0.5)],       size: [HW * 2 + WALL_T * 2 + 0.02, RIM_H, WALL_T + 0.02] },
     { pos: [0, WALL_H + RIM_H * 0.5,  (HD + WALL_T * 0.5)],       size: [HW * 2 + WALL_T * 2 + 0.02, RIM_H, WALL_T + 0.02] },
   ];
-  const cornerDefs = [
-    [-(HW + WALL_T * 0.5), (WALL_H + RIM_H) * 0.5, -(HD + WALL_T * 0.5)],
-    [ (HW + WALL_T * 0.5), (WALL_H + RIM_H) * 0.5, -(HD + WALL_T * 0.5)],
-    [-(HW + WALL_T * 0.5), (WALL_H + RIM_H) * 0.5,  (HD + WALL_T * 0.5)],
-    [ (HW + WALL_T * 0.5), (WALL_H + RIM_H) * 0.5,  (HD + WALL_T * 0.5)],
-  ];
 
   for (const d of wallDefs) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(...d.size), wallMat);
@@ -316,26 +313,41 @@ function _initTray() {
     m.position.set(...d.pos);
     scene.add(m);
   }
-  for (const pos of cornerDefs) {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(WALL_T + 0.04, WALL_H + RIM_H, WALL_T + 0.04),
-      cornerMat
-    );
-    m.position.set(...pos);
-    scene.add(m);
-  }
 
-  // Golden collision boundary frame at floor level
-  const framePts = [
-    new THREE.Vector3(-HW, 0.022, -HD),
-    new THREE.Vector3( HW, 0.022, -HD),
-    new THREE.Vector3( HW, 0.022,  HD),
-    new THREE.Vector3(-HW, 0.022,  HD),
-    new THREE.Vector3(-HW, 0.022, -HD),
-  ];
-  const frameGeo = new THREE.BufferGeometry().setFromPoints(framePts);
-  const frameMat = new THREE.LineBasicMaterial({ color: 0xb8860b, transparent: true, opacity: 0.35 });
-  scene.add(new THREE.Line(frameGeo, frameMat));
+  // Faint amber edge ring — subtle torchlight reflection on felt
+  const innerGlow = new THREE.Mesh(
+    new THREE.RingGeometry(Math.max(HW, HD) * 0.85, Math.max(HW, HD) * 1.02, 96),
+    new THREE.MeshBasicMaterial({
+      color: 0x4a3210,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  innerGlow.rotation.x = -Math.PI / 2;
+  innerGlow.position.y = 0.005;
+  scene.add(innerGlow);
+
+  // Inner edge fade — vignette so felt blends into 2D stone rim
+  const fadeGeo = new THREE.PlaneGeometry(HW * 2 + 0.4, HD * 2 + 0.4);
+  const fadeCanvas = document.createElement('canvas');
+  fadeCanvas.width = fadeCanvas.height = 256;
+  const fctx = fadeCanvas.getContext('2d');
+  const fg = fctx.createRadialGradient(128, 128, 60, 128, 128, 128);
+  fg.addColorStop(0,    'rgba(0,0,0,0)');
+  fg.addColorStop(0.70, 'rgba(0,0,0,0)');
+  fg.addColorStop(1,    'rgba(8,6,4,0.85)');
+  fctx.fillStyle = fg;
+  fctx.fillRect(0, 0, 256, 256);
+  const fadeTex = new THREE.CanvasTexture(fadeCanvas);
+  fadeTex.colorSpace = THREE.SRGBColorSpace;
+  const fadeMesh = new THREE.Mesh(fadeGeo, new THREE.MeshBasicMaterial({
+    map: fadeTex, transparent: true, depthWrite: false,
+  }));
+  fadeMesh.rotation.x = -Math.PI / 2;
+  fadeMesh.position.y = 0.008;
+  scene.add(fadeMesh);
 
   const halo = new THREE.Mesh(
     new THREE.RingGeometry(Math.max(HW, HD) * 0.88, Math.max(HW, HD) * 1.14, 96),
@@ -550,46 +562,20 @@ export function tickDice3D(dice, diceUpgrades, visible) {
     for (const mat of m.material) mat.dispose();
   }
 
-  let activeCount = 0;
-  let centroidX = 0;
-  let centroidZ = 0;
   let energy = 0;
   for (let i = 0; i < dice.length; i++) {
     const d = dice[i];
-    centroidX += _toWorldX(d.absX);
-    centroidZ += _toWorldZ(d.absY);
     if (d.rolling) {
-      activeCount++;
       energy += Math.hypot(d.pvx || 0, d.pvy || 0) / WORLD_PX_PER_UNIT;
       energy += Math.max(0, -(d.bounceY || 0)) * 0.12;
     }
   }
-  if (dice.length > 0) {
-    centroidX /= dice.length;
-    centroidZ /= dice.length;
-  }
   const action = _clamp(energy / Math.max(1, dice.length) / 8, 0, 1);
-  const targetCamX = _clamp(centroidX * 0.18, -0.45, 0.45);
-  const targetCamZ = _clamp(centroidZ * 0.12, -0.24, 0.24);
-  const targetZoom = activeCount > 0 ? 0.96 - action * 0.04 : 1.03;
-  const targetLift = 8.15 + action * 0.55;
-  const targetDolly = 3.25 + action * 0.18;
-  cameraState.x = _expLerp(cameraState.x, targetCamX, dt, 4.5);
-  cameraState.z = _expLerp(cameraState.z, targetCamZ, dt, 4.5);
-  cameraState.zoom = _expLerp(cameraState.zoom, targetZoom, dt, 3.5);
-  cameraState.lift = _expLerp(cameraState.lift, targetLift, dt, 3.2);
-  cameraState.dolly = _expLerp(cameraState.dolly, targetDolly, dt, 3.2);
-  camera.position.set(cameraState.x, cameraState.lift, cameraState.dolly);
-  camera.lookAt(cameraState.x * 0.25, 0, cameraState.z);
-  camera.zoom = cameraState.zoom;
-  camera.updateProjectionMatrix();
-
-  dirLight.position.x = _expLerp(dirLight.position.x, 4 + cameraState.x * 0.8, dt, 2.8);
-  dirLight.position.z = _expLerp(dirLight.position.z, 6 + cameraState.z * 0.5, dt, 2.8);
+  // Camera is locked — tray must stay anchored to UI. Only lights respond to action.
   rimLight.intensity = _expLerp(rimLight.intensity, 1.0 + action * 0.35, dt, 4.0);
   fillLight.intensity = _expLerp(fillLight.intensity, 0.45 + action * 0.18, dt, 4.0);
   if (underLight) underLight.intensity = _expLerp(underLight.intensity, 0.32 + action * 0.28, dt, 4.0);
-  if (trayFloor) trayFloor.material.emissiveIntensity = _expLerp(trayFloor.material.emissiveIntensity, 0.18 + action * 0.12, dt, 3.5);
+  if (trayFloor) trayFloor.material.emissiveIntensity = _expLerp(trayFloor.material.emissiveIntensity, 0.22 + action * 0.10, dt, 3.5);
 
   for (let i = 0; i < dice.length; i++) {
     const d    = dice[i];
