@@ -1065,11 +1065,13 @@ function drawBG(t) {
 }
 
 function txt(text, x, y, style) {
-  const { size=14, color='#fff', align='left', shadow=null, alpha=1, bold=false } = style||{};
+  const { size=14, color='#fff', align='left', shadow=null, alpha=1, bold=false, mono=false, italic=false } = style||{};
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle   = color;
-  ctx.font        = `${bold?'bold ':'' }${size}px ${SANS}`;
+  const family    = mono ? MONO : SANS;
+  const styleStr  = (italic?'italic ':'') + (bold?'bold ':'');
+  ctx.font        = `${styleStr}${size}px ${family}`;
   ctx.textAlign   = align;
   if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = 4; }
   ctx.fillText(text, x, y);
@@ -1646,6 +1648,8 @@ let handsLeft        = HANDS_PER_ROUND;
 let rerollsLeft      = REROLLS_PER_HAND;
 const DISCARDS_PER_ROUND = 1;
 let discardsLeft     = DISCARDS_PER_ROUND;
+let handHistory      = []; // [{name, tier, score}], newest first, cap 3
+let constellation    = null; // {indices:[diceIdx], color, t, dur}
 let totalFateScore   = 0;
 
 let dice       = [];
@@ -2040,6 +2044,7 @@ function startRound() {
   handsLeft             = HANDS_PER_ROUND;
   rerollsLeft       = REROLLS_PER_HAND;
   discardsLeft     = DISCARDS_PER_ROUND;
+  handHistory       = [];
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
@@ -2391,6 +2396,12 @@ function playHand() {
     SFX.combo(combo.tier);
     sfxComboBell(combo.tier);
     if (combo.tier >= 8) sfxFiveOfAKindStinger();
+    constellation = {
+      indices: trayOrder.slice(),
+      color: COMBO_COLORS[combo.tier] || '#ECDEC8',
+      t: 0,
+      dur: 0.55,
+    };
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
     if (tier >= 4) {
@@ -2823,6 +2834,8 @@ function playHand() {
           animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
             lastHandScore = handScore;
             roundScore = newTotal; displayRoundScore = newTotal;
+            handHistory.unshift({ name: combo.name, tier: combo.tier, score: handScore });
+            if (handHistory.length > 3) handHistory.length = 3;
             handsLeft--; rerollsLeft = REROLLS_PER_HAND;
             rolledOnce = false; handInProgress = false; scoringState = null;
             // Voucher: Gemstone Mine pays out shards per hand played.
@@ -4711,6 +4724,44 @@ function drawGame(t) {
     }
   }
 
+  // Constellation overlay — connects scoring dice on combo trigger.
+  if (constellation && constellation.indices.length > 1) {
+    const c = constellation;
+    const phase = c.t / c.dur;
+    let alpha;
+    if (phase < 0.27)      alpha = phase / 0.27;
+    else if (phase < 0.73) alpha = 1;
+    else                   alpha = 1 - (phase - 0.73) / 0.27;
+    const drawN = Math.min(c.indices.length, 1 + Math.floor(phase * c.indices.length * 2.2));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = c.color;
+    ctx.shadowColor = c.color;
+    ctx.shadowBlur  = 14;
+    ctx.lineWidth   = 1.6;
+    ctx.globalAlpha = 0.85 * alpha;
+    ctx.beginPath();
+    for (let k = 0; k < drawN; k++) {
+      const di = c.indices[k];
+      const d  = dice[di];
+      if (!d) continue;
+      if (k === 0) ctx.moveTo(d.absX, d.absY);
+      else ctx.lineTo(d.absX, d.absY);
+    }
+    ctx.stroke();
+    // Star nodes at each scoring die
+    for (let k = 0; k < drawN; k++) {
+      const di = c.indices[k];
+      const d  = dice[di];
+      if (!d) continue;
+      ctx.beginPath();
+      ctx.fillStyle = c.color;
+      ctx.arc(d.absX, d.absY, 3 + 2 * Math.sin(c.t * 14 + k), 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // Dice (3D) — positions driven by absX/absY physics.
   // Three.js owns the die body when useThreeDice is true; Canvas-2D is a fallback.
   const _useThree = gs().useThreeDice;
@@ -4862,9 +4913,19 @@ function drawGame(t) {
     accent: oneShot ? '#cc66ff' : '#8877cc',
   });
 
+  // Discard button — small, below Play Hand row
+  {
+    const heldCt = dice.filter(d => d.locked).length;
+    const canDiscard = rolledOnce && !handInProgress && discardsLeft > 0 && heldCt > 0;
+    drawBtn(BTN_DISCARD, `Discard  ⌫  ${discardsLeft}`, canDiscard, false, {
+      accent: '#D33A4A',
+      compact: true,
+    });
+  }
+
   if (rolledOnce && !handInProgress)
     txt(trayOrder.length > 1 ? 'Click dice to hold · ◀▶ to reorder' : 'Click dice to hold / release them',
-      CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
+      CP.x+CP.w/2, BTN_DISCARD.y+BTN_DISCARD.h+10, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
   ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#2a1880');
@@ -5103,6 +5164,22 @@ function drawGame(t) {
       }
     } else {
       txt('Hold dice to preview', RP.x+RP.w/2, pvy+44, {size:10, color:'rgba(160,140,200,0.4)', align:'center'});
+    }
+  }
+
+  // Hand history rail — last 3 plays
+  if (handHistory.length > 0) {
+    const hhY = RP.y + 340;
+    txt('LAST HANDS', RP.x+RP.w/2, hhY, {size:8, color:'rgba(180,160,220,0.55)', align:'center', bold:true});
+    for (let i = 0; i < handHistory.length; i++) {
+      const h = handHistory[i];
+      const col = COMBO_COLORS[h.tier] || '#ECDEC8';
+      const cy = hhY + 12 + i * 22;
+      drawRoundRect(RP.x+10, cy, RP.w-20, 18, 4, 'rgba(10,4,24,0.55)', 'rgba(80,50,140,0.35)', 1);
+      ctx.fillStyle = col;
+      ctx.fillRect(RP.x+10, cy, 3, 18);
+      txt(h.name, RP.x+18, cy+12, {size:9, color:col, align:'left'});
+      txt(Math.floor(h.score).toLocaleString(), RP.x+RP.w-14, cy+12, {size:10, color:'#ECDEC8', align:'right', bold:true, mono:true});
     }
   }
 
@@ -6300,6 +6377,10 @@ function loop(now) {
   updateFloaters(dt);
   updateComboPop(dt);
   updateBanner(dt);
+  if (constellation) {
+    constellation.t += dt;
+    if (constellation.t >= constellation.dur) constellation = null;
+  }
 
   // Tick the WebGL background nebula
   // Intensity drives background hue — pulls toward crimson as the player
