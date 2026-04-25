@@ -22,7 +22,38 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader }         from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { W, H, CP, BOARD_H, PHYS_SCALE } from '../data/constants.js';
+import { W, H, CP, BOARD_H, PHYS_SCALE, DICE_MODIFIERS } from '../data/constants.js';
+
+// ─── Modifier visual descriptors ──────────────────────────────────────────
+// Renderer reads `d.modifiers[]` (array of ids). For each id, this map
+// returns an emissive overlay (color hex + base intensity + pulse rate +
+// optional hue-cycle flag). Stack cap = 2; iridescent overrides.
+const MODIFIER_FX = {
+  flaming: { hex:0xFF8A3C, base:0.42, pulse:6.5, hue:false  },
+  cursed:  { hex:0x8A5BFF, base:0.30, pulse:1.8, hue:false  },
+  holo:    { hex:0xFFFFFF, base:0.55, pulse:3.2, hue:true   },
+  golden:  { hex:0xC9A24A, base:0.28, pulse:2.0, hue:false  },
+  astral:  { hex:0x6FA0FF, base:0.34, pulse:1.4, hue:false  },
+  bossed:  { hex:0xD33A4A, base:0.36, pulse:5.0, hue:false  },
+};
+
+function _hsvToHex(h, s, v) {
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r=v; g=t; b=p; break;
+    case 1: r=q; g=v; b=p; break;
+    case 2: r=p; g=v; b=t; break;
+    case 3: r=p; g=q; b=v; break;
+    case 4: r=t; g=p; b=v; break;
+    default: r=v; g=p; b=q;
+  }
+  return ((r*255|0)<<16) | ((g*255|0)<<8) | (b*255|0);
+}
 
 // ─── Skin registry ────────────────────────────────────────────────────────
 
@@ -616,15 +647,41 @@ export function tickDice3D(dice, diceUpgrades, visible) {
     mesh.position.set(wx, 0.39 + Math.max(0, -hopY) + idleY, wz);
     mesh.rotation.set(d.rx || 0, d.ry || 0, d.rz || 0, 'ZYX');
 
-    // Emissive pulse for locked dice (warm golden glow)
+    // Emissive: modifiers > locked glow > base.
+    // d.modifiers can be an array of ids or a single string id (back-compat).
     const locked = !!d.locked;
-    for (const mat of mesh.material) {
-      if (locked) {
+    const mods = Array.isArray(d.modifiers)
+      ? d.modifiers
+      : (d.modifiers ? [d.modifiers] : null);
+    if (mods && mods.length) {
+      // Top-priority modifier wins for hue; intensities sum (capped).
+      let topHex = 0x000000, topIntensity = 0, hueCycle = false;
+      for (const id of mods) {
+        const fx = MODIFIER_FX[id];
+        if (!fx) continue;
+        const pulse = fx.base + Math.sin(t * fx.pulse + i * 0.7) * 0.10;
+        if (pulse > topIntensity) {
+          topIntensity = pulse;
+          topHex = fx.hex;
+          hueCycle = fx.hue;
+        }
+      }
+      if (hueCycle) {
+        topHex = _hsvToHex(((t * 0.25) + i * 0.13) % 1, 0.65, 1.0);
+      }
+      // Locked dice still pulse a warm wash on top
+      if (locked) topIntensity = Math.max(topIntensity, 0.18 + Math.sin(t * 2.8 + i * 0.9) * 0.05);
+      for (const mat of mesh.material) {
+        mat.emissive.set(topHex);
+        mat.emissiveIntensity = Math.min(0.85, topIntensity);
+      }
+    } else if (locked) {
+      for (const mat of mesh.material) {
         mat.emissive.set(0xffaa33);
         mat.emissiveIntensity = 0.12 + Math.sin(t * 2.8 + i * 0.9) * 0.06;
-      } else {
-        mat.emissiveIntensity = 0;
       }
+    } else {
+      for (const mat of mesh.material) mat.emissiveIntensity = 0;
     }
 
     // Scale pulse when scoring
@@ -643,6 +700,18 @@ export function tickDice3D(dice, diceUpgrades, visible) {
   }
 
   renderer.render(scene, camera);
+}
+
+// Public modifier helpers — main.js mutates d.modifiers directly, but these
+// give a stable API in case the data model later moves to a side-table.
+export function setDieModifiers(die, mods) {
+  die.modifiers = Array.isArray(mods) ? mods.slice(0, 2) : (mods ? [mods] : null);
+}
+export function getDieModifiers(die) {
+  return Array.isArray(die.modifiers) ? die.modifiers : (die.modifiers ? [die.modifiers] : []);
+}
+export function MODIFIER_BADGE_COLOR(id) {
+  return DICE_MODIFIERS[id]?.tint || '#ECDEC8';
 }
 
 // Hide all dice (e.g. when switching screens)

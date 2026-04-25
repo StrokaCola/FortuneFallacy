@@ -23,6 +23,7 @@ import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
 import {
   ensureToneStarted,
   sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind,
+  sfxComboBell, sfxFiveOfAKindStinger,
 } from './systems/audio.js';
 
 const canvas = document.getElementById('game');
@@ -802,6 +803,7 @@ function drawScreenHeader(title, subtitle, accent, icon = '✦', opts = {}) {
 // ─── Ornament helpers ─────────────────────────────────────────────────
 const SERIF = "'Cinzel Decorative',Cinzel,'Palatino Linotype',Georgia,serif";
 const SANS  = "'Exo 2','ui-sans-serif',sans-serif";
+const MONO  = "'JetBrains Mono','SF Mono',ui-monospace,monospace";
 
 // Procedural stone texture — generated once, tiled as a canvas pattern
 let stonePattern = null;
@@ -2382,6 +2384,8 @@ function playHand() {
 
   setTimeout(() => {
     SFX.combo(combo.tier);
+    sfxComboBell(combo.tier);
+    if (combo.tier >= 8) sfxFiveOfAKindStinger();
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
     if (tier >= 4) {
@@ -3879,6 +3883,20 @@ function drawDie3D(die, cx, cy, size, upg) {
     ctx.fillText('HELD', cx, cy + by + hs + 14);
     ctx.shadowBlur  = 0;
   }
+  // Modifier corner badges (canvas-2D fallback identity)
+  const mods = Array.isArray(die.modifiers) ? die.modifiers : (die.modifiers ? [die.modifiers] : null);
+  if (mods && mods.length) {
+    const badgeColors = { flaming:'#FF8A3C', cursed:'#8A5BFF', holo:'#6FE3B5', golden:'#C9A24A', astral:'#88B0D4', bossed:'#D33A4A' };
+    for (let mi = 0; mi < Math.min(2, mods.length); mi++) {
+      const col = badgeColors[mods[mi]] || '#ECDEC8';
+      const bx = cx - hs + 4 + mi * 9;
+      const byb = cy + by - hs + 4;
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(bx, byb, 3, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
   ctx.restore();
   if (scalePulse !== 1) ctx.restore();
 }
@@ -4842,7 +4860,7 @@ function drawGame(t) {
     const isLava = firstHandSpectrumGoal === runGoal;
     ctx.save();
     ctx.translate(sx, sy); ctx.scale(sc, sc); ctx.translate(-sx, -sy);
-    ctx.font = `bold 32px ${SERIF}`; ctx.textAlign = 'center';
+    ctx.font = `700 32px ${MONO}`; ctx.textAlign = 'center';
     if (isLava) {
       // Pulsing lava glow passes
       const lavaC = ['#ff2200','#ff6600','#ffaa00','#ff4400','#ffee44','#ff1100'];

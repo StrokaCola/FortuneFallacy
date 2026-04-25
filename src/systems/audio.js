@@ -140,3 +140,80 @@ export async function sfxSkipBlind() {
   bell.triggerAttackRelease('16n', now);
   setTimeout(() => bell.dispose(), 600);
 }
+
+// ─── New SFX: Combo bell (tier-pitched strike + choir swell) ──────────────
+// tier 0..8 (Chance..Five-of-a-Kind). Higher tier = brighter, longer.
+export async function sfxComboBell(tier = 0) {
+  if (!await ensureToneStarted()) return;
+  const now = Tone.now();
+  const t   = Math.max(0, Math.min(8, tier|0));
+  const pitches = ['C4','D4','E4','G4','A4','C5','E5','G5','C6'];
+  const bell = new Tone.MetalSynth({
+    frequency: 600 + t * 80,
+    envelope: { attack: 0.001, decay: 0.35 + t*0.04, release: 0.4 + t*0.05 },
+    harmonicity: 4.5 + t * 0.5,
+    modulationIndex: 18 + t * 3,
+    resonance: 3200 + t * 200,
+    octaves: 1.3,
+  }).connect(bus);
+  bell.volume.value = -10;
+  bell.triggerAttackRelease('16n', now);
+  // Choir swell on tier 4+
+  if (t >= 4) {
+    const choir = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.18, decay: 0.4, sustain: 0.3, release: 0.6 },
+    }).connect(bus);
+    choir.volume.value = -16;
+    choir.triggerAttackRelease([pitches[t], pitches[Math.min(8, t+2)]], '4n', now + 0.04);
+    setTimeout(() => choir.dispose(), 1400);
+  }
+  setTimeout(() => bell.dispose(), 1200);
+}
+
+// ─── New SFX: Holographic dice chime ──────────────────────────────────────
+export async function sfxHoloChime() {
+  if (!await ensureToneStarted()) return;
+  const now = Tone.now();
+  const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.45 },
+  }).connect(bus);
+  synth.volume.value = -14;
+  ['E5','A5','C#6','E6'].forEach((n, i) => synth.triggerAttackRelease(n, '32n', now + i * 0.025));
+  setTimeout(() => synth.dispose(), 900);
+}
+
+// ─── New SFX: Flame crackle on flaming-die land ───────────────────────────
+export async function sfxFireCrackle() {
+  if (!await ensureToneStarted()) return;
+  const now = Tone.now();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.005, decay: 0.18, sustain: 0, release: 0.1 },
+  }).connect(bus);
+  noise.volume.value = -18;
+  noise.triggerAttackRelease('16n', now);
+  noise.triggerAttackRelease('32n', now + 0.09);
+  setTimeout(() => noise.dispose(), 700);
+}
+
+// ─── New SFX: Five-of-a-Kind stinger ──────────────────────────────────────
+export async function sfxFiveOfAKindStinger() {
+  if (!await ensureToneStarted()) return;
+  const now = Tone.now();
+  const organ = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 0.01, decay: 0.6, sustain: 0.4, release: 1.2 },
+  }).connect(bus);
+  organ.volume.value = -10;
+  organ.triggerAttackRelease(['C3','Eb3','G3','Bb3','D4'], '2n', now);
+  const bell = new Tone.MetalSynth({
+    frequency: 1800,
+    envelope: { attack: 0.001, decay: 0.6, release: 0.8 },
+    harmonicity: 9, modulationIndex: 50, resonance: 5000, octaves: 1.5,
+  }).connect(bus);
+  bell.volume.value = -8;
+  bell.triggerAttackRelease('8n', now + 0.1);
+  setTimeout(() => { organ.dispose(); bell.dispose(); }, 2400);
+}
