@@ -3035,7 +3035,7 @@ const DICE_Y     = CP.y + 95;
 const DICE_ROW_W = DICE_COUNT * DICE_SIZE + (DICE_COUNT-1) * DICE_GAP;
 const DICE_X0    = CP.x + (CP.w - DICE_ROW_W)/2;
 const BOARD_Y    = DICE_Y - 33;
-const BOARD_H    = 270;
+const BOARD_H    = 340;
 
 // ─── Held tray ────────────────────────────────────────────────────────
 // Sits inside the felt at the bottom of the board so locked dice glide

@@ -26,7 +26,7 @@ export const RP = { x:756, w:196, y:8, h:H-16 };
 
 export const DICE_SIZE = 38;
 export const DICE_GAP  = 22;
-export const BOARD_H   = 270;
+export const BOARD_H   = 340;
 
 // ─── Physics ─────────────────────────────────────────────────────────────
 export const PHYS_SCALE = 50;      // canvas px per physics unit
