@@ -1644,6 +1644,8 @@ let displayScoreBounce    = 0;   // 0–1, scale-pulse while counter ticks
 let firstHandSpectrumGoal = -1;  // runGoal value when goal was cleared first-hand
 let handsLeft        = HANDS_PER_ROUND;
 let rerollsLeft      = REROLLS_PER_HAND;
+const DISCARDS_PER_ROUND = 1;
+let discardsLeft     = DISCARDS_PER_ROUND;
 let totalFateScore   = 0;
 
 let dice       = [];
@@ -1766,6 +1768,7 @@ function serializeRunState() {
     roundScore,
     handsLeft,
     rerollsLeft,
+    discardsLeft,
     shards,
     hubEarnedShards,
     playerName,
@@ -1816,6 +1819,7 @@ function restoreRunState(raw) {
     firstHandSpectrumGoal = -1;
     handsLeft         = blob.handsLeft | 0;
     rerollsLeft       = blob.rerollsLeft | 0;
+    discardsLeft      = (blob.discardsLeft != null ? blob.discardsLeft : DISCARDS_PER_ROUND) | 0;
     shards            = blob.shards | 0;
     hubEarnedShards   = blob.hubEarnedShards | 0;
     if (blob.playerName) { playerName = blob.playerName; nameEntry = playerName; }
@@ -2035,6 +2039,7 @@ function startRound() {
   firstHandSpectrumGoal = -1;
   handsLeft             = HANDS_PER_ROUND;
   rerollsLeft       = REROLLS_PER_HAND;
+  discardsLeft     = DISCARDS_PER_ROUND;
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
@@ -3064,6 +3069,7 @@ function diceRect(i) { return { x: DICE_X0 + i*(DICE_SIZE+DICE_GAP), y: DICE_Y, 
 
 const BTN_ROLL = { x: CP.x + 60,  y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
 const BTN_PLAY = { x: CP.x + 296, y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
+const BTN_DISCARD = { x: CP.x + 188, y: BOARD_Y + BOARD_H + 64, w: 160, h: 26 };
 function holdSlotCenter(i) {
   return {
     x: HOLD_X0 + i * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2,
@@ -3482,6 +3488,18 @@ function handleClick(mx, my) {
       }
     }
     if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
+    if (inRect(mx,my,BTN_DISCARD) && rolledOnce && !handInProgress) {
+      if (discardsLeft <= 0) { SFX.fail(); showBanner('⌀ No discards left','#cc2244'); return; }
+      const held = dice.filter(d => d.locked);
+      if (held.length === 0) { SFX.fail(); showBanner('⌀ Hold dice to discard','#cc2244'); return; }
+      for (const d of dice) d.locked = false;
+      trayOrder = [];
+      traySelSlot = -1;
+      discardsLeft--;
+      rollDice();
+      floatText(W/2, H/2 - 50, '✦ Discard', '#cc88ff', 14, { rise: 30, life: 1.0 });
+      return;
+    }
     // Exit portal (endless only — in main run it shows on win screen)
     if (endless && inRect(mx,my,{x:RP.x+RP.w/2-30,y:RP.y+RP.h-74,w:60,h:60})) { triggerExitPortal(); return; }
     if (incoming.ref && inRect(mx,my,{x:LP.x+LP.w/2-30,y:LP.y+LP.h-74,w:60,h:60})) { triggerReturnPortal(); return; }
