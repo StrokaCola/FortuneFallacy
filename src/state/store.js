@@ -45,6 +45,12 @@ const defaultState = {
   // Constellation Chain (scoring layer)
   chainLen:           0,          // consecutive-same-or-higher combo count
   chainTier:         -1,          // tier of the last scored combo (-1 = none)
+
+  // Stake (pre-roll combo prediction)
+  stakeTier:         -1,          // -1 = no stake; 0..8 = predicted combo tier
+
+  // Overcharge (post-target push)
+  overchargeShards:   0,          // accumulated shards earned past the goal
 };
 
 export const gameStore = createStore(() => ({ ...defaultState }));

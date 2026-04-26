@@ -25,7 +25,7 @@ import {
   sfxBossReveal, sfxConsumeCard, sfxVoucherBuy,
   sfxComboBell, sfxFiveOfAKindStinger,
 } from './systems/audio.js';
-import { applyChain, chainBreakRefund } from './systems/scoring.js';
+import { applyChain, chainBreakRefund, detectCombo as scoringDetectCombo } from './systems/scoring.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -1132,23 +1132,7 @@ const COMBOS = [
     test: () => true },
 ];
 
-function detectCombo(faces) {
-  const counts = [0,0,0,0,0,0,0];
-  for (const f of faces) counts[f]++;
-  const vals = counts.filter(c=>c>0).sort((a,b)=>b-a);
-
-  const present = [...new Set(faces)].sort((a,b)=>a-b);
-  let seq = 1, best = 1;
-  for (let i = 1; i < present.length; i++) {
-    seq = present[i] === present[i-1]+1 ? seq+1 : 1;
-    best = Math.max(best, seq);
-  }
-
-  for (const c of COMBOS) {
-    if (c.test(vals, best)) return { ...c };
-  }
-  return { ...COMBOS[COMBOS.length-1] };
-}
+const detectCombo = scoringDetectCombo;
 
 // ─── Oracle tiers ─────────────────────────────────────────────────────
 const ORACLE_TIERS = {
@@ -1379,6 +1363,8 @@ const DICE_UPGRADES = [
     desc:'+3 Mult if face is 5 or 6', highFaceMult:3 },
   { id:'chaos_die',   name:'Chaos',        shortName:'CHAS', icon:'⚡', color:'#ff8800', cost:6,
     desc:'Random ×0.5 to ×4 Mult when scoring', chaosMultRange:[0.5,4] },
+  { id:'astral_die',  name:'Astral',       shortName:'ASTR', icon:'✦', color:'#8A5BFF', cost:7,
+    desc:'+2 Mult when held but NOT played this hand', astralBonus:2 },
 ];
 
 // ─── Rune definitions ─────────────────────────────────────────────────
@@ -2408,6 +2394,19 @@ function playHand() {
   // chips starts with the combo's base chip bonus; die faces add on top one at a time
   let chips = combo.chips;
   let mult  = combo.mult;
+  // Astral die: dice in the pool but NOT played this hand grant +mult.
+  {
+    let astralAdd = 0;
+    for (let i = 0; i < dice.length; i++) {
+      if (trayOrder.includes(i)) continue;
+      const u = diceUpgrades[i];
+      if (u && u.astralBonus) astralAdd += u.astralBonus;
+    }
+    if (astralAdd > 0) {
+      mult += astralAdd;
+      floatText(W/2, H/2 - 60, `Astral +${astralAdd} Mult`, '#8A5BFF', 14, { rise: 26, life: 1.4 });
+    }
+  }
   scoringState = { chips, mult, displayChips: chips, displayMult: mult };
 
   SFX.playHand();
@@ -2440,6 +2439,7 @@ function playHand() {
     if (tier >= 5) burst(W/2, H/2, '#ffffff', Math.floor(burstN/3), burstSpd * 1.3);
 
     const scoreQueue = [];
+    let resonanceCount = 0; // Resonance: count of "big" mult bumps this hand.
     for (let ei = 0; ei < heldEntries.length; ei++) {
       const entry   = heldEntries[ei];
       const dieIdx  = dice.indexOf(entry.die);
@@ -2543,6 +2543,7 @@ function playHand() {
       }
 
       const multDelta = mult - multBefore;
+      if (multDelta >= 3) resonanceCount++;
 
       // Progressive bar fill — update display score as chips land
       displayRoundScore = Math.round(roundScore + chips);
@@ -2784,8 +2785,34 @@ function playHand() {
           }
         }
 
+        // Resonance — cascading mult bumps. 3+ big bumps fire ×1.25 final.
+        if (resonanceCount >= 3) {
+          mult = Math.max(1, Math.round(mult * 1.25));
+          floatText(W/2, H/2 + 50, `RESONANCE ×${resonanceCount}!`, '#FFFFFF', 18,
+            { glow: 22, popScale: 2.4, life: 1.7, rise: 30 });
+          screenFlash(0.20);
+          screenShake(8);
+        }
+
         chips = Math.max(0, Math.round(chips));
         mult  = Math.max(1, Math.round(mult));
+
+        // Stake — pre-roll combo prediction. Hit ×1.5 mult, miss reduces to 1.
+        {
+          const stake = gs().stakeTier;
+          if (stake >= 0) {
+            if (combo.tier === stake) {
+              mult = Math.max(1, Math.round(mult * 1.5));
+              floatText(W/2, H/2 - 30, '★ STAKE HIT ×1.5', '#FFD66B', 18,
+                { glow: 18, popScale: 2.2, life: 1.6, rise: 36 });
+              screenFlash(0.18);
+            } else {
+              mult = 1;
+              floatText(W/2, H/2 - 30, '✗ STAKE MISS', '#D33A4A', 16, { life: 1.4, rise: 30 });
+            }
+            ss({ stakeTier: -1 });
+          }
+        }
         scoringState.chips = chips;
         scoringState.mult  = mult;
 
@@ -2903,14 +2930,28 @@ function playHand() {
               if (handsLeft === HANDS_PER_ROUND - 1) firstHandSpectrumGoal = runGoal;
               advanceGoal();
             } else if (handsLeft <= 0) {
-              setTimeout(() => {
-                SFX.fail();
-                const name = nameEntry.trim() || incoming.username || 'Wanderer';
-                saveScore(name, totalFateScore, endless ? 'endless' : 'run');
-                loadScores();
-                clearActiveRun();
-                screen = 'scores';
-              }, 800);
+              // Soft Bust: kept the run if we cleared >= 75% of the target.
+              // Lose chain + sacrifice one oracle slot; advance the goal.
+              const tgt = currentTarget();
+              if (roundScore >= Math.floor(tgt * 0.75)) {
+                ss({ chainLen: 0, chainTier: -1 });
+                if (heldOracles.length > 0) {
+                  const dropped = heldOracles.shift();
+                  floatText(W/2, H/2 + 110, `Lost ${dropped.name}`, '#ff8866', 13, { rise: 30, life: 1.8 });
+                }
+                showBanner('☄ SOFT BUST — pushed through', '#ff8866');
+                screenShake(10);
+                advanceGoal();
+              } else {
+                setTimeout(() => {
+                  SFX.fail();
+                  const name = nameEntry.trim() || incoming.username || 'Wanderer';
+                  saveScore(name, totalFateScore, endless ? 'endless' : 'run');
+                  loadScores();
+                  clearActiveRun();
+                  screen = 'scores';
+                }, 800);
+              }
             } else {
               saveActiveRun();
             }
@@ -2930,6 +2971,19 @@ function advanceGoal() {
   totalFateScore += roundScore;
   rewardT = 0;
   SFX.clear();
+  // Overcharge — score past the target ≥50% triggers a shard bonus.
+  {
+    const tgt = currentTarget();
+    const overflow = roundScore - tgt;
+    if (overflow > 0 && overflow >= Math.floor(tgt * 0.5)) {
+      const bonus = Math.min(20, Math.floor(overflow / Math.max(50, tgt / 10)));
+      if (bonus > 0) {
+        shards += bonus;
+        showBanner(`⚡ OVERCHARGE +${bonus} ◆`, '#FF8A3C');
+        floatText(W/2, H/2 + 60, `+${bonus} ◆`, '#FF8A3C', 22, { glow: 24, popScale: 2.4, life: 1.8, rise: 36 });
+      }
+    }
+  }
   showBanner('✦ GOAL CLEARED ✦', '#c89960');
   screenShake(12);
   screenFlash(0.3);
@@ -3211,6 +3265,14 @@ document.addEventListener('keydown', e => {
   if (screen === 'title') {
     if (hasActiveRun() && loadActiveRun()) return;
     startRun(false);
+  }
+  // Stake: cycle predicted combo tier with [S]; only allowed before the first
+  // roll of a hand (rolledOnce false) and not while a hand is animating.
+  if (screen === 'game' && (e.key === 's' || e.key === 'S') && !rolledOnce && !handInProgress) {
+    const cur = gs().stakeTier;
+    const next = cur >= 8 ? -1 : cur + 1;
+    ss({ stakeTier: next });
+    e.preventDefault();
   }
 });
 
@@ -5084,6 +5146,20 @@ function drawGame(t) {
   txt('/ '+currentTarget().toLocaleString(), RP.x+RP.w/2, RP.y+74, {size:11,color:'rgba(200,180,255,0.55)',align:'center'});
   drawStatChip(RP.x + 12, RP.y + 108, 82, 36, 'Need', Math.max(0, currentTarget() - Math.floor(displayRoundScore)).toLocaleString(), '#cc6688');
   drawStatChip(RP.x + RP.w - 94, RP.y + 108, 82, 36, 'Rate', `${Math.round(Math.min(999, (displayRoundScore / Math.max(1, currentTarget())) * 100))}%`, '#66c8ff');
+  // Stake / Chain readout — small one-line strip below stat chips.
+  {
+    const stake = gs().stakeTier ?? -1;
+    const chainLen = gs().chainLen || 0;
+    const yLine = RP.y + 150;
+    if (stake >= 0) {
+      const names = ['Chance','Pair','Two Pair','Three Kind','Sm Straight','Full House','Lg Straight','Four Kind','Five Kind'];
+      txt(`STAKE: ${names[stake] || '?'}`, RP.x + RP.w/2, yLine, { size: 9, color: '#FFD66B', align: 'center', bold: true });
+    } else if (!rolledOnce && !handInProgress) {
+      txt('[S] Stake combo', RP.x + RP.w/2, yLine, { size: 8, color: 'rgba(220,210,180,0.45)', align: 'center' });
+    } else if (chainLen >= 2) {
+      txt(`CHAIN ×${(1 + 0.25 * (chainLen-1)).toFixed(2)}  (${chainLen})`, RP.x + RP.w/2, yLine, { size: 9, color: '#8A5BFF', align: 'center', bold: true });
+    }
+  }
 
   // Progress bar
   const prog = Math.min(1, displayRoundScore/currentTarget());
