@@ -71,6 +71,22 @@ export const COMBO_COLORS = [
   '#FFFFFF',        // Five of a Kind — iridescent sentinel
 ];
 
+// ─── Stat chip accents (round HUD) ──────────────────────────────────────
+export const STAT_CHIP_COLORS = {
+  hands:   PALETTE.astral,
+  rerolls: PALETTE.brassDim,
+  held:    PALETTE.brass,
+  shards:  PALETTE.mint,
+  need:    PALETTE.crimson,
+  rate:    PALETTE.astral,
+};
+
+// ─── Frame defaults ──────────────────────────────────────────────────────
+export const FRAME_ACCENT = PALETTE.astral;
+
+// ─── Re-export rune tier ramp ────────────────────────────────────────────
+export const RUNE_TIER_COLORS = TIER_COLORS;
+
 // ─── Dice modifier identity (visual-only metadata) ──────────────────────
 // Renderers map by id. Stack cap = 2 visual + 1 status.
 export const DICE_MODIFIERS = {

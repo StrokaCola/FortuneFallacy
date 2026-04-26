@@ -26,6 +26,13 @@ import {
   sfxComboBell, sfxFiveOfAKindStinger,
 } from './systems/audio.js';
 import { applyChain, chainBreakRefund, detectCombo as scoringDetectCombo } from './systems/scoring.js';
+import {
+  PALETTE,
+  COMBO_COLORS as IDENTITY_COMBO_COLORS,
+  TIER_COLORS as IDENTITY_TIER_COLORS,
+  STAT_CHIP_COLORS,
+  FRAME_ACCENT,
+} from './data/constants.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -1416,7 +1423,7 @@ const ALL_RUNES = [
   { id:'chaos_r',        name:'Chaos',        tier:'rare',     icon:'⚡', color:'#ff6600', cost:6,
     desc:'Random ×0.5 to ×4 Mult when scoring', chaosMultRange:[0.5,4] },
 ];
-const RUNE_TIERS = { common:'#778899', uncommon:'#44bb66', rare:'#9955ee', legendary:'#c89960' };
+const RUNE_TIERS = IDENTITY_TIER_COLORS;
 const MAX_RUNE_SLOTS = 2;
 
 // ─── Unlockable items ─────────────────────────────────────────────────
@@ -1583,7 +1590,7 @@ const UNLOCKABLE_ORACLES = [
 
 // ─── Combo tier colours ───────────────────────────────────────────────
 // tier 0→8: chance → pair → two-pair → three-kind → sm-straight → full-house → lg-straight → four-kind → five-kind
-const COMBO_COLORS = ['#556677','#5577bb','#6688cc','#7799dd','#88aaee','#dd4477','#cc44ff','#ff8833','#ffffff'];
+const COMBO_COLORS = IDENTITY_COMBO_COLORS;
 
 // ─── Screen slide transitions ─────────────────────────────────────────
 const shopSlide = { x: 0 };  // horizontal offset for shop/rune overlay screens
@@ -3114,7 +3121,7 @@ function triggerExitPortal() {
   if (portalRedirecting) return;
   portalRedirecting = true;
   SFX.portal();
-  burst(W - 44, H/2, '#22aadd', 24, 5);
+  burst(W - 44, H/2, PALETTE.mint, 24, 5);
   setTimeout(() => Portal.sendPlayerThroughPortal(
     nextTarget?.url ?? 'https://callumhyoung.github.io/gamejam/',
     { username: incoming.username, color: incoming.color, speed: incoming.speed }
@@ -4549,7 +4556,7 @@ function drawTitle(t) {
   // Ornate central parchment frame
   const fw = 560, fh = 360;
   const fx = (W - fw) / 2, fy = (H - fh) / 2;
-  ornamentFrame(fx, fy, fw, fh, '#4422aa', { bg: 'rgba(4,3,18,0.95)', inner: 'rgba(200,153,96,0.42)' });
+  ornamentFrame(fx, fy, fw, fh, PALETTE.astral, { bg: 'rgba(4,3,18,0.95)', inner: 'rgba(201,162,74,0.42)' });
 
   // Top flourish line with sigils
   ctx.save();
@@ -4572,18 +4579,18 @@ function drawTitle(t) {
   ctx.fillStyle='rgba(0,0,0,0.7)';
   ctx.font = `bold 64px ${SERIF}`;
   ctx.fillText('FortuneFallacy', W/2 + 2, fy + 112 + 2);
-  ctx.shadowColor = '#6622cc'; ctx.shadowBlur = 14;
-  ctx.fillStyle = '#c89960';
+  ctx.shadowColor = PALETTE.astral; ctx.shadowBlur = 14;
+  ctx.fillStyle = PALETTE.brass;
   ctx.fillText('FortuneFallacy', W/2, fy + 112);
   ctx.restore();
 
   // Subtitle in italic serif
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#b8a874';
+  ctx.fillStyle = PALETTE.brassDim;
   ctx.font = `italic 18px ${SERIF}`;
   ctx.fillText('Roll the dice.  Defy the fallacy.', W/2, fy + 150);
-  ctx.fillStyle = 'rgba(200,170,120,0.55)';
+  ctx.fillStyle = 'rgba(201,162,74,0.55)';
   ctx.font = `12px ${SERIF}`;
   ctx.fillText('A dice roguelike  ·  8 goals  ·  endless mode', W/2, fy + 172);
   ctx.restore();
@@ -4596,7 +4603,7 @@ function drawTitle(t) {
   ctx.moveTo(fx + 60, fy + fh - 20);
   ctx.lineTo(fx + fw - 60, fy + fh - 20);
   ctx.stroke();
-  ctx.fillStyle = '#9a7848';
+  ctx.fillStyle = PALETTE.brassDim;
   ctx.font = `10px ${SERIF}`;
   ctx.textAlign = 'center';
   ctx.fillText('☽', fx + 48, fy + fh - 16);
@@ -4620,7 +4627,7 @@ function drawTitle(t) {
   const pulse = 0.5 + 0.4*Math.sin(t*2.3);
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.fillStyle = `rgba(200,170,120,${pulse})`;
+  ctx.fillStyle = `rgba(201,162,74,${pulse})`;
   ctx.font = `italic 11px ${SERIF}`;
   ctx.fillText(hasSave ? '— press any key to resume —' : '— press any key to begin —', W/2, H - 26);
   ctx.restore();
@@ -4682,11 +4689,11 @@ function drawConsumableTray(_t) {
       const targeting = store.consumableTargeting && store.consumableTargeting.index === i;
       drawRoundRect(sx, sy, CONS_SW, CONS_SH, 6,
         targeting ? 'rgba(120,60,200,0.6)' : hov ? 'rgba(60,30,90,0.85)' : 'rgba(25,12,42,0.85)',
-        def.color || '#cc88ff', targeting ? 2 : hov ? 2 : 1);
+        def.color || PALETTE.astral, targeting ? 2 : hov ? 2 : 1);
       ctx.save();
-      ctx.shadowColor = def.color || '#cc88ff';
+      ctx.shadowColor = def.color || PALETTE.astral;
       ctx.shadowBlur  = 4;
-      txt(def.icon || '?', sx + CONS_SW / 2, sy + 20, { size: 18, color: def.color || '#cc88ff', align: 'center' });
+      txt(def.icon || '?', sx + CONS_SW / 2, sy + 20, { size: 18, color: def.color || PALETTE.astral, align: 'center' });
       ctx.restore();
       txt((def.name || '').slice(0, 7), sx + CONS_SW / 2, sy + 38,
         { size: 6.5, color: '#ecdec8', align: 'center' });
@@ -4697,7 +4704,7 @@ function drawConsumableTray(_t) {
     const tt = store.consumableTargeting.targetType || 'target';
     txt(`Click a ${tt.replace('_', ' ')}… (Esc)`,
       LP.x + LP.w / 2, sy + CONS_SH + 14,
-      { size: 8, color: '#cc88ff', align: 'center', italic: true });
+      { size: 8, color: PALETTE.astral, align: 'center', italic: true });
   }
 }
 
@@ -4707,8 +4714,8 @@ function drawGame(t) {
   const _uiState = getUIState();
 
   // Left panel
-  ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#2a1880');
-  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', '#9966ee', '☽');
+  ornamentFrame(LP.x, LP.y, LP.w, LP.h, FRAME_ACCENT);
+  panelHeader(LP.x + LP.w/2, LP.y + 22, LP.w - 20, 'Anomalies', PALETTE.astral, '☽');
 
   const cardH = 50; const cardW = LP.w - 16;
   for (let i = 0; i < MAX_ORACLES; i++) {
@@ -4727,12 +4734,12 @@ function drawGame(t) {
   }
 
   // Center panel
-  ornamentFrame(CP.x, CP.y, CP.w, CP.h, '#2a1880');
+  ornamentFrame(CP.x, CP.y, CP.w, CP.h, FRAME_ACCENT);
   // ── Blind banner — boss-aware, reveal-animated ──
   {
     const ab        = gs().activeBlind;
     const isBoss    = !!(ab && ab.isBoss);
-    const accent    = ab?.color || (isBoss ? '#D33A4A' : '#8a6fe0');
+    const accent    = ab?.color || (isBoss ? PALETTE.crimson : PALETTE.astral);
     const bannerH   = 52;
     const bx        = CP.x + 10;
     const by        = CP.y + 10;
@@ -4771,9 +4778,9 @@ function drawGame(t) {
       ctx.fillStyle = accent;
       ctx.shadowColor = accent;
       ctx.shadowBlur = isBoss ? 6 : 0;
-      ctx.font = `bold ${isBoss ? 22 : 17}px ${SERIF}`;
+      ctx.font = `bold ${isBoss ? 19 : 15}px ${SERIF}`;
       ctx.fillText(`${ab.icon || '✦'}`, bx + 14, by + (isBoss ? 30 : 28));
-      ctx.font = `bold ${isBoss ? 16 : 13}px ${SERIF}`;
+      ctx.font = `bold ${isBoss ? 14 : 12}px ${SERIF}`;
       ctx.fillText(ab.name, bx + 38, by + (isBoss ? 24 : 22));
       ctx.shadowBlur = 0;
       ctx.fillStyle = 'rgba(230,220,245,0.62)';
@@ -4783,8 +4790,8 @@ function drawGame(t) {
     }
     // Center: round target in mono
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#c89960';
-    ctx.font = `700 22px ${MONO}`;
+    ctx.fillStyle = PALETTE.brass;
+    ctx.font = `700 18px ${MONO}`;
     ctx.fillText(currentTarget().toLocaleString(), bx + bw/2, by + 28);
     ctx.fillStyle = 'rgba(230,220,245,0.55)';
     ctx.font = `bold 8px ${SANS}`;
@@ -4816,10 +4823,10 @@ function drawGame(t) {
       : 1;
     ctx.save();
     ctx.globalAlpha = fade;
-    drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, '#7f69ff');
-    drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, '#c89960');
-    drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, '#d9a14c');
-    drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, '#66c8ff');
+    drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, STAT_CHIP_COLORS.hands);
+    drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, STAT_CHIP_COLORS.rerolls);
+    drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, STAT_CHIP_COLORS.held);
+    drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, STAT_CHIP_COLORS.shards);
     ctx.restore();
   }
 
@@ -5110,8 +5117,8 @@ function drawGame(t) {
       CP.x+CP.w/2, BTN_DISCARD.y+BTN_DISCARD.h+10, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
-  ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#2a1880');
-  panelHeader(RP.x + RP.w/2, RP.y + 22, RP.w - 20, 'Score', '#c89960', '⚝');
+  ornamentFrame(RP.x, RP.y, RP.w, RP.h, FRAME_ACCENT);
+  panelHeader(RP.x + RP.w/2, RP.y + 22, RP.w - 20, 'Score', PALETTE.brass, '⚝');
 
   // Score number — scale-bounces while counting, lava glow on first-hand clear
   {
@@ -5138,14 +5145,14 @@ function drawGame(t) {
       ctx.shadowColor = '#ffaa00';
       ctx.shadowBlur  = 14 + Math.sin(t * 6) * 5;
     } else {
-      ctx.fillStyle = '#e0c590'; ctx.shadowColor = '#6622cc'; ctx.shadowBlur = 4;
+      ctx.fillStyle = PALETTE.brass; ctx.shadowColor = PALETTE.astral; ctx.shadowBlur = 4;
     }
     ctx.fillText(scoreStr, sx, sy);
     ctx.restore();
   }
-  txt('/ '+currentTarget().toLocaleString(), RP.x+RP.w/2, RP.y+74, {size:11,color:'rgba(200,180,255,0.55)',align:'center'});
-  drawStatChip(RP.x + 12, RP.y + 108, 82, 36, 'Need', Math.max(0, currentTarget() - Math.floor(displayRoundScore)).toLocaleString(), '#cc6688');
-  drawStatChip(RP.x + RP.w - 94, RP.y + 108, 82, 36, 'Rate', `${Math.round(Math.min(999, (displayRoundScore / Math.max(1, currentTarget())) * 100))}%`, '#66c8ff');
+  txt('/ '+currentTarget().toLocaleString(), RP.x+RP.w/2, RP.y+74, {size:11,color:'rgba(220,205,255,0.55)',align:'center',mono:true});
+  drawStatChip(RP.x + 12, RP.y + 108, 82, 36, 'Need', Math.max(0, currentTarget() - Math.floor(displayRoundScore)).toLocaleString(), STAT_CHIP_COLORS.need);
+  drawStatChip(RP.x + RP.w - 94, RP.y + 108, 82, 36, 'Rate', `${Math.round(Math.min(999, (displayRoundScore / Math.max(1, currentTarget())) * 100))}%`, STAT_CHIP_COLORS.rate);
   // Stake / Chain readout — small one-line strip below stat chips.
   {
     const stake = gs().stakeTier ?? -1;
@@ -5382,7 +5389,7 @@ function drawGame(t) {
   // Exit portal
   exitPortalPulse += 0.05;
   const epLabel = (nextTarget?.title ?? 'Jam Hub').slice(0,14);
-  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, '#22aadd', exitPortalPulse, epLabel, true);
+  drawPortalRing(RP.x+RP.w/2, RP.y+RP.h-44, 24, PALETTE.mint, exitPortalPulse, epLabel, true);
 
   // Pause button
   const pbx=RP.x+RP.w-36, pby=RP.y+5, pbw=28, pbh=22;
@@ -5473,7 +5480,7 @@ function consumableSlotAt(mx, my) {
 // ─── SCREEN: Shop ─────────────────────────────────────────────────────
 function drawShop(t) {
   drawBG(t);
-  drawScreenHeader('The Shop', `Goal ${runGoal} cleared  ·  spend shards before continuing`, '#aa66ff', '✦', {
+  drawScreenHeader('The Shop', `Goal ${runGoal} cleared  ·  spend shards before continuing`, PALETTE.astral, '✦', {
     badge: { label: 'Shards', value: shards },
     badgeAccent: '#b8a874',
   });
@@ -5483,7 +5490,7 @@ function drawShop(t) {
 
   // Tabs
   const tabY = 92;
-  drawInsetPanel(W/2 - 274, tabY - 8, 548, 50, '#6f58d6', {
+  drawInsetPanel(W/2 - 274, tabY - 8, 548, 50, PALETTE.astral, {
     fillTop: 'rgba(18,12,30,0.80)',
     fillBot: 'rgba(10,8,18,0.88)',
     radius: 12,
@@ -5492,9 +5499,9 @@ function drawShop(t) {
   drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, '⬡ Runes',     true, shopTab==='runes');
   drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, '⚄ Dice',      true, shopTab==='upgrades');
 
-  drawBtn({x:W/2-260, y:tabY, w:162, h:34}, 'âš¡ Anomalies', true, shopTab==='oracles', { sublabel:'passives', accent:'#aa66ff' });
-  drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, 'â¬¡ Runes',     true, shopTab==='runes',   { sublabel:'socketables', accent:'#66ddaa' });
-  drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, 'âš„ Dice',      true, shopTab==='upgrades',{ sublabel:'pool growth', accent:'#c89960' });
+  drawBtn({x:W/2-260, y:tabY, w:162, h:34}, 'âš¡ Anomalies', true, shopTab==='oracles', { sublabel:'passives', accent:PALETTE.astral });
+  drawBtn({x:W/2-82,  y:tabY, w:154, h:34}, 'â¬¡ Runes',     true, shopTab==='runes',   { sublabel:'socketables', accent:PALETTE.mint });
+  drawBtn({x:W/2+82,  y:tabY, w:162, h:34}, 'âš„ Dice',      true, shopTab==='upgrades',{ sublabel:'pool growth', accent:PALETTE.brass });
 
   const rerollCost = 3;
   const canReroll  = shards >= rerollCost;
@@ -5619,12 +5626,10 @@ function drawShop(t) {
 // ─── SCREEN: Hub ──────────────────────────────────────────────────────
 function drawHub(t) {
   drawBG(t);
-  txt('CAMPAIGN MAP', W/2, 44, {size:24,color:'#8844ee',align:'center',bold:true,shadow:'#8844ee'});
-  txt(runGoal === 0 ? 'Choose your path — press Next Goal to begin' : `Goal ${runGoal} cleared  ·  +${hubEarnedShards} Shards earned`, W/2, 72, {size:13,color:'#b8a874',align:'center'});
-
-  // Shard badge (top right)
-  
-  txt(`◆ ${shards} Shards`, W-86, 36, {size:13,color:'#b8a874',align:'center',bold:true});
+  drawScreenHeader('Campaign Map',
+    runGoal === 0 ? 'Choose your path — press Next Goal to begin' : `Goal ${runGoal} cleared  ·  +${hubEarnedShards} shards earned`,
+    PALETTE.astral, '☽',
+    { badge: { label: 'Shards', value: shards }, badgeAccent: PALETTE.mint });
 
   // Goal map
   const mapXS = 80, mapXE = W-80, mapY = 155;
@@ -5633,7 +5638,7 @@ function drawHub(t) {
     const x1 = mapXS + (i/(nodes.length-1))*(mapXE-mapXS);
     const x2 = mapXS + ((i+1)/(nodes.length-1))*(mapXE-mapXS);
     ctx.save();
-    ctx.strokeStyle = i < runGoal ? '#c89960' : 'rgba(60,40,120,0.5)';
+    ctx.strokeStyle = i < runGoal ? PALETTE.brass : 'rgba(60,40,120,0.5)';
     ctx.lineWidth = 3; ctx.setLineDash(i < runGoal ? [] : [6,5]);
     ctx.beginPath(); ctx.moveTo(x1+22, mapY); ctx.lineTo(x2-22, mapY); ctx.stroke();
     ctx.setLineDash([]); ctx.restore();
@@ -5641,19 +5646,19 @@ function drawHub(t) {
   for (let i = 0; i < nodes.length; i++) {
     const gx = mapXS + (i/(nodes.length-1))*(mapXE-mapXS);
     const cleared = i < runGoal, current = i === runGoal;
-    const col = cleared ? '#c89960' : current ? '#8833ff' : '#1a1240';
+    const col = cleared ? PALETTE.brass : current ? PALETTE.astral : '#1a1240';
     ctx.save();
     ctx.shadowColor = col; ctx.shadowBlur = cleared||current ? 14 : 0;
     ctx.fillStyle = col;
     ctx.beginPath(); ctx.arc(gx, mapY, 20, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = cleared ? '#ffe066' : current ? '#aa66ff' : '#2a1e55';
+    ctx.strokeStyle = cleared ? PALETTE.bone : current ? PALETTE.astral : '#2a1e55';
     ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, mapY, 20, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = cleared ? '#0a0820' : current ? '#fff' : '#4a3880';
     ctx.font = `bold 12px ${SANS}`; ctx.textAlign = 'center';
     ctx.fillText(cleared ? '✓' : String(i+1), gx, mapY+5);
     const lbl = nodes[i]>=10000 ? (nodes[i]/1000|0)+'k' : nodes[i]>=1000 ? (nodes[i]/1000).toFixed(1)+'k' : String(nodes[i]);
-    txt(lbl, gx, mapY+38, {size:10,color:cleared?'#c89960':current?'#aa66ff':'rgba(140,120,200,0.5)',align:'center'});
+    txt(lbl, gx, mapY+38, {size:10,color:cleared?PALETTE.brass:current?PALETTE.astral:'rgba(140,120,200,0.5)',align:'center'});
   }
 
   // Owned oracle row
@@ -5683,7 +5688,7 @@ function drawHub(t) {
   // Action buttons — Rune Table + Next Goal
   const BY = H - 84;
   drawBtn({x:W/2-310,y:BY,w:260,h:50}, '✦ Rune Table', true, runeInventory.length > 0);
-  txt(`${runeInventory.length} rune${runeInventory.length!==1?'s':''}`, W/2-180, BY+64, {size:9,color:'#cc88ff',align:'center'});
+  txt(`${runeInventory.length} rune${runeInventory.length!==1?'s':''}`, W/2-180, BY+64, {size:9,color:PALETTE.astral,align:'center'});
   drawBtn({x:W/2+50,y:BY,w:260,h:50}, 'Next Goal →', true, true);
 
   drawParticles(); drawFloaters();
@@ -5842,9 +5847,9 @@ function hexToRgb(hex) {
 
 function drawRuneTable(t) {
   drawBG(t);
-  drawScreenHeader('Rune Table', 'Select a rune, then socket it into a die slot', '#cc88ff', '✦', {
+  drawScreenHeader('Rune Table', 'Select a rune, then socket it into a die slot', PALETTE.astral, '✦', {
     badge: { label: 'Runes', value: runeInventory.length },
-    badgeAccent: '#cc88ff',
+    badgeAccent: PALETTE.astral,
   });
 
   const {dieCardX, dieCardY, dieCardW, dieCardH, dieCardGap, poolSize} = runeTableLayout();
@@ -5907,7 +5912,7 @@ function drawRuneTable(t) {
 
   // Inventory section
   const invY = dieCardY + dieCardH + 12;
-  drawInsetPanel(60, invY - 18, W - 120, 130, '#8e62d6', {
+  drawInsetPanel(60, invY - 18, W - 120, 130, PALETTE.astral, {
     fillTop: 'rgba(18,10,30,0.66)',
     fillBot: 'rgba(10,8,18,0.78)',
     radius: 12,
@@ -5963,14 +5968,14 @@ function drawRuneTable(t) {
   }
 
   // Back button
-  drawBtn({x:W/2-80, y:H-58, w:160, h:40}, '← Back to Map', true, true, { sublabel:'return to route', accent:'#cc88ff' });
+  drawBtn({x:W/2-80, y:H-58, w:160, h:40}, '← Back to Map', true, true, { sublabel:'return to route', accent:PALETTE.astral });
 
   drawParticles(); drawFloaters();
 }
 
 function drawForge(t) {
   drawBG(t);
-  drawScreenHeader('The Forge', 'Shape your pool before the next round', '#b35838', '✦', {
+  drawScreenHeader('The Forge', 'Shape your pool before the next round', PALETTE.solar, '✦', {
     badge: { label: 'Shards', value: shards },
     badgeAccent: '#b8a874',
   });
@@ -5979,7 +5984,7 @@ function drawForge(t) {
 
   // Tabs
   const tabY = 92;
-  drawInsetPanel(W/2 - 190, tabY - 8, 380, 50, '#8f5a42', {
+  drawInsetPanel(W/2 - 190, tabY - 8, 380, 50, PALETTE.solar, {
     fillTop: 'rgba(28,16,10,0.82)',
     fillBot: 'rgba(16,10,8,0.90)',
     radius: 12,
@@ -6068,29 +6073,31 @@ function drawForge(t) {
 // ─── SCREEN: Win ──────────────────────────────────────────────────────
 function drawWin(t) {
   drawBG(t);
-  if (Math.random()<0.04) burst(Math.random()*W, Math.random()*H, Math.random()<0.5?'#c89960':'#aa66ff', 3, 4);
+  if (Math.random()<0.04) burst(Math.random()*W, Math.random()*H, Math.random()<0.5?PALETTE.brass:PALETTE.astral, 3, 4);
+
+  drawScreenHeader('Fate Defied', 'Run complete', PALETTE.solar, '✦');
 
   ctx.save();
-  ctx.textAlign='center'; ctx.shadowColor='#c89960'; ctx.shadowBlur=14;
-  ctx.fillStyle='#c89960'; ctx.font='bold 64px ${SANS}';
-  ctx.fillText('FATE DEFIED', W/2, H/2-92); ctx.restore();
+  ctx.textAlign='center'; ctx.shadowColor=PALETTE.brass; ctx.shadowBlur=14;
+  ctx.fillStyle=PALETTE.brass; ctx.font=`bold 56px ${SERIF}`;
+  ctx.fillText('FATE DEFIED', W/2, H/2-72); ctx.restore();
 
-  txt('All 8 Goals conquered!', W/2, H/2-44, {size:18,color:'#fff',align:'center'});
-  txt('Total Score:', W/2, H/2+6, {size:13,color:'rgba(200,180,255,0.7)',align:'center'});
-  txt(totalFateScore.toLocaleString(), W/2, H/2+44, {size:38,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
-  txt('✦ Endless Mode Unlocked ✦', W/2, H/2+74, {size:14,color:'#b8a874',align:'center',bold:true});
+  txt('All 8 Goals conquered!', W/2, H/2-32, {size:18,color:PALETTE.bone,align:'center'});
+  txt('Total Score:', W/2, H/2+10, {size:13,color:'rgba(220,205,255,0.7)',align:'center'});
+  txt(totalFateScore.toLocaleString(), W/2, H/2+50, {size:38,color:PALETTE.brass,align:'center',bold:true,shadow:PALETTE.brass,mono:true});
+  txt('✦ Endless Mode Unlocked ✦', W/2, H/2+80, {size:14,color:PALETTE.mint,align:'center',bold:true});
 
   if (!nameEntryActive) {
-    drawBtn({x:W/2-130,y:H/2+90,w:260,h:46}, '🏆  Save Score', true, true);
+    drawBtn({x:W/2-130,y:H/2+96,w:260,h:46}, '🏆  Save Score', true, true);
   } else {
-    drawRoundRect(W/2-130, H/2+90, 260, 46, 8, '#100828', '#c89960', 2);
-    txt((nameEntry||'') + (Math.floor(t*2)%2?'|':''), W/2, H/2+120, {size:16,color:'#c89960',align:'center'});
-    txt('Type name + Enter', W/2, H/2+140, {size:10,color:'rgba(200,153,96,0.5)',align:'center'});
+    drawRoundRect(W/2-130, H/2+96, 260, 46, 8, '#100828', PALETTE.brass, 2);
+    txt((nameEntry||'') + (Math.floor(t*2)%2?'|':''), W/2, H/2+126, {size:16,color:PALETTE.brass,align:'center',mono:true});
+    txt('Type name + Enter', W/2, H/2+146, {size:10,color:'rgba(201,162,74,0.5)',align:'center'});
   }
 
   exitPortalPulse += 0.05; returnPortalPulse += 0.05;
-  drawPortalRing(W-52, H/2, 32, '#22aadd', exitPortalPulse, epLabel(), true);
-  if (incoming.ref) drawPortalRing(52, H/2, 32, '#b8a874', returnPortalPulse, '← Return', true);
+  drawPortalRing(W-52, H/2, 32, PALETTE.mint, exitPortalPulse, epLabel(), true);
+  if (incoming.ref) drawPortalRing(52, H/2, 32, PALETTE.brassDim, returnPortalPulse, '← Return', true);
 
   drawParticles(); drawFloaters();
 }
@@ -6102,22 +6109,22 @@ function drawScores(t) {
   if (scoresTab === 'global' && !onlineFetched && !onlineLoading) fetchOnlineScores();
 
   drawBG(t);
-  txt('HIGH SCORES', W/2, 66, {size:34,color:'#c89960',align:'center',bold:true,shadow:'#c89960'});
+  drawScreenHeader('High Scores', null, PALETTE.brass, '✦');
 
   // Tab buttons
   ['local','global'].forEach((tab, i) => {
     const tx     = W/2 + (i === 0 ? -85 : 5);
     const active = scoresTab === tab;
-    drawRoundRect(tx, 77, 80, 22, 5,
-      active ? 'rgba(200,153,96,0.15)' : 'transparent',
-      active ? '#c89960' : 'rgba(200,153,96,0.3)', 1);
-    txt(tab.toUpperCase(), tx + 40, 91,
-      {size:10, color: active ? '#c89960' : 'rgba(200,153,96,0.5)', align:'center', bold:active});
+    drawRoundRect(tx, 92, 80, 22, 5,
+      active ? 'rgba(201,162,74,0.15)' : 'transparent',
+      active ? PALETTE.brass : 'rgba(201,162,74,0.3)', 1);
+    txt(tab.toUpperCase(), tx + 40, 106,
+      {size:10, color: active ? PALETTE.brass : 'rgba(201,162,74,0.5)', align:'center', bold:active});
   });
 
   const headers = ['#','Name','Score','Mode'];
   const cxs     = [W/2-230, W/2-170, W/2+50, W/2+185];
-  headers.forEach((h,i) => txt(h, cxs[i], 116, {size:11,color:'#8844ee',align:'left',bold:true}));
+  headers.forEach((h,i) => txt(h, cxs[i], 130, {size:11,color:PALETTE.astral,align:'left',bold:true}));
 
   const list = scoresTab === 'global' ? onlineScores : highScores;
 
@@ -6129,13 +6136,13 @@ function drawScores(t) {
     txt('No scores yet — go play!', W/2, 210, {size:16,color:'rgba(200,170,120,0.55)',align:'center'});
   } else {
     list.slice(0,8).forEach((s,i) => {
-      const y   = 144 + i*38;
-      const col = i===0 ? '#c89960' : 'rgba(230,210,160,0.85)';
-      if (i===0) drawRoundRect(W/2-248,y-24,496,34,6,'rgba(200,153,96,0.06)','#c89960',1);
+      const y   = 158 + i*38;
+      const col = i===0 ? PALETTE.brass : 'rgba(236,222,200,0.85)';
+      if (i===0) drawRoundRect(W/2-248,y-24,496,34,6,'rgba(201,162,74,0.06)',PALETTE.brass,1);
       txt(String(i+1),    cxs[0], y, {size:14,color:col,align:'left',bold:i===0});
       txt(s.name||'?',    cxs[1], y, {size:14,color:col,align:'left',bold:i===0});
-      txt(Number(s.score).toLocaleString(), cxs[2], y, {size:14,color:col,align:'left',bold:i===0});
-      txt(s.mode||'run',  cxs[3], y, {size:11,color:'rgba(200,170,120,0.55)',align:'left'});
+      txt(Number(s.score).toLocaleString(), cxs[2], y, {size:14,color:col,align:'left',bold:i===0,mono:true});
+      txt(s.mode||'run',  cxs[3], y, {size:11,color:'rgba(201,162,74,0.55)',align:'left'});
     });
   }
 
@@ -6258,7 +6265,7 @@ function drawPause(t) {
   } else if (pauseTab === 'quick') {
     const qaItems = [
       { label:'⬡  Rune Table',  sub:'Equip runes to your dice',                    color:'#cc88ff', by:py+130 },
-      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:'#22aadd', by:py+220 },
+      { label:'⬡  Exit Portal', sub:'Leave this run and travel to the next game',   color:PALETTE.mint, by:py+220 },
     ];
     qaItems.forEach(({ label, sub, color, by }) => {
       const bx = px+60, bw = pw-120, bh = 60;
