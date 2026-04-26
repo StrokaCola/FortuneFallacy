@@ -1651,6 +1651,21 @@ let discardsLeft     = DISCARDS_PER_ROUND;
 let handHistory      = []; // [{name, tier, score}], newest first, cap 3
 let constellation    = null; // {indices:[diceIdx], color, t, dur}
 let blindRevealT     = -1;   // >=0 while reveal anim plays, increments by dt
+let rewardT          = -1;   // >=0 while reward burst anim plays after goal cleared
+
+// ─── UI state machine — derived from gameplay flags ──────────────────
+// idle | rolling | resolving | reward | bossReveal | shop | gameOver
+function getUIState() {
+  if (screen === 'shop' || screen === 'forge' || screen === 'runes') return 'shop';
+  if (screen === 'scores' || (screen === 'game' && handsLeft <= 0 && !handInProgress)) return 'gameOver';
+  if (blindRevealT >= 0 && blindRevealT < 1.4) return 'bossReveal';
+  if (rewardT >= 0) return 'reward';
+  if (screen === 'game' && handInProgress) {
+    return dice.some(d => d.rolling) ? 'rolling' : 'resolving';
+  }
+  if (screen === 'game' && dice.some(d => d.rolling)) return 'rolling';
+  return 'idle';
+}
 let totalFateScore   = 0;
 
 let dice       = [];
@@ -2887,6 +2902,7 @@ function playHand() {
 // ─── Goal advancement ─────────────────────────────────────────────────
 function advanceGoal() {
   totalFateScore += roundScore;
+  rewardT = 0;
   SFX.clear();
   showBanner('✦ GOAL CLEARED ✦', '#c89960');
   screenShake(12);
@@ -4600,6 +4616,7 @@ function drawConsumableTray(_t) {
 // ─── SCREEN: Game ─────────────────────────────────────────────────────
 function drawGame(t) {
   drawBG(t);
+  const _uiState = getUIState();
 
   // Left panel
   ornamentFrame(LP.x, LP.y, LP.w, LP.h, '#2a1880');
@@ -5304,6 +5321,24 @@ function drawGame(t) {
   drawFloaters();
   drawComboPop();
   drawBanner();
+
+  // ── State-machine UI dim — slight desat over LP+RP rails while rolling.
+  // Keeps focus on the felt without breaking readability.
+  if (_uiState === 'rolling') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(7,6,11,0.22)';
+    ctx.fillRect(LP.x, LP.y, LP.w, LP.h);
+    ctx.fillRect(RP.x, RP.y, RP.w, RP.h);
+    ctx.restore();
+  } else if (_uiState === 'reward') {
+    // Brass warmth wash over both rails during reward window.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(201,162,74,${0.06 + 0.06*Math.sin(t*8)})`;
+    ctx.fillRect(LP.x, LP.y, LP.w, LP.h);
+    ctx.fillRect(RP.x, RP.y, RP.w, RP.h);
+    ctx.restore();
+  }
 
   if (flashAlpha > 0) {
     ctx.save(); ctx.globalAlpha=flashAlpha; ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.restore();
@@ -6452,6 +6487,10 @@ function loop(now) {
     blindRevealT += dt;
     if (blindRevealT > 1.6) blindRevealT = -1;
   }
+  if (rewardT >= 0) {
+    rewardT += dt;
+    if (rewardT > 1.8) rewardT = -1;
+  }
 
   // Tick the WebGL background nebula
   // Intensity drives background hue — pulls toward crimson as the player
@@ -6461,6 +6500,11 @@ function loop(now) {
     const tgt = currentTarget();
     if (tgt > 0) _bgIntensity = Math.min(1, roundScore / tgt);
   }
+  // State-machine bias: certain states pull the nebula harder.
+  const _ui = getUIState();
+  if (_ui === 'bossReveal') _bgIntensity = Math.max(_bgIntensity, 0.85);
+  else if (_ui === 'reward') _bgIntensity = Math.max(_bgIntensity, 0.45);
+  else if (_ui === 'rolling') _bgIntensity = Math.max(_bgIntensity, 0.18);
   tickBg(t, screen, _bgIntensity);
 
   // Three.js dice tick — renders to #three canvas layered between #bg and #game.
