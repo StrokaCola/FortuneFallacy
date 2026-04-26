@@ -1065,11 +1065,13 @@ function drawBG(t) {
 }
 
 function txt(text, x, y, style) {
-  const { size=14, color='#fff', align='left', shadow=null, alpha=1, bold=false } = style||{};
+  const { size=14, color='#fff', align='left', shadow=null, alpha=1, bold=false, mono=false, italic=false } = style||{};
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle   = color;
-  ctx.font        = `${bold?'bold ':'' }${size}px ${SANS}`;
+  const family    = mono ? MONO : SANS;
+  const styleStr  = (italic?'italic ':'') + (bold?'bold ':'');
+  ctx.font        = `${styleStr}${size}px ${family}`;
   ctx.textAlign   = align;
   if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = 4; }
   ctx.fillText(text, x, y);
@@ -1644,6 +1646,11 @@ let displayScoreBounce    = 0;   // 0–1, scale-pulse while counter ticks
 let firstHandSpectrumGoal = -1;  // runGoal value when goal was cleared first-hand
 let handsLeft        = HANDS_PER_ROUND;
 let rerollsLeft      = REROLLS_PER_HAND;
+const DISCARDS_PER_ROUND = 1;
+let discardsLeft     = DISCARDS_PER_ROUND;
+let handHistory      = []; // [{name, tier, score}], newest first, cap 3
+let constellation    = null; // {indices:[diceIdx], color, t, dur}
+let blindRevealT     = -1;   // >=0 while reveal anim plays, increments by dt
 let totalFateScore   = 0;
 
 let dice       = [];
@@ -1766,6 +1773,7 @@ function serializeRunState() {
     roundScore,
     handsLeft,
     rerollsLeft,
+    discardsLeft,
     shards,
     hubEarnedShards,
     playerName,
@@ -1816,6 +1824,7 @@ function restoreRunState(raw) {
     firstHandSpectrumGoal = -1;
     handsLeft         = blob.handsLeft | 0;
     rerollsLeft       = blob.rerollsLeft | 0;
+    discardsLeft      = (blob.discardsLeft != null ? blob.discardsLeft : DISCARDS_PER_ROUND) | 0;
     shards            = blob.shards | 0;
     hubEarnedShards   = blob.hubEarnedShards | 0;
     if (blob.playerName) { playerName = blob.playerName; nameEntry = playerName; }
@@ -2035,12 +2044,15 @@ function startRound() {
   firstHandSpectrumGoal = -1;
   handsLeft             = HANDS_PER_ROUND;
   rerollsLeft       = REROLLS_PER_HAND;
+  discardsLeft     = DISCARDS_PER_ROUND;
+  handHistory       = [];
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
   // Determine the blind for this round — sets activeBlind in the store.
   // Boss Blinds (every 3rd round) apply their debuffs via hasBlindDebuff().
   blindsOnRoundStart(runGoal);
+  blindRevealT = 0;
   // Boss Blind reveal: dramatic Tone.js sting + banner + screen flash.
   {
     const ab = gs().activeBlind;
@@ -2386,6 +2398,12 @@ function playHand() {
     SFX.combo(combo.tier);
     sfxComboBell(combo.tier);
     if (combo.tier >= 8) sfxFiveOfAKindStinger();
+    constellation = {
+      indices: trayOrder.slice(),
+      color: COMBO_COLORS[combo.tier] || '#ECDEC8',
+      t: 0,
+      dur: 0.55,
+    };
     showComboPop(combo.name, COMBO_COLORS[combo.tier] || '#fff');
     const tier = combo.tier;
     if (tier >= 4) {
@@ -2818,6 +2836,8 @@ function playHand() {
           animateTicker(displayRoundScore, newTotal, 0.60, v => { displayRoundScore = v; displayScoreBounce = Math.max(displayScoreBounce, 0.9); }, () => {
             lastHandScore = handScore;
             roundScore = newTotal; displayRoundScore = newTotal;
+            handHistory.unshift({ name: combo.name, tier: combo.tier, score: handScore });
+            if (handHistory.length > 3) handHistory.length = 3;
             handsLeft--; rerollsLeft = REROLLS_PER_HAND;
             rolledOnce = false; handInProgress = false; scoringState = null;
             // Voucher: Gemstone Mine pays out shards per hand played.
@@ -3064,6 +3084,7 @@ function diceRect(i) { return { x: DICE_X0 + i*(DICE_SIZE+DICE_GAP), y: DICE_Y, 
 
 const BTN_ROLL = { x: CP.x + 60,  y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
 const BTN_PLAY = { x: CP.x + 296, y: BOARD_Y + BOARD_H + 14, w: 180, h: 46 };
+const BTN_DISCARD = { x: CP.x + 188, y: BOARD_Y + BOARD_H + 64, w: 160, h: 26 };
 function holdSlotCenter(i) {
   return {
     x: HOLD_X0 + i * (HOLD_SLOT_W + HOLD_GAP) + HOLD_SLOT_W / 2,
@@ -3482,6 +3503,18 @@ function handleClick(mx, my) {
       }
     }
     if (inRect(mx,my,BTN_PLAY) && rolledOnce && !handInProgress && trayOrder.length > 0) { playHand(); return; }
+    if (inRect(mx,my,BTN_DISCARD) && rolledOnce && !handInProgress) {
+      if (discardsLeft <= 0) { SFX.fail(); showBanner('⌀ No discards left','#cc2244'); return; }
+      const held = dice.filter(d => d.locked);
+      if (held.length === 0) { SFX.fail(); showBanner('⌀ Hold dice to discard','#cc2244'); return; }
+      for (const d of dice) d.locked = false;
+      trayOrder = [];
+      traySelSlot = -1;
+      discardsLeft--;
+      rollDice();
+      floatText(W/2, H/2 - 50, '✦ Discard', '#cc88ff', 14, { rise: 30, life: 1.0 });
+      return;
+    }
     // Exit portal (endless only — in main run it shows on win screen)
     if (endless && inRect(mx,my,{x:RP.x+RP.w/2-30,y:RP.y+RP.h-74,w:60,h:60})) { triggerExitPortal(); return; }
     if (incoming.ref && inRect(mx,my,{x:LP.x+LP.w/2-30,y:LP.y+LP.h-74,w:60,h:60})) { triggerReturnPortal(); return; }
@@ -4590,20 +4623,85 @@ function drawGame(t) {
 
   // Center panel
   ornamentFrame(CP.x, CP.y, CP.w, CP.h, '#2a1880');
-  drawInsetPanel(CP.x + 10, CP.y + 10, CP.w - 20, 52, '#8a6fe0', {
-    fillTop: 'rgba(18,14,30,0.88)',
-    fillBot: 'rgba(9,8,18,0.94)',
-    radius: 12,
-  });
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#c89960';
-  ctx.font = `bold 19px ${SERIF}`;
-  ctx.fillText(goalLabel(), CP.x + CP.w/2, CP.y + 30);
-  ctx.fillStyle = 'rgba(230,220,245,0.62)';
-  ctx.font = `bold 9px ${SANS}`;
-  ctx.fillText(`ROUND TARGET ${currentTarget().toLocaleString()}`, CP.x + CP.w/2, CP.y + 45);
-  ctx.restore();
+  // ── Blind banner — boss-aware, reveal-animated ──
+  {
+    const ab        = gs().activeBlind;
+    const isBoss    = !!(ab && ab.isBoss);
+    const accent    = ab?.color || (isBoss ? '#D33A4A' : '#8a6fe0');
+    const bannerH   = 52;
+    const bx        = CP.x + 10;
+    const by        = CP.y + 10;
+    const bw        = CP.w - 20;
+    // Reveal scale-pop on round start (peaks 0..0.45s, settles by 0.9s)
+    let scale = 1;
+    if (blindRevealT >= 0 && blindRevealT < 0.9) {
+      const pp = blindRevealT < 0.18 ? blindRevealT/0.18 : 1 - (blindRevealT-0.18)/0.72;
+      scale = 1 + (isBoss ? 0.10 : 0.04) * Math.max(0, pp);
+    }
+    ctx.save();
+    if (scale !== 1) {
+      const cx = bx + bw/2, cy = by + bannerH/2;
+      ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
+    }
+    drawInsetPanel(bx, by, bw, bannerH, accent, {
+      fillTop: isBoss ? 'rgba(38,8,12,0.94)' : 'rgba(18,14,30,0.88)',
+      fillBot: isBoss ? 'rgba(20,4,8,0.96)'  : 'rgba(9,8,18,0.94)',
+      radius: 12,
+    });
+    // Boss-only crimson glow ring during reveal
+    if (isBoss && blindRevealT >= 0 && blindRevealT < 1.4) {
+      const a = Math.max(0, 1 - blindRevealT/1.4);
+      ctx.save();
+      ctx.shadowColor = accent;
+      ctx.shadowBlur  = 22 + 12*Math.sin(t*8);
+      ctx.strokeStyle = `rgba(211,58,74,${0.55*a})`;
+      ctx.lineWidth   = 2;
+      roundRect(bx-2, by-2, bw+4, bannerH+4, 14);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // Left: blind icon + name (boss bigger), Center: ROUND TARGET, Right: debuff icons
+    ctx.textAlign = 'left';
+    if (ab) {
+      ctx.fillStyle = accent;
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = isBoss ? 6 : 0;
+      ctx.font = `bold ${isBoss ? 22 : 17}px ${SERIF}`;
+      ctx.fillText(`${ab.icon || '✦'}`, bx + 14, by + (isBoss ? 30 : 28));
+      ctx.font = `bold ${isBoss ? 16 : 13}px ${SERIF}`;
+      ctx.fillText(ab.name, bx + 38, by + (isBoss ? 24 : 22));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(230,220,245,0.62)';
+      ctx.font = `bold 9px ${SANS}`;
+      ctx.fillText(isBoss ? 'BOSS BLIND' : (ab.id === 'small_blind' ? 'SMALL BLIND' : 'BIG BLIND'),
+        bx + 38, by + (isBoss ? 40 : 36));
+    }
+    // Center: round target in mono
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c89960';
+    ctx.font = `700 22px ${MONO}`;
+    ctx.fillText(currentTarget().toLocaleString(), bx + bw/2, by + 28);
+    ctx.fillStyle = 'rgba(230,220,245,0.55)';
+    ctx.font = `bold 8px ${SANS}`;
+    ctx.fillText('ROUND TARGET', bx + bw/2, by + 42);
+    // Right: boss debuff icons / reward chip
+    if (isBoss && ab.description) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = `rgba(220,180,180,${0.7 + 0.2*Math.sin(t*2)})`;
+      ctx.font = `italic 10px ${SANS}`;
+      const desc = ab.description.length > 38 ? ab.description.slice(0,36) + '…' : ab.description;
+      ctx.fillText(desc, bx + bw - 14, by + 24);
+      ctx.fillStyle = '#6FE3B5';
+      ctx.font = `bold 9px ${MONO}`;
+      ctx.fillText(`+ ${Math.max(3, Math.floor(5 + currentTarget()/200))} ⬢ REWARD`, bx + bw - 14, by + 40);
+    } else if (ab) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(220,210,180,0.55)';
+      ctx.font = `bold 9px ${SANS}`;
+      ctx.fillText(`ANTE ${Math.floor(runGoal/3)+1}  ·  GOAL ${runGoal+1}/12`, bx + bw - 14, by + 32);
+    }
+    ctx.restore();
+  }
   panelHeader(CP.x + CP.w/2, CP.y + 72, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
   drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, '#7f69ff');
   drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, '#c89960');
@@ -4691,6 +4789,44 @@ function drawGame(t) {
         }
       }
     }
+  }
+
+  // Constellation overlay — connects scoring dice on combo trigger.
+  if (constellation && constellation.indices.length > 1) {
+    const c = constellation;
+    const phase = c.t / c.dur;
+    let alpha;
+    if (phase < 0.27)      alpha = phase / 0.27;
+    else if (phase < 0.73) alpha = 1;
+    else                   alpha = 1 - (phase - 0.73) / 0.27;
+    const drawN = Math.min(c.indices.length, 1 + Math.floor(phase * c.indices.length * 2.2));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = c.color;
+    ctx.shadowColor = c.color;
+    ctx.shadowBlur  = 14;
+    ctx.lineWidth   = 1.6;
+    ctx.globalAlpha = 0.85 * alpha;
+    ctx.beginPath();
+    for (let k = 0; k < drawN; k++) {
+      const di = c.indices[k];
+      const d  = dice[di];
+      if (!d) continue;
+      if (k === 0) ctx.moveTo(d.absX, d.absY);
+      else ctx.lineTo(d.absX, d.absY);
+    }
+    ctx.stroke();
+    // Star nodes at each scoring die
+    for (let k = 0; k < drawN; k++) {
+      const di = c.indices[k];
+      const d  = dice[di];
+      if (!d) continue;
+      ctx.beginPath();
+      ctx.fillStyle = c.color;
+      ctx.arc(d.absX, d.absY, 3 + 2 * Math.sin(c.t * 14 + k), 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Dice (3D) — positions driven by absX/absY physics.
@@ -4844,9 +4980,19 @@ function drawGame(t) {
     accent: oneShot ? '#cc66ff' : '#8877cc',
   });
 
+  // Discard button — small, below Play Hand row
+  {
+    const heldCt = dice.filter(d => d.locked).length;
+    const canDiscard = rolledOnce && !handInProgress && discardsLeft > 0 && heldCt > 0;
+    drawBtn(BTN_DISCARD, `Discard  ⌫  ${discardsLeft}`, canDiscard, false, {
+      accent: '#D33A4A',
+      compact: true,
+    });
+  }
+
   if (rolledOnce && !handInProgress)
     txt(trayOrder.length > 1 ? 'Click dice to hold · ◀▶ to reorder' : 'Click dice to hold / release them',
-      CP.x+CP.w/2, BTN_PLAY.y+BTN_PLAY.h+16, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
+      CP.x+CP.w/2, BTN_DISCARD.y+BTN_DISCARD.h+10, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
 
   // Right panel
   ornamentFrame(RP.x, RP.y, RP.w, RP.h, '#2a1880');
@@ -5085,6 +5231,22 @@ function drawGame(t) {
       }
     } else {
       txt('Hold dice to preview', RP.x+RP.w/2, pvy+44, {size:10, color:'rgba(160,140,200,0.4)', align:'center'});
+    }
+  }
+
+  // Hand history rail — last 3 plays
+  if (handHistory.length > 0) {
+    const hhY = RP.y + 340;
+    txt('LAST HANDS', RP.x+RP.w/2, hhY, {size:8, color:'rgba(180,160,220,0.55)', align:'center', bold:true});
+    for (let i = 0; i < handHistory.length; i++) {
+      const h = handHistory[i];
+      const col = COMBO_COLORS[h.tier] || '#ECDEC8';
+      const cy = hhY + 12 + i * 22;
+      drawRoundRect(RP.x+10, cy, RP.w-20, 18, 4, 'rgba(10,4,24,0.55)', 'rgba(80,50,140,0.35)', 1);
+      ctx.fillStyle = col;
+      ctx.fillRect(RP.x+10, cy, 3, 18);
+      txt(h.name, RP.x+18, cy+12, {size:9, color:col, align:'left'});
+      txt(Math.floor(h.score).toLocaleString(), RP.x+RP.w-14, cy+12, {size:10, color:'#ECDEC8', align:'right', bold:true, mono:true});
     }
   }
 
@@ -6282,6 +6444,14 @@ function loop(now) {
   updateFloaters(dt);
   updateComboPop(dt);
   updateBanner(dt);
+  if (constellation) {
+    constellation.t += dt;
+    if (constellation.t >= constellation.dur) constellation = null;
+  }
+  if (blindRevealT >= 0) {
+    blindRevealT += dt;
+    if (blindRevealT > 1.6) blindRevealT = -1;
+  }
 
   // Tick the WebGL background nebula
   // Intensity drives background hue — pulls toward crimson as the player
