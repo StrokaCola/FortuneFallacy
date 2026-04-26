@@ -41,6 +41,10 @@ const defaultState = {
   // Transitions (Phase 8)
   transitionState:    null,       // { progress, direction, to, from }
   slideBlocking:      false,      // blocks input during a transition
+
+  // Constellation Chain (scoring layer)
+  chainLen:           0,          // consecutive-same-or-higher combo count
+  chainTier:         -1,          // tier of the last scored combo (-1 = none)
 };
 
 export const gameStore = createStore(() => ({ ...defaultState }));

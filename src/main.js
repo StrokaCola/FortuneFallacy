@@ -22,9 +22,10 @@ import { getVoucherEffect, grantRandomVoucher, tryClaimFreeFirstReroll } from '.
 import { ALL_VOUCHERS, lookupVoucher } from './data/vouchers.js';
 import {
   ensureToneStarted,
-  sfxBossReveal, sfxConsumeCard, sfxVoucherBuy, sfxSkipBlind,
+  sfxBossReveal, sfxConsumeCard, sfxVoucherBuy,
   sfxComboBell, sfxFiveOfAKindStinger,
 } from './systems/audio.js';
+import { applyChain, chainBreakRefund } from './systems/scoring.js';
 
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
@@ -1218,7 +1219,7 @@ const ALL_ORACLES = [
   { id:'echo_chamber',   name:'Echo Chamber',     tier:'uncommon', icon:'◎',  color:'#a0d8d0',
     effect:'Same combo 2× in a row → ×1.5 Mult',
     flavor:'"You hear yourself and call it prophecy."',
-    apply(combo,dice,b,m,meta) { return (meta.streakCount >= 2)?[b, m * 1.5]:[b,m]; } },
+    apply(combo,dice,b,m,meta) { return (meta.streakCount >= 2)?[b, Math.round(m * 1.5)]:[b,m]; } },
   { id:'dowager_pearl',  name:'Dowager Pearl',    tier:'uncommon', icon:'◯',  color:'#d8d0b0',
     effect:'Exactly one 1 → +20 Points',
     flavor:'"Loneliness has value you refused to see."',
@@ -1345,7 +1346,7 @@ const ALL_ORACLES = [
   { id:'chaos_engine',   name:'Chaos Engine',      tier:'rare',     icon:'⚡', color:'#ff6600',
     effect:'Random ×0.5 to ×5 Mult each hand',
     flavor:'"It doesn\'t know what it\'s doing. Neither do you."',
-    apply(combo,f,b,m) { return [b, m * (0.5 + Math.random()*4.5)]; } },
+    apply(combo,f,b,m) { return [b, Math.round(m * (0.5 + Math.random()*4.5))]; } },
 
   // ─── New: Legendary / Cursed ───────────────────────────────────────────
   { id:'fragile_fortune',name:'Fragile Fortune',   tier:'legendary',icon:'💀', color:'#cc2200',
@@ -2064,6 +2065,8 @@ function startRound() {
   handInProgress    = false;
   lastHandMeta      = { lastReroll: false };
   momentumStreak    = 0;
+  // Reset Constellation Chain at the start of every round.
+  ss({ chainLen: 0, chainTier: -1 });
   // Determine the blind for this round — sets activeBlind in the store.
   // Boss Blinds (every 3rd round) apply their debuffs via hasBlindDebuff().
   blindsOnRoundStart(runGoal);
@@ -2375,8 +2378,8 @@ function previewHand() {
       [chips, mult] = o.apply(combo, faces, chips, mult, lastHandMeta);
     }
   }
-  chips = Math.max(0, chips);
-  mult  = Math.max(1, mult);
+  chips = Math.max(0, Math.round(chips));
+  mult  = Math.max(1, Math.round(mult));
   return { chips, mult, combo, total: chips * mult };
 }
 
@@ -2486,9 +2489,10 @@ function playHand() {
           if ((cnt[d.face]||0)>=2) { mult += upg.pairMult; scoringState.mult = mult; scoringState.multPunch = 1; }
         }
         if (upg.chaosMultRange) {
-          const [mn,mx]=upg.chaosMultRange; mult *= mn+Math.random()*(mx-mn);
+          const [mn,mx]=upg.chaosMultRange; mult = Math.max(1, Math.round(mult * (mn+Math.random()*(mx-mn))));
           scoringState.mult = mult; scoringState.multPunch = 1;
         }
+        if (upg.multMultiplier !== undefined) mult = Math.max(1, Math.round(mult));
       }
       // Apply equipped rune effects
       const _dieIdx = dice.indexOf(d);
@@ -2522,9 +2526,10 @@ function playHand() {
           if ((cnt[d.face]||0)>=2) { mult += rune.pairMult; scoringState.mult = mult; scoringState.multPunch = 1; }
         }
         if (rune.chaosMultRange) {
-          const [mn,mx]=rune.chaosMultRange; mult *= mn+Math.random()*(mx-mn);
+          const [mn,mx]=rune.chaosMultRange; mult = Math.max(1, Math.round(mult * (mn+Math.random()*(mx-mn))));
           scoringState.mult = mult; scoringState.multPunch = 1;
         }
+        if (rune.multMultiplier !== undefined) mult = Math.max(1, Math.round(mult));
         if (rune.shardsBonus !== undefined)     { shards += rune.shardsBonus; floatText(d.absX, d.absY - 75, `+${rune.shardsBonus} ◆`, rune.color, 11); }
       }
       chips += add;
@@ -2540,7 +2545,7 @@ function playHand() {
       const multDelta = mult - multBefore;
 
       // Progressive bar fill — update display score as chips land
-      displayRoundScore = roundScore + chips;
+      displayRoundScore = Math.round(roundScore + chips);
       const addSI = Math.min(1, Math.log2(Math.max(1, add)) / 4.5);
       displayScoreBounce = Math.max(displayScoreBounce, 0.22 + addSI * 0.78);
 
@@ -2590,7 +2595,7 @@ function playHand() {
 
       // Separate mult cue when this die also bumped the multiplier
       if (multDelta > 0) {
-        const multLabel = Number.isInteger(multDelta) ? `×+${multDelta}` : `×+${multDelta.toFixed(1)}`;
+        const multLabel = `×+${Math.round(multDelta)}`;
         const multDelay = add > 0 ? 75 : 0;
         setTimeout(() => {
           floatText(d.absX, d.absY - (add > 0 ? 62 : 40), multLabel, '#ff9944', 14 + Math.min(10, multDelta * 2));
@@ -2779,11 +2784,32 @@ function playHand() {
           }
         }
 
+        chips = Math.max(0, Math.round(chips));
+        mult  = Math.max(1, Math.round(mult));
         scoringState.chips = chips;
         scoringState.mult  = mult;
 
-        const handScore = Math.max(chips, 0) * Math.max(mult, 1);
-        const newTotal  = roundScore + handScore;
+        // Constellation Chain — extends on same-or-higher tier hands.
+        const _prevChainLen  = gs().chainLen  || 0;
+        const _prevChainTier = (gs().chainTier !== undefined) ? gs().chainTier : -1;
+        const _chain = applyChain(combo.tier, _prevChainLen, _prevChainTier);
+        ss({ chainLen: _chain.chainLen, chainTier: _chain.chainTier });
+        if (_chain.broke) {
+          const refund = chainBreakRefund(_prevChainLen);
+          if (refund > 0) {
+            shards += refund;
+            floatText(W/2, H/2 + 100, `Chain broken — +${refund} ◆`, '#9ce0ff', 14, { rise: 28, life: 1.5 });
+          }
+        }
+        const baseHand   = chips * mult;
+        const handScore  = Math.max(0, Math.round(baseHand * _chain.chainMult));
+        const newTotal   = roundScore + handScore;
+        if (_chain.chainLen >= 2) {
+          setTimeout(() => {
+            floatText(W/2, H/2 + 80, `CHAIN ×${_chain.chainMult.toFixed(2)} (${_chain.chainLen})`, '#FFD66B', 18,
+              { glow: 18, popScale: 2.2, life: 1.6, rise: 36 });
+          }, 280);
+        }
 
         const multSI = Math.min(1, Math.log2(Math.max(1, mult)) / 4);
         const multTxtSize = 22 + Math.min(48, mult * 4);
@@ -4720,10 +4746,20 @@ function drawGame(t) {
     ctx.restore();
   }
   panelHeader(CP.x + CP.w/2, CP.y + 72, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
-  drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, '#7f69ff');
-  drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, '#c89960');
-  drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, '#d9a14c');
-  drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, '#66c8ff');
+  // Fade stat chips while blind banner is mid-reveal so the pulsing
+  // banner doesn't visually fight the chip row above/over it.
+  {
+    const fade = (blindRevealT >= 0 && blindRevealT < 0.9)
+      ? Math.min(1, Math.max(0, (blindRevealT - 0.45) / 0.45))
+      : 1;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, '#7f69ff');
+    drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, '#c89960');
+    drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, '#d9a14c');
+    drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, '#66c8ff');
+    ctx.restore();
+  }
 
   // Board surface behind dice
   drawBoard(CP.x + CP.w/2, BOARD_Y, CP.w - 16, BOARD_H);
