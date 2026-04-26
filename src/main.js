@@ -4788,45 +4788,26 @@ function drawGame(t) {
       ctx.fillText(isBoss ? 'BOSS BLIND' : (ab.id === 'small_blind' ? 'SMALL BLIND' : 'BIG BLIND'),
         bx + 38, by + (isBoss ? 40 : 36));
     }
-    // Center: round target in mono
-    ctx.textAlign = 'center';
-    ctx.fillStyle = PALETTE.brass;
-    ctx.font = `700 18px ${MONO}`;
-    ctx.fillText(currentTarget().toLocaleString(), bx + bw/2, by + 28);
-    ctx.fillStyle = 'rgba(230,220,245,0.55)';
-    ctx.font = `bold 8px ${SANS}`;
-    ctx.fillText('ROUND TARGET', bx + bw/2, by + 42);
-    // Right: boss debuff icons / reward chip
-    if (isBoss && ab.description) {
-      ctx.textAlign = 'right';
-      ctx.fillStyle = `rgba(220,180,180,${0.7 + 0.2*Math.sin(t*2)})`;
-      ctx.font = `italic 10px ${SANS}`;
-      const desc = ab.description.length > 38 ? ab.description.slice(0,36) + '…' : ab.description;
-      ctx.fillText(desc, bx + bw - 14, by + 24);
-      ctx.fillStyle = '#6FE3B5';
-      ctx.font = `bold 9px ${MONO}`;
-      ctx.fillText(`+ ${Math.max(3, Math.floor(5 + currentTarget()/200))} ⬢ REWARD`, bx + bw - 14, by + 40);
-    } else if (ab) {
-      ctx.textAlign = 'right';
-      ctx.fillStyle = 'rgba(220,210,180,0.55)';
-      ctx.font = `bold 9px ${SANS}`;
-      ctx.fillText(`ANTE ${Math.floor(runGoal/3)+1}  ·  GOAL ${runGoal+1}/12`, bx + bw - 14, by + 32);
+    // Right: 4 mini stat chips (Hands / Rerolls / Held / Shards). They
+    // share the banner band so the row above the felt stays clean.
+    {
+      const chipW = 52, chipH = 34, chipGap = 4;
+      const chipTotal = 4*chipW + 3*chipGap;
+      const chipsX0  = bx + bw - 12 - chipTotal;
+      const chipY    = by + (bannerH - chipH)/2;
+      drawStatChip(chipsX0 + 0*(chipW+chipGap), chipY, chipW, chipH, 'Hands',   handsLeft,         STAT_CHIP_COLORS.hands);
+      drawStatChip(chipsX0 + 1*(chipW+chipGap), chipY, chipW, chipH, 'Rerolls', rerollsLeft,       STAT_CHIP_COLORS.rerolls);
+      drawStatChip(chipsX0 + 2*(chipW+chipGap), chipY, chipW, chipH, 'Held',    trayOrder.length,  STAT_CHIP_COLORS.held);
+      drawStatChip(chipsX0 + 3*(chipW+chipGap), chipY, chipW, chipH, 'Shards',  shards,            STAT_CHIP_COLORS.shards);
     }
-    ctx.restore();
-  }
-  panelHeader(CP.x + CP.w/2, CP.y + 72, CP.w - 40, `${handsLeft} hand${handsLeft!==1?'s':''} remaining`, '#8877cc', '✦');
-  // Fade stat chips while blind banner is mid-reveal so the pulsing
-  // banner doesn't visually fight the chip row above/over it.
-  {
-    const fade = (blindRevealT >= 0 && blindRevealT < 0.9)
-      ? Math.min(1, Math.max(0, (blindRevealT - 0.45) / 0.45))
-      : 1;
-    ctx.save();
-    ctx.globalAlpha = fade;
-    drawStatChip(CP.x + 22, CP.y + 20, 74, 36, 'Hands', handsLeft, STAT_CHIP_COLORS.hands);
-    drawStatChip(CP.x + 102, CP.y + 20, 74, 36, 'Rerolls', rerollsLeft, STAT_CHIP_COLORS.rerolls);
-    drawStatChip(CP.x + CP.w - 176, CP.y + 20, 74, 36, 'Held', trayOrder.length, STAT_CHIP_COLORS.held);
-    drawStatChip(CP.x + CP.w - 96, CP.y + 20, 74, 36, 'Shards', shards, STAT_CHIP_COLORS.shards);
+    // Boss-only inline description below blind name (replaces left tier label)
+    if (isBoss && ab.description) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = `rgba(220,180,180,${0.7 + 0.2*Math.sin(t*2)})`;
+      ctx.font = `italic 9px ${SANS}`;
+      const desc = ab.description.length > 28 ? ab.description.slice(0,26) + '…' : ab.description;
+      ctx.fillText(desc, bx + 38, by + 40);
+    }
     ctx.restore();
   }
 
@@ -5279,66 +5260,10 @@ function drawGame(t) {
     ctx.restore();
   }
 
-  // Goal dots
-  if (!endless) {
-    txt('Run Progress', RP.x+RP.w/2, RP.y+186, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
-    for (let i = 0; i < GOAL_TARGETS.length; i++) {
-      const dx = RP.x + 14 + i*(RP.w-28)/(GOAL_TARGETS.length-1);
-      ctx.save();
-      if (i<runGoal) { ctx.fillStyle='#c89960'; ctx.shadowColor='#c89960'; ctx.shadowBlur=2; }
-      else if (i===runGoal) { ctx.fillStyle='#7733ee'; ctx.shadowColor='#7733ee'; ctx.shadowBlur=4; }
-      else { ctx.fillStyle='#1a1240'; }
-      ctx.beginPath(); ctx.arc(dx, RP.y+198, 5, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-  } else {
-    txt(`Stage ${runGoal+1}`, RP.x+RP.w/2, RP.y+190, {size:13,color:'#8844ee',align:'center',bold:true});
-  }
-
-  txt(`Rerolls: ${rerollsLeft} / ${REROLLS_PER_HAND}`, RP.x+RP.w/2, RP.y+218, {size:10,color:'rgba(200,170,120,0.55)',align:'center'});
-
-  // Active Blind HUD — shown during rounds. Boss Blinds get special treatment.
-  {
-    const ab = gs().activeBlind;
-    if (ab) {
-      const bh = 28;
-      const by = RP.y + 232;
-      const isBoss = ab.isBoss;
-      const col = ab.color || (isBoss ? '#ff4466' : '#b8a874');
-      drawRoundRect(RP.x+8, by, RP.w-16, bh, 6,
-        isBoss ? 'rgba(40,10,20,0.75)' : 'rgba(20,16,30,0.55)',
-        col, isBoss ? 2 : 1);
-      // Icon + name on one line; breathe the boss icon
-      const breathe = isBoss ? 1 + 0.08 * Math.sin(t * 3.2) : 1;
-      ctx.save();
-      ctx.translate(RP.x+22, by+bh/2);
-      ctx.scale(breathe, breathe);
-      ctx.translate(-(RP.x+22), -(by+bh/2));
-      txt(ab.icon || '✦', RP.x+22, by+bh/2+5, {size:16, color:col, align:'center', shadow:col});
-      ctx.restore();
-      txt(ab.name, RP.x+40, by+bh/2+4, {size:11, color:'#ecdec8', align:'left', bold:isBoss});
-      if (isBoss) {
-        // Keep the description compact; full description shown on hover tooltip (future).
-        const short = (ab.description || '').length > 34
-          ? (ab.description || '').slice(0, 34) + '…'
-          : (ab.description || '');
-        txt(short, RP.x+RP.w/2, by+bh+11, {size:8, color:'rgba(220,180,180,0.75)', align:'center', italic:true});
-      }
-    }
-  }
-
-  // Shift the Total Score labels down when a boss description is present
-  {
-    const ab = gs().activeBlind;
-    const totalY = RP.y + (ab && ab.isBoss ? 206 : 184);
-    txt('Total Score', RP.x+RP.w/2, totalY - 18, {size:9,color:'rgba(200,170,120,0.55)',align:'center'});
-    txt((totalFateScore+roundScore).toLocaleString(), RP.x+RP.w/2, totalY, {size:15,color:'#e6c590',align:'center',bold:true});
-  }
-
   // Hand preview panel (right side, shows estimate of current held hand)
   if (rolledOnce && !handInProgress) {
     const prevData = previewHand();
-    const pvy = RP.y + 206;
+    const pvy = RP.y + 184;
     drawRoundRect(RP.x+6, pvy-6, RP.w-12, 110, 8, 'rgba(10,4,24,0.7)', 'rgba(80,50,140,0.45)', 1);
     txt('HAND PREVIEW', RP.x+RP.w/2, pvy+8, {size:8, color:'rgba(180,160,220,0.6)', align:'center', bold:true});
     if (prevData) {
