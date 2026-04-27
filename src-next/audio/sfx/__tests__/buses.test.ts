@@ -191,4 +191,19 @@ describe('synthBank build', () => {
       expect(bank).toHaveProperty(key);
     }
   });
+
+  it('reroll and buy pools have POOL_SIZE entries', async () => {
+    const bank = await buildBank();
+    expect(bank.rerollPool.length).toBe(4);
+    expect(bank.buyPool.length).toBe(4);
+    bank.rerollPool.forEach((slot) => {
+      expect(slot.shimmer.length).toBe(3);
+      expect(slot.sweep).toBeDefined();
+    });
+    bank.buyPool.forEach((slot) => {
+      expect(slot.chimeA).toBeDefined();
+      expect(slot.chimeB).toBeDefined();
+      expect(slot.rustle).toBeDefined();
+    });
+  });
 });

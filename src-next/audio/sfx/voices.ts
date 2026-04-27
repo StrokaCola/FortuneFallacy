@@ -32,11 +32,12 @@ function vol(key: string, centerDb: number, spreadDb = 1.5): number {
 export function diceClack(bank: SynthBank): void {
   const t = jitteredTime();
   const baseHz = 220 * centsToRatio(jitterCents());
-  bank.diceClack.body.triggerAttackRelease(baseHz, '32n', t);
   bank.diceClack.body.volume.value = vol('diceBody', -16);
   bank.diceClack.click.volume.value = vol('diceClick', -22);
+  bank.diceClack.body.triggerAttackRelease(baseHz, '32n', t);
   bank.diceClack.click.triggerAttackRelease('64n', t + 0.001);
   if (Math.random() < 0.25) {
+    bank.diceClack.sub.volume.value = vol('diceSub', -18);
     bank.diceClack.sub.triggerAttackRelease('G2', '16n', t + 0.002);
   }
 }
@@ -62,6 +63,7 @@ export function reroll(bank: SynthBank): void {
   });
   slot.sweep.volume.value = vol('rerollSweep', -28);
   slot.sweep.triggerAttackRelease('8n', t);
+  lastTime = t + 0.4;
 }
 
 // ---- buy -------------------------------------------------------------------
@@ -76,6 +78,7 @@ export function buy(bank: SynthBank): void {
   slot.chimeB.triggerAttackRelease(root * 1.5, '8n', t + 0.004);
   slot.rustle.volume.value = vol('buyRustle', -28);
   slot.rustle.triggerAttackRelease('16n', t + 0.04);
+  lastTime = t + 0.3;
 }
 
 // ---- combo (tier-scaled phrase) -------------------------------------------
@@ -102,20 +105,22 @@ export function upgrade(bank: SynthBank): void {
     const hz = pickPent(10 + Math.floor(Math.random() * 5));
     bank.upgrade.sparkle.triggerAttackRelease(hz, '32n', t + 0.04 + i * 0.06);
   }
+  lastTime = t + 1.0;
 }
 
 // ---- bossSting -------------------------------------------------------------
 export function bossSting(bank: SynthBank): void {
   const t = jitteredTime();
   const s = bank.bossSting;
-  s.brass.frequency.cancelScheduledValues(t);
-  s.brass.frequency.setValueAtTime(110, t);
-  s.brass.frequency.exponentialRampToValueAtTime(45, t + 0.6);
   s.brass.volume.value = vol('bossBrass', -10);
-  s.brass.triggerAttackRelease('A1', '2n', t);
-  s.sub.frequency.setValueAtTime(55, t);
-  s.sub.triggerAttackRelease('A1', '2n', t);
+  s.brass.triggerAttackRelease(110, '2n', t);
+  // Ramp the frequency down AFTER the trigger sets it, starting one tick later.
+  s.brass.frequency.cancelScheduledValues(t + 0.001);
+  s.brass.frequency.exponentialRampToValueAtTime(45, t + 0.6);
+  s.sub.volume.value = vol('bossSub', -14);
+  s.sub.triggerAttackRelease(55, '2n', t);
   triggerDuck(bank.buses, 4, 80, 250);
+  lastTime = t + 1.0;
 }
 
 // ---- bigScore --------------------------------------------------------------
@@ -150,15 +155,15 @@ export function winFanfare(bank: SynthBank): void {
 // ---- bust ------------------------------------------------------------------
 export function bust(bank: SynthBank): void {
   const t = jitteredTime();
-  bank.bust.saw.frequency.cancelScheduledValues(t);
-  bank.bust.saw.frequency.setValueAtTime(440, t);
-  bank.bust.saw.frequency.exponentialRampToValueAtTime(80, t + 0.8);
   bank.bust.saw.volume.value = vol('bustSaw', -12);
-  bank.bust.saw.triggerAttackRelease('A4', '2n', t);
+  bank.bust.saw.triggerAttackRelease(440, '2n', t);
+  bank.bust.saw.frequency.cancelScheduledValues(t + 0.001);
+  bank.bust.saw.frequency.exponentialRampToValueAtTime(80, t + 0.8);
   bank.bust.rumble.volume.value = vol('bustRumble', -18);
   bank.bust.rumble.triggerAttackRelease('2n', t);
   bank.bust.tear.volume.value = vol('bustTear', -22);
   bank.bust.tear.triggerAttackRelease('16n', t + 0.6);
+  lastTime = t + 1.0;
 }
 
 // ---- chipTick (idx → pent climb) ------------------------------------------
@@ -194,6 +199,7 @@ export function castBoom(bank: SynthBank): void {
   bank.castBoom.tail.volume.value = vol('boomTail', -22);
   bank.castBoom.tail.triggerAttackRelease('4n', t + 0.05);
   triggerDuck(bank.buses, 5, 80, 300);
+  lastTime = t + 1.0;
 }
 
 // ---- sigilDraw -------------------------------------------------------------
@@ -206,6 +212,7 @@ export function sigilDraw(bank: SynthBank): void {
   }
   bank.sigilDraw.chime.volume.value = vol('sigilChime', -22);
   bank.sigilDraw.chime.triggerAttackRelease(pickPent(2), '4n', t + 0.55);
+  lastTime = t + 1.0;
 }
 
 // ---- cardFlip --------------------------------------------------------------
@@ -217,6 +224,7 @@ export function cardFlip(bank: SynthBank): void {
   bank.cardFlip.whoosh.triggerAttackRelease('16n', t + 0.005);
   bank.cardFlip.chime.volume.value = vol('flipChime', -24);
   bank.cardFlip.chime.triggerAttackRelease(pickPent(3 + Math.floor(Math.random() * 4)), '32n', t + 0.06);
+  lastTime = t + 0.15;
 }
 
 // ---- nodePulse -------------------------------------------------------------
@@ -226,6 +234,7 @@ export function nodePulse(bank: SynthBank): void {
   bank.nodePulse.bell.triggerAttackRelease(pickPent(6 + Math.floor(Math.random() * 5)), '16n', t);
   bank.nodePulse.shimmer.volume.value = vol('nodeShim', -30);
   bank.nodePulse.shimmer.triggerAttackRelease('32n', t + 0.02);
+  lastTime = t + 0.20;
 }
 
 // ---- transitionWipe -------------------------------------------------------
