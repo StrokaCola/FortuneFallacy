@@ -142,3 +142,76 @@ html, body, #next-root {
     transition-duration: 80ms !important;
   }
 }
+
+/* Material vocabulary — every interactive surface picks one. */
+/* Each material is: base color/gradient + grain (SVG noise data URI) + lit edges. */
+
+.mat-parchment {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 220, 160, 0.08), transparent 60%),
+    linear-gradient(180deg, #2a1f0e, #1a1308);
+  border: 1px solid rgba(245, 196, 81, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.12), 0 8px 22px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.mat-parchment::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.18;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+  mix-blend-mode: overlay;
+}
+
+.mat-brass {
+  background:
+    linear-gradient(180deg, #d4a64c 0%, #8a6720 60%, #4a3810 100%);
+  border: 1px solid rgba(255, 220, 130, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.6),
+    inset 0 -1px 0 rgba(40, 24, 6, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+.mat-velvet {
+  background:
+    radial-gradient(ellipse at 40% 30%, rgba(140, 30, 60, 0.6), transparent 65%),
+    linear-gradient(180deg, #2a0815, #14040a);
+  border: 1px solid rgba(140, 30, 60, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 200, 220, 0.08), 0 12px 32px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+.mat-velvet::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.10;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='v'><feTurbulence baseFrequency='1.5' numOctaves='1'/></filter><rect width='100%' height='100%' filter='url(%23v)'/></svg>");
+}
+
+.mat-obsidian {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(123, 227, 255, 0.18), transparent 65%),
+    linear-gradient(180deg, #0f0925, #04020c);
+  border: 1px solid rgba(149, 119, 255, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(220, 212, 255, 0.10),
+    inset 0 0 18px rgba(123, 227, 255, 0.06),
+    0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+.mat-gold {
+  background: linear-gradient(180deg, #ffd97a 0%, #f5c451 50%, #b88a1e 100%);
+  color: #20100a;
+  border: 1px solid rgba(255, 240, 200, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 255, 220, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 220, 0.7),
+    0 0 18px rgba(245, 196, 81, 0.4);
+}
+
+.mat-crystal {
+  background: rgba(15, 9, 37, 0.72);
+  border: 1px solid rgba(123, 227, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(220, 212, 255, 0.12), 0 8px 22px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+}
+
+/* Hover lift for any material element marked as interactive */
+.mat-interactive { transition: transform var(--snap) var(--ease-snap), box-shadow var(--snap) var(--ease-snap); }
+.mat-interactive:hover { transform: translateY(-1px); }
