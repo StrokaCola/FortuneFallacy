@@ -12,8 +12,10 @@ import { Win }   from './screens/Win';
 import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
+import { useMotion } from './hooks/useMotion';
 
 export function App() {
+  useMotion();
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
 
