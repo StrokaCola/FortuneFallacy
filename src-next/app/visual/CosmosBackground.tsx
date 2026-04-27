@@ -98,15 +98,14 @@ export function CosmosBackground({
     }}>
       <Nebula theme={theme} intensity={nebula ? 1 : 0.3} />
       <Starfield density={density} theme={theme} drift={drift} tension={tensionClamped} />
-      {crimsonOpacity > 0 && (
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,1) 100%)',
-          opacity: crimsonOpacity,
-          mixBlendMode: 'multiply',
-          transition: 'opacity 600ms ease',
-        }} />
-      )}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,1) 100%)',
+        opacity: crimsonOpacity,
+        mixBlendMode: 'multiply',
+        transition: 'opacity 600ms ease',
+        willChange: 'opacity',
+      }} />
     </div>
   );
 }
