@@ -7,6 +7,7 @@ import { ScoreFloat } from '../hud/ScoreFloat';
 import { LoadoutDock } from '../hud/LoadoutDock';
 import { ComboBanner } from '../hud/ComboBanner';
 import { ConstellationOverlay } from '../hud/ConstellationOverlay';
+import { ScoreMoment } from '../hud/ScoreMoment';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
 } from '../../state/selectors';
@@ -15,7 +16,6 @@ export function Round() {
   const hands   = useStore(selectHandsLeft);
   const rerolls = useStore(selectRerollsLeft);
   const isBoss  = useStore(selectIsBoss);
-  const scoring = useStore((s) => s.round.scoring);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
 
   // Auto-roll when handsLeft changes (existing behavior)
@@ -27,13 +27,6 @@ export function Round() {
     }
   }, [hands]);
 
-  // Clear scoring flag ~1.6s after a SCORE_HAND fires (Plan C will own the full sequence).
-  useEffect(() => {
-    if (!scoring) return;
-    const t = window.setTimeout(() => dispatch({ type: 'END_SCORING' }), 1600);
-    return () => window.clearTimeout(t);
-  }, [scoring]);
-
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <StatsCorner />
@@ -42,6 +35,7 @@ export function Round() {
       <LoadoutDock />
       <ComboBanner accent={accent} />
       <ConstellationOverlay />
+      <ScoreMoment />
       <DiceLockOverlay />
       <ActionBar hands={hands} rerolls={rerolls} accent={accent} />
     </div>
