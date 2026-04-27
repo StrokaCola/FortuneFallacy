@@ -14,6 +14,13 @@ export type SynthBank = {
   bigScore: Tone.NoiseSynth;
   winFanfare: Tone.PolySynth;
   bust: Tone.MonoSynth;
+  chipTick: Tone.FMSynth;
+  castSwell: Tone.NoiseSynth;
+  castBoom: Tone.MembraneSynth;
+  sigilDraw: Tone.NoiseSynth;
+  cardFlip: Tone.NoiseSynth;
+  nodePulse: Tone.MetalSynth;
+  transitionWipe: Tone.NoiseSynth;
   reverb: Tone.Reverb;
   delay: Tone.PingPongDelay;
   master: Tone.Gain;
@@ -112,9 +119,66 @@ export async function buildBank(): Promise<SynthBank> {
   bust.volume.value = -12;
   bust.connect(master);
 
+  const chipTick = new Tone.FMSynth({
+    harmonicity: 3.2,
+    modulationIndex: 14,
+    envelope: { attack: 0.002, decay: 0.18, sustain: 0, release: 0.05 },
+    modulationEnvelope: { attack: 0.002, decay: 0.12, sustain: 0, release: 0.05 },
+  });
+  chipTick.volume.value = -14;
+  chipTick.connect(reverb);
+
+  const castSwell = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.4, decay: 0.5, sustain: 0, release: 0.3 },
+  });
+  castSwell.volume.value = -22;
+  castSwell.connect(reverb);
+
+  const castBoom = new Tone.MembraneSynth({
+    pitchDecay: 0.12,
+    octaves: 6,
+    envelope: { attack: 0.002, decay: 0.6, sustain: 0, release: 0.4 },
+  });
+  castBoom.volume.value = -8;
+  castBoom.connect(reverb);
+
+  const sigilDraw = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.05, decay: 0.18, sustain: 0, release: 0.1 },
+  });
+  sigilDraw.volume.value = -24;
+  sigilDraw.connect(reverb);
+
+  const cardFlip = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 },
+  });
+  cardFlip.volume.value = -20;
+  cardFlip.connect(master);
+
+  const nodePulse = new Tone.MetalSynth({
+    envelope: { attack: 0.002, decay: 0.2, release: 0.05 },
+    harmonicity: 5.1,
+    modulationIndex: 24,
+    resonance: 3500,
+    octaves: 1.5,
+  });
+  nodePulse.frequency.value = 1200;
+  nodePulse.volume.value = -28;
+  nodePulse.connect(master);
+
+  const transitionWipe = new Tone.NoiseSynth({
+    noise: { type: 'brown' },
+    envelope: { attack: 0.1, decay: 0.3, sustain: 0, release: 0.2 },
+  });
+  transitionWipe.volume.value = -22;
+  transitionWipe.connect(reverb);
+
   return {
     diceClack, lockTap, rerollPool, buyPool, combo, upgrade,
     bossSting, bigScore, winFanfare, bust,
+    chipTick, castSwell, castBoom, sigilDraw, cardFlip, nodePulse, transitionWipe,
     reverb, delay, master,
     rerollIdx: { i: 0 },
     buyIdx: { i: 0 },

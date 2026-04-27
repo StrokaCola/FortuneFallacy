@@ -3,9 +3,10 @@ import * as voices from './voices';
 
 export type SfxId =
   | 'diceClack' | 'lockTap' | 'reroll' | 'buy'
-  | 'combo' | 'upgrade' | 'bossSting' | 'bigScore' | 'win' | 'bust';
+  | 'combo' | 'upgrade' | 'bossSting' | 'bigScore' | 'win' | 'bust'
+  | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe';
 
-export type SfxOpts = { tier?: number; volume?: number };
+export type SfxOpts = { tier?: number; volume?: number; idx?: number };
 
 const VOLUME_KEY = 'ff_next_sfxVol';
 
@@ -42,7 +43,14 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'bossSting': voices.bossSting(bank); break;
       case 'bigScore':  voices.bigScore(bank); break;
       case 'win':       voices.winFanfare(bank); break;
-      case 'bust':      voices.bust(bank); break;
+      case 'bust':           voices.bust(bank); break;
+      case 'chipTick':       voices.chipTick(bank, opts); break;
+      case 'castSwell':      voices.castSwell(bank); break;
+      case 'castBoom':       voices.castBoom(bank); break;
+      case 'sigilDraw':      voices.sigilDraw(bank); break;
+      case 'cardFlip':       voices.cardFlip(bank); break;
+      case 'nodePulse':      voices.nodePulse(bank); break;
+      case 'transitionWipe': voices.transitionWipe(bank); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);

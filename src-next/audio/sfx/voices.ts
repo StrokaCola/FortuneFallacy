@@ -1,7 +1,7 @@
 import * as Tone from 'tone';
 import type { SynthBank } from './synthBank';
 
-export type VoiceOpts = { tier?: number; volume?: number };
+export type VoiceOpts = { tier?: number; volume?: number; idx?: number };
 
 const COMBO_ROOT_HZ = [196, 220, 247, 261, 293, 329, 370, 415];
 
@@ -78,4 +78,36 @@ export function bust(bank: SynthBank): void {
   s.frequency.setValueAtTime(440, t);
   s.frequency.exponentialRampToValueAtTime(80, t + 0.8);
   s.triggerAttackRelease('A4', '2n', t);
+}
+
+const CHIP_BASE_HZ = 440;
+
+export function chipTick(bank: SynthBank, opts: { idx?: number } = {}): void {
+  const idx = opts.idx ?? 0;
+  const freq = CHIP_BASE_HZ * Math.pow(1.0594630943592953, idx);
+  bank.chipTick.triggerAttackRelease(freq, '32n', nextTime());
+}
+
+export function castSwell(bank: SynthBank): void {
+  bank.castSwell.triggerAttackRelease('2n', nextTime());
+}
+
+export function castBoom(bank: SynthBank): void {
+  bank.castBoom.triggerAttackRelease('A1', '2n', nextTime());
+}
+
+export function sigilDraw(bank: SynthBank): void {
+  bank.sigilDraw.triggerAttackRelease('8n', nextTime());
+}
+
+export function cardFlip(bank: SynthBank): void {
+  bank.cardFlip.triggerAttackRelease('32n', nextTime());
+}
+
+export function nodePulse(bank: SynthBank): void {
+  bank.nodePulse.triggerAttackRelease('32n', nextTime());
+}
+
+export function transitionWipe(bank: SynthBank): void {
+  bank.transitionWipe.triggerAttackRelease('4n', nextTime());
 }
