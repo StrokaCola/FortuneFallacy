@@ -3,6 +3,7 @@ import { selectIsBoss, selectBlindId } from '../../state/selectors';
 import { BOSS_BLINDS } from '../../data/blinds';
 import { activeDebuffs } from '../../core/round/debuffs';
 import type { GameState } from '../../state/store';
+import { BossSigil } from '../visual/BossSigil';
 
 const selectDebuffsKey = (s: GameState): string => [...activeDebuffs(s)].sort().join(',');
 
@@ -37,7 +38,7 @@ export function DangerCorner() {
             borderColor: 'rgba(226,51,74,0.6)',
             cursor: 'help',
           }}>
-          <span style={{ fontSize: 22, color: '#e2334a', filter: 'drop-shadow(0 0 6px #e2334a)' }}>⛧</span>
+          <BossSigil boss={bossDef} size={28} rotate glow />
           <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.22em', color: '#ff8e9c' }}>
             Boss · {bossDef.name}
           </span>
