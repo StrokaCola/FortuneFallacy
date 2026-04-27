@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
+import { createCosmicEnv } from './MaterialEnv';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.3;
@@ -57,10 +58,11 @@ function buildDie(size: number, styleKey: StyleKey): THREE.Group {
   const bodyGeo = new RoundedBoxGeometry(size, size, size, 4, size * 0.08);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: S.body,
-    metalness: S.metal,
-    roughness: S.rough,
+    metalness: Math.max(0.4, S.metal),
+    roughness: Math.max(0.18, Math.min(0.6, S.rough)),
     emissive: S.emissive,
     emissiveIntensity: S.eIntensity * 0.4,
+    envMapIntensity: 0.85,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.castShadow = true;
@@ -74,10 +76,11 @@ function buildDie(size: number, styleKey: StyleKey): THREE.Group {
 
   const pipMat = new THREE.MeshStandardMaterial({
     color: S.pip,
-    metalness: 0.4,
-    roughness: 0.25,
+    metalness: 0.6,
+    roughness: 0.2,
     emissive: S.emissive,
     emissiveIntensity: S.eIntensity,
+    envMapIntensity: 1.1,
   });
   const wellMat = new THREE.MeshStandardMaterial({
     color: 0x000000, metalness: 0, roughness: 1, transparent: true, opacity: 0.55,
@@ -151,6 +154,11 @@ export class Dice3D {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
     this.scene = new THREE.Scene();
+    try {
+      this.scene.environment = createCosmicEnv(this.renderer);
+    } catch (e) {
+      console.warn('[Dice3D] env map init failed:', e);
+    }
     const ortho = 4;
     this.camera = new THREE.OrthographicCamera(-ortho * 1.78, ortho * 1.78, ortho, -ortho, 0.1, 100);
     this.camera.position.set(0, 6, 5);
