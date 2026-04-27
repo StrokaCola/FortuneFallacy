@@ -22,6 +22,8 @@ const TIER_LEN: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3, 7
 export function tierToNotes(tier: number): number[] {
   const t = Math.max(1, Math.min(8, Math.round(tier)));
   const len = TIER_LEN[t]!;
+  // Cap start octave at C#5 (index 2). Tiers 7–8 reach above this via the 5-note climb,
+  // not by shifting the start higher — keeps the highest tiers in the same melodic register.
   const startOctIdx = Math.min(2, Math.floor((t - 1) / 2));
   const out: number[] = [];
   for (let i = 0; i < len; i++) {
