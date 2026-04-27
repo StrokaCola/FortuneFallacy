@@ -40,7 +40,7 @@ export function App() {
       const target: ScreenId = (screen === 'win' || screen === 'scores') ? 'hub' : screen;
       screenMusic.start(target);
     }
-  }, [screen, isBoss]);
+  }, [screen]);
 
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
