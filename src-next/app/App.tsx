@@ -13,6 +13,7 @@ import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { useMotion } from './hooks/useMotion';
+import { ScreenTransition } from './visual/ScreenTransition';
 
 export function App() {
   useMotion();
@@ -29,13 +30,15 @@ export function App() {
       <CosmosBackground theme={theme} density={1} nebula drift />
 
       <div className="absolute inset-0 pointer-events-none">
-        {screen === 'title'  && <Title />}
-        {screen === 'hub'    && <Hub />}
-        {screen === 'round'  && <Round />}
-        {screen === 'shop'   && <Shop />}
-        {screen === 'forge'  && <Forge />}
-        {screen === 'win'    && <Win />}
-        {screen === 'scores' && <Scores />}
+        <ScreenTransition screenKey={screen}>
+          {screen === 'title'  && <Title />}
+          {screen === 'hub'    && <Hub />}
+          {screen === 'round'  && <Round />}
+          {screen === 'shop'   && <Shop />}
+          {screen === 'forge'  && <Forge />}
+          {screen === 'win'    && <Win />}
+          {screen === 'scores' && <Scores />}
+        </ScreenTransition>
         <BossReveal />
         <Particles />
       </div>
