@@ -1,40 +1,24 @@
 import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
-import { useStore, type GameState } from '../../state/store';
-import { TopBar } from '../hud/TopBar';
-import { OracleStrip } from '../hud/OracleStrip';
+import { useStore } from '../../state/store';
+import { StatsCorner } from '../hud/StatsCorner';
+import { DangerCorner } from '../hud/DangerCorner';
+import { ScoreFloat } from '../hud/ScoreFloat';
+import { LoadoutDock } from '../hud/LoadoutDock';
 import { ComboBanner } from '../hud/ComboBanner';
-import { ConsumableTray } from '../hud/ConsumableTray';
 import { ConstellationOverlay } from '../hud/ConstellationOverlay';
 import {
-  selectScore, selectTarget, selectShards, selectAnte,
-  selectHandsLeft, selectRerollsLeft, selectBlindId, selectIsBoss,
-  selectOracles, selectVouchers,
+  selectHandsLeft, selectRerollsLeft, selectIsBoss,
 } from '../../state/selectors';
-import { BLIND_DEFS, BOSS_BLINDS } from '../../data/blinds';
-import { activeDebuffs } from '../../core/round/debuffs';
-
-const selectDebuffsKey = (s: GameState): string => [...activeDebuffs(s)].sort().join(',');
 
 export function Round() {
-  const score   = useStore(selectScore);
-  const target  = useStore(selectTarget);
-  const shards  = useStore(selectShards);
-  const ante    = useStore(selectAnte);
   const hands   = useStore(selectHandsLeft);
   const rerolls = useStore(selectRerollsLeft);
-  const blindId = useStore(selectBlindId);
   const isBoss  = useStore(selectIsBoss);
-  const oracles = useStore(selectOracles);
-  const vouchers = useStore(selectVouchers);
-  const debuffs = useStore(selectDebuffsKey);
-
+  const scoring = useStore((s) => s.round.scoring);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
-  const blindIdx = useStore((s) => s.round.blindIndex);
-  const blindName = isBoss
-    ? BOSS_BLINDS.find((b) => b.id === blindId)?.name ?? 'Boss'
-    : BLIND_DEFS[blindIdx]?.name ?? 'Blind';
 
+  // Auto-roll when handsLeft changes (existing behavior)
   const lastHandsRef = useRef<number | null>(null);
   useEffect(() => {
     if (lastHandsRef.current !== hands && hands > 0) {
@@ -43,70 +27,57 @@ export function Round() {
     }
   }, [hands]);
 
+  // Clear scoring flag ~1.6s after a SCORE_HAND fires (Plan C will own the full sequence).
+  useEffect(() => {
+    if (!scoring) return;
+    const t = window.setTimeout(() => dispatch({ type: 'END_SCORING' }), 1600);
+    return () => window.clearTimeout(t);
+  }, [scoring]);
+
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      <TopBar
-        ante={ante}
-        blind={blindName}
-        shards={shards}
-        hands={hands}
-        rerolls={rerolls}
-        target={target}
-        score={score}
-        oracleSlots={{ used: oracles.length, max: 6 }}
-        voucherCount={vouchers.length}
-        accent={accent}
-      />
-      <OracleStrip />
-      <ConsumableTray />
+      <StatsCorner />
+      <DangerCorner />
+      <ScoreFloat />
+      <LoadoutDock />
       <ComboBanner accent={accent} />
-
-      {debuffs && (
-        <div style={{
-          position: 'absolute', top: 240, left: '50%', transform: 'translateX(-50%)',
-          padding: '4px 12px', borderRadius: 10,
-          background: 'rgba(226,51,74,0.15)', border: '1px solid rgba(226,51,74,0.5)',
-          color: '#ff8e9c', fontFamily: 'JetBrains Mono', fontSize: 10, letterSpacing: '0.18em',
-          textTransform: 'uppercase', pointerEvents: 'none', zIndex: 4,
-        }}>
-          ⚠ {debuffs}
-        </div>
-      )}
-
-      <DiceLockOverlay />
       <ConstellationOverlay />
+      <DiceLockOverlay />
+      <ActionBar hands={hands} rerolls={rerolls} accent={accent} />
+    </div>
+  );
+}
 
-      <div style={{
-        position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
-        display: 'flex', gap: 16, zIndex: 5, pointerEvents: 'auto',
+function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number; accent: string }) {
+  return (
+    <div
+      style={{
+        position: 'absolute', right: 18, bottom: 18,
+        display: 'flex', gap: 12, zIndex: 5, pointerEvents: 'auto',
       }}>
-        <button
-          className="btn btn-ghost"
-          disabled={rerolls === 0 || hands === 0}
-          onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: accent }}>↻</span> Reroll
-            <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
-          </span>
-        </button>
-        <button
-          className="btn btn-primary"
-          disabled={hands === 0}
-          onClick={() => dispatch({ type: 'SCORE_HAND' })}>
-          ✦ Cast Hand
-        </button>
-      </div>
+      <button
+        className="btn btn-ghost mat-interactive"
+        disabled={rerolls === 0 || hands === 0}
+        onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: accent }}>↻</span> Reroll
+          <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
+        </span>
+      </button>
+      <button
+        className="btn btn-primary mat-interactive"
+        disabled={hands === 0}
+        onClick={() => dispatch({ type: 'SCORE_HAND' })}>
+        ✦ Cast Hand
+      </button>
     </div>
   );
 }
 
 function DiceLockOverlay() {
   const dice = useStore((s) => s.round.dice);
-
-  // approximate 3D scene tray bottom Y on viewport
   const trayY = window.innerHeight / 2 + 80;
   const startX = window.innerWidth / 2 - (dice.length - 1) * 70;
-
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
       {dice.map((d, i) => (
