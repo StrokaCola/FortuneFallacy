@@ -11,6 +11,8 @@ export type SimulationRequest = {
   seed: number;
 };
 
+export type DieFrame = { px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number };
+
 export type SimulationResult = {
   finalFaces: number[];
   restPositions: { x: number; y: number; z: number }[];
@@ -19,6 +21,7 @@ export type SimulationResult = {
   collisionCount: number;
   bounceHeights: number[];
   cameraShake?: number;
+  frames?: DieFrame[][];
 };
 
 export type SimMetrics = {

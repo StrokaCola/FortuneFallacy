@@ -57,7 +57,10 @@ export function ConstellationOverlay() {
     const offCombo = bus.on('onComboDetected', ({ combo }) => {
       const idxs = scoringIndices(lastFaces, combo);
       if (idxs.length < 2) return;
-      const trayY = window.innerHeight / 2 + 10;
+      // Dice render inside the curved tray base — design tray center at stage y=600
+      // (stage 1280×800 centered on viewport).
+      const stageTop = (window.innerHeight - 800) / 2;
+      const trayY = stageTop + 600;
       const startX = window.innerWidth / 2 - (lastFaces.length - 1) * 70;
       const points = idxs.map((i) => ({ x: startX + i * 140, y: trayY }));
       const id = nextId++;

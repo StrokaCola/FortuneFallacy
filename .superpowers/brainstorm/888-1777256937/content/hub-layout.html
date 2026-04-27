@@ -1,0 +1,163 @@
+<h2>Hub — Tribunal of Stars</h2>
+<p class="subtitle">Choose your trial. Three blinds + boss. Player sees this every ante. Pick.</p>
+
+<style>
+  .hub { background: linear-gradient(180deg, rgba(46,29,107,0.45), rgba(7,5,26,0.95)); border:1px solid rgba(149,119,255,0.3); border-radius:12px; height: 480px; position:relative; overflow:hidden; color:#f3f0ff; }
+  .hub .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.12; }
+  .hub .head { padding:14px; text-align:center; border-bottom:1px solid rgba(149,119,255,0.2); position:relative; z-index:1; }
+  .hub .lbl { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.3em; color:#bba8ff; text-transform:uppercase; }
+  .hub .name { font-family:'Cinzel Decorative',serif; font-size:22px; color:#f3f0ff; margin-top:4px; }
+  .hub .footer { position:absolute; bottom:14px; left:0; right:0; display:flex; gap:10px; justify-content:center; z-index:2; }
+  .btn { padding:9px 16px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; border-radius:6px; cursor:pointer; }
+  .btn.ghost { background:rgba(28,18,69,0.6); color:#f3f0ff; border:1px solid rgba(149,119,255,0.4); }
+  .btn.primary { background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; }
+
+  /* A — Card row (current evolved) */
+  .a-row { position:absolute; left:0; right:0; top:80px; bottom:80px; display:flex; gap:18px; justify-content:center; align-items:center; padding: 0 14px; }
+  .a-blind { width:160px; height:280px; padding:14px; background: linear-gradient(180deg, rgba(46,29,107,0.65), rgba(15,9,37,0.85)); border:1px solid rgba(149,119,255,0.34); border-radius:12px; display:flex; flex-direction:column; align-items:center; box-shadow: 0 12px 30px rgba(0,0,0,0.4); position:relative; }
+  .a-blind.cur { border:2px solid #7be3ff; box-shadow: 0 0 30px rgba(123,227,255,0.4); }
+  .a-blind.boss { border:1px solid rgba(226,51,74,0.5); box-shadow: 0 0 24px rgba(226,51,74,0.25); }
+  .a-blind.cleared { opacity:0.4; }
+  .a-blind .lbl-blind { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.3em; color:#bba8ff; text-transform:uppercase; }
+  .a-blind .nm { font-family:'Cinzel',serif; font-size:14px; color:#f3f0ff; margin-top:4px; }
+  .a-blind .sigil { font-size:48px; margin:14px 0; filter: drop-shadow(0 0 12px); }
+  .a-blind .target { font-family:'JetBrains Mono',monospace; font-size:18px; color:#f3f0ff; }
+  .a-blind .reward { font-family:'JetBrains Mono',monospace; font-size:10px; color:#f5c451; margin-top:4px; }
+  .a-blind .cta { position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); padding:6px 14px; font-family:'Cinzel',serif; font-size:9px; letter-spacing:0.2em; text-transform:uppercase; background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; border-radius:6px; }
+
+  /* B — Constellation path (nodes on a star map) */
+  .b-canvas { position:absolute; left:0; right:0; top:60px; bottom:80px; }
+  .b-canvas svg { width:100%; height:100%; }
+  .b-node { position:absolute; width:80px; height:80px; transform: translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .b-node .ring { width:60px; height:60px; border-radius:50%; background: radial-gradient(circle, rgba(15,9,37,0.95), rgba(7,5,26,1)); display:grid; place-items:center; font-size:22px; }
+  .b-node.cleared .ring { border:1px solid rgba(149,119,255,0.4); color:#9577ff; }
+  .b-node.cur .ring { border:2px solid #7be3ff; box-shadow: 0 0 20px rgba(123,227,255,0.6); color:#7be3ff; animation: nodepulse 1.6s ease-in-out infinite; }
+  .b-node.locked .ring { border:1px solid rgba(149,119,255,0.2); color:#3a2c80; }
+  .b-node.boss .ring { border:1px solid #e2334a; color:#e2334a; box-shadow: 0 0 24px rgba(226,51,74,0.4); }
+  .b-node .lbl-n { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.2em; color:#bba8ff; text-transform:uppercase; margin-top:4px; }
+  .b-detail { position:absolute; bottom:90px; left:50%; transform:translateX(-50%); width:300px; padding:12px 16px; background:rgba(7,5,26,0.85); border:1px solid rgba(123,227,255,0.4); border-radius:8px; text-align:center; }
+  .b-detail .nm { font-family:'Cinzel',serif; font-size:14px; color:#f3f0ff; }
+  .b-detail .info { font-family:'JetBrains Mono',monospace; font-size:11px; color:#bba8ff; margin-top:4px; }
+  @keyframes nodepulse { 0%,100% { box-shadow: 0 0 14px rgba(123,227,255,0.4); } 50% { box-shadow: 0 0 24px rgba(123,227,255,0.7); } }
+
+  /* C — Triptych of fates (sigils overhead, pick by tap) */
+  .c-arch { position:absolute; left:0; right:0; top:80px; bottom:140px; display:flex; }
+  .c-fate { flex:1; position:relative; border-right:1px solid rgba(149,119,255,0.15); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition: background 0.3s; }
+  .c-fate:last-child { border-right:none; }
+  .c-fate:hover { background: rgba(123,227,255,0.06); }
+  .c-fate.cur { background: linear-gradient(180deg, rgba(123,227,255,0.1), transparent); }
+  .c-fate.cur::after { content:""; position:absolute; left:0; right:0; top:0; height:2px; background:#7be3ff; box-shadow: 0 0 14px #7be3ff; }
+  .c-fate.boss.cur::after { background:#e2334a; box-shadow: 0 0 14px #e2334a; }
+  .c-fate.cleared { opacity:0.3; }
+  .c-fate .glyph { font-size:80px; filter: drop-shadow(0 0 18px); margin-bottom: 14px; }
+  .c-fate .nm { font-family:'Cinzel Decorative',serif; font-size:16px; color:#f3f0ff; }
+  .c-fate .lbl-c { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.28em; color:#bba8ff; text-transform:uppercase; margin-top:6px; }
+  .c-fate .target { font-family:'JetBrains Mono',monospace; font-size:14px; color:#7be3ff; margin-top:14px; }
+  .c-fate .reward { font-family:'JetBrains Mono',monospace; font-size:10px; color:#f5c451; margin-top:4px; }
+  .c-cta { position:absolute; bottom:60px; left:50%; transform:translateX(-50%); padding:12px 28px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; border-radius:8px; box-shadow: 0 0 24px rgba(255,120,71,0.4); }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Card Row — Current Direction Polished</h3>
+      <p>Three blind cards in a row. Current = highlighted + Begin button. Cleared = faded. Familiar, scannable, low risk.</p>
+      <div class="hub">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Choose Your Trial ◇</div>
+          <div class="name">The Tribunal of Stars</div>
+        </div>
+        <div class="a-row">
+          <div class="a-blind cleared"><div class="lbl-blind">Blind 01</div><div class="nm">Wandering Moon</div><div class="sigil" style="color:#9577ff;">☽</div><div class="target">2,400</div><div class="reward">◇ +5 shards</div></div>
+          <div class="a-blind cur"><div class="lbl-blind" style="color:#7be3ff;">Blind 02 · Now</div><div class="nm">Solar Pact</div><div class="sigil" style="color:#7be3ff;">☀</div><div class="target">3,800</div><div class="reward">◇ +5 shards</div><button class="cta">Begin</button></div>
+          <div class="a-blind boss"><div class="lbl-blind" style="color:#e2334a;">Boss Blind</div><div class="nm">Hound of Nix</div><div class="sigil" style="color:#e2334a;">⛧</div><div class="target">9,200</div><div class="reward">◇ +8 shards</div></div>
+        </div>
+        <div class="footer">
+          <button class="btn ghost">⚒ Forge</button>
+          <button class="btn ghost">↪ Skip (+3)</button>
+          <button class="btn ghost">← Title</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Constellation Path — Star Map Progression</h3>
+      <p>Blinds become nodes connected by drawn lines, like a star chart. Cleared nodes dim, current pulses, boss glows red at end. Diegetic — you're literally ascending the sky. Strongest identity tie.</p>
+      <div class="hub">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Choose Your Trial ◇</div>
+          <div class="name">The Tribunal of Stars</div>
+        </div>
+        <div class="b-canvas">
+          <svg>
+            <line x1="22%" y1="60%" x2="50%" y2="35%" stroke="#7be3ff" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"/>
+            <line x1="50%" y1="35%" x2="78%" y2="55%" stroke="#9577ff" stroke-width="1" stroke-dasharray="3 4" opacity="0.3"/>
+          </svg>
+          <div class="b-node cleared" style="left:22%; top:60%;"><div class="ring">☽</div><div class="lbl-n">cleared</div></div>
+          <div class="b-node cur" style="left:50%; top:35%;"><div class="ring">☀</div><div class="lbl-n">now · 3,800</div></div>
+          <div class="b-node boss locked" style="left:78%; top:55%;"><div class="ring">⛧</div><div class="lbl-n">boss · 9,200</div></div>
+        </div>
+        <div class="b-detail">
+          <div class="nm">Solar Pact</div>
+          <div class="info">Target 3,800 · ×1.6 mult · ◇ +5 shards</div>
+          <button class="btn primary" style="margin-top:10px;">✦ Begin</button>
+        </div>
+        <div class="footer">
+          <button class="btn ghost">⚒ Forge</button>
+          <button class="btn ghost">↪ Skip (+3)</button>
+          <button class="btn ghost">← Title</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Triptych of Fates — Three Vertical Pillars</h3>
+      <p>Whole screen splits into three full-height columns, each a fate. Sigils enormous, names large, click any column to inspect, single big Begin button at bottom. Theatrical, decisive, weighty.</p>
+      <div class="hub">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Choose Your Trial ◇</div>
+          <div class="name">The Tribunal of Stars</div>
+        </div>
+        <div class="c-arch">
+          <div class="c-fate cleared">
+            <div class="glyph" style="color:#9577ff;">☽</div>
+            <div class="nm">Wandering Moon</div>
+            <div class="lbl-c">cleared</div>
+          </div>
+          <div class="c-fate cur">
+            <div class="glyph" style="color:#7be3ff;">☀</div>
+            <div class="nm">Solar Pact</div>
+            <div class="lbl-c">selected</div>
+            <div class="target">▲ 3,800</div>
+            <div class="reward">◇ +5 shards</div>
+          </div>
+          <div class="c-fate boss">
+            <div class="glyph" style="color:#e2334a;">⛧</div>
+            <div class="nm">Hound of Nix</div>
+            <div class="lbl-c">boss · locked</div>
+            <div class="target" style="color:#ff8e9c;">▲ 9,200</div>
+            <div class="reward">◇ +8 shards</div>
+          </div>
+        </div>
+        <button class="c-cta">✦ Begin Solar Pact</button>
+        <div class="footer">
+          <button class="btn ghost">⚒ Forge</button>
+          <button class="btn ghost">↪ Skip (+3)</button>
+          <button class="btn ghost">← Title</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

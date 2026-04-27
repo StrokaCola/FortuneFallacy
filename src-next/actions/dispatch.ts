@@ -19,6 +19,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   REROLL_REQUESTED: rollHandler,
   ROLL_SETTLED: rollHandler,
   SCORE_HAND: rollHandler,
+  END_SCORING: rollHandler,
   GRANT_ORACLE: oracleHandler,
   REVOKE_ORACLE: oracleHandler,
   TOGGLE_LOCK: diceHandler,

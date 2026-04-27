@@ -1,0 +1,106 @@
+<h2>Score Moment — Cast Hand Dopamine Peak</h2>
+<p class="subtitle">When dice resolve, this is the big payoff. Pick the treatment.</p>
+
+<style>
+  .smock { background: linear-gradient(180deg, rgba(46,29,107,0.6), rgba(15,9,37,0.95)); border:1px solid rgba(149,119,255,0.34); border-radius:12px; padding: 28px 18px; min-height: 280px; position:relative; overflow:hidden; text-align:center; }
+  .smock .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity: 0.15; }
+
+  /* A — Slot machine cascade */
+  .moment-a .tier { font-family:'Cinzel',serif; font-size:11px; letter-spacing:0.32em; color:#7be3ff; text-transform:uppercase; margin-bottom: 8px; }
+  .moment-a .build { display:flex; gap:6px; justify-content:center; margin-bottom: 10px; }
+  .moment-a .chip { padding:4px 10px; font-family:'JetBrains Mono',monospace; font-size:11px; border-radius:6px; background:rgba(123,227,255,0.12); border:1px solid rgba(123,227,255,0.4); color:#7be3ff; animation: chipPop 0.4s ease-out; }
+  .moment-a .chip.mult { background:rgba(255,120,71,0.18); border-color:#ff7847; color:#ff8a5e; }
+  .moment-a .num { font-family:'JetBrains Mono',monospace; font-size:64px; color:#fff; font-weight:700; text-shadow: 0 0 24px #7be3ff, 0 0 48px rgba(123,227,255,0.4); animation: countUp 0.8s ease-out; }
+  .moment-a .formula { font-family:'JetBrains Mono',monospace; font-size:13px; color:#bba8ff; margin-top: 6px; }
+
+  /* B — Cathedral toll */
+  .moment-b .ring { position:absolute; left:50%; top:50%; transform: translate(-50%,-50%); width: 200px; height:200px; border-radius:50%; border:1px solid rgba(245,196,81,0.4); animation: ringExpand 1.6s ease-out infinite; }
+  .moment-b .ring2 { width: 280px; height:280px; animation-delay: 0.4s; }
+  .moment-b .num { font-family:'Cinzel Decorative',serif; font-size:72px; color:#f5c451; text-shadow: 0 0 30px rgba(245,196,81,0.7), 0 0 60px rgba(245,196,81,0.3); position:relative; z-index:1; }
+  .moment-b .label { font-family:'Cinzel',serif; font-size:13px; letter-spacing:0.32em; text-transform:uppercase; color:#f3f0ff; position:relative; z-index:1; margin-bottom: 14px; }
+  .moment-b .sub { font-family:'JetBrains Mono',monospace; font-size:11px; color:#bba8ff; position:relative; z-index:1; margin-top: 14px; }
+  @keyframes ringExpand { 0% { opacity: 0.8; transform: translate(-50%,-50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.5); } }
+
+  /* C — Constellation lock */
+  .moment-c svg { position:absolute; inset:0; width:100%; height:100%; opacity:0.7; }
+  .moment-c .label { font-family:'Cinzel',serif; font-size:11px; letter-spacing:0.32em; text-transform:uppercase; color:#7be3ff; margin-bottom: 6px; position:relative; z-index:1; }
+  .moment-c .name { font-family:'Cinzel Decorative',serif; font-size:22px; color:#f5c451; margin-bottom: 14px; position:relative; z-index:1; text-shadow: 0 0 20px rgba(245,196,81,0.5); }
+  .moment-c .num { font-family:'JetBrains Mono',monospace; font-size:56px; color:#fff; font-weight:700; text-shadow: 0 0 24px #7be3ff; position:relative; z-index:1; }
+  .moment-c .formula { font-family:'JetBrains Mono',monospace; font-size:12px; color:#bba8ff; margin-top: 10px; position:relative; z-index:1; }
+
+  @keyframes chipPop { 0% { transform: translateY(8px) scale(0.7); opacity:0; } 100% { transform: none; opacity:1; } }
+  @keyframes countUp { 0% { transform: scale(0.6); opacity:0; } 60% { transform: scale(1.15); opacity:1; } 100% { transform: scale(1); } }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Slot Cascade — Show The Math</h3>
+      <p>Chips fly in showing each contributor (base + tier + mult), formula expands left→right, big number lands last. Reads like Balatro: legible, repeatable, satisfying chain.</p>
+      <p class="label">Audio: tick-tick-tick chips → swell → BOOM. Pitch climbs per chip.</p>
+      <div class="smock moment-a">
+        <div class="stars"></div>
+        <div class="tier">⟡ Astral Run · Tier 4</div>
+        <div class="build">
+          <span class="chip">Base 60</span>
+          <span class="chip">+ Stars 24</span>
+          <span class="chip">+ Chain 18</span>
+          <span class="chip mult">× 6.4</span>
+        </div>
+        <div class="num">12,840</div>
+        <div class="formula">(60 + 24 + 18) × 6.4 → 652.8 × 19.7</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cathedral Toll — Big Single Strike</h3>
+      <p>Music ducks, screen darkens, gold rings expand outward, score lands as one massive serif number. Fewer cues, bigger weight. Sacred even in pivot — gambler's hush before the bell.</p>
+      <p class="label">Audio: bass swell → reverbed bell strike → sub-decay. ~1.4s total.</p>
+      <div class="smock moment-b" style="min-height: 320px; display:grid; place-items:center;">
+        <div class="stars"></div>
+        <div class="ring"></div>
+        <div class="ring ring2"></div>
+        <div>
+          <div class="label">✦ Voidlit Cast ✦</div>
+          <div class="num">12,840</div>
+          <div class="sub">Full Constellation · Tier IV</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Constellation Lock — Hand Becomes Sky</h3>
+      <p>Dice draw a constellation that locks into place, named ("The Lyre"), then number resolves below. Theme-forward: every hand is a pattern that joins your codex. High identity, less raw dopamine.</p>
+      <p class="label">Audio: harp pluck per line drawn → name whispered → number tick.</p>
+      <div class="smock moment-c" style="min-height: 320px;">
+        <div class="stars"></div>
+        <svg viewBox="0 0 400 280">
+          <line x1="80" y1="80" x2="160" y2="120" stroke="#7be3ff" stroke-width="1" />
+          <line x1="160" y1="120" x2="240" y2="90" stroke="#7be3ff" stroke-width="1" />
+          <line x1="240" y1="90" x2="320" y2="140" stroke="#7be3ff" stroke-width="1" />
+          <line x1="160" y1="120" x2="200" y2="200" stroke="#7be3ff" stroke-width="1" />
+          <circle cx="80" cy="80" r="4" fill="#f5c451"/>
+          <circle cx="160" cy="120" r="4" fill="#f5c451"/>
+          <circle cx="240" cy="90" r="4" fill="#f5c451"/>
+          <circle cx="320" cy="140" r="4" fill="#f5c451"/>
+          <circle cx="200" cy="200" r="4" fill="#f5c451"/>
+        </svg>
+        <div style="position:relative; z-index:1; padding-top: 8px;">
+          <div class="label">✦ Constellation Drawn ✦</div>
+          <div class="name">The Lyre</div>
+          <div class="num">12,840</div>
+          <div class="formula">5-die chain · ×6.4 mult</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

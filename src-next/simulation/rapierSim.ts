@@ -1,4 +1,4 @@
-import type { SimulationRequest, SimulationResult } from '../events/types';
+import type { SimulationRequest, SimulationResult, DieFrame } from '../events/types';
 import { faceFromQuaternion } from './faceFromPose';
 import { mulberry32 } from '../core/rng';
 
@@ -28,8 +28,8 @@ export async function ensureRapier(): Promise<RapierModule | null> {
   }
 }
 
-const TRAY_MIN = -2.5;
-const TRAY_MAX =  2.5;
+const TRAY_MIN = -4;
+const TRAY_MAX =  4;
 const FLOOR_Y  = 0;
 
 export async function runRapierSim(req: SimulationRequest, prevFaces: number[]): Promise<SimulationResult | null> {
@@ -39,19 +39,19 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   const rng = mulberry32(req.seed ^ Date.now());
   const world: World = new r.World({ x: 0, y: -9.81, z: 0 });
 
-  const floorDesc = r.ColliderDesc.cuboid(8, 0.1, 8).setTranslation(0, FLOOR_Y - 0.1, 0).setRestitution(0.45);
+  const floorDesc = r.ColliderDesc.cuboid(10, 0.1, 8).setTranslation(0, FLOOR_Y - 0.1, 0).setRestitution(0.45);
   world.createCollider(floorDesc);
   for (const w of [
     r.ColliderDesc.cuboid(0.1, 4, 8).setTranslation(TRAY_MIN, 2, 0),
     r.ColliderDesc.cuboid(0.1, 4, 8).setTranslation(TRAY_MAX, 2, 0),
-    r.ColliderDesc.cuboid(8, 4, 0.1).setTranslation(0, 2, TRAY_MIN),
-    r.ColliderDesc.cuboid(8, 4, 0.1).setTranslation(0, 2, TRAY_MAX),
+    r.ColliderDesc.cuboid(10, 4, 0.1).setTranslation(0, 2, TRAY_MIN),
+    r.ColliderDesc.cuboid(10, 4, 0.1).setTranslation(0, 2, TRAY_MAX),
   ]) world.createCollider(w);
 
   const bodies: RigidBody[] = [];
   const diceCount = Math.max(prevFaces.length, 5);
   for (let i = 0; i < diceCount; i++) {
-    const x = TRAY_MIN + 0.6 + i * 1.0;
+    const x = TRAY_MIN + 0.8 + i * 1.6;
     const z = (rng.next() - 0.5) * 1.5;
     const bodyDesc = r.RigidBodyDesc.dynamic()
       .setTranslation(x, 4 + rng.next() * 1.5, z)
@@ -72,6 +72,8 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   const eventQueue = new r.EventQueue(true);
   const STEP_MS = 1000 / 60;
 
+  const frames: DieFrame[][] = bodies.map(() => []);
+
   for (let step = 0; step < 240; step++) {
     world.step(eventQueue);
     eventQueue.drainCollisionEvents(() => { collisionCount += 1; });
@@ -83,6 +85,8 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
       if (t.y > bounceHeights[i]!) bounceHeights[i] = t.y;
       const angV = b.angvel();
       const angSpeed = Math.hypot(angV.x, angV.y, angV.z);
+      const q = b.rotation();
+      frames[i]!.push({ px: t.x, py: t.y, pz: t.z, qx: q.x, qy: q.y, qz: q.z, qw: q.w });
       if (!settled[i] && speed < 0.05 && angSpeed < 0.05 && t.y < 1.0) {
         settled[i] = true;
         settleMs[i] = step * STEP_MS;
@@ -110,5 +114,6 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     peakVelocity,
     collisionCount,
     bounceHeights,
+    frames,
   };
 }
