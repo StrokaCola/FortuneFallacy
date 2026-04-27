@@ -47,3 +47,21 @@ export function loadMemory(): AudioMemory | null {
     return null;
   }
 }
+
+export type TensionInputs = {
+  score: number;
+  target: number;
+  handsLeft: number;
+  handsTotal: number;
+  scoring: boolean;
+};
+
+export function selectTension(i: TensionInputs): number {
+  if (i.scoring) return 1;
+  if (i.target <= 0) return 0;
+  const gap = Math.max(0, (i.target - i.score) / i.target);
+  const handsRatio = i.handsTotal > 0 ? i.handsLeft / i.handsTotal : 1;
+  // pace_factor: 1 when hands plentiful, 2.2 when on last hand
+  const pace = 1 + (1 - handsRatio) * 1.2;
+  return Math.max(0, Math.min(1, gap * pace));
+}

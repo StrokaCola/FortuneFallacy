@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { smoothstep } from './heat';
+import { smoothstep, selectTension, type TensionInputs } from './heat';
 
 describe('smoothstep', () => {
   it('returns 0 below edge0', () => {
@@ -12,5 +12,37 @@ describe('smoothstep', () => {
     const a = smoothstep(0.6, 0.5, 1);
     const b = smoothstep(0.8, 0.5, 1);
     expect(b).toBeGreaterThan(a);
+  });
+});
+
+describe('selectTension', () => {
+  const base: TensionInputs = { score: 0, target: 1000, handsLeft: 4, handsTotal: 4, scoring: false };
+
+  it('returns 0 when score === target (cleared)', () => {
+    expect(selectTension({ ...base, score: 1000 })).toBe(0);
+  });
+
+  it('returns near 1 when far behind on last hand', () => {
+    expect(selectTension({ ...base, score: 100, handsLeft: 1 })).toBeGreaterThan(0.85);
+  });
+
+  it('is monotonic non-increasing as score rises (with same handsLeft)', () => {
+    const t1 = selectTension({ ...base, score: 200, handsLeft: 2 });
+    const t2 = selectTension({ ...base, score: 800, handsLeft: 2 });
+    expect(t2).toBeLessThanOrEqual(t1);
+  });
+
+  it('rises as handsLeft drops at fixed score gap', () => {
+    const t4 = selectTension({ ...base, score: 500, handsLeft: 4 });
+    const t1 = selectTension({ ...base, score: 500, handsLeft: 1 });
+    expect(t1).toBeGreaterThan(t4);
+  });
+
+  it('returns 1.0 while scoring is true regardless of inputs', () => {
+    expect(selectTension({ ...base, score: 1000, scoring: true })).toBe(1);
+  });
+
+  it('returns 0 with non-positive target', () => {
+    expect(selectTension({ ...base, target: 0 })).toBe(0);
   });
 });
