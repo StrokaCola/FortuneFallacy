@@ -130,6 +130,7 @@ type DieAnim = {
   rollSpeed: number;            // radians per second total
   bouncePeak: number;           // max y displacement during roll
   locked: boolean;
+  playback: { frames: import('../../events/types').DieFrame[]; startedAt: number; stepMs: number } | null;
 };
 
 export class Dice3D {
@@ -193,7 +194,7 @@ export class Dice3D {
       store.subscribe((s, prev) => {
         if (s.round.dice !== prev.round.dice) this.syncDice(s.round.dice);
       }),
-      bus.on('onSimulationStart', () => this.kickAll()),
+      bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
     );
     this.syncDice(store.getState().round.dice);
     this.start();
@@ -229,6 +230,7 @@ export class Dice3D {
         rollSpeed: 0,
         bouncePeak: 0,
         locked: false,
+        playback: null,
       });
     }
   }
@@ -319,6 +321,26 @@ export class Dice3D {
     });
   }
 
+  private startPlayback(frames: import('../../events/types').DieFrame[][] | undefined, finalFaces: number[]): void {
+    if (!frames || frames.length === 0) {
+      this.kickAll();
+      return;
+    }
+    const now = performance.now();
+    const STEP_MS = 1000 / 60;
+    this.dice.forEach((d, i) => {
+      if (d.locked) return;
+      const f = frames[i];
+      if (!f || f.length === 0) return;
+      d.playback = { frames: f, startedAt: now, stepMs: STEP_MS };
+      d.rolling = false;
+      const face = finalFaces[i];
+      if (face != null) {
+        d.targetQuat.setFromEuler(new THREE.Euler(...FACE_ROT[face]!));
+      }
+    });
+  }
+
   private start() {
     const loop = () => {
       this.rafHandle = requestAnimationFrame(loop);
@@ -332,6 +354,25 @@ export class Dice3D {
           continue;
         }
         const tRaw = Math.min(1, Math.max(0, elapsed / d.duration));
+
+        if (d.playback) {
+          const elapsed2 = now - d.playback.startedAt;
+          const idx = Math.min(d.playback.frames.length - 1, Math.floor(elapsed2 / d.playback.stepMs));
+          const fr = d.playback.frames[idx]!;
+          d.group.position.set(fr.px, fr.py, fr.pz);
+          d.group.quaternion.set(fr.qx, fr.qy, fr.qz, fr.qw);
+          if (idx >= d.playback.frames.length - 1) {
+            d.playback = null;
+            d.startQuat.copy(d.group.quaternion);
+            d.startPos.copy(d.group.position);
+            d.targetPos.copy(d.homePos);
+            d.targetScale = 1;
+            d.startScale = d.group.scale.x;
+            d.t0 = now;
+            d.duration = 240;
+          }
+          continue;
+        }
 
         if (d.rolling) {
           // Active tumble: spin around rollAxis at rollSpeed
