@@ -1,5 +1,6 @@
 import { bus } from '../events/bus';
 import { store } from '../state/store';
+import { selectTensionFromState } from '../state/selectors';
 import { audioEngine, ensureAudioAfterGesture } from './AudioEngine';
 import { sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank } from './sfx';
 
@@ -48,6 +49,7 @@ export function startAudioBridge(): () => void {
     bus.on('onOfferBought', () => sfxPlay('buy')),
   ];
 
+  let lastTension = -1;
   const offStore = store.subscribe((s, prev) => {
     if (prev.round.active && !s.round.active && s.ui.screen === 'hub') {
       audioEngine.enterFail();
@@ -57,6 +59,11 @@ export function startAudioBridge(): () => void {
     if (s.ui.screen !== prev.ui.screen) {
       if (s.ui.screen === 'title') audioEngine.pause();
       else audioEngine.resume();
+    }
+    const t = selectTensionFromState(s);
+    if (Math.abs(t - lastTension) > 0.005) {
+      lastTension = t;
+      audioEngine.setTension(t);
     }
   });
 
