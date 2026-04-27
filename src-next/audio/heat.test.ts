@@ -45,4 +45,8 @@ describe('selectTension', () => {
   it('returns 0 with non-positive target', () => {
     expect(selectTension({ ...base, target: 0 })).toBe(0);
   });
+
+  it('clamps to 1 when score is negative (Soft Bust state)', () => {
+    expect(selectTension({ ...base, score: -100 })).toBe(1);
+  });
 });

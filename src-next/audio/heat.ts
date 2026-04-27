@@ -56,12 +56,13 @@ export type TensionInputs = {
   scoring: boolean;
 };
 
-export function selectTension(i: TensionInputs): number {
-  if (i.scoring) return 1;
-  if (i.target <= 0) return 0;
-  const gap = Math.max(0, (i.target - i.score) / i.target);
-  const handsRatio = i.handsTotal > 0 ? i.handsLeft / i.handsTotal : 1;
-  // pace_factor: 1 when hands plentiful, 2.2 when on last hand
+export function selectTension(inputs: TensionInputs): number {
+  if (inputs.scoring) return 1;
+  if (inputs.target <= 0) return 0;
+  const gap = Math.max(0, (inputs.target - inputs.score) / inputs.target);
+  const handsRatio = inputs.handsTotal > 0 ? inputs.handsLeft / inputs.handsTotal : 1;
+  // pace ramps from 1.0 (full hands) to 2.2 (all hands burned).
+  // For 4 total hands: handsLeft=4 → 1.0, handsLeft=1 → ~1.9, handsLeft=0 → 2.2.
   const pace = 1 + (1 - handsRatio) * 1.2;
   return Math.max(0, Math.min(1, gap * pace));
 }
