@@ -10,6 +10,13 @@
   --cosmos-600:#432896; --cosmos-700:#2e1d6b; --cosmos-800:#1c1245;
   --cosmos-900:#0f0925; --cosmos-950:#07051a;
   --ember:#ff7847; --crimson:#e2334a; --gold:#f5c451; --astral:#7be3ff;
+  --snap-fast: 80ms;
+  --snap: 120ms;
+  --savored-short: 450ms;
+  --savored: 600ms;
+  --savored-long: 900ms;
+  --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-savor: cubic-bezier(0.25, 0.46, 0.2, 1.0);
 }
 
 html, body, #next-root {
@@ -112,3 +119,26 @@ html, body, #next-root {
   100% { transform: translate(-50%, -120px) scale(1); opacity: 0; }
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+/* Reduced-motion: collapses all savored animations to short cross-fade.
+   Applied via .reduce-motion class on <html> (set by useMotion hook in Task 7),
+   plus prefers-reduced-motion as a fallback. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 80ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 80ms !important;
+  transition-delay: 0ms !important;
+}
+.reduce-motion .die3d-wrap.idle .die3d { animation: none; }
+.reduce-motion .die3d-wrap.scoring::after { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.allow-motion) *,
+  html:not(.allow-motion) *::before,
+  html:not(.allow-motion) *::after {
+    animation-duration: 80ms !important;
+    transition-duration: 80ms !important;
+  }
+}
