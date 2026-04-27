@@ -50,6 +50,8 @@ class AudioEngineImpl {
   private bigScoreStart = 0;
   private filter: BiquadFilterNode | null = null;
   private saveTimer: number | null = null;
+  private bigScoreReleased = false;
+  private tension = 0;
 
   constructor() {
     const mem = loadMemory();
@@ -127,6 +129,14 @@ class AudioEngineImpl {
 
   getMaster(): number {
     return this.master;
+  }
+
+  setTension(t: number): void {
+    this.tension = Math.max(0, Math.min(1, t));
+  }
+
+  getTension(): number {
+    return this.tension;
   }
 
   bumpHeat(delta: number): void {
@@ -281,17 +291,6 @@ class AudioEngineImpl {
       this.filter.frequency.setTargetAtTime(cutoff, this.filter.context.currentTime, 0.05);
     }
   };
-
-  private bigScoreReleased = false;
-  private tension = 0;
-
-  setTension(t: number): void {
-    this.tension = Math.max(0, Math.min(1, t));
-  }
-
-  getTension(): number {
-    return this.tension;
-  }
 }
 
 export const audioEngine = new AudioEngineImpl();
