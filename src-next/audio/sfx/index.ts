@@ -1,5 +1,7 @@
 import { buildBank, type SynthBank } from './synthBank';
+import { buildLegacyBank, type LegacySynthBank } from './synthBank.legacy';
 import * as voices from './voices';
+import * as legacyVoices from './voices.legacy';
 
 export type SfxId =
   | 'diceClack' | 'lockTap' | 'reroll' | 'buy'
@@ -9,8 +11,10 @@ export type SfxId =
 export type SfxOpts = { tier?: number; volume?: number; idx?: number };
 
 const VOLUME_KEY = 'ff_next_sfxVol';
+const LEGACY_KEY = 'ff_sfx_legacy';
 
-let bank: SynthBank | null = null;
+let bank: SynthBank | LegacySynthBank | null = null;
+let legacyMode = false;
 let initPromise: Promise<void> | null = null;
 
 function loadVolume(): number {
@@ -20,11 +24,28 @@ function loadVolume(): number {
   return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.7;
 }
 
+function checkLegacyFlag(): boolean {
+  try {
+    const url = new URL(window.location.href);
+    const param = url.searchParams.get('sfx');
+    if (param === 'legacy') {
+      localStorage.setItem(LEGACY_KEY, '1');
+      return true;
+    }
+    if (param === 'modern' || param === 'new') {
+      localStorage.removeItem(LEGACY_KEY);
+      return false;
+    }
+  } catch { /* SSR or no window */ }
+  return localStorage.getItem(LEGACY_KEY) === '1';
+}
+
 export async function sfxInit(): Promise<void> {
   if (bank) return;
   if (initPromise) return initPromise;
+  legacyMode = checkLegacyFlag();
   initPromise = (async () => {
-    bank = await buildBank();
+    bank = legacyMode ? await buildLegacyBank() : await buildBank();
     bank.master.gain.value = loadVolume();
   })();
   return initPromise;
@@ -32,25 +53,26 @@ export async function sfxInit(): Promise<void> {
 
 export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
   if (!bank) return;
+  const v = legacyMode ? legacyVoices : voices;
   try {
     switch (id) {
-      case 'diceClack': voices.diceClack(bank); break;
-      case 'lockTap':   voices.lockTap(bank); break;
-      case 'reroll':    voices.reroll(bank); break;
-      case 'buy':       voices.buy(bank); break;
-      case 'combo':     voices.combo(bank, opts); break;
-      case 'upgrade':   voices.upgrade(bank); break;
-      case 'bossSting': voices.bossSting(bank); break;
-      case 'bigScore':  voices.bigScore(bank); break;
-      case 'win':       voices.winFanfare(bank); break;
-      case 'bust':           voices.bust(bank); break;
-      case 'chipTick':       voices.chipTick(bank, opts); break;
-      case 'castSwell':      voices.castSwell(bank); break;
-      case 'castBoom':       voices.castBoom(bank); break;
-      case 'sigilDraw':      voices.sigilDraw(bank); break;
-      case 'cardFlip':       voices.cardFlip(bank); break;
-      case 'nodePulse':      voices.nodePulse(bank); break;
-      case 'transitionWipe': voices.transitionWipe(bank); break;
+      case 'diceClack':       v.diceClack(bank as never); break;
+      case 'lockTap':         v.lockTap(bank as never); break;
+      case 'reroll':          v.reroll(bank as never); break;
+      case 'buy':             v.buy(bank as never); break;
+      case 'combo':           v.combo(bank as never, opts); break;
+      case 'upgrade':         v.upgrade(bank as never); break;
+      case 'bossSting':       v.bossSting(bank as never); break;
+      case 'bigScore':        v.bigScore(bank as never); break;
+      case 'win':             v.winFanfare(bank as never); break;
+      case 'bust':            v.bust(bank as never); break;
+      case 'chipTick':        v.chipTick(bank as never, opts); break;
+      case 'castSwell':       v.castSwell(bank as never); break;
+      case 'castBoom':        v.castBoom(bank as never); break;
+      case 'sigilDraw':       v.sigilDraw(bank as never); break;
+      case 'cardFlip':        v.cardFlip(bank as never); break;
+      case 'nodePulse':       v.nodePulse(bank as never); break;
+      case 'transitionWipe':  v.transitionWipe(bank as never); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);
@@ -67,6 +89,10 @@ export function sfxGetMaster(): number {
   return loadVolume();
 }
 
-export function sfxBank(): SynthBank | null {
+export function sfxBank(): SynthBank | LegacySynthBank | null {
   return bank;
+}
+
+export function sfxIsLegacy(): boolean {
+  return legacyMode;
 }
