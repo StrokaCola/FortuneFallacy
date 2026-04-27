@@ -4,19 +4,15 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>FortuneFallacy</title>
-<link rel="stylesheet" href="./style.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Exo+2:ital,wght@0,300;0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 </head>
 <body>
-<div id="game-wrapper">
-  <canvas id="bg"    width="960" height="540"></canvas>
-  <canvas id="three" width="960" height="540"></canvas>
-  <canvas id="game"  width="960" height="540"></canvas>
-</div>
+<canvas id="bg-next"></canvas>
+<canvas id="three-next" width="960" height="540"></canvas>
+<div id="next-root"></div>
 <script src="./portal.js"></script>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src-next/main.tsx"></script>
 </body>
 </html>
