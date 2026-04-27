@@ -50,6 +50,11 @@ class AudioEngineImpl {
   private bigScoreStart = 0;
   private filter: BiquadFilterNode | null = null;
   private saveTimer: number | null = null;
+  private bigScoreReleased = false;
+  private tension = 0;
+  // Orthogonal to `mode` — gates layer output only; state evolution (heat/combo/etc.) keeps running
+  // while inactive so the engine snaps back to the correct mix when reactivated.
+  private active = true;
 
   constructor() {
     const mem = loadMemory();
@@ -127,6 +132,22 @@ class AudioEngineImpl {
 
   getMaster(): number {
     return this.master;
+  }
+
+  setTension(t: number): void {
+    this.tension = Math.max(0, Math.min(1, t));
+  }
+
+  getTension(): number {
+    return this.tension;
+  }
+
+  setActive(active: boolean): void {
+    this.active = active;
+  }
+
+  isActive(): boolean {
+    return this.active;
   }
 
   bumpHeat(delta: number): void {
@@ -213,9 +234,12 @@ class AudioEngineImpl {
       this.state.fail = Math.max(0, this.state.fail - 0.01 * decayScale);
     }
 
+    // Tension nudges combo + peak layer mix targets so a high-stakes baseline
+    // sounds ominous before any cast. Cap nudge contribution at 0.2 of the layer.
+    const tNudge = this.tension * 0.2;
     let baseTarget = 0.55 + 0.25 * this.state.stability + 0.15 * this.state.heat;
-    let comboTarget = this.state.combo * (0.6 + 0.4 * this.state.heat);
-    let peakTarget = smoothstep(this.state.heat, 0.7, 1.0) * 0.85;
+    let comboTarget = this.state.combo * (0.6 + 0.4 * this.state.heat) + tNudge * 0.6;
+    let peakTarget = smoothstep(this.state.heat, 0.7, 1.0) * 0.85 + tNudge * 0.4;
     let failTarget = this.state.fail * 0.7;
 
     if (this.state.bigScoreTimer > 0) {
@@ -257,6 +281,13 @@ class AudioEngineImpl {
       peakTarget *= 0.0;
     }
 
+    if (!this.active) {
+      baseTarget = 0;
+      comboTarget = 0;
+      peakTarget = 0;
+      failTarget = 0;
+    }
+
     const lerpK = 0.12;
     this.actual.base += (baseTarget - this.actual.base) * lerpK;
     this.actual.combo += (comboTarget - this.actual.combo) * lerpK;
@@ -270,12 +301,14 @@ class AudioEngineImpl {
     this.layers.fail.volume(this.actual.fail * m);
 
     if (this.filter) {
-      const cutoff = this.state.mode === 'fail' ? 800 : 600 + this.state.heat * 15000;
+      // tension narrows the filter further; mode=fail still hard-overrides to 800Hz.
+      // tension=0 → tensionFloor=16000 (no extra narrowing); tension=1 → tensionFloor=2000.
+      const heatCutoff = 600 + this.state.heat * 15000;
+      const tensionFloor = 16000 - this.tension * 14000;
+      const cutoff = this.state.mode === 'fail' ? 800 : Math.min(heatCutoff, tensionFloor);
       this.filter.frequency.setTargetAtTime(cutoff, this.filter.context.currentTime, 0.05);
     }
   };
-
-  private bigScoreReleased = false;
 }
 
 export const audioEngine = new AudioEngineImpl();

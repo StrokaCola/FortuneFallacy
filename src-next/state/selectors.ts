@@ -1,4 +1,5 @@
 import type { GameState } from './store';
+import { selectTension, type TensionInputs } from '../audio/heat';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
 export const selectScore       = (s: GameState) => s.round.score;
@@ -19,3 +20,14 @@ export const selectShopOffers = (s: GameState) => s.shop.offers;
 export const selectOracles    = (s: GameState) => s.run.oracles;
 export const selectVouchers   = (s: GameState) => s.run.vouchers;
 export const selectPlayerName = (s: GameState) => s.meta.playerName;
+
+export const selectTensionFromState = (s: GameState): number => {
+  const inputs: TensionInputs = {
+    score: s.round.score,
+    target: s.round.target,
+    handsLeft: s.round.handsLeft,
+    handsTotal: s.round.handsMax,
+    scoring: s.round.scoring,
+  };
+  return selectTension(inputs);
+};

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fortune Fallacy — Scoring FX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --cosmos-50:#f3f0ff; --cosmos-100:#dcd4ff; --cosmos-200:#bba8ff;
+    --cosmos-300:#9577ff; --cosmos-400:#7752f0; --cosmos-500:#5c39c4;
+    --cosmos-600:#432896; --cosmos-700:#2e1d6b; --cosmos-800:#1c1245;
+    --cosmos-900:#0f0925; --cosmos-950:#07051a;
+    --ember:#ff7847; --crimson:#e2334a; --gold:#f5c451; --astral:#7be3ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    background: #07051a; color: #f3f0ff;
+    font-family: 'Exo 2', system-ui, sans-serif;
+  }
+  .f-display { font-family: 'Cinzel Decorative', serif; letter-spacing: .02em; }
+  .f-head    { font-family: 'Cinzel', serif; letter-spacing: .06em; }
+  .f-mono    { font-family: 'JetBrains Mono', monospace; }
+  .uc        { text-transform: uppercase; }
+
+  @keyframes twinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+  @keyframes orbit   { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes pulse-glow { 0%,100% { filter: drop-shadow(0 0 6px var(--astral)); } 50% { filter: drop-shadow(0 0 18px var(--astral)); } }
+  @keyframes float-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes idle-tumble {
+    0%, 100% { transform: var(--face-rot) rotateX(0deg) rotateY(0deg); }
+    25%      { transform: var(--face-rot) rotateX(4deg) rotateY(-3deg); }
+    50%      { transform: var(--face-rot) rotateX(-3deg) rotateY(5deg); }
+    75%      { transform: var(--face-rot) rotateX(2deg) rotateY(-2deg); }
+  }
+  @keyframes constellation-draw { from { stroke-dashoffset: var(--len, 200); } to { stroke-dashoffset: 0; } }
+
+  .panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius:16px; }
+  .panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius:16px; box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
+
+  .die3d-wrap   { position: relative; perspective: 800px; user-select: none; }
+  .die3d        { position: relative; transform-style: preserve-3d; transition: transform 600ms cubic-bezier(.4,1.4,.5,1); }
+  .die3d-face   { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 12px; backface-visibility: hidden; }
+  .die3d-face::before { content:""; position:absolute; inset:1px; border-radius:11px; background:linear-gradient(160deg, rgba(255,255,255,.10), transparent 55%); pointer-events:none; }
+  .die3d-wrap.idle .die3d { animation: idle-tumble 8s ease-in-out infinite; }
+  .die3d-shadow { position: absolute; left: 50%; bottom: -10px; width: 70%; height: 12px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); filter: blur(4px); pointer-events:none; }
+
+  /* Card grid */
+  .grid {
+    max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;
+  }
+  .fx-card {
+    position: relative; border-radius: 16px; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 35%, #1c1245 0%, #0f0925 55%, #07051a 100%);
+    border: 1px solid rgba(149,119,255,.22);
+    box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+    height: 320px;
+  }
+  .fx-stage {
+    position: absolute; inset: 0;
+    overflow: hidden;
+  }
+  .fx-card-info {
+    position: absolute; left: 16px; right: 16px; top: 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none; z-index: 10;
+  }
+  .fx-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .25em;
+    text-transform: uppercase; color: #bba8ff;
+    padding: 3px 8px; border: 1px solid rgba(149,119,255,.35); border-radius: 999px;
+    background: rgba(15,9,37,.7);
+  }
+  .fx-tag.high   { color: #ff7847; border-color: rgba(255,120,71,.55); }
+  .fx-tag.medium { color: #7be3ff; border-color: rgba(123,227,255,.55); }
+  .fx-tag.low    { color: #bba8ff; border-color: rgba(149,119,255,.45); }
+
+  .fx-card-foot {
+    position: absolute; left: 16px; right: 16px; bottom: 14px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    z-index: 10;
+  }
+  .fx-name { font-family: 'Cinzel Decorative', serif; font-size: 18px; color: #f3f0ff; }
+  .fx-tag-line { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #bba8ff; margin-top: 2px; }
+  .fx-use { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9577ff; margin-top: 4px; letter-spacing: .04em; }
+
+  .fx-replay {
+    cursor: pointer; user-select: none;
+    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 11px;
+    background: rgba(15,9,37,.72); color: #f3f0ff;
+    padding: 8px 14px; border-radius: 8px;
+    border: 1px solid rgba(123,227,255,.5);
+    box-shadow: 0 0 12px rgba(123,227,255,.18);
+    transition: all 120ms;
+  }
+  .fx-replay:hover { background: rgba(28,18,69,.92); box-shadow: 0 0 16px rgba(123,227,255,.4); }
+
+  .header {
+    max-width: 1280px; margin: 0 auto; padding: 36px 24px 0;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  }
+  .title { font-family: 'Cinzel Decorative', serif; font-size: 32px; line-height: 1.1; color: #f3f0ff; margin: 0; }
+  .subtitle { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: #7be3ff; margin: 0 0 6px; }
+  .blurb { font-family: 'Exo 2', sans-serif; font-size: 14px; color: #bba8ff; max-width: 560px; line-height: 1.5; }
+
+  .controls { display: flex; gap: 10px; }
+  .ctrl-btn {
+    cursor: pointer; user-select: none;
+    font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 11px;
+    background: rgba(28,18,69,.6); color: #f3f0ff;
+    padding: 10px 16px; border-radius: 8px;
+    border: 1px solid rgba(149,119,255,.3);
+    transition: all 120ms;
+  }
+  .ctrl-btn:hover { background: rgba(46,29,107,.8); border-color: rgba(149,119,255,.6); }
+  .ctrl-btn.primary { border-color: rgba(123,227,255,.55); color: #7be3ff; box-shadow: 0 0 12px rgba(123,227,255,.18); }
+
+  /* the per-card starfield (very light, just so cards feel alive) */
+  .card-stars { position: absolute; inset: 0; pointer-events: none; opacity: .5; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="subtitle">◇ scoring fx · constellation theme ◇</div>
+      <h1 class="title">Dice Scoring — Particle &amp; Animation Catalog</h1>
+      <p class="blurb">
+        Eight effects that play when a die contributes to a combo. All keep
+        the constellation language: stars, sigils, orbits, comets. Hover any
+        card and click <span class="f-mono" style="color:#7be3ff">Replay</span> —
+        or hit <span class="f-mono" style="color:#7be3ff">Play&nbsp;All</span>.
+      </p>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn" id="ctrl-stagger">Stagger All</button>
+      <button class="ctrl-btn primary" id="ctrl-all">▶ Play All</button>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="cosmos.jsx"></script>
+  <script type="text/babel" src="scoring-fx.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    injectFxCss();
+
+    // light starfield for each card so they feel like the real stage
+    function CardStars({ seed }) {
+      const stars = useMemo(() => {
+        const arr = [];
+        const rand = (() => {
+          let s = seed * 9301 + 49297;
+          return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+        })();
+        for (let i = 0; i < 24; i++) {
+          arr.push({
+            x: rand() * 100, y: rand() * 100,
+            r: 0.6 + rand() * 1.2,
+            o: 0.3 + rand() * 0.7,
+            d: rand() * 4,
+            c: rand() < 0.1 ? '#7be3ff' : (rand() < 0.1 ? '#f5c451' : '#dcd4ff'),
+          });
+        }
+        return arr;
+      }, [seed]);
+      return (
+        <svg className="card-stars" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+          {stars.map((s, i) => (
+            <circle key={i} cx={s.x} cy={s.y} r={s.r * 0.18} fill={s.c} opacity={s.o}
+                    style={{ animation: `twinkle ${2.5 + s.d}s ${s.d}s ease-in-out infinite` }} />
+          ))}
+        </svg>
+      );
+    }
+
+    function FxCard({ entry, idx, playToken, dieFace = 5, dieStyle = 'celestial' }) {
+      const [localToken, setLocalToken] = useState(0);
+      const tok = playToken + localToken;
+      const Comp = entry.Comp;
+
+      const replay = () => setLocalToken(t => t + 1);
+
+      // re-trigger the die "pop" on each play
+      const dieRef = useRef(null);
+      useEffect(() => {
+        if (!dieRef.current) return;
+        dieRef.current.classList.remove('fx-die-pop');
+        // force reflow
+        // eslint-disable-next-line no-unused-expressions
+        void dieRef.current.offsetWidth;
+        dieRef.current.classList.add('fx-die-pop');
+      }, [tok]);
+
+      return (
+        <div className="fx-card">
+          <CardStars seed={idx + 1} />
+          <div className="fx-card-info">
+            <span className={`fx-tag ${entry.intensity}`}>{entry.intensity}</span>
+            <span className="fx-tag" style={{ letterSpacing: '.12em' }}>fx · {String(idx + 1).padStart(2, '0')}</span>
+          </div>
+
+          <div className="fx-stage">
+            <div ref={dieRef} style={{
+              position: 'absolute', left: '50%', top: '50%',
+              transform: 'translate(-50%,-50%)',
+              transformOrigin: 'center',
+            }}>
+              <Die face={dieFace} size={96} style={dieStyle} scoring />
+            </div>
+            <Comp playId={tok} accent={entry.accent} face={dieFace} value={35} mult={5} />
+          </div>
+
+          <div className="fx-card-foot">
+            <div>
+              <div className="fx-name">{entry.name}</div>
+              <div className="fx-tag-line">{entry.tagline}</div>
+              <div className="fx-use">use · {entry.use}</div>
+            </div>
+            <button className="fx-replay" onClick={replay}>↻ Replay</button>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [globalToken, setGlobalToken] = useState(1);
+      const [staggerToken, setStaggerToken] = useState(0);
+      const [staggerIdx, setStaggerIdx] = useState(-1);
+      const [dieFace, setDieFace] = useState(5);
+
+      const playAll = () => setGlobalToken(t => t + 1);
+
+      const stagger = () => {
+        let i = 0;
+        setStaggerIdx(-1);
+        const tick = () => {
+          if (i >= SCORING_FX.length) { setStaggerIdx(-1); return; }
+          setStaggerIdx(i);
+          setStaggerToken(t => t + 1);
+          i++;
+          setTimeout(tick, 480);
+        };
+        tick();
+      };
+
+      useEffect(() => {
+        const a = document.getElementById('ctrl-all');
+        const s = document.getElementById('ctrl-stagger');
+        a.onclick = playAll;
+        s.onclick = stagger;
+        // auto play once on mount
+        const t = setTimeout(stagger, 600);
+        return () => clearTimeout(t);
+      }, []);
+
+      return (
+        <div className="grid">
+          {SCORING_FX.map((entry, i) => (
+            <FxCard
+              key={entry.id}
+              entry={entry}
+              idx={i}
+              dieFace={dieFace}
+              playToken={globalToken + (staggerIdx === i ? staggerToken : 0)}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fortune Fallacy — Physics Dice Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --astral:#7be3ff; --gold:#f5c451; --violet:#9577ff; --ember:#ff7847;
+    --cosmos-50:#f3f0ff; --cosmos-200:#bba8ff; --cosmos-700:#2e1d6b;
+    --cosmos-900:#0f0925; --cosmos-950:#07051a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #07051a; color: #f3f0ff;
+               font-family: 'Exo 2', system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #canvas { position: fixed; inset: 0; }
+
+  .panel { position: fixed; background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85));
+           border: 1px solid rgba(149,119,255,.34); border-radius: 14px;
+           box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+           backdrop-filter: blur(10px); padding: 14px 18px; }
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .25em;
+           text-transform: uppercase; color: #bba8ff; }
+  .head  { font-family: 'Cinzel Decorative', serif; font-size: 18px; color: #f3f0ff; margin-top: 2px; }
+
+  #info { top: 16px; left: 16px; max-width: 380px; }
+  #info .blurb { font-size: 12px; color: #bba8ff; line-height: 1.55; margin-top: 6px; }
+  #info code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7be3ff;
+               background: rgba(0,0,0,.35); padding: 1px 6px; border-radius: 4px; }
+
+  #faces { top: 16px; right: 16px; min-width: 280px; }
+  .face-row { display: flex; gap: 8px; margin-top: 10px; }
+  .face-pill {
+    flex: 1; text-align: center; padding: 12px 0; border-radius: 10px;
+    border: 1px solid rgba(149,119,255,.3);
+    background: rgba(15,9,37,.6);
+    font-family: 'Cinzel Decorative', serif; font-size: 24px;
+    color: #dcd4ff; transition: all 200ms;
+  }
+  .face-pill.resting { border-color: rgba(123,227,255,.6); color: #7be3ff;
+                       box-shadow: 0 0 14px rgba(123,227,255,.25); }
+  .face-pill.tumbling { color: #9577ff; opacity: 0.5; }
+  .face-pill .v { display: block; font-size: 10px; font-family: 'JetBrains Mono', monospace;
+                  color: #bba8ff; margin-top: 4px; letter-spacing: .15em; }
+
+  #combo { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(149,119,255,.2); }
+  #combo-name { font-family: 'Cinzel Decorative', serif; font-size: 20px; color: #f5c451; }
+  #combo-sum  { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #bba8ff; margin-top: 2px; letter-spacing: .15em; }
+
+  #controls { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+              display: flex; gap: 12px; align-items: center; z-index: 10; }
+  .btn { cursor: pointer; user-select: none;
+         font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em;
+         text-transform: uppercase; font-size: 12px;
+         padding: 12px 22px; border-radius: 10px; border: none;
+         transition: all 120ms; }
+  .btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a;
+                 box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35),
+                             inset 0 1px 0 rgba(255,255,255,.4); }
+  .btn-ghost   { background: rgba(28,18,69,.6); color: #f3f0ff;
+                 box-shadow: 0 0 0 1px rgba(149,119,255,.3); backdrop-filter: blur(8px); }
+  .btn:hover { filter: brightness(1.1); }
+
+  select { font-family: inherit; font-size: 12px; padding: 8px 12px;
+           background: rgba(46,29,107,.5); color: #f3f0ff;
+           border: 1px solid rgba(149,119,255,.4); border-radius: 8px; }
+
+  #status { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace; font-size: 10px;
+            color: #7be3ff; letter-spacing: .25em; text-transform: uppercase;
+            opacity: 0.7; }
+  #status.tumbling { color: #ff7847; }
+  #status.resting  { color: #7be3ff; }
+
+  /* Material tweaks panel */
+  #tweaks { top: 50%; right: 16px; transform: translateY(-50%);
+            width: 260px; max-height: 86vh; overflow-y: auto;
+            padding: 14px 16px; }
+  #tweaks .label { margin-bottom: 8px; }
+  .tweak { margin-top: 12px; }
+  .tweak .row { display: flex; justify-content: space-between; align-items: baseline;
+                font-family: 'JetBrains Mono', monospace; font-size: 10px;
+                color: #dcd4ff; letter-spacing: .12em; text-transform: uppercase; }
+  .tweak .row .v { color: #7be3ff; font-weight: 500; }
+  .tweak input[type=range] { width: 100%; margin-top: 4px; accent-color: #ff7847; }
+  .tweak input[type=color] { width: 100%; height: 28px; margin-top: 4px;
+                             background: transparent; border: 1px solid rgba(149,119,255,.3);
+                             border-radius: 6px; cursor: pointer; }
+  #tweaks-reset { margin-top: 14px; width: 100%; padding: 8px; cursor: pointer;
+                  font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: .15em;
+                  text-transform: uppercase; color: #f3f0ff;
+                  background: rgba(28,18,69,.6); border: 1px solid rgba(149,119,255,.3);
+                  border-radius: 6px; }
+  #tweaks-reset:hover { border-color: rgba(255,120,71,.6); color: #ff7847; }
+  .section-head { font-family: 'Cinzel Decorative', serif; font-size: 12px;
+                  color: #f5c451; margin-top: 14px; margin-bottom: 4px;
+                  padding-bottom: 4px; border-bottom: 1px solid rgba(149,119,255,.18); }
+  .section-head:first-of-type { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="panel" id="info">
+  <div class="label">◇ physics demo · three.js + rapier ◇</div>
+  <div class="head">Celestial Dice — Live Physics</div>
+  <div class="blurb">
+    Five dice in a felt-padded tray. Click <code>Roll</code> to toss them,
+    or click any die in the scene to flick it. Rapier handles tumbling and
+    resting; <code>readFace()</code> projects each canonical face normal
+    through the body's quaternion to determine which face landed up.
+    All visual + collider + face-detection logic lives in
+    <code>physics-die.js</code>.
+  </div>
+</div>
+
+<div class="panel" id="faces">
+  <div class="label">◇ face detection ◇</div>
+  <div class="head">Roll Outcome</div>
+  <div class="face-row" id="face-row"></div>
+  <div id="combo">
+    <div id="combo-name">—</div>
+    <div id="combo-sum">awaiting roll</div>
+  </div>
+</div>
+
+<div id="status" class="resting">at rest</div>
+
+<div class="panel" id="tweaks">
+  <div class="label">◇ live material tweaks ◇</div>
+
+  <div class="section-head">Body</div>
+  <div class="tweak"><div class="row"><span>Roughness</span><span class="v" data-v="rough">—</span></div>
+    <input type="range" id="t-rough" min="0" max="1" step="0.01" /></div>
+  <div class="tweak"><div class="row"><span>Transmission</span><span class="v" data-v="transmission">—</span></div>
+    <input type="range" id="t-trans" min="0" max="1" step="0.01" /></div>
+  <div class="tweak"><div class="row"><span>Thickness</span><span class="v" data-v="thickness">—</span></div>
+    <input type="range" id="t-thick" min="0.1" max="2" step="0.05" /></div>
+  <div class="tweak"><div class="row"><span>IOR</span><span class="v" data-v="ior">—</span></div>
+    <input type="range" id="t-ior" min="1.0" max="2.0" step="0.01" /></div>
+  <div class="tweak"><div class="row"><span>Clearcoat</span><span class="v" data-v="clearcoat">—</span></div>
+    <input type="range" id="t-cc" min="0" max="1" step="0.01" /></div>
+  <div class="tweak"><div class="row"><span>CC Roughness</span><span class="v" data-v="ccRough">—</span></div>
+    <input type="range" id="t-ccr" min="0" max="1" step="0.01" /></div>
+  <div class="tweak"><div class="row"><span>Sheen</span><span class="v" data-v="sheen">—</span></div>
+    <input type="range" id="t-sh" min="0" max="1" step="0.01" /></div>
+
+  <div class="section-head">Bloom</div>
+  <div class="tweak"><div class="row"><span>Strength</span><span class="v" data-v="bloom">—</span></div>
+    <input type="range" id="t-bloom" min="0" max="2.5" step="0.05" /></div>
+  <div class="tweak"><div class="row"><span>Threshold</span><span class="v" data-v="bloomT">—</span></div>
+    <input type="range" id="t-bloomT" min="0" max="1" step="0.01" /></div>
+
+  <div class="section-head">Pip Glow</div>
+  <div class="tweak"><div class="row"><span>Lens Intensity</span><span class="v" data-v="pipE">—</span></div>
+    <input type="range" id="t-pipE" min="0" max="3" step="0.05" /></div>
+  <div class="tweak"><div class="row"><span>Halo Color</span><span class="v" data-v="halo">—</span></div>
+    <input type="color" id="t-halo" value="#7be3ff" /></div>
+
+  <button id="tweaks-reset">↻ Reset to Style Default</button>
+</div>
+
+<div id="controls">
+  <select id="style">
+    <option value="celestial" selected>Celestial</option>
+    <option value="obsidian">Obsidian / Gold</option>
+    <option value="ember">Ember</option>
+    <option value="ivory">Ivory</option>
+    <option value="glass">Glass / Astral</option>
+  </select>
+  <button class="btn btn-primary" id="roll">✦ Roll Dice</button>
+  <button class="btn btn-ghost" id="loaded">Roll → All 6</button>
+  <button class="btn btn-ghost" id="reset">↻ Reset</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three":         "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "@dimforge/rapier3d-compat": "https://unpkg.com/@dimforge/rapier3d-compat@0.14.0/rapier.es.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }    from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }    from 'three/addons/postprocessing/OutputPass.js';
+import RAPIER from '@dimforge/rapier3d-compat';
+import { PhysicsDie, DIE_STYLES } from './physics-die.js?v=5';
+
+await RAPIER.init();
+window.__scene = null;
+
+// ── Three.js scene ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x07051a, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+window.__scene = scene;
+scene.fog = new THREE.FogExp2(0x07051a, 0.04);
+
+// Environment map — REQUIRED for MeshPhysicalMaterial transmission to work.
+// Without an env map the dice render as flat dark cubes.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 14, 14);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0, 0);
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 8;
+controls.maxDistance = 30;
+
+// Lights — astral / violet scheme
+scene.add(new THREE.AmbientLight(0x9577ff, 0.55));
+const key = new THREE.DirectionalLight(0xbba8ff, 1.1);
+key.position.set(-6, 12, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+key.shadow.camera.top = 12;   key.shadow.camera.bottom = -12;
+key.shadow.bias = -0.0005;
+scene.add(key);
+const rim = new THREE.PointLight(0x7be3ff, 1.4, 30);
+rim.position.set(8, 4, -6);
+scene.add(rim);
+const fill = new THREE.PointLight(0xf5c451, 0.5, 26);
+fill.position.set(-6, 2, -8);
+scene.add(fill);
+
+// Starfield backdrop
+{
+  const starGeo = new THREE.BufferGeometry();
+  const N = 800;
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 30 + Math.random() * 18;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(2 * Math.random() - 1);
+    pos[i*3+0] = r * Math.sin(p) * Math.cos(t);
+    pos[i*3+1] = r * Math.sin(p) * Math.sin(t);
+    pos[i*3+2] = r * Math.cos(p);
+    const c = Math.random() < 0.08 ? new THREE.Color(0x7be3ff)
+            : Math.random() < 0.08 ? new THREE.Color(0xf5c451)
+            : new THREE.Color(0xdcd4ff);
+    col[i*3+0] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+    size: 0.08, sizeAttenuation: true, vertexColors: true,
+    transparent: true, opacity: 0.85,
+  })));
+}
+
+// ── Rapier world ────────────────────────────────────────────────────────────
+const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
+
+// Floor — felt tray
+const FLOOR_Y = 0;
+const TRAY_R  = 9;
+const WALL_H  = 1.6;
+
+function addStaticBox({ size, position, rotation = [0, 0, 0] }) {
+  const bodyDesc = RAPIER.RigidBodyDesc.fixed()
+    .setTranslation(position[0], position[1], position[2])
+    .setRotation(new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)));
+  const body = world.createRigidBody(bodyDesc);
+  const colDesc = RAPIER.ColliderDesc.cuboid(size[0]/2, size[1]/2, size[2]/2)
+    .setRestitution(0.15).setFriction(0.9);
+  world.createCollider(colDesc, body);
+}
+
+// Floor collider (plane)
+{
+  const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, FLOOR_Y - 0.5, 0);
+  const body = world.createRigidBody(bodyDesc);
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(TRAY_R, 0.5, TRAY_R).setRestitution(0.1).setFriction(0.95),
+    body
+  );
+}
+
+// Walls — square tray
+addStaticBox({ size: [TRAY_R*2, WALL_H, 0.4], position: [0, FLOOR_Y + WALL_H/2,  TRAY_R] });
+addStaticBox({ size: [TRAY_R*2, WALL_H, 0.4], position: [0, FLOOR_Y + WALL_H/2, -TRAY_R] });
+addStaticBox({ size: [0.4, WALL_H, TRAY_R*2], position: [ TRAY_R, FLOOR_Y + WALL_H/2, 0] });
+addStaticBox({ size: [0.4, WALL_H, TRAY_R*2], position: [-TRAY_R, FLOOR_Y + WALL_H/2, 0] });
+
+// Visual floor — gradient felt with constellation lines
+{
+  const floorGeo = new THREE.PlaneGeometry(TRAY_R*2, TRAY_R*2);
+  const canvasTex = document.createElement('canvas');
+  canvasTex.width = 512; canvasTex.height = 512;
+  const ctx = canvasTex.getContext('2d');
+  // radial gradient
+  const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 320);
+  g.addColorStop(0, '#1c1245');
+  g.addColorStop(0.55, '#0f0925');
+  g.addColorStop(1, '#07051a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 512);
+  // sigil ring
+  ctx.strokeStyle = 'rgba(149,119,255,.35)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(256, 256, 200, 0, Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(245,196,81,.35)'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath(); ctx.arc(256, 256, 220, 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  // 12 cardinal stars
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const x = 256 + Math.cos(a) * 200;
+    const y = 256 + Math.sin(a) * 200;
+    ctx.fillStyle = i % 3 === 0 ? '#f5c451' : '#bba8ff';
+    ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI*2); ctx.fill();
+  }
+  // scattered stars
+  for (let i = 0; i < 80; i++) {
+    ctx.fillStyle = Math.random() < 0.15 ? '#7be3ff' : '#dcd4ff';
+    ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+    ctx.beginPath();
+    ctx.arc(Math.random() * 512, Math.random() * 512, Math.random() * 1.4 + 0.4, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(canvasTex);
+  const floorMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = FLOOR_Y;
+  floor.receiveShadow = true;
+  scene.add(floor);
+}
+
+// Visual walls (subtle)
+{
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0x2e1d6b, roughness: 0.7, metalness: 0.1, transparent: true, opacity: 0.5,
+    emissive: 0x9577ff, emissiveIntensity: 0.05,
+  });
+  const W = TRAY_R * 2;
+  const sides = [
+    { pos: [0, WALL_H/2,  TRAY_R], size: [W, WALL_H, 0.2] },
+    { pos: [0, WALL_H/2, -TRAY_R], size: [W, WALL_H, 0.2] },
+    { pos: [ TRAY_R, WALL_H/2, 0], size: [0.2, WALL_H, W] },
+    { pos: [-TRAY_R, WALL_H/2, 0], size: [0.2, WALL_H, W] },
+  ];
+  sides.forEach(s => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(...s.size), wallMat);
+    m.position.set(...s.pos);
+    scene.add(m);
+  });
+}
+
+// ── Dice ────────────────────────────────────────────────────────────────────
+let dice = [];
+function spawnDice(style = 'celestial') {
+  // dispose any existing
+  dice.forEach(d => d.dispose({ scene }));
+  dice = [];
+  const positions = [
+    [-3.5, 6, -1.5], [-1.5, 7, 1], [0, 6.5, -2], [1.8, 7.5, 0.8], [3.5, 6, -1],
+  ];
+  for (let i = 0; i < 5; i++) {
+    const die = new PhysicsDie({
+      RAPIER, world, scene,
+      size: 1.4,
+      style,
+      position: positions[i],
+    });
+    die.roll({ position: positions[i], force: 6, torque: 12 });
+    dice.push(die);
+  }
+}
+spawnDice();
+
+// ── HUD ─────────────────────────────────────────────────────────────────────
+const faceRow = document.getElementById('face-row');
+function rebuildFaceRow() {
+  faceRow.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const el = document.createElement('div');
+    el.className = 'face-pill tumbling';
+    el.dataset.idx = i;
+    el.innerHTML = '<div data-face>—</div><div class="v">die ' + (i+1) + '</div>';
+    faceRow.appendChild(el);
+  }
+}
+rebuildFaceRow();
+
+const comboName = document.getElementById('combo-name');
+const comboSum = document.getElementById('combo-sum');
+const status = document.getElementById('status');
+
+function detectCombo(faces) {
+  const counts = {};
+  faces.forEach(f => counts[f] = (counts[f] || 0) + 1);
+  const c = Object.values(counts).sort((a,b) => b-a);
+  const set = new Set(faces);
+  const sorted = [...faces].sort((a,b) => a-b).join('');
+  if (c[0] === 5) return 'Five of a Kind';
+  if (c[0] === 4) return 'Four of a Kind';
+  if (c[0] === 3 && c[1] === 2) return 'Full House';
+  if (set.size === 5 && (sorted === '12345' || sorted === '23456')) return 'Large Straight';
+  if (set.size >= 4 && (faces.includes(2) && faces.includes(3) && faces.includes(4) && faces.includes(5))) return 'Small Straight';
+  if (c[0] === 3) return 'Three of a Kind';
+  if (c[0] === 2 && c[1] === 2) return 'Two Pair';
+  if (c[0] === 2) return 'One Pair';
+  return 'Chance';
+}
+
+function updateHud() {
+  const allRest = dice.every(d => d.isResting());
+  status.textContent = allRest ? 'at rest · faces locked' : 'tumbling…';
+  status.className = allRest ? 'resting' : 'tumbling';
+
+  if (allRest) {
+    const faces = dice.map(d => d.readFace());
+    [...faceRow.children].forEach((el, i) => {
+      el.querySelector('[data-face]').textContent = faces[i];
+      el.classList.remove('tumbling');
+      el.classList.add('resting');
+    });
+    comboName.textContent = detectCombo(faces);
+    comboSum.textContent = `[${faces.join(', ')}] · sum ${faces.reduce((a,b)=>a+b,0)}`;
+  } else {
+    [...faceRow.children].forEach(el => {
+      el.querySelector('[data-face]').textContent = '—';
+      el.classList.add('tumbling');
+      el.classList.remove('resting');
+    });
+    comboName.textContent = '—';
+    comboSum.textContent = 'tumbling';
+  }
+}
+
+// ── Click to flick ──────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+canvas.addEventListener('pointerdown', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  for (const die of dice) {
+    const hits = raycaster.intersectObject(die.visual, true);
+    if (hits.length > 0) {
+      die.body.applyImpulse({
+        x: (Math.random() - 0.5) * 6,
+        y: 6,
+        z: (Math.random() - 0.5) * 6,
+      }, true);
+      die.body.applyTorqueImpulse({
+        x: (Math.random() - 0.5) * 4,
+        y: (Math.random() - 0.5) * 4,
+        z: (Math.random() - 0.5) * 4,
+      }, true);
+      die._restFrames = 0;
+      return;
+    }
+  }
+});
+
+// ── Buttons ─────────────────────────────────────────────────────────────────
+document.getElementById('roll').addEventListener('click', () => {
+  const positions = [
+    [-3.5, 6, -1.5], [-1.5, 7, 1], [0, 6.5, -2], [1.8, 7.5, 0.8], [3.5, 6, -1],
+  ];
+  dice.forEach((d, i) => d.roll({ position: positions[i], force: 12, torque: 18 }));
+});
+
+document.getElementById('loaded').addEventListener('click', () => {
+  // Demo of rollTo — pre-orient each die to land on 6.
+  const positions = [
+    [-3.5, 6, -1.5], [-1.5, 7, 1], [0, 6.5, -2], [1.8, 7.5, 0.8], [3.5, 6, -1],
+  ];
+  dice.forEach((d, i) => d.rollTo({ face: 6, position: positions[i], force: 4, torque: 4 }));
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  spawnDice(document.getElementById('style').value);
+  rebuildFaceRow();
+});
+
+document.getElementById('style').addEventListener('change', (e) => {
+  spawnDice(e.target.value);
+  rebuildFaceRow();
+});
+
+// ── Live material tweaks ────────────────────────────────────────────────────
+// Walks every die's visual subtree and updates body material + emissive lens
+// parameters so you can iterate the look without reloading.
+// Bloom for proper pip glow — set up BEFORE tweaks so `bloom` is in scope.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.1, 0.85, 0.55
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+
+function getDieParts(die) {
+  let body = null; const lenses = []; const halos = [];
+  die.visual.traverse(o => {
+    if (o.name === 'Body') body = o;
+    if (o.material?.emissiveIntensity != null && o.geometry?.type === 'CircleGeometry') lenses.push(o);
+    if (o.isSprite) halos.push(o);
+  });
+  return { body, lenses, halos };
+}
+
+function applyTweaks() {
+  const t = window.__tweaks;
+  dice.forEach(die => {
+    const { body, lenses, halos } = getDieParts(die);
+    if (body) {
+      body.material.roughness = t.rough;
+      body.material.transmission = t.transmission;
+      body.material.thickness = t.thickness;
+      body.material.ior = t.ior;
+      body.material.clearcoat = t.clearcoat;
+      body.material.clearcoatRoughness = t.ccRough;
+      body.material.sheen = t.sheen;
+      body.material.needsUpdate = true;
+    }
+    lenses.forEach(l => { l.material.emissiveIntensity = t.pipE; l.material.emissive.set(t.halo); });
+    halos.forEach(h => { h.material.color.set(t.halo); });
+  });
+  bloom.strength = t.bloom;
+  bloom.threshold = t.bloomT;
+}
+
+function loadTweaksFromStyle(styleName) {
+  const S = DIE_STYLES[styleName];
+  window.__tweaks = {
+    rough: S.rough,
+    transmission: S.transmission,
+    thickness: S.thickness,
+    ior: S.ior,
+    clearcoat: 0.55,
+    ccRough: 0.35,
+    sheen: 0.25,
+    bloom: 1.1,
+    bloomT: 0.55,
+    pipE: Math.max(0.5, S.eIntensity * 0.9),
+    halo: '#' + new THREE.Color(S.halo).getHexString(),
+  };
+  // sync UI
+  const map = { rough:'t-rough', transmission:'t-trans', thickness:'t-thick', ior:'t-ior',
+                clearcoat:'t-cc', ccRough:'t-ccr', sheen:'t-sh', bloom:'t-bloom',
+                bloomT:'t-bloomT', pipE:'t-pipE', halo:'t-halo' };
+  Object.entries(map).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = window.__tweaks[k];
+    const v = document.querySelector(`[data-v="${k === 'transmission' ? 'transmission' :
+                                            k === 'ccRough' ? 'ccRough' :
+                                            k === 'thickness' ? 'thickness' :
+                                            k === 'clearcoat' ? 'clearcoat' :
+                                            k === 'bloom' ? 'bloom' :
+                                            k === 'bloomT' ? 'bloomT' :
+                                            k === 'pipE' ? 'pipE' :
+                                            k === 'halo' ? 'halo' :
+                                            k === 'sheen' ? 'sheen' :
+                                            k === 'ior' ? 'ior' :
+                                            'rough'}"]`);
+    if (v) v.textContent = typeof window.__tweaks[k] === 'number' ? window.__tweaks[k].toFixed(2) : window.__tweaks[k];
+  });
+}
+
+// Bind sliders
+const sliderBindings = [
+  ['t-rough',  'rough'],         ['t-trans',  'transmission'],
+  ['t-thick',  'thickness'],     ['t-ior',    'ior'],
+  ['t-cc',     'clearcoat'],     ['t-ccr',    'ccRough'],
+  ['t-sh',     'sheen'],         ['t-bloom',  'bloom'],
+  ['t-bloomT', 'bloomT'],        ['t-pipE',   'pipE'],
+];
+sliderBindings.forEach(([id, key]) => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    window.__tweaks[key] = parseFloat(el.value);
+    const v = document.querySelector(`[data-v="${key}"]`);
+    if (v) v.textContent = window.__tweaks[key].toFixed(2);
+    applyTweaks();
+  });
+});
+document.getElementById('t-halo').addEventListener('input', (e) => {
+  window.__tweaks.halo = e.target.value;
+  const v = document.querySelector('[data-v="halo"]');
+  if (v) v.textContent = e.target.value;
+  applyTweaks();
+});
+document.getElementById('tweaks-reset').addEventListener('click', () => {
+  loadTweaksFromStyle(document.getElementById('style').value);
+  applyTweaks();
+});
+
+loadTweaksFromStyle('celestial');
+applyTweaks();
+
+// Re-apply after style switch / dice respawn
+const _origStyleHandler = document.getElementById('style').onchange;
+document.getElementById('style').addEventListener('change', (e) => {
+  // spawnDice already ran; reset tweaks to new style defaults and apply
+  loadTweaksFromStyle(e.target.value);
+  applyTweaks();
+});
+const _origReset = document.getElementById('reset');
+_origReset.addEventListener('click', () => {
+  applyTweaks();
+});
+
+// ── Loop ────────────────────────────────────────────────────────────────────
+let frame = 0;
+function tick() {
+  world.step();
+  dice.forEach(d => d.sync());
+  if (frame++ % 6 === 0) updateHud();
+  controls.update();
+  composer.render();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

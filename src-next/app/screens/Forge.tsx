@@ -3,11 +3,9 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { RUNES, lookupRune } from '../../core/runes';
 import { maxRuneSlots } from '../../core/vouchers';
-import { TopBar } from '../hud/TopBar';
 import { Die3DCSS } from '../visual/Die3DCSS';
 import {
-  selectAnte, selectShards, selectHandsLeft, selectRerollsLeft,
-  selectOracles, selectVouchers,
+  selectAnte, selectShards, selectOracles,
 } from '../../state/selectors';
 
 const selectDiceRunes = (s: GameState) => s.round.diceRunes;
@@ -19,10 +17,7 @@ export function Forge() {
   const diceRunes = useStore(selectDiceRunes);
   const ante = useStore(selectAnte);
   const shards = useStore(selectShards);
-  const hands = useStore(selectHandsLeft);
-  const rerolls = useStore(selectRerollsLeft);
   const oracles = useStore(selectOracles);
-  const vouchers = useStore(selectVouchers);
   const maxSlots = useStore(selectMaxRune);
 
   const [selectedDie, setSelectedDie] = useState(0);
@@ -38,13 +33,24 @@ export function Forge() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
-      <TopBar
-        ante={ante} blind="Forge" shards={shards}
-        hands={hands} rerolls={rerolls} target={0} score={0}
-        oracleSlots={{ used: oracles.length, max: 6 }}
-        voucherCount={vouchers.length}
-        accent={accent}
-      />
+      <div className="mat-obsidian"
+        style={{
+          position: 'absolute', top: 18, left: 18,
+          padding: '10px 14px', borderRadius: 10, zIndex: 5,
+        }}>
+        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff' }}>
+          Ante {String(ante).padStart(2, '0')} · Forge
+        </div>
+      </div>
+      <div className="mat-obsidian"
+        style={{
+          position: 'absolute', top: 18, right: 18,
+          padding: '10px 14px', borderRadius: 10, zIndex: 5,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+        <span className="f-mono" style={{ color: '#f5c451', fontSize: 16 }}>◆ {shards}</span>
+        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>oracles {oracles.length}/6</span>
+      </div>
 
       <div style={{ position: 'absolute', left: '50%', top: 160, transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4 }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
@@ -178,7 +184,7 @@ export function Forge() {
       )}
 
       <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)' }}>
-        <button className="btn btn-primary" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
+        <button className="btn btn-primary mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
           ✓ Done
         </button>
       </div>

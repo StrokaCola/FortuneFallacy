@@ -1,0 +1,135 @@
+<h2>Pivot Depth — Round Screen Comparison</h2>
+<p class="subtitle">Cosmic Gambler direction. How far from current sacred-ritual skin?</p>
+
+<style>
+  .ff-mock { background: #07051a; color: #f3f0ff; padding: 18px; border-radius: 12px; min-height: 360px; position: relative; overflow: hidden; font-family: system-ui, sans-serif; }
+  .ff-mock .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity: 0.18; }
+  .ff-mock .row { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; margin-bottom: 14px; }
+  .ff-mock .chip { padding: 4px 10px; border-radius: 6px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
+
+  /* A — Hard pivot */
+  .skin-a { background: linear-gradient(180deg,#05030f,#0a0820); border: 1px solid #1c1845; }
+  .skin-a .title { font-family: 'Inter','Helvetica',sans-serif; font-weight:800; letter-spacing: 0.32em; font-size: 11px; color:#7be3ff; text-transform: uppercase; }
+  .skin-a .score { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 700; color:#fff; text-shadow: 0 0 18px #7be3ff; }
+  .skin-a .target { font-family: 'JetBrains Mono', monospace; font-size: 13px; color:#ff7847; }
+  .skin-a .chip { background:#0e1430; border:1px solid #233; color:#7be3ff; }
+  .skin-a .dice { display:flex; gap:10px; justify-content:center; margin-top: 24px; }
+  .skin-a .die { width: 46px; height:46px; border-radius:8px; background: linear-gradient(180deg,#13102d,#08061a); border:1px solid #2a2466; display:grid; place-items:center; font-family:'JetBrains Mono',monospace; color:#7be3ff; box-shadow: 0 0 20px rgba(123,227,255,0.18); }
+  .skin-a .die.hot { border-color:#ff7847; color:#ff7847; box-shadow: 0 0 24px rgba(255,120,71,0.5); }
+  .skin-a .btnrow { display:flex; gap:10px; margin-top:22px; justify-content:center; }
+  .skin-a .btn { padding:10px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; border:1px solid #7be3ff; color:#7be3ff; background:transparent; border-radius:4px; }
+  .skin-a .btn.primary { background:#7be3ff; color:#05030f; box-shadow: 0 0 24px rgba(123,227,255,0.6); }
+
+  /* B — Layered tension */
+  .skin-b { background: linear-gradient(180deg, rgba(46,29,107,0.6), rgba(15,9,37,0.9)); border: 1px solid rgba(149,119,255,0.34); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+  .skin-b .title { font-family: 'Cinzel', serif; letter-spacing: 0.18em; font-size: 14px; color:#f3f0ff; }
+  .skin-b .score { font-family: 'Cinzel Decorative', serif; font-size: 48px; color:#f5c451; text-shadow: 0 0 24px rgba(245,196,81,0.5); }
+  .skin-b .target { font-family: 'JetBrains Mono', monospace; font-size: 12px; color:#bba8ff; }
+  .skin-b .chip { background:rgba(123,227,255,0.12); border:1px solid rgba(123,227,255,0.4); color:#7be3ff; }
+  .skin-b .pulse { position:absolute; inset:-4px; border-radius:14px; border:1px solid rgba(245,196,81,0.4); animation: pulse 1.4s ease-in-out infinite; }
+  .skin-b .ornate { position:absolute; width:18px; height:18px; border:1px solid rgba(245,196,81,0.6); }
+  .skin-b .ornate.tl { top:6px; left:6px; border-right:none; border-bottom:none; }
+  .skin-b .ornate.tr { top:6px; right:6px; border-left:none; border-bottom:none; }
+  .skin-b .ornate.bl { bottom:6px; left:6px; border-right:none; border-top:none; }
+  .skin-b .ornate.br { bottom:6px; right:6px; border-left:none; border-top:none; }
+  .skin-b .dice { display:flex; gap:10px; justify-content:center; margin-top:24px; }
+  .skin-b .die { width:46px; height:46px; border-radius:10px; background: radial-gradient(circle at 30% 25%, #2a2466, #0d0824); border:1px solid rgba(149,119,255,0.5); display:grid; place-items:center; font-family:'Cinzel',serif; color:#f3f0ff; }
+  .skin-b .die.hot { border-color:#f5c451; color:#f5c451; box-shadow: 0 0 18px rgba(245,196,81,0.6); animation: shake 0.6s infinite; }
+  .skin-b .btnrow { display:flex; gap:10px; margin-top:22px; justify-content:center; }
+  .skin-b .btn { padding:10px 18px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; border-radius:8px; }
+  .skin-b .btn.ghost { background:rgba(28,18,69,0.6); color:#f3f0ff; border:1px solid rgba(149,119,255,0.4); }
+  .skin-b .btn.primary { background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; box-shadow: 0 0 18px rgba(255,120,71,0.5); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 rgba(245,196,81,0); } 50% { box-shadow: 0 0 24px rgba(245,196,81,0.4); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
+
+  /* C — Dual mode */
+  .skin-c .top { background: linear-gradient(180deg, rgba(46,29,107,0.6), rgba(15,9,37,0.9)); border:1px solid rgba(149,119,255,0.34); border-radius: 12px 12px 0 0; padding:14px; font-family:'Cinzel',serif; color:#f3f0ff; letter-spacing:0.12em; text-align:center; font-size: 13px; }
+  .skin-c .arena { background: linear-gradient(180deg,#05030f,#0a0820); border:1px solid #1c1845; border-top:none; border-radius: 0 0 12px 12px; padding:18px; min-height: 280px; position:relative; }
+  .skin-c .score { font-family:'JetBrains Mono',monospace; font-size:48px; color:#fff; text-align:center; text-shadow: 0 0 18px #7be3ff; margin-top: 8px; }
+  .skin-c .target { font-family:'JetBrains Mono',monospace; font-size:12px; color:#ff7847; text-align:center; }
+  .skin-c .dice { display:flex; gap:10px; justify-content:center; margin-top:18px; }
+  .skin-c .die { width:46px; height:46px; border-radius:8px; background:#13102d; border:1px solid #2a2466; display:grid; place-items:center; font-family:'JetBrains Mono',monospace; color:#7be3ff; }
+  .skin-c .btnrow { display:flex; gap:10px; margin-top:18px; justify-content:center; }
+  .skin-c .btn { padding:10px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; border:1px solid #7be3ff; color:#7be3ff; background:transparent; border-radius:4px; }
+  .skin-c .btn.primary { background:#7be3ff; color:#05030f; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Hard Pivot — Cosmic Noir</h3>
+      <p>Drop Cinzel + ornate frames. Mono + geometric sans. High contrast. Casino floor in the void.</p>
+      <div class="ff-mock skin-a">
+        <div class="stars"></div>
+        <div class="row">
+          <span class="chip">Ante 4 · Boss</span>
+          <span class="chip">Hands 3 · Reroll 2</span>
+        </div>
+        <div style="text-align:center; position:relative; z-index:1;">
+          <div class="score">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="dice">
+          <div class="die">5</div><div class="die hot">6</div><div class="die">3</div><div class="die">2</div><div class="die hot">6</div>
+        </div>
+        <div class="btnrow">
+          <button class="btn">↻ REROLL</button>
+          <button class="btn primary">CAST ▸</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Layered Tension — Vault With Pulse</h3>
+      <p>Keep ornate cosmic vault. Inject gambler tension via motion, audio risk telegraphy, hot-die shake. Frames stay sacred; tempo gets electric.</p>
+      <div class="ff-mock skin-b">
+        <div class="stars"></div>
+        <div class="ornate tl"></div><div class="ornate tr"></div><div class="ornate bl"></div><div class="ornate br"></div>
+        <div class="row">
+          <span class="chip">✦ Ante IV · Boss</span>
+          <span class="chip">⊕ 3 · ↻ 2</span>
+        </div>
+        <div style="text-align:center; position:relative;">
+          <div class="score">12,840 <span style="position:relative;"><span class="pulse"></span></span></div>
+          <div class="target">▲ 18,000</div>
+        </div>
+        <div class="dice">
+          <div class="die">5</div><div class="die hot">6</div><div class="die">3</div><div class="die">2</div><div class="die hot">6</div>
+        </div>
+        <div class="btnrow">
+          <button class="btn ghost">↻ Reroll</button>
+          <button class="btn primary">✦ Cast Hand</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dual Mode — Sacred Frame, Gambler Arena</h3>
+      <p>Top banner stays ornate sacred. Arena beneath shifts to high-contrast noir during play. Hub/Shop fully sacred; Round splits.</p>
+      <div class="ff-mock skin-c" style="padding:0;">
+        <div class="top">✦ ANTE IV · BOSS BLIND — VOIDLIT ✦</div>
+        <div class="arena">
+          <div class="stars"></div>
+          <div class="score">12,840</div>
+          <div class="target">/ 18,000</div>
+          <div class="dice">
+            <div class="die">5</div><div class="die">6</div><div class="die">3</div><div class="die">2</div><div class="die">6</div>
+          </div>
+          <div class="btnrow">
+            <button class="btn">↻ REROLL</button>
+            <button class="btn primary">CAST ▸</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

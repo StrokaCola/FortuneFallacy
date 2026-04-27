@@ -1,0 +1,104 @@
+<h2>Risk Telegraphy — How Player Reads Danger</h2>
+<p class="subtitle">Boss reveal · debuffs · near-bust. Pick the language.</p>
+
+<style>
+  .demo { background: linear-gradient(180deg, rgba(46,29,107,0.4), rgba(7,5,26,0.95)); border:1px solid rgba(149,119,255,0.3); border-radius:12px; padding: 16px; min-height: 280px; position:relative; overflow:hidden; color:#f3f0ff; }
+  .demo .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.12; }
+  .demolabel { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.2em; color:#bba8ff; text-transform:uppercase; margin-bottom:6px; }
+
+  /* A — Loud crimson lockdown */
+  .a-boss { position:absolute; top:30px; left:50%; transform:translateX(-50%); padding:14px 28px; background: linear-gradient(180deg, rgba(226,51,74,0.25), rgba(60,8,15,0.9)); border:2px solid #e2334a; border-radius:10px; text-align:center; box-shadow: 0 0 40px rgba(226,51,74,0.5); }
+  .a-boss .name { font-family:'Cinzel Decorative',serif; font-size:24px; color:#ff8e9c; text-shadow: 0 0 20px #e2334a; }
+  .a-boss .rule { font-family:'JetBrains Mono',monospace; font-size:11px; color:#fff; margin-top:6px; letter-spacing:0.1em; }
+  .a-vignette { position:absolute; inset:0; background: radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,0.25) 100%); pointer-events:none; }
+  .a-pulse { position:absolute; inset:8px; border:1px solid #e2334a; border-radius:10px; animation: redPulse 1.2s ease-in-out infinite; pointer-events:none; }
+  .a-bust { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:10px; color:#ff8e9c; letter-spacing:0.2em; text-transform:uppercase; padding:6px 12px; background:rgba(226,51,74,0.2); border:1px solid #e2334a; border-radius:6px; }
+  @keyframes redPulse { 0%,100% { opacity:0.3; } 50% { opacity:0.9; } }
+
+  /* B — Cold dread (subtle) */
+  .b-boss { position:absolute; top:30px; left:50%; transform:translateX(-50%); padding:10px 20px; background:rgba(7,5,26,0.85); border:1px solid rgba(149,119,255,0.4); border-left: 3px solid #e2334a; border-radius:6px; text-align:left; }
+  .b-boss .lbl { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.3em; color:#e2334a; text-transform:uppercase; }
+  .b-boss .name { font-family:'Cinzel',serif; font-size:18px; color:#f3f0ff; margin-top:2px; }
+  .b-boss .rule { font-family:'JetBrains Mono',monospace; font-size:10px; color:#bba8ff; margin-top:4px; }
+  .b-stars { position:absolute; inset:0; background-image: radial-gradient(rgba(226,51,74,0.4) 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.4; pointer-events:none; }
+  .b-bust { position:absolute; bottom:14px; right:14px; font-family:'JetBrains Mono',monospace; font-size:10px; color:#ff8e9c; letter-spacing:0.2em; text-transform:uppercase; }
+  .b-bust::before { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:#e2334a; margin-right:8px; vertical-align:middle; animation: tinyPulse 1s infinite; }
+  @keyframes tinyPulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+
+  /* C — Diegetic sigil (in-world) */
+  .c-sigil { position:absolute; top:30px; left:50%; transform:translateX(-50%); width:90px; height:90px; }
+  .c-sigil svg { width:100%; height:100%; animation: sigilSpin 12s linear infinite; }
+  .c-name { position:absolute; top:130px; left:50%; transform:translateX(-50%); font-family:'Cinzel Decorative',serif; font-size:16px; color:#f5c451; letter-spacing:0.2em; text-align:center; }
+  .c-rule { position:absolute; top:158px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:10px; color:#bba8ff; }
+  .c-glyphs { position:absolute; bottom:14px; left:14px; right:14px; display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.2em; color:#9577ff; text-transform:uppercase; }
+  .c-glyph { padding:4px 8px; border:1px solid rgba(245,196,81,0.4); border-radius:4px; color:#f5c451; }
+  @keyframes sigilSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Loud Crimson Lockdown — No Mistaking It</h3>
+      <p>Boss reveal slams full panel + red vignette + room pulse. Debuffs glare. Near-bust = persistent red border breath. Bold, accessible, can feel oppressive.</p>
+      <div class="demo">
+        <div class="stars"></div>
+        <div class="a-vignette"></div>
+        <div class="a-pulse"></div>
+        <div class="a-boss">
+          <div class="name">THE HOUND OF NIX</div>
+          <div class="rule">⚠ Pairs Score Zero</div>
+        </div>
+        <div class="a-bust">⚠ 1 Hand Left · 6,200 Below Target</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cold Dread — Surgical Cues, Loud Silence</h3>
+      <p>Boss = small bookmark with red side stripe. Debuffs = thin chips. Near-bust = single red dot pulses + audio drone tightens. Lets atmosphere do the work; reads as confident, mature.</p>
+      <div class="demo">
+        <div class="b-stars"></div>
+        <div class="b-boss">
+          <div class="lbl">Boss Blind</div>
+          <div class="name">The Hound of Nix</div>
+          <div class="rule">Pairs score zero</div>
+        </div>
+        <div class="b-bust">Cast or Fall · 1 Hand</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Diegetic Sigil — Threats Are Symbols</h3>
+      <p>Each boss has a slow-spinning sigil floating above the tray. Debuffs become small alchemical glyphs along the bottom. Player learns symbol vocabulary over time. Most identity, requires onboarding.</p>
+      <div class="demo">
+        <div class="stars"></div>
+        <div class="c-sigil">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#e2334a" stroke-width="0.5" opacity="0.6"/>
+            <circle cx="50" cy="50" r="36" fill="none" stroke="#f5c451" stroke-width="0.5" opacity="0.6"/>
+            <polygon points="50,10 90,82 10,82" fill="none" stroke="#e2334a" stroke-width="1"/>
+            <polygon points="50,90 10,18 90,18" fill="none" stroke="#f5c451" stroke-width="1" opacity="0.7"/>
+            <circle cx="50" cy="50" r="6" fill="#e2334a"/>
+          </svg>
+        </div>
+        <div class="c-name">⟡ HOUND OF NIX ⟡</div>
+        <div class="c-rule">— pairs forsaken —</div>
+        <div class="c-glyphs">
+          <div style="display:flex; gap:6px;">
+            <span class="c-glyph">☿ slow</span>
+            <span class="c-glyph">☉ blinded</span>
+          </div>
+          <span style="color:#ff8e9c;">◌ ◌ ◌ ● — last hand</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

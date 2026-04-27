@@ -1,0 +1,170 @@
+<h2>Round HUD — Information Architecture</h2>
+<p class="subtitle">Where does everything live? Pick the philosophy.</p>
+
+<style>
+  .hud { background: linear-gradient(180deg, rgba(46,29,107,0.5), rgba(7,5,26,0.95)); border:1px solid rgba(149,119,255,0.3); border-radius:12px; height: 420px; position:relative; overflow:hidden; font-family: system-ui, sans-serif; color:#f3f0ff; }
+  .hud .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.12; }
+
+  /* shared mini elements */
+  .lbl { font-family:'Cinzel',serif; font-size:9px; letter-spacing:0.24em; text-transform:uppercase; color:#bba8ff; }
+  .val { font-family:'JetBrains Mono',monospace; color:#fff; }
+  .pill { padding:3px 7px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:10px; background:rgba(123,227,255,0.1); border:1px solid rgba(123,227,255,0.3); color:#7be3ff; }
+  .pill.warn { background:rgba(226,51,74,0.15); border-color:#e2334a; color:#ff8e9c; }
+  .slot { width:34px; height:34px; border-radius:6px; background:rgba(28,18,69,0.6); border:1px solid rgba(149,119,255,0.3); display:grid; place-items:center; font-size:11px; }
+  .slot.full { background:rgba(123,227,255,0.15); border-color:#7be3ff; color:#7be3ff; }
+  .slot.gold { background:rgba(245,196,81,0.15); border-color:#f5c451; color:#f5c451; }
+  .die { width:38px; height:38px; border-radius:7px; background: radial-gradient(circle at 30% 25%, #2a2466, #0d0824); border:1px solid rgba(149,119,255,0.5); display:grid; place-items:center; font-family:'Cinzel',serif; color:#f3f0ff; font-size:14px; }
+  .die.lock { border-color:#7be3ff; box-shadow: 0 0 10px rgba(123,227,255,0.4); }
+  .btn { padding:8px 14px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; border-radius:6px; cursor:pointer; }
+  .btn.primary { background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; }
+  .btn.ghost { background:rgba(28,18,69,0.6); color:#f3f0ff; border:1px solid rgba(149,119,255,0.4); }
+
+  /* A — Stacked vertical */
+  .arch-a .top { padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(149,119,255,0.2); }
+  .arch-a .score { text-align:center; padding:14px; }
+  .arch-a .score .num { font-family:'JetBrains Mono',monospace; font-size:36px; color:#fff; }
+  .arch-a .score .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; }
+  .arch-a .oracles { display:flex; gap:6px; padding: 0 14px; justify-content:center; }
+  .arch-a .arena { position:absolute; bottom:60px; left:0; right:0; display:flex; gap:10px; justify-content:center; }
+  .arch-a .actions { position:absolute; bottom:14px; left:0; right:0; display:flex; gap:10px; justify-content:center; }
+
+  /* B — Sidebar rails */
+  .arch-b .lrail { position:absolute; left:10px; top:50px; bottom:50px; width:80px; display:flex; flex-direction:column; gap:6px; padding:8px; background:rgba(28,18,69,0.4); border:1px solid rgba(149,119,255,0.2); border-radius:8px; }
+  .arch-b .rrail { position:absolute; right:10px; top:50px; bottom:50px; width:80px; display:flex; flex-direction:column; gap:6px; padding:8px; background:rgba(28,18,69,0.4); border:1px solid rgba(149,119,255,0.2); border-radius:8px; }
+  .arch-b .top { padding:10px 14px; display:flex; justify-content:center; gap: 14px; align-items:center; border-bottom:1px solid rgba(149,119,255,0.2); }
+  .arch-b .center { position:absolute; left:110px; right:110px; top:50px; bottom:60px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:14px 0; }
+  .arch-b .score .num { font-family:'JetBrains Mono',monospace; font-size:42px; color:#fff; text-align:center; }
+  .arch-b .score .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; text-align:center; }
+  .arch-b .arena { display:flex; gap:10px; }
+  .arch-b .actions { position:absolute; bottom:14px; left:110px; right:110px; display:flex; gap:10px; justify-content:center; }
+
+  /* C — Floating focus */
+  .arch-c .topcorner { position:absolute; top:10px; left:14px; }
+  .arch-c .topright { position:absolute; top:10px; right:14px; display:flex; gap:6px; }
+  .arch-c .scoreFloat { position:absolute; top:50px; left:50%; transform: translateX(-50%); text-align:center; }
+  .arch-c .scoreFloat .num { font-family:'JetBrains Mono',monospace; font-size:48px; color:#fff; text-shadow: 0 0 18px #7be3ff; line-height:1; }
+  .arch-c .scoreFloat .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; }
+  .arch-c .arena { position:absolute; left:50%; top:160px; transform:translateX(-50%); display:flex; gap:10px; }
+  .arch-c .lockbar { position:absolute; left:50%; top:210px; transform:translateX(-50%); display:flex; gap:10px; }
+  .arch-c .lockchip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.2em; text-transform:uppercase; color:#9577ff; width:38px; text-align:center; }
+  .arch-c .docked { position:absolute; bottom:14px; left:0; right:0; display:flex; justify-content:space-between; padding: 0 14px; align-items:center; }
+  .arch-c .consumables { display:flex; gap:6px; }
+  .arch-c .actions { display:flex; gap:10px; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Stacked Vertical — Top to Bottom Flow</h3>
+      <p>Everything stacks on center axis: stats → score → oracles → dice → buttons. Reads like a tower. Cleanest scan, weakest peripheral awareness.</p>
+      <div class="hud arch-a">
+        <div class="stars"></div>
+        <div class="top">
+          <div><span class="lbl">Ante</span> <span class="val">IV</span> · <span class="lbl">Voidlit</span></div>
+          <div style="display:flex; gap:6px;">
+            <span class="pill">⊕ 3</span><span class="pill">↻ 2</span><span class="pill warn">⚠ Boss</span>
+          </div>
+        </div>
+        <div class="score">
+          <div class="num">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="oracles">
+          <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+          <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="arena">
+          <div class="die">5</div><div class="die lock">6</div><div class="die">3</div><div class="die">2</div><div class="die lock">6</div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">↻ Reroll</button>
+          <button class="btn primary">✦ Cast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sidebar Rails — Persistent Peripheral</h3>
+      <p>Oracles left rail, vouchers/consumables right rail, score + dice center. Always-visible powers. Best for players who plan around their loadout.</p>
+      <div class="hud arch-b">
+        <div class="stars"></div>
+        <div class="top">
+          <span class="lbl">✦ Ante IV · Voidlit</span>
+          <span class="pill">⊕ 3</span><span class="pill">↻ 2</span><span class="pill warn">⚠ Boss</span>
+        </div>
+        <div class="lrail">
+          <div class="lbl" style="text-align:center;">Oracles</div>
+          <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+          <div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="rrail">
+          <div class="lbl" style="text-align:center;">Consume</div>
+          <div class="slot full">⚗</div><div class="slot full">✷</div>
+          <div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="center">
+          <div class="score">
+            <div class="num">12,840</div>
+            <div class="target">/ 18,000</div>
+          </div>
+          <div class="arena">
+            <div class="die">5</div><div class="die lock">6</div><div class="die">3</div><div class="die">2</div><div class="die lock">6</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">↻ Reroll</button>
+          <button class="btn primary">✦ Cast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Floating Focus — Dice Are The Stage</h3>
+      <p>Stats float in corners (small, ambient), score floats above dice, consumables dock bottom-left, actions bottom-right. Dice + score are visual center. Most cinematic, requires hover for some info.</p>
+      <div class="hud arch-c">
+        <div class="stars"></div>
+        <div class="topcorner">
+          <span class="lbl">Ante IV · Voidlit</span>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <span class="pill">⊕ 3</span><span class="pill">↻ 2</span>
+          </div>
+        </div>
+        <div class="topright">
+          <span class="pill warn">⚠ Boss · No Pairs</span>
+        </div>
+        <div class="scoreFloat">
+          <div class="num">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="arena">
+          <div class="die">5</div><div class="die lock">6</div><div class="die">3</div><div class="die">2</div><div class="die lock">6</div>
+        </div>
+        <div class="lockbar">
+          <div class="lockchip">lock</div><div class="lockchip" style="color:#7be3ff;">◆ locked</div><div class="lockchip">lock</div><div class="lockchip">lock</div><div class="lockchip" style="color:#7be3ff;">◆ locked</div>
+        </div>
+        <div class="docked">
+          <div>
+            <div class="lbl" style="margin-bottom:4px;">Oracles · Consume</div>
+            <div class="consumables">
+              <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+              <div class="slot full">⚗</div><div class="slot full">✷</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn ghost">↻ Reroll</button>
+            <button class="btn primary">✦ Cast</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

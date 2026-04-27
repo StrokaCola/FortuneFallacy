@@ -47,3 +47,22 @@ export function loadMemory(): AudioMemory | null {
     return null;
   }
 }
+
+export type TensionInputs = {
+  score: number;
+  target: number;
+  handsLeft: number;
+  handsTotal: number;
+  scoring: boolean;
+};
+
+export function selectTension(inputs: TensionInputs): number {
+  if (inputs.scoring) return 1;
+  if (inputs.target <= 0) return 0;
+  const gap = Math.max(0, (inputs.target - inputs.score) / inputs.target);
+  const handsRatio = inputs.handsTotal > 0 ? Math.min(1, inputs.handsLeft / inputs.handsTotal) : 1;
+  // pace ramps from 1.0 (full hands) to 2.2 (all hands burned).
+  // For 4 total hands: handsLeft=4 → 1.0, handsLeft=1 → ~1.9, handsLeft=0 → 2.2.
+  const pace = 1 + (1 - handsRatio) * 1.2;
+  return Math.max(0, Math.min(1, gap * pace));
+}

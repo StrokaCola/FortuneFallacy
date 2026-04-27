@@ -31,39 +31,75 @@ export function ConsumableTray() {
 
   return (
     <>
-      <div className="absolute bottom-24 left-4 flex gap-2 pointer-events-auto">
-        {items.length === 0 && (
-          <div className="text-cosmos-300/60 text-xs font-mono">no consumables</div>
-        )}
+      <div style={{
+        position: 'absolute', top: 142, right: 18,
+        display: 'flex', gap: 8, zIndex: 4, pointerEvents: 'auto',
+      }}>
         {items.map((id, i) => {
           const def = lookupConsumable(id);
           if (!def) return null;
+          const color = def.type === 'tarot' ? '#bba8ff' : '#7be3ff';
           return (
-            <button
-              key={`${id}-${i}`}
-              onClick={() => onUse(i)}
-              title={def.description}
-              className={`w-14 h-20 rounded-lg ring-1 flex flex-col items-center justify-center
-                          ${def.type === 'tarot' ? 'bg-cosmos-700/80 ring-astral/50' : 'bg-cosmos-800/80 ring-gold/50'}
-                          hover:ring-2 transition`}>
-              <div className="text-2xl">{def.icon}</div>
-              <div className="text-[9px] font-mono text-cosmos-200 mt-1">{def.name.split(' ')[0]}</div>
-            </button>
+            <div key={`${id}-${i}`} className="has-tip" style={{ position: 'relative' }}>
+              <button
+                onClick={() => onUse(i)}
+                style={{
+                  width: 64, height: 88, borderRadius: 8,
+                  background: 'linear-gradient(180deg, rgba(28,18,69,0.9), rgba(15,9,37,0.95))',
+                  border: `1px dashed ${color}60`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 4px',
+                  cursor: 'pointer',
+                  color: '#dcd4ff',
+                }}>
+                <div className="f-mono uc" style={{
+                  fontSize: 8, letterSpacing: '0.18em', color,
+                }}>
+                  {def.type}
+                </div>
+                <div style={{
+                  fontSize: 28, color,
+                  filter: `drop-shadow(0 0 6px ${color}80)`,
+                }}>{def.icon}</div>
+                <div className="f-mono uc" style={{
+                  fontSize: 7, letterSpacing: '0.14em', color: '#dcd4ff',
+                  textAlign: 'center', lineHeight: 1.1,
+                }}>
+                  {def.name}
+                </div>
+              </button>
+              <div className="tip">{def.description}</div>
+            </div>
           );
         })}
       </div>
+
       {armed && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-astral/80
-                        text-cosmos-900 font-head text-sm pointer-events-auto z-10">
+        <div style={{
+          position: 'absolute', top: 240, left: '50%', transform: 'translateX(-50%)',
+          padding: '10px 16px', borderRadius: 10,
+          background: 'rgba(123,227,255,0.85)', color: '#0f0925',
+          fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 600,
+          pointerEvents: 'auto', zIndex: 10,
+        }}>
           select a die for {armed.def?.name}
-          <button onClick={() => setArmed(null)} className="ml-3 text-xs underline">cancel</button>
-          <div className="flex gap-2 mt-2 justify-center">
+          <button
+            onClick={() => setArmed(null)}
+            style={{ marginLeft: 10, fontSize: 11, textDecoration: 'underline',
+                     background: 'none', border: 'none', color: '#0f0925', cursor: 'pointer' }}>
+            cancel
+          </button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'center' }}>
             {Array.from({ length: diceCount }).map((_, i) => (
               <button
                 key={i}
                 onClick={() => onTargetDie(i)}
-                className="w-10 h-10 rounded bg-cosmos-50 text-cosmos-900 font-display text-lg
-                           hover:bg-gold ring-1 ring-cosmos-300">
+                style={{
+                  width: 36, height: 36, borderRadius: 6,
+                  background: '#f3f0ff', color: '#0f0925',
+                  fontFamily: 'Cinzel Decorative, serif', fontSize: 16,
+                  border: '1px solid #9577ff', cursor: 'pointer',
+                }}>
                 {i + 1}
               </button>
             ))}
