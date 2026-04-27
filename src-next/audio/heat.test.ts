@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { smoothstep, selectTension, type TensionInputs } from './heat';
+import { selectTensionFromState } from '../state/selectors';
 
 describe('smoothstep', () => {
   it('returns 0 below edge0', () => {
@@ -48,5 +49,22 @@ describe('selectTension', () => {
 
   it('clamps to 1 when score is negative (Soft Bust state)', () => {
     expect(selectTension({ ...base, score: -100 })).toBe(1);
+  });
+});
+
+describe('selectTensionFromState', () => {
+  it('reads round.score / round.target / round.handsLeft / handsMax / scoring', () => {
+    const state = {
+      round: { score: 500, target: 1000, handsLeft: 2, handsMax: 4, scoring: false },
+    } as unknown as Parameters<typeof selectTensionFromState>[0];
+    const t = selectTensionFromState(state);
+    expect(t).toBeGreaterThan(0);
+    expect(t).toBeLessThan(1);
+  });
+  it('returns 1 if state.round.scoring is true', () => {
+    const state = {
+      round: { score: 1000, target: 1000, handsLeft: 4, handsMax: 4, scoring: true },
+    } as unknown as Parameters<typeof selectTensionFromState>[0];
+    expect(selectTensionFromState(state)).toBe(1);
   });
 });
