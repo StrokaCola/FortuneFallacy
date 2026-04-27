@@ -225,3 +225,10 @@ html, body, #next-root {
   60%  { opacity: 1; transform: scale(1.15); }
   100% { opacity: 1; transform: scale(1); }
 }
+@keyframes titleConstDraw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes titleStutter {
+  0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+  100% { opacity: 1; clip-path: inset(0 0% 0 0); }
+}
