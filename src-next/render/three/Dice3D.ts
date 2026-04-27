@@ -7,13 +7,12 @@ import { createCosmicEnv } from './MaterialEnv';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
-// Tray sits in lower portion of stage (design trayCenter y=600 / stage 800).
-// World-y shift maps active play down so dice appear inside the curved tray base.
-const ACTIVE_Y = -2.5;
-// Locked dice lift in place (~12px on screen) — design has translateY(-12px), no scale or z shift.
-const HOLD_Y = ACTIVE_Y + 0.4;
+// Two zones: dice roll in upper play area, then slide DOWN into the curved
+// holding tray (lower portion of stage) when locked.
+const ACTIVE_Y = 3;
+const HOLD_Y = -3.2;
 const HOLD_Z = 0;
-const HOLD_SCALE = 1;
+const HOLD_SCALE = 0.85;
 
 const FACE_ROT: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -409,8 +408,9 @@ export class Dice3D {
       let newTargetPos: THREE.Vector3;
       let newTargetScale: number;
       if (isLocked) {
-        // Lock = lift in place. Keep home X/Z, only nudge Y up (design: translateY(-12px)).
-        newTargetPos = new THREE.Vector3(die.homePos.x, HOLD_Y, HOLD_Z);
+        // Locked dice slide down into the holding tray, organized into slots.
+        const holdIdx = lockedIndices.indexOf(i);
+        newTargetPos = new THREE.Vector3(this.holdSlotX(holdIdx, holdCount), HOLD_Y, HOLD_Z);
         newTargetScale = HOLD_SCALE;
       } else {
         newTargetPos = die.homePos.clone();
@@ -453,13 +453,58 @@ export class Dice3D {
     }
   }
 
-  private rebuildHoldVisuals(_holdCount: number): void {
+  private rebuildHoldVisuals(holdCount: number): void {
     if (!this.holdGlow || !this.holdLinks || !this.holdAnchors) return;
-    // Per design: locked dice lift in place with no rope, halo, or anchor stars.
-    // Constellation lines are drawn only for scoring dice (ConstellationOverlay).
-    this.holdGlow.visible = false;
-    this.holdLinks.visible = false;
-    this.holdAnchors.visible = false;
+
+    if (holdCount === 0) {
+      this.holdGlow.visible = false;
+      this.holdLinks.visible = false;
+      this.holdAnchors.visible = false;
+      return;
+    }
+
+    const gap = DICE_GAP * 0.85;
+    const startX = -((holdCount - 1) * gap) / 2;
+    const slotXs: number[] = [];
+    for (let i = 0; i < holdCount; i++) slotXs.push(startX + i * gap);
+
+    // Glow plane sized to span all slots + padding.
+    const glowW = (holdCount > 1 ? (holdCount - 1) * gap : 0) + 2.0;
+    const glowH = 1.6;
+    this.holdGlow.position.set(0, HOLD_Y - DIE_SIZE / 2 - 0.05, HOLD_Z);
+    this.holdGlow.scale.set(glowW, glowH, 1);
+    this.holdGlow.visible = true;
+
+    // Link lines — pairs between adjacent slots + outer extensions to anchor stars.
+    const anchorPad = 0.7;
+    const anchorL = startX - anchorPad;
+    const anchorR = startX + (holdCount - 1) * gap + anchorPad;
+    const linkY = HOLD_Y;
+    const linkZ = HOLD_Z;
+
+    const verts: number[] = [];
+    verts.push(anchorL, linkY, linkZ, slotXs[0]!, linkY, linkZ);
+    for (let i = 0; i < slotXs.length - 1; i++) {
+      verts.push(slotXs[i]!, linkY, linkZ, slotXs[i + 1]!, linkY, linkZ);
+    }
+    verts.push(slotXs[slotXs.length - 1]!, linkY, linkZ, anchorR, linkY, linkZ);
+
+    const linkGeo = new THREE.BufferGeometry();
+    linkGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    this.holdLinks.geometry.dispose();
+    this.holdLinks.geometry = linkGeo;
+    this.holdLinks.visible = true;
+
+    // Anchor star points at outer ends.
+    const anchorVerts = new Float32Array([
+      anchorL, linkY, linkZ,
+      anchorR, linkY, linkZ,
+    ]);
+    const anchorGeo = new THREE.BufferGeometry();
+    anchorGeo.setAttribute('position', new THREE.BufferAttribute(anchorVerts, 3));
+    this.holdAnchors.geometry.dispose();
+    this.holdAnchors.geometry = anchorGeo;
+    this.holdAnchors.visible = true;
   }
 
   private kickAll() {
