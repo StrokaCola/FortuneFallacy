@@ -55,6 +55,8 @@ class AudioEngineImpl {
   // Orthogonal to `mode` — gates layer output only; state evolution (heat/combo/etc.) keeps running
   // while inactive so the engine snaps back to the correct mix when reactivated.
   private active = true;
+  // Round progress: score / target, clamped 0..1. Drives layer crossfade thresholds.
+  private progress = 0;
 
   constructor() {
     const mem = loadMemory();
@@ -150,6 +152,14 @@ class AudioEngineImpl {
     return this.active;
   }
 
+  setProgress(p: number): void {
+    this.progress = Math.max(0, Math.min(1, p));
+  }
+
+  getProgress(): number {
+    return this.progress;
+  }
+
   bumpHeat(delta: number): void {
     if (delta <= 0) return;
     this.state.heat = Math.min(1, this.state.heat + delta);
@@ -234,12 +244,14 @@ class AudioEngineImpl {
       this.state.fail = Math.max(0, this.state.fail - 0.01 * decayScale);
     }
 
-    // Tension nudges combo + peak layer mix targets so a high-stakes baseline
-    // sounds ominous before any cast. Cap nudge contribution at 0.2 of the layer.
-    const tNudge = this.tension * 0.2;
-    let baseTarget = 0.55 + 0.25 * this.state.stability + 0.15 * this.state.heat;
-    let comboTarget = this.state.combo * (0.6 + 0.4 * this.state.heat) + tNudge * 0.6;
-    let peakTarget = smoothstep(this.state.heat, 0.7, 1.0) * 0.85 + tNudge * 0.4;
+    // Layer mix is driven by round progress (score/target). Heat from scoring events adds a
+    // small transient nudge so each cast still feels reactive. Tension narrows the master
+    // filter (see below) but no longer pushes the layer mix.
+    const p = this.progress;
+    const heatNudge = this.state.heat * 0.10;
+    let baseTarget = 0.55 + 0.20 * p + heatNudge;
+    let comboTarget = smoothstep(p, 0.30, 0.60) * 0.85 + heatNudge;
+    let peakTarget = smoothstep(p, 0.70, 0.95) * 0.85;
     let failTarget = this.state.fail * 0.7;
 
     if (this.state.bigScoreTimer > 0) {

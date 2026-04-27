@@ -50,6 +50,7 @@ export function startAudioBridge(): () => void {
   ];
 
   let lastTension = -1;
+  let lastProgress = -1;
   const offStore = store.subscribe((s, prev) => {
     if (prev.round.active && !s.round.active && s.ui.screen === 'hub') {
       audioEngine.enterFail();
@@ -64,6 +65,12 @@ export function startAudioBridge(): () => void {
     if (Math.abs(t - lastTension) > 0.005) {
       lastTension = t;
       audioEngine.setTension(t);
+    }
+    const target = s.round.target;
+    const p = target > 0 ? Math.min(1, s.round.score / target) : 0;
+    if (Math.abs(p - lastProgress) > 0.005) {
+      lastProgress = p;
+      audioEngine.setProgress(p);
     }
   });
 
