@@ -24,6 +24,7 @@ export type Action =
   | { type: 'DISCARD_CONSUMABLE'; index: number }
   | { type: 'ATTACH_RUNE'; dieIdx: number; runeId: string }
   | { type: 'DETACH_RUNE'; dieIdx: number; runeIdx: number }
-  | { type: 'SKIP_BLIND' };
+  | { type: 'SKIP_BLIND' }
+  | { type: 'END_SCORING' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

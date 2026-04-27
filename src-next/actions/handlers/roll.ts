@@ -87,6 +87,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           score: newScore,
           handsLeft: newHandsLeft,
           rerollsLeft: 2,
+          scoring: true,
           chainLen: final.chain?.len ?? s.round.chainLen,
           chainTier: final.chain?.tier ?? s.round.chainTier,
           dice: s.round.dice.map((d) => ({ ...d, locked: false })),
@@ -103,6 +104,13 @@ export const rollHandler: ActionHandler = (a, s) => {
         return { state: busted.state, events: [...baseEvents, ...busted.events] };
       }
       return { state: baseState, events: baseEvents };
+    }
+    case 'END_SCORING': {
+      if (!s.round.scoring) return { state: s, events: [] };
+      return {
+        state: { ...s, round: { ...s.round, scoring: false } },
+        events: [],
+      };
     }
     default:
       return { state: s, events: [] };

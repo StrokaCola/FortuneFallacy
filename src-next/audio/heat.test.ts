@@ -76,3 +76,19 @@ describe('selectTensionFromState', () => {
     expect(selectTensionFromState(state)).toBe(1);
   });
 });
+
+describe('selectTensionFromState x scoring lifecycle', () => {
+  it('returns 1 when scoring=true (mid-cast peak)', () => {
+    const s = {
+      round: { score: 200, target: 1000, handsLeft: 2, handsMax: 4, scoring: true },
+    } as unknown as Parameters<typeof selectTensionFromState>[0];
+    expect(selectTensionFromState(s)).toBe(1);
+  });
+  it('returns gap×pace once END_SCORING clears scoring', () => {
+    const s = {
+      round: { score: 500, target: 1000, handsLeft: 2, handsMax: 4, scoring: false },
+    } as unknown as Parameters<typeof selectTensionFromState>[0];
+    expect(selectTensionFromState(s)).toBeGreaterThan(0);
+    expect(selectTensionFromState(s)).toBeLessThan(1);
+  });
+});
