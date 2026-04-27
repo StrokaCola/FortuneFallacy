@@ -2,13 +2,18 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
+import { dispatch } from '../../actions/dispatch';
 import { createCosmicEnv } from './MaterialEnv';
 
 const DIE_SIZE = 0.85;
-const DICE_GAP = 1.3;
-const ACTIVE_Y = 0;
-const HOLD_Y = 2.6;
-const HOLD_SCALE = 0.78;
+const DICE_GAP = 1.7;
+// Tray sits in lower portion of stage (design trayCenter y=600 / stage 800).
+// World-y shift maps active play down so dice appear inside the curved tray base.
+const ACTIVE_Y = -2.5;
+// Locked dice lift in place (~12px on screen) — design has translateY(-12px), no scale or z shift.
+const HOLD_Y = ACTIVE_Y + 0.4;
+const HOLD_Z = 0;
+const HOLD_SCALE = 1;
 
 const FACE_ROT: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -50,71 +55,99 @@ const FACE_DEFS = [
   { val: 4, axis: 'y' as const, sign: -1 },
 ];
 
-function buildDie(size: number, styleKey: StyleKey): THREE.Group {
+type BuiltDie = {
+  group: THREE.Group;
+  pipMat: THREE.MeshBasicMaterial;
+  pipGroup: THREE.Group;
+};
+
+function buildDie(size: number, styleKey: StyleKey): BuiltDie {
   const S = STYLES[styleKey];
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${styleKey}`;
 
-  const bodyGeo = new RoundedBoxGeometry(size, size, size, 4, size * 0.08);
-  const bodyMat = new THREE.MeshStandardMaterial({
+  const bodyGeo = new RoundedBoxGeometry(size, size, size, 6, size * 0.20);
+  const bodyMat = new THREE.MeshPhysicalMaterial({
     color: S.body,
-    metalness: Math.max(0.4, S.metal),
-    roughness: Math.max(0.18, Math.min(0.6, S.rough)),
+    metalness: 0.0,
+    roughness: 0.22,
+    transmission: 0.55,
+    thickness: 0.9,
+    ior: 1.5,
+    attenuationColor: new THREE.Color(S.edge),
+    attenuationDistance: 1.2,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.15,
     emissive: S.emissive,
-    emissiveIntensity: S.eIntensity * 0.4,
-    envMapIntensity: 0.85,
+    emissiveIntensity: 0.10,
+    envMapIntensity: 1.1,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
 
-  const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(size * 1.001, size * 1.001, size * 1.001));
-  const edgeMat = new THREE.LineBasicMaterial({ color: S.edge, transparent: true, opacity: 0.35 });
-  const edges = new THREE.LineSegments(edgeGeo, edgeMat);
-  group.add(edges);
+  // Bevel-rim glow — slightly larger backface-only shell for luminous edges.
+  const rimGeo = new RoundedBoxGeometry(size * 1.02, size * 1.02, size * 1.02, 6, size * 0.22);
+  const rimMat = new THREE.MeshBasicMaterial({
+    color: S.edge,
+    side: THREE.BackSide,
+    transparent: true,
+    opacity: 0.30,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const rim = new THREE.Mesh(rimGeo, rimMat);
+  group.add(rim);
 
-  const pipMat = new THREE.MeshStandardMaterial({
+  // Pip overlay — drawn on each face surface, hidden by default. Faded in
+  // after the die settles (post-physics) so they appear like stars revealing.
+  // One material clone per die so opacity is independent.
+  const pipMat = new THREE.MeshBasicMaterial({
     color: S.pip,
-    metalness: 0.6,
-    roughness: 0.2,
-    emissive: S.emissive,
-    emissiveIntensity: S.eIntensity,
-    envMapIntensity: 1.1,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    toneMapped: false,
+    blending: THREE.AdditiveBlending,
   });
-  const wellMat = new THREE.MeshStandardMaterial({
-    color: 0x000000, metalness: 0, roughness: 1, transparent: true, opacity: 0.55,
-  });
+
+  const pipGroup = new THREE.Group();
+  pipGroup.name = 'pips';
+  group.add(pipGroup);
 
   const half = size / 2;
-  const pipR = size * 0.05;
-  const indent = size * 0.025;
+  const pipR = size * 0.075;
+  const surfaceLift = size * 0.005; // sits a hair above the face
 
   FACE_DEFS.forEach(({ val, axis, sign }) => {
     const positions = PIPS[val]!;
+    // Disc oriented along this face's outward normal — flat, drawn-on look.
+    const normal = new THREE.Vector3(
+      axis === 'x' ? sign : 0,
+      axis === 'y' ? sign : 0,
+      axis === 'z' ? sign : 0,
+    );
+    const discQuat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1),
+      normal,
+    );
+
     positions.forEach(([u, v]) => {
-      const offset = -indent;
+      const depth = sign * (half + surfaceLift);
       const pos = new THREE.Vector3();
-      if (axis === 'z') pos.set(u * size, v * size, sign * (half + offset));
-      else if (axis === 'x') pos.set(sign * (half + offset), v * size, -u * size * sign);
-      else pos.set(u * size, sign * (half + offset), -v * size * sign);
+      if (axis === 'z') pos.set(u * size, v * size, depth);
+      else if (axis === 'x') pos.set(depth, v * size, -u * size * sign);
+      else pos.set(u * size, depth, -v * size * sign);
 
-      const pip = new THREE.Mesh(new THREE.SphereGeometry(pipR, 16, 12), pipMat);
+      const pip = new THREE.Mesh(new THREE.CircleGeometry(pipR, 18), pipMat);
       pip.position.copy(pos);
-      group.add(pip);
-
-      const well = new THREE.Mesh(new THREE.SphereGeometry(pipR * 1.4, 12, 10), wellMat);
-      const back = new THREE.Vector3(
-        axis === 'x' ? sign : 0,
-        axis === 'y' ? sign : 0,
-        axis === 'z' ? sign : 0,
-      );
-      well.position.copy(pos).addScaledVector(back, -indent * 0.5);
-      group.add(well);
+      pip.quaternion.copy(discQuat);
+      pipGroup.add(pip);
     });
   });
 
-  return group;
+  return { group, pipMat, pipGroup };
 }
 
 type DieAnim = {
@@ -134,18 +167,53 @@ type DieAnim = {
   bouncePeak: number;           // max y displacement during roll
   locked: boolean;
   playback: { frames: import('../../events/types').DieFrame[]; startedAt: number; stepMs: number } | null;
+  holdBobPhase: number;
+  pipMat: THREE.MeshBasicMaterial;
+  pipOpacity: number;
+  pipTargetOpacity: number;     // 0 hidden, 1 revealed
+  pipFadeStart: number;         // ms since perf timer
+  pipFadeFromOpacity: number;
+  pipFadeDurMs: number;
 };
+
+const PIP_FADE_IN_MS = 520;
+const PIP_FADE_OUT_MS = 180;
+const PIP_REVEAL_DELAY_MS = 80;
+
+function makeRadialGradientTexture(): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.55, 'rgba(255,255,255,0.35)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
 export class Dice3D {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   private camera: THREE.OrthographicCamera;
   private dice: DieAnim[] = [];
-  private holdShelf: THREE.Mesh | null = null;
+  private holdGlow: THREE.Mesh | null = null;
+  private holdLinks: THREE.LineSegments | null = null;
+  private holdAnchors: THREE.Points | null = null;
+  private holdGradTex: THREE.Texture | null = null;
+  private prevHoldCount = -1;
   private rafHandle: number | null = null;
   private unsubscribers: (() => void)[] = [];
+  private raycaster = new THREE.Raycaster();
+  private pointer = new THREE.Vector2();
+  private canvas: HTMLCanvasElement;
+  private onPointerDown: ((ev: PointerEvent) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     this.renderer.setSize(960, 540, false);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -159,9 +227,9 @@ export class Dice3D {
     } catch (e) {
       console.warn('[Dice3D] env map init failed:', e);
     }
-    const ortho = 4;
+    const ortho = 5;
     this.camera = new THREE.OrthographicCamera(-ortho * 1.78, ortho * 1.78, ortho, -ortho, 0.1, 100);
-    this.camera.position.set(0, 6, 5);
+    this.camera.position.set(0, 11, 2.5);
     this.camera.lookAt(0, 0, 0);
 
     this.scene.add(new THREE.AmbientLight(0x9577ff, 0.55));
@@ -182,19 +250,49 @@ export class Dice3D {
       new THREE.ShadowMaterial({ opacity: 0.4 }),
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -DIE_SIZE / 2 - 0.01;
+    floor.position.y = ACTIVE_Y - DIE_SIZE / 2 - 0.01;
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // Hold shelf — visual indicator for held dice area
-    const shelfGeo = new THREE.PlaneGeometry(7.5, 1.4);
-    const shelfMat = new THREE.MeshBasicMaterial({
-      color: 0x7be3ff, transparent: true, opacity: 0.06,
+    // Constellation hold visuals — glow halo + linking lines + anchor stars.
+    this.holdGradTex = makeRadialGradientTexture();
+    const glowMat = new THREE.MeshBasicMaterial({
+      map: this.holdGradTex,
+      color: 0x7be3ff,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
-    this.holdShelf = new THREE.Mesh(shelfGeo, shelfMat);
-    this.holdShelf.rotation.x = -Math.PI / 2;
-    this.holdShelf.position.set(0, HOLD_Y - DIE_SIZE / 2 - 0.05, 0);
-    this.scene.add(this.holdShelf);
+    this.holdGlow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat);
+    this.holdGlow.rotation.x = -Math.PI / 2;
+    this.holdGlow.position.set(0, HOLD_Y - DIE_SIZE / 2 - 0.05, HOLD_Z);
+    this.holdGlow.visible = false;
+    this.scene.add(this.holdGlow);
+
+    const linkMat = new THREE.LineBasicMaterial({
+      color: 0xdcd4ff,
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.holdLinks = new THREE.LineSegments(new THREE.BufferGeometry(), linkMat);
+    this.holdLinks.visible = false;
+    this.scene.add(this.holdLinks);
+
+    const anchorMat = new THREE.PointsMaterial({
+      color: 0xf3f0ff,
+      size: 0.18,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    this.holdAnchors = new THREE.Points(new THREE.BufferGeometry(), anchorMat);
+    this.holdAnchors.visible = false;
+    this.scene.add(this.holdAnchors);
 
     this.buildDice();
 
@@ -205,12 +303,40 @@ export class Dice3D {
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
     );
     this.syncDice(store.getState().round.dice);
+    this.attachClick();
     this.start();
+  }
+
+  private attachClick(): void {
+    this.onPointerDown = (ev: PointerEvent) => {
+      // Skip if any die is mid-roll/playback — no locking during animation.
+      if (this.dice.some((d) => d.playback != null || d.rolling)) return;
+
+      const rect = this.canvas.getBoundingClientRect();
+      this.pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+
+      const groups = this.dice.map((d) => d.group);
+      const hits = this.raycaster.intersectObjects(groups, true);
+      if (hits.length === 0) return;
+
+      // Find the top-level group ancestor matching one of our dice.
+      let obj: THREE.Object3D | null = hits[0]!.object;
+      while (obj && !groups.includes(obj as THREE.Group)) obj = obj.parent;
+      if (!obj) return;
+
+      const idx = groups.indexOf(obj as THREE.Group);
+      if (idx < 0) return;
+      dispatch({ type: 'TOGGLE_LOCK', dieIdx: idx });
+    };
+    this.canvas.addEventListener('pointerdown', this.onPointerDown);
   }
 
   destroy(): void {
     if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
     this.unsubscribers.forEach((u) => u());
+    if (this.onPointerDown) this.canvas.removeEventListener('pointerdown', this.onPointerDown);
     this.renderer.dispose();
   }
 
@@ -218,12 +344,12 @@ export class Dice3D {
     const count = 5;
     const startX = -((count - 1) * DICE_GAP) / 2;
     for (let i = 0; i < count; i++) {
-      const group = buildDie(DIE_SIZE, 'celestial');
+      const built = buildDie(DIE_SIZE, 'celestial');
       const home = new THREE.Vector3(startX + i * DICE_GAP, ACTIVE_Y, 0);
-      group.position.copy(home);
-      this.scene.add(group);
+      built.group.position.copy(home);
+      this.scene.add(built.group);
       this.dice.push({
-        group,
+        group: built.group,
         homePos: home,
         startPos: home.clone(),
         targetPos: home.clone(),
@@ -239,8 +365,23 @@ export class Dice3D {
         bouncePeak: 0,
         locked: false,
         playback: null,
+        holdBobPhase: Math.random() * Math.PI * 2,
+        pipMat: built.pipMat,
+        pipOpacity: 0,
+        pipTargetOpacity: 0,
+        pipFadeStart: 0,
+        pipFadeFromOpacity: 0,
+        pipFadeDurMs: PIP_FADE_IN_MS,
       });
     }
+  }
+
+  private startPipFade(d: DieAnim, target: 0 | 1, delayMs = 0): void {
+    if (d.pipTargetOpacity === target && d.pipFadeStart > 0) return;
+    d.pipFadeFromOpacity = d.pipOpacity;
+    d.pipTargetOpacity = target;
+    d.pipFadeStart = performance.now() + delayMs;
+    d.pipFadeDurMs = target === 1 ? PIP_FADE_IN_MS : PIP_FADE_OUT_MS;
   }
 
   private holdSlotX(holdIdx: number, total: number): number {
@@ -268,8 +409,8 @@ export class Dice3D {
       let newTargetPos: THREE.Vector3;
       let newTargetScale: number;
       if (isLocked) {
-        const holdIdx = lockedIndices.indexOf(i);
-        newTargetPos = new THREE.Vector3(this.holdSlotX(holdIdx, holdCount), HOLD_Y, 0);
+        // Lock = lift in place. Keep home X/Z, only nudge Y up (design: translateY(-12px)).
+        newTargetPos = new THREE.Vector3(die.homePos.x, HOLD_Y, HOLD_Z);
         newTargetScale = HOLD_SCALE;
       } else {
         newTargetPos = die.homePos.clone();
@@ -287,8 +428,11 @@ export class Dice3D {
         die.targetScale = newTargetScale;
       }
 
-      // Face rotation target (only changes when not currently rolling and face changed)
-      if (!die.rolling) {
+      // Face rotation target: only force canonical FACE_ROT when locked
+      // (so dice sit cleanly face-up on the hold shelf). Active dice keep
+      // whatever rotation physics produced — that orientation already shows
+      // the correct face per faceFromQuaternion.
+      if (!die.rolling && isLocked) {
         const newRot = new THREE.Quaternion();
         newRot.setFromEuler(new THREE.Euler(...FACE_ROT[d.face]!));
         if (!die.targetQuat.equals(newRot) || lockChanged) {
@@ -302,12 +446,27 @@ export class Dice3D {
         die.duration = 380;
       }
     });
+
+    if (holdCount !== this.prevHoldCount) {
+      this.rebuildHoldVisuals(holdCount);
+      this.prevHoldCount = holdCount;
+    }
+  }
+
+  private rebuildHoldVisuals(_holdCount: number): void {
+    if (!this.holdGlow || !this.holdLinks || !this.holdAnchors) return;
+    // Per design: locked dice lift in place with no rope, halo, or anchor stars.
+    // Constellation lines are drawn only for scoring dice (ConstellationOverlay).
+    this.holdGlow.visible = false;
+    this.holdLinks.visible = false;
+    this.holdAnchors.visible = false;
   }
 
   private kickAll() {
     const now = performance.now();
     this.dice.forEach((d, i) => {
       if (d.locked) return;
+      this.startPipFade(d, 0);
       // Random tumble axis + rotational speed
       const ax = new THREE.Vector3(
         Math.random() * 2 - 1,
@@ -329,7 +488,7 @@ export class Dice3D {
     });
   }
 
-  private startPlayback(frames: import('../../events/types').DieFrame[][] | undefined, finalFaces: number[]): void {
+  private startPlayback(frames: import('../../events/types').DieFrame[][] | undefined, _finalFaces: number[]): void {
     if (!frames || frames.length === 0) {
       this.kickAll();
       return;
@@ -340,12 +499,12 @@ export class Dice3D {
       if (d.locked) return;
       const f = frames[i];
       if (!f || f.length === 0) return;
+      this.startPipFade(d, 0);
       d.playback = { frames: f, startedAt: now, stepMs: STEP_MS };
       d.rolling = false;
-      const face = finalFaces[i];
-      if (face != null) {
-        d.targetQuat.setFromEuler(new THREE.Euler(...FACE_ROT[face]!));
-      }
+      // Do NOT set targetQuat from FACE_ROT here — physics rest pose already
+      // shows the correct face. Setting canonical here would cause a visible
+      // post-playback spin. Final pose will be captured at end of playback.
     });
   }
 
@@ -372,12 +531,14 @@ export class Dice3D {
           if (idx >= d.playback.frames.length - 1) {
             d.playback = null;
             d.startQuat.copy(d.group.quaternion);
+            d.targetQuat.copy(d.group.quaternion); // keep physics rest rotation, no canonical snap
             d.startPos.copy(d.group.position);
             d.targetPos.copy(d.homePos);
             d.targetScale = 1;
             d.startScale = d.group.scale.x;
             d.t0 = now;
             d.duration = 240;
+            this.startPipFade(d, 1, PIP_REVEAL_DELAY_MS);
           }
           continue;
         }
@@ -399,6 +560,7 @@ export class Dice3D {
             // After tumble, sync orientation to target face on next syncDice tick
             // (faces will be snapped via store update from ROLL_SETTLED)
             d.startQuat.copy(d.group.quaternion);
+            this.startPipFade(d, 1, PIP_REVEAL_DELAY_MS);
           }
         } else {
           // Position + scale + face-quat smooth lerp
@@ -407,6 +569,38 @@ export class Dice3D {
           const sc = d.startScale + (d.targetScale - d.startScale) * t;
           d.group.scale.setScalar(sc);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);
+
+          // Floaty held-die idle: bob + drift + gentle rotational shimmer once
+          // the lerp into the hold slot has settled.
+          if (d.locked && tRaw >= 1) {
+            const ts = now / 1000;
+            d.group.position.y = HOLD_Y + Math.sin(ts * 1.2 + d.holdBobPhase) * 0.08;
+            d.group.position.x += Math.sin(ts * 0.7 + d.holdBobPhase) * 0.015;
+            const wob = new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(0, 1, 0),
+              Math.sin(ts * 0.6 + d.holdBobPhase) * 0.04,
+            );
+            d.group.quaternion.copy(d.targetQuat).multiply(wob);
+          }
+        }
+
+        // Pip fade driver — drives per-die opacity toward target.
+        if (d.pipFadeStart > 0) {
+          const dt = now - d.pipFadeStart;
+          if (dt >= 0) {
+            const t = Math.min(1, dt / d.pipFadeDurMs);
+            const eased = d.pipTargetOpacity === 1
+              ? 1 - Math.pow(1 - t, 3)
+              : t;
+            const next = d.pipFadeFromOpacity + (d.pipTargetOpacity - d.pipFadeFromOpacity) * eased;
+            d.pipOpacity = next;
+            d.pipMat.opacity = next;
+            if (t >= 1) {
+              d.pipFadeStart = 0;
+              d.pipOpacity = d.pipTargetOpacity;
+              d.pipMat.opacity = d.pipTargetOpacity;
+            }
+          }
         }
       }
       this.renderer.render(this.scene, this.camera);

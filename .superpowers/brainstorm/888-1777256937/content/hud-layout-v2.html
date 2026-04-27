@@ -1,0 +1,184 @@
+<h2>Round HUD — With 3D Physics Tray</h2>
+<p class="subtitle">Tray is the stage. UI wraps it without obstructing roll volume.</p>
+
+<style>
+  .hud { background: linear-gradient(180deg, rgba(46,29,107,0.5), rgba(7,5,26,0.95)); border:1px solid rgba(149,119,255,0.3); border-radius:12px; height: 460px; position:relative; overflow:hidden; font-family: system-ui, sans-serif; color:#f3f0ff; }
+  .hud .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.12; }
+
+  .lbl { font-family:'Cinzel',serif; font-size:9px; letter-spacing:0.24em; text-transform:uppercase; color:#bba8ff; }
+  .pill { padding:3px 7px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:10px; background:rgba(123,227,255,0.1); border:1px solid rgba(123,227,255,0.3); color:#7be3ff; }
+  .pill.warn { background:rgba(226,51,74,0.15); border-color:#e2334a; color:#ff8e9c; }
+  .slot { width:32px; height:32px; border-radius:6px; background:rgba(28,18,69,0.6); border:1px solid rgba(149,119,255,0.3); display:grid; place-items:center; font-size:11px; }
+  .slot.full { background:rgba(123,227,255,0.15); border-color:#7be3ff; color:#7be3ff; }
+  .slot.gold { background:rgba(245,196,81,0.15); border-color:#f5c451; color:#f5c451; }
+  .btn { padding:9px 16px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; border-radius:6px; cursor:pointer; }
+  .btn.primary { background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; }
+  .btn.ghost { background:rgba(28,18,69,0.6); color:#f3f0ff; border:1px solid rgba(149,119,255,0.4); }
+
+  /* tray zone — represents 3D physics volume */
+  .tray { background: radial-gradient(ellipse at center, rgba(28,18,69,0.7), rgba(7,5,26,0.4)); border:1px dashed rgba(149,119,255,0.35); border-radius: 14px; position:relative; }
+  .tray::after { content:"3D PHYSICS TRAY"; position:absolute; top:8px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.3em; color:rgba(149,119,255,0.5); }
+  .die3d { width:42px; height:42px; border-radius:8px; background: radial-gradient(circle at 30% 25%, #4a3aa0, #1a1240); border:1px solid rgba(149,119,255,0.6); display:grid; place-items:center; font-family:'Cinzel',serif; color:#fff; font-size:14px; box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); }
+  .die3d.hot { border-color:#f5c451; box-shadow: 0 6px 12px rgba(0,0,0,0.5), 0 0 14px rgba(245,196,81,0.5); }
+  .die3d.lock { border-color:#7be3ff; transform: translateY(-6px); box-shadow: 0 10px 14px rgba(0,0,0,0.4), 0 0 14px rgba(123,227,255,0.5); }
+  .lockchip { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.2em; text-transform:uppercase; color:#9577ff; width:42px; text-align:center; padding-top:4px; }
+  .lockchip.on { color:#7be3ff; }
+
+  /* A — Stacked: tray center, everything stacks above/below */
+  .arch-a .top { padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(149,119,255,0.2); }
+  .arch-a .score { text-align:center; padding:8px; }
+  .arch-a .score .num { font-family:'JetBrains Mono',monospace; font-size:32px; color:#fff; }
+  .arch-a .score .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; }
+  .arch-a .oracles { display:flex; gap:5px; padding: 0 14px 8px; justify-content:center; }
+  .arch-a .traywrap { position:absolute; left:14px; right:14px; top:170px; bottom:90px; }
+  .arch-a .traywrap .tray { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:14px; }
+  .arch-a .lockrow { position:absolute; left:0; right:0; bottom:60px; display:flex; gap:14px; justify-content:center; }
+  .arch-a .actions { position:absolute; bottom:14px; left:0; right:0; display:flex; gap:10px; justify-content:center; }
+
+  /* B — Rails: tray center, oracles left rail, consumables right rail */
+  .arch-b .top { padding:10px 14px; display:flex; justify-content:center; gap: 14px; align-items:center; border-bottom:1px solid rgba(149,119,255,0.2); }
+  .arch-b .lrail { position:absolute; left:10px; top:50px; bottom:60px; width:72px; display:flex; flex-direction:column; gap:5px; padding:8px; background:rgba(28,18,69,0.4); border:1px solid rgba(149,119,255,0.2); border-radius:8px; align-items:center; }
+  .arch-b .rrail { position:absolute; right:10px; top:50px; bottom:60px; width:72px; display:flex; flex-direction:column; gap:5px; padding:8px; background:rgba(28,18,69,0.4); border:1px solid rgba(149,119,255,0.2); border-radius:8px; align-items:center; }
+  .arch-b .scoreFloat { position:absolute; top:60px; left:50%; transform:translateX(-50%); text-align:center; }
+  .arch-b .scoreFloat .num { font-family:'JetBrains Mono',monospace; font-size:36px; color:#fff; text-shadow: 0 0 14px #7be3ff; line-height: 1; }
+  .arch-b .scoreFloat .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; }
+  .arch-b .traywrap { position:absolute; left:96px; right:96px; top:140px; bottom:90px; }
+  .arch-b .traywrap .tray { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:12px; }
+  .arch-b .lockrow { position:absolute; left:96px; right:96px; bottom:60px; display:flex; gap:12px; justify-content:center; }
+  .arch-b .actions { position:absolute; bottom:14px; left:0; right:0; display:flex; gap:10px; justify-content:center; }
+
+  /* C — Floating: tray gets max stage area; UI sinks to corners */
+  .arch-c .topcorner { position:absolute; top:10px; left:14px; }
+  .arch-c .topright { position:absolute; top:10px; right:14px; display:flex; gap:6px; }
+  .arch-c .scoreFloat { position:absolute; top:46px; left:50%; transform:translateX(-50%); text-align:center; }
+  .arch-c .scoreFloat .num { font-family:'JetBrains Mono',monospace; font-size:42px; color:#fff; text-shadow: 0 0 18px #7be3ff; line-height:1; }
+  .arch-c .scoreFloat .target { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ff7847; }
+  .arch-c .traywrap { position:absolute; left:14px; right:14px; top:130px; bottom:80px; }
+  .arch-c .traywrap .tray { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+  .arch-c .traywrap .row { display:flex; gap:14px; }
+  .arch-c .traywrap .lockrow { display:flex; gap:14px; }
+  .arch-c .docked { position:absolute; bottom:14px; left:0; right:0; display:flex; justify-content:space-between; padding: 0 14px; align-items:center; }
+  .arch-c .consumables { display:flex; gap:6px; }
+  .arch-c .actions { display:flex; gap:10px; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Stacked — Tray Centered, UI Above & Below</h3>
+      <p>Top bar → score → oracle row → <strong>physics tray</strong> → lock chips → action buttons. Cleanest top-down read; tray gets ~40% vertical real estate.</p>
+      <div class="hud arch-a">
+        <div class="stars"></div>
+        <div class="top">
+          <div><span class="lbl">Ante IV · Voidlit</span></div>
+          <div style="display:flex; gap:6px;">
+            <span class="pill">⊕ 3</span><span class="pill">↻ 2</span><span class="pill warn">⚠ Boss</span>
+          </div>
+        </div>
+        <div class="score">
+          <div class="num">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="oracles">
+          <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+          <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="traywrap"><div class="tray">
+          <div class="die3d">5</div><div class="die3d lock">6</div><div class="die3d hot">3</div><div class="die3d">2</div><div class="die3d lock">6</div>
+        </div></div>
+        <div class="lockrow">
+          <div class="lockchip">lock</div><div class="lockchip on">◆ locked</div><div class="lockchip">lock</div><div class="lockchip">lock</div><div class="lockchip on">◆ locked</div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">↻ Reroll</button>
+          <button class="btn primary">✦ Cast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sidebar Rails — Tray Center, Loadout Always Visible</h3>
+      <p>Oracles left rail, consumables right rail, score floats above tray, tray dominates middle. Loadout-aware play. Tray ~50% width but full center vertical band.</p>
+      <div class="hud arch-b">
+        <div class="stars"></div>
+        <div class="top">
+          <span class="lbl">✦ Ante IV · Voidlit</span>
+          <span class="pill">⊕ 3</span><span class="pill">↻ 2</span><span class="pill warn">⚠ Boss</span>
+        </div>
+        <div class="lrail">
+          <div class="lbl">Oracles</div>
+          <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+          <div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="rrail">
+          <div class="lbl">Consume</div>
+          <div class="slot full">⚗</div><div class="slot full">✷</div>
+          <div class="slot"></div><div class="slot"></div>
+        </div>
+        <div class="scoreFloat">
+          <div class="num">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="traywrap"><div class="tray">
+          <div class="die3d">5</div><div class="die3d lock">6</div><div class="die3d hot">3</div><div class="die3d">2</div><div class="die3d lock">6</div>
+        </div></div>
+        <div class="lockrow">
+          <div class="lockchip">lock</div><div class="lockchip on">◆ locked</div><div class="lockchip">lock</div><div class="lockchip">lock</div><div class="lockchip on">◆ locked</div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">↻ Reroll</button>
+          <button class="btn primary">✦ Cast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Floating Focus — Tray Is The Whole Stage</h3>
+      <p>Stats sink to corners (small, ambient). Score floats top. Tray gets ~60% area — biggest physics volume for satisfying rolls. Consumables dock bottom-left, actions bottom-right. Cinematic.</p>
+      <div class="hud arch-c">
+        <div class="stars"></div>
+        <div class="topcorner">
+          <span class="lbl">Ante IV · Voidlit</span>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <span class="pill">⊕ 3</span><span class="pill">↻ 2</span>
+          </div>
+        </div>
+        <div class="topright"><span class="pill warn">⚠ Boss · No Pairs</span></div>
+        <div class="scoreFloat">
+          <div class="num">12,840</div>
+          <div class="target">/ 18,000</div>
+        </div>
+        <div class="traywrap"><div class="tray">
+          <div class="row">
+            <div class="die3d">5</div><div class="die3d lock">6</div><div class="die3d hot">3</div><div class="die3d">2</div><div class="die3d lock">6</div>
+          </div>
+          <div class="lockrow">
+            <div class="lockchip">lock</div><div class="lockchip on">◆ locked</div><div class="lockchip">lock</div><div class="lockchip">lock</div><div class="lockchip on">◆ locked</div>
+          </div>
+        </div></div>
+        <div class="docked">
+          <div>
+            <div class="lbl" style="margin-bottom:4px;">Loadout</div>
+            <div class="consumables">
+              <div class="slot full">★</div><div class="slot full">◐</div><div class="slot gold">☼</div>
+              <div class="slot full">⚗</div><div class="slot full">✷</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn ghost">↻ Reroll</button>
+            <button class="btn primary">✦ Cast</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

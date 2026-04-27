@@ -52,6 +52,8 @@ class AudioEngineImpl {
   private saveTimer: number | null = null;
   private bigScoreReleased = false;
   private tension = 0;
+  // Orthogonal to `mode` — gates layer output only; state evolution (heat/combo/etc.) keeps running
+  // while inactive so the engine snaps back to the correct mix when reactivated.
   private active = true;
 
   constructor() {

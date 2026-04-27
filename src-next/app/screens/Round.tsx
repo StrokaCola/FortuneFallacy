@@ -1,22 +1,36 @@
 import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
-import { StatsCorner } from '../hud/StatsCorner';
-import { DangerCorner } from '../hud/DangerCorner';
-import { ScoreFloat } from '../hud/ScoreFloat';
-import { LoadoutDock } from '../hud/LoadoutDock';
+import { TopBar } from '../hud/TopBar';
+import { OracleStrip } from '../hud/OracleStrip';
+import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
 import { ConstellationOverlay } from '../hud/ConstellationOverlay';
 import { ScoreMoment } from '../hud/ScoreMoment';
+import { ScoreBreakdown } from '../hud/ScoreBreakdown';
+import { AstralHint } from '../hud/AstralHint';
+import { TrayBase } from '../visual/TrayBase';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
+  selectScore, selectTarget, selectShards, selectAnte,
+  selectOracles, selectVouchers, selectBlindId,
 } from '../../state/selectors';
+import { BLIND_DEFS } from '../../data/blinds';
 
 export function Round() {
-  const hands   = useStore(selectHandsLeft);
-  const rerolls = useStore(selectRerollsLeft);
-  const isBoss  = useStore(selectIsBoss);
+  const hands    = useStore(selectHandsLeft);
+  const rerolls  = useStore(selectRerollsLeft);
+  const isBoss   = useStore(selectIsBoss);
+  const score    = useStore(selectScore);
+  const target   = useStore(selectTarget);
+  const shards   = useStore(selectShards);
+  const ante     = useStore(selectAnte);
+  const oracles  = useStore(selectOracles);
+  const vouchers = useStore(selectVouchers);
+  const blindId  = useStore(selectBlindId);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
+
+  const blindName = BLIND_DEFS.find((b) => b.index === blindId)?.name ?? 'Blind';
 
   // Auto-roll when handsLeft changes (existing behavior)
   const lastHandsRef = useRef<number | null>(null);
@@ -29,14 +43,29 @@ export function Round() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      <StatsCorner />
-      <DangerCorner />
-      <ScoreFloat />
-      <LoadoutDock />
+      <TrayBase />
+      <TopBar
+        ante={ante}
+        blind={blindName}
+        shards={shards}
+        hands={hands}
+        rerolls={rerolls}
+        target={target}
+        score={score}
+        oracleSlots={{ used: oracles.length, max: 6 }}
+        voucherCount={vouchers.length}
+        accent={accent}
+      />
+
+      <OracleStrip />
+      <ConsumableTray />
+
       <ComboBanner accent={accent} />
+      <ScoreBreakdown />
       <ConstellationOverlay />
       <ScoreMoment />
-      <DiceLockOverlay />
+      <AstralHint />
+
       <ActionBar hands={hands} rerolls={rerolls} accent={accent} />
     </div>
   );
@@ -46,7 +75,7 @@ function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number;
   return (
     <div
       style={{
-        position: 'absolute', right: 18, bottom: 18,
+        position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 12, zIndex: 5, pointerEvents: 'auto',
       }}>
       <button
@@ -64,35 +93,6 @@ function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number;
         onClick={() => dispatch({ type: 'SCORE_HAND' })}>
         ✦ Cast Hand
       </button>
-    </div>
-  );
-}
-
-function DiceLockOverlay() {
-  const dice = useStore((s) => s.round.dice);
-  const trayY = window.innerHeight / 2 + 80;
-  const startX = window.innerWidth / 2 - (dice.length - 1) * 70;
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
-      {dice.map((d, i) => (
-        <button
-          key={i}
-          onClick={() => dispatch({ type: 'TOGGLE_LOCK', dieIdx: i })}
-          className="f-mono uc"
-          style={{
-            position: 'absolute',
-            left: startX + i * 140 - 32,
-            top: trayY,
-            width: 64, padding: '4px 0', textAlign: 'center',
-            fontSize: 9, letterSpacing: '0.2em', borderRadius: 6,
-            background: d.locked ? 'rgba(123,227,255,0.18)' : 'rgba(28,18,69,0.6)',
-            border: `1px solid ${d.locked ? '#7be3ff' : 'rgba(149,119,255,0.3)'}`,
-            color: d.locked ? '#7be3ff' : '#bba8ff',
-            cursor: 'pointer', pointerEvents: 'auto',
-          }}>
-          {d.locked ? '◆ locked' : 'lock'}
-        </button>
-      ))}
     </div>
   );
 }

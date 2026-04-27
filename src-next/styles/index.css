@@ -38,7 +38,7 @@ html, body, #next-root {
   height: 800px;
   transform: translate(-50%, -50%);
   z-index: 3;
-  pointer-events: none;
+  pointer-events: auto;
   display: none;
 }
 #three-next.active { display: block; }

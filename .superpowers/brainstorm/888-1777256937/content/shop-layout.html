@@ -1,0 +1,128 @@
+<h2>Celestial Bazaar — Shop Layout</h2>
+<p class="subtitle">Between-blind buy. Most-visited meta screen. Pick the philosophy.</p>
+
+<style>
+  .shop { background: linear-gradient(180deg, rgba(46,29,107,0.45), rgba(7,5,26,0.95)); border:1px solid rgba(149,119,255,0.3); border-radius:12px; height: 460px; position:relative; overflow:hidden; color:#f3f0ff; }
+  .shop .stars { position:absolute; inset:0; background-image: radial-gradient(white 0.5px, transparent 1px); background-size: 36px 36px; opacity:0.12; }
+  .shop .head { padding:14px; text-align:center; border-bottom:1px solid rgba(149,119,255,0.2); }
+  .shop .head .lbl { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.3em; color:#bba8ff; text-transform:uppercase; }
+  .shop .head .name { font-family:'Cinzel Decorative',serif; font-size:22px; color:#f3f0ff; margin-top:4px; }
+  .shop .shards { position:absolute; top:14px; right:14px; padding:6px 12px; background:rgba(245,196,81,0.12); border:1px solid #f5c451; border-radius:6px; font-family:'JetBrains Mono',monospace; color:#f5c451; font-size:13px; }
+  .shop .next { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); padding:10px 22px; font-family:'Cinzel',serif; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; background: linear-gradient(180deg,#ff8a5e,#e85a28); color:#20100a; border:none; border-radius:8px; }
+
+  /* A — Card carousel (current evolved) */
+  .a-row { position:absolute; left:0; right:0; top:90px; bottom:80px; display:flex; gap:14px; justify-content:center; align-items:center; padding: 0 14px; }
+  .a-card { width:140px; height:240px; padding:12px; background: linear-gradient(180deg, rgba(46,29,107,0.65), rgba(15,9,37,0.85)); border:1px solid rgba(149,119,255,0.34); border-radius:12px; display:flex; flex-direction:column; align-items:center; box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+  .a-card .kind { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.28em; text-transform:uppercase; color:#7be3ff; padding:2px 6px; border:1px solid rgba(123,227,255,0.4); border-radius:4px; }
+  .a-card .icon { width:64px; height:64px; border-radius:10px; background: radial-gradient(circle, rgba(123,227,255,0.3), rgba(15,9,37,0.9)); border:1px solid rgba(123,227,255,0.5); display:grid; place-items:center; font-size:30px; color:#7be3ff; margin-top:10px; filter: drop-shadow(0 0 8px rgba(123,227,255,0.5)); }
+  .a-card .name { font-family:'Cinzel',serif; font-size:12px; color:#f3f0ff; margin-top:10px; text-align:center; }
+  .a-card .desc { font-size:10px; color:#bba8ff; margin-top:6px; text-align:center; flex:1; line-height:1.4; }
+  .a-card .price { width:100%; padding-top:6px; border-top:1px solid rgba(149,119,255,0.2); display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:11px; color:#f5c451; }
+
+  /* B — Tarot reading (cards on velvet) */
+  .b-table { position:absolute; left:0; right:0; top:80px; bottom:80px; background: radial-gradient(ellipse at center, rgba(60,20,40,0.6), rgba(7,5,26,0.95)); border-top:1px solid rgba(245,196,81,0.2); border-bottom:1px solid rgba(245,196,81,0.2); display:flex; align-items:center; justify-content:center; gap:18px; }
+  .b-card { width:120px; height:180px; padding:10px; background: linear-gradient(180deg,#1a1245,#0a0822); border:2px solid #7752f0; border-radius:14px; display:flex; flex-direction:column; align-items:center; position:relative; box-shadow: 0 14px 40px rgba(0,0,0,0.6), inset 0 0 0 4px rgba(245,196,81,0.15); transform: rotate(-3deg); transition: transform 0.3s; }
+  .b-card:nth-child(2) { transform: rotate(2deg) translateY(-8px); }
+  .b-card:nth-child(3) { transform: rotate(-1deg) translateY(-2px); }
+  .b-card:nth-child(4) { transform: rotate(4deg); }
+  .b-card .corner { position:absolute; top:6px; left:6px; right:6px; bottom:6px; border:1px solid rgba(245,196,81,0.4); border-radius:10px; pointer-events:none; }
+  .b-card .icon { font-size:36px; color:#f5c451; margin-top:24px; filter: drop-shadow(0 0 6px #f5c451); }
+  .b-card .name { font-family:'Cinzel Decorative',serif; font-size:11px; color:#f3f0ff; margin-top:auto; text-align:center; letter-spacing:0.1em; }
+  .b-card .price { font-family:'JetBrains Mono',monospace; font-size:10px; color:#f5c451; margin-top:4px; }
+  .b-overlay { position:absolute; bottom:90px; left:50%; transform:translateX(-50%); padding:8px 14px; background:rgba(7,5,26,0.85); border:1px solid rgba(149,119,255,0.4); border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:10px; color:#bba8ff; letter-spacing:0.18em; text-transform:uppercase; }
+
+  /* C — Vendor altar (NPC + scrolls list) */
+  .c-vendor { position:absolute; left:24px; top:90px; bottom:80px; width:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  .c-vendor .silhouette { width:140px; height:160px; background: radial-gradient(ellipse at 50% 30%, rgba(149,119,255,0.5), transparent 70%); border-radius: 50% 50% 20% 20%; position:relative; }
+  .c-vendor .silhouette::after { content:""; position:absolute; left:50%; top:30%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background: radial-gradient(circle, #f5c451 30%, transparent 70%); }
+  .c-vendor .name { font-family:'Cinzel Decorative',serif; font-size:14px; color:#f5c451; }
+  .c-vendor .quote { font-family:'Exo 2',sans-serif; font-style:italic; font-size:11px; color:#bba8ff; text-align:center; padding: 0 8px; }
+  .c-list { position:absolute; right:24px; top:90px; bottom:80px; left:264px; display:flex; flex-direction:column; gap:8px; padding:8px 0; overflow:hidden; }
+  .c-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:rgba(28,18,69,0.5); border:1px solid rgba(149,119,255,0.25); border-radius:8px; transition: background 0.2s; cursor:pointer; }
+  .c-item:hover { background:rgba(123,227,255,0.1); border-color:#7be3ff; }
+  .c-item .icon { width:36px; height:36px; border-radius:6px; background:rgba(123,227,255,0.15); border:1px solid rgba(123,227,255,0.5); display:grid; place-items:center; font-size:18px; color:#7be3ff; flex-shrink:0; }
+  .c-item .info { flex:1; min-width:0; }
+  .c-item .info .name { font-family:'Cinzel',serif; font-size:12px; color:#f3f0ff; }
+  .c-item .info .desc { font-size:10px; color:#bba8ff; margin-top:2px; }
+  .c-item .price { font-family:'JetBrains Mono',monospace; font-size:13px; color:#f5c451; flex-shrink:0; }
+  .c-item .kind { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:0.2em; color:#9577ff; text-transform:uppercase; padding:2px 6px; border:1px solid rgba(149,119,255,0.3); border-radius:4px; flex-shrink:0; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Carousel Cards — Polished Current Direction</h3>
+      <p>4-5 cards in a row, gentle float animation. Same as today but tighter. Fast, familiar, shoppable. Lowest risk.</p>
+      <div class="shop">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Between The Stars ◇</div>
+          <div class="name">The Celestial Bazaar</div>
+        </div>
+        <div class="shards">◆ 32</div>
+        <div class="a-row">
+          <div class="a-card"><span class="kind">Oracle</span><div class="icon">★</div><div class="name">Lyra's Eye</div><div class="desc">Pairs gain ×2 mult per matching face</div><div class="price"><span>◆ 8</span><span style="color:#7be3ff;">BUY</span></div></div>
+          <div class="a-card"><span class="kind">Tarot</span><div class="icon" style="background: radial-gradient(circle, rgba(204,136,255,0.3), rgba(15,9,37,0.9)); border-color:rgba(204,136,255,0.5); color:#cc88ff;">⚗</div><div class="name">The Hermit</div><div class="desc">Lock 1 die through next reroll</div><div class="price"><span>◆ 4</span><span style="color:#7be3ff;">BUY</span></div></div>
+          <div class="a-card"><span class="kind">Voucher</span><div class="icon" style="background: radial-gradient(circle, rgba(245,196,81,0.3), rgba(15,9,37,0.9)); border-color:rgba(245,196,81,0.5); color:#f5c451;">◆</div><div class="name">Brass Cup</div><div class="desc">+1 reroll per blind</div><div class="price"><span>◆ 12</span><span style="color:#e2334a;">LOW</span></div></div>
+          <div class="a-card"><span class="kind">Oracle</span><div class="icon">☼</div><div class="name">Sun Dial</div><div class="desc">First hand each blind: ×3 base</div><div class="price"><span>◆ 6</span><span style="color:#7be3ff;">BUY</span></div></div>
+        </div>
+        <button class="next">Next Blind →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tarot Reading — Cards Dealt On Velvet</h3>
+      <p>Vendor lays cards face-down on a velvet table. Hover flips. Tilt + shadow + ornate border. Theatrical, ritual feel — fits divination identity. Trades scannability for atmosphere.</p>
+      <div class="shop">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Between The Stars ◇</div>
+          <div class="name">The Celestial Bazaar</div>
+        </div>
+        <div class="shards">◆ 32</div>
+        <div class="b-table">
+          <div class="b-card"><div class="corner"></div><div class="icon">★</div><div class="name">Lyra's Eye</div><div class="price">◆ 8</div></div>
+          <div class="b-card"><div class="corner"></div><div class="icon" style="color:#cc88ff;">⚗</div><div class="name">The Hermit</div><div class="price">◆ 4</div></div>
+          <div class="b-card"><div class="corner"></div><div class="icon">◆</div><div class="name">Brass Cup</div><div class="price">◆ 12</div></div>
+          <div class="b-card"><div class="corner"></div><div class="icon">☼</div><div class="name">Sun Dial</div><div class="price">◆ 6</div></div>
+        </div>
+        <div class="b-overlay">— Lyra's Eye · Pairs ×2 per match —</div>
+        <button class="next">Next Blind →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Vendor Altar — Silhouette + Scroll List</h3>
+      <p>Cloaked vendor on left (silhouette w/ glowing eye), wares listed as a vertical scroll on right. Chat-like, dense info, fastest to compare. Trades visual splendor for usability.</p>
+      <div class="shop">
+        <div class="stars"></div>
+        <div class="head">
+          <div class="lbl">◇ Between The Stars ◇</div>
+          <div class="name">The Celestial Bazaar</div>
+        </div>
+        <div class="shards">◆ 32</div>
+        <div class="c-vendor">
+          <div class="silhouette"></div>
+          <div class="name">The Cartomancer</div>
+          <div class="quote">"Choose well — the void keeps no change."</div>
+        </div>
+        <div class="c-list">
+          <div class="c-item"><div class="icon">★</div><div class="info"><div class="name">Lyra's Eye</div><div class="desc">Pairs gain ×2 mult per matching face</div></div><span class="kind">Oracle</span><span class="price">◆ 8</span></div>
+          <div class="c-item"><div class="icon" style="background:rgba(204,136,255,0.15); border-color:rgba(204,136,255,0.5); color:#cc88ff;">⚗</div><div class="info"><div class="name">The Hermit</div><div class="desc">Lock 1 die through next reroll</div></div><span class="kind">Tarot</span><span class="price">◆ 4</span></div>
+          <div class="c-item"><div class="icon" style="background:rgba(245,196,81,0.15); border-color:rgba(245,196,81,0.5); color:#f5c451;">◆</div><div class="info"><div class="name">Brass Cup</div><div class="desc">+1 reroll per blind</div></div><span class="kind">Voucher</span><span class="price">◆ 12</span></div>
+          <div class="c-item"><div class="icon">☼</div><div class="info"><div class="name">Sun Dial</div><div class="desc">First hand each blind: ×3 base</div></div><span class="kind">Oracle</span><span class="price">◆ 6</span></div>
+        </div>
+        <button class="next">Next Blind →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
