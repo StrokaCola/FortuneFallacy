@@ -1,6 +1,7 @@
 import { DebugPanel } from '../devtools/DebugPanel';
 import { EventLogger } from '../devtools/EventLogger';
 import { BossReveal } from './hud/BossReveal';
+import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
 import { useStore } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
@@ -41,6 +42,7 @@ export function App() {
           {screen === 'scores' && <Scores />}
         </ScreenTransition>
         <BossReveal />
+        <ArrivalToast />
         <Particles />
       </div>
 

@@ -35,7 +35,8 @@ if (portal?.fromPortal) {
   setStateRaw((s) => ({
     ...s,
     meta: { ...s.meta, playerName: portal.username },
-    ui: { ...s.ui, screen: s.run.goalIdx > 0 ? 'hub' : 'title' },
+    // If a run is in progress, route directly to Hub; otherwise still skip Title to Hub.
+    ui: { ...s.ui, screen: 'hub' },
   }));
 }
 

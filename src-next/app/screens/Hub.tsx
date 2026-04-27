@@ -1,5 +1,6 @@
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
+import { PortalGate } from '../portal/PortalGate';
 import { selectAnte, selectGoalIdx, selectShards, selectOracles, selectVouchers } from '../../state/selectors';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { sfxPlay } from '../../audio/sfx';
@@ -156,6 +157,17 @@ export function Hub() {
           </button>
         )}
         <button className="btn btn-ghost mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>← Title</button>
+      </div>
+
+      {/* Portal gates bottom-right (exit + optional return) */}
+      <div style={{
+        position: 'absolute', right: 24, bottom: 24, display: 'flex', gap: 18, zIndex: 5,
+        alignItems: 'flex-end', pointerEvents: 'auto',
+      }}>
+        <PortalGate size={96} label="Travel" />
+        {(typeof window !== 'undefined' && window.Portal?.readPortalParams().ref) && (
+          <PortalGate size={72} label="Return" refUrl={window.Portal.readPortalParams().ref!} />
+        )}
       </div>
     </div>
   );

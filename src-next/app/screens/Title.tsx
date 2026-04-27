@@ -1,6 +1,6 @@
 import { dispatch } from '../../actions/dispatch';
 import { Sigil } from '../visual/Sigil';
-import { PortalButton } from '../portal/PortalButton';
+import { PortalGate } from '../portal/PortalGate';
 import { useStore } from '../../state/store';
 import type { GameState } from '../../state/store';
 
@@ -51,7 +51,9 @@ export function Title() {
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
             Codex
           </button>
-          <PortalButton />
+          <div style={{ marginTop: 18 }}>
+            <PortalGate size={72} label="Travel" />
+          </div>
         </div>
 
         <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#9577ff', marginTop: 60, opacity: 0.7 }}>
