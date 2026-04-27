@@ -48,13 +48,23 @@ class ScreenMusicImpl {
     const target = this.master * (this.paused ? 0 : 1);
 
     if (this.active) {
-      const old = this.howls.get(this.active);
-      old?.fade(old.volume(), 0, CROSSFADE_MS);
+      const oldRef = this.howls.get(this.active);
+      if (oldRef) {
+        oldRef.fade(oldRef.volume(), 0, CROSSFADE_MS);
+        // Pause after the fade completes so the loop stops consuming the audio
+        // graph. Pause (not unload) so re-entering this screen is fast.
+        window.setTimeout(() => {
+          try { oldRef.pause(); } catch { /* ignore */ }
+        }, CROSSFADE_MS + 50);
+      }
     }
 
     const next = this.getOrCreate(screen);
+    // Reset volume to 0 first so crossfade-from is deterministic regardless of
+    // any prior in-flight fade tween left over.
+    next.volume(0);
     next.play();
-    next.fade(next.volume(), target, CROSSFADE_MS);
+    next.fade(0, target, CROSSFADE_MS);
 
     this.active = screen;
   }
@@ -79,7 +89,14 @@ class ScreenMusicImpl {
     this.paused = true;
     if (this.active) {
       const cur = this.howls.get(this.active);
-      cur?.fade(cur.volume(), 0, 200);
+      if (cur) {
+        cur.fade(cur.volume(), 0, 200);
+        // Hard-pause after the short fade so the loop stops consuming resources
+        // while the tab is hidden.
+        window.setTimeout(() => {
+          try { cur.pause(); } catch { /* ignore */ }
+        }, 250);
+      }
     }
   }
 
@@ -88,7 +105,10 @@ class ScreenMusicImpl {
     this.paused = false;
     if (this.active) {
       const cur = this.howls.get(this.active);
-      cur?.fade(cur.volume(), this.master, 200);
+      if (cur) {
+        try { cur.play(); } catch { /* ignore */ }
+        cur.fade(cur.volume(), this.master, 200);
+      }
     }
   }
 
@@ -103,9 +123,22 @@ class ScreenMusicImpl {
 
 export const screenMusic = new ScreenMusicImpl();
 
+let visibilityHandler: (() => void) | null = null;
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
+  visibilityHandler = () => {
     if (document.hidden) screenMusic.pause();
     else screenMusic.resume();
+  };
+  document.addEventListener('visibilitychange', visibilityHandler);
+}
+
+declare global {
+  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
+}
+
+if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
+  (import.meta as ImportMeta).hot!.dispose(() => {
+    if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
+    screenMusic.reset();
   });
 }

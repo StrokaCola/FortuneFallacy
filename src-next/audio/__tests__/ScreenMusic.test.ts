@@ -90,3 +90,33 @@ describe('ScreenMusic', () => {
     expect(shopFade?.[1]).toBeGreaterThan(0);
   });
 });
+
+describe('ScreenMusic — pause/resume', () => {
+  it('pause() fades active track to 0', () => {
+    screenMusic.start('hub');
+    const before = howlInstances[0]!.fadeCalls.length;
+    screenMusic.pause();
+    const fade = howlInstances[0]!.fadeCalls.at(-1);
+    expect(howlInstances[0]!.fadeCalls.length).toBeGreaterThan(before);
+    expect(fade?.[1]).toBe(0);
+  });
+
+  it('resume() fades active track back up', () => {
+    screenMusic.start('hub');
+    screenMusic.pause();
+    screenMusic.resume();
+    const fade = howlInstances[0]!.fadeCalls.at(-1);
+    expect(fade?.[1]).toBeGreaterThan(0);
+  });
+
+  it('rapid start(a)→start(b)→start(c) leaves only c active', () => {
+    screenMusic.start('hub');
+    screenMusic.start('shop');
+    screenMusic.start('forge');
+    expect(howlInstances).toHaveLength(3);
+    // The last-started track should have a fade up; intermediate ones should have fades to 0.
+    expect(howlInstances[2]!.fadeCalls.at(-1)?.[1]).toBeGreaterThan(0);
+    expect(howlInstances[0]!.fadeCalls.at(-1)?.[1]).toBe(0);
+    expect(howlInstances[1]!.fadeCalls.at(-1)?.[1]).toBe(0);
+  });
+});
