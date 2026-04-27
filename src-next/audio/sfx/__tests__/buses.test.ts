@@ -3,18 +3,27 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 // Tone.js cannot run under jsdom (no Web Audio). Mock the surface that
 // `buses.ts` touches with lightweight stubs that record connections and
 // expose AudioParam-shaped properties so triggerDuck can schedule.
+const mockState = vi.hoisted(() => ({
+  connections: [] as unknown[][],
+  rampCalls: [] as unknown[][],
+}));
+
 vi.mock('tone', () => {
   class FakeParam {
     value = 1;
     cancelScheduledValues = vi.fn();
+    cancelAndHoldAtTime = vi.fn();
     setValueAtTime = vi.fn();
-    linearRampToValueAtTime = vi.fn();
+    linearRampToValueAtTime = vi.fn((v: number, t: number) => {
+      mockState.rampCalls.push([v, t]);
+    });
     setTargetAtTime = vi.fn();
   }
   class Node {
-    connect() { return this; }
+    connect(dst: unknown) { mockState.connections.push([this, dst]); return this; }
     disconnect() { return this; }
     toDestination() { return this; }
+    dispose() { return this; }
   }
   class Gain extends Node {
     gain = new FakeParam();
@@ -54,10 +63,14 @@ vi.mock('tone', () => {
   }
   return {
     Gain, EQ3, Compressor, Reverb, PingPongDelay, Limiter,
-    getContext: () => ({ rawContext: { currentTime: 0 } }),
+    getContext: () => ({ rawContext: {} }),
+    now: () => 0,
+    __connections: mockState.connections,
+    __rampCalls: mockState.rampCalls,
   };
 });
 
+const Tone = await import('tone');
 const { buildBuses, triggerDuck } = await import('../buses');
 type Buses = Awaited<ReturnType<typeof buildBuses>>;
 
@@ -87,5 +100,51 @@ describe('buses', () => {
 
   it('triggerDuck schedules without throwing', () => {
     expect(() => triggerDuck(buses, 4, 80, 250)).not.toThrow();
+  });
+
+  it('routes every category bus output through postKey -> sidechainKey -> master', () => {
+    const conns = (Tone as unknown as { __connections: unknown[][] }).__connections;
+    const findEdge = (src: unknown, dst: unknown) =>
+      conns.some((edge) => edge[0] === src && edge[1] === dst);
+
+    expect(buses.perc.output).toBeDefined();
+    expect(buses.mag.output).toBeDefined();
+    expect(buses.impact.output).toBeDefined();
+    expect(buses.ui.output).toBeDefined();
+    expect(buses.postKey).toBeDefined();
+    expect(buses.sidechainKey).toBeDefined();
+    expect(buses.master).toBeDefined();
+
+    // Each category bus output -> postKey
+    expect(findEdge(buses.perc.output, buses.postKey)).toBe(true);
+    expect(findEdge(buses.mag.output, buses.postKey)).toBe(true);
+    expect(findEdge(buses.impact.output, buses.postKey)).toBe(true);
+    expect(findEdge(buses.ui.output, buses.postKey)).toBe(true);
+
+    // postKey -> sidechainKey -> master
+    expect(findEdge(buses.postKey, buses.sidechainKey)).toBe(true);
+    expect(findEdge(buses.sidechainKey, buses.master)).toBe(true);
+  });
+
+  it('triggerDuck schedules ramps to the computed target then back to 1', () => {
+    const ramps = (Tone as unknown as { __rampCalls: unknown[][] }).__rampCalls;
+    const beforeRamps = ramps.length;
+    triggerDuck(buses, 4, 80, 250);
+    const newRamps = ramps.slice(beforeRamps);
+    // Two ramps scheduled.
+    expect(newRamps.length).toBeGreaterThanOrEqual(2);
+    // First ramp targets ~0.631 (-4 dB linear).
+    const expected = Math.pow(10, -4 / 20);
+    expect(Math.abs((newRamps[0]![0] as number) - expected)).toBeLessThan(0.01);
+    // Last ramp returns to 1.
+    expect(newRamps[newRamps.length - 1]![0]).toBe(1);
+  });
+
+  it('triggerDuck returns early on dB <= 0', () => {
+    const ramps = (Tone as unknown as { __rampCalls: unknown[][] }).__rampCalls;
+    const beforeRamps = ramps.length;
+    triggerDuck(buses, 0, 80, 250);
+    triggerDuck(buses, -3, 80, 250);
+    expect(ramps.length).toBe(beforeRamps);
   });
 });

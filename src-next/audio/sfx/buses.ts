@@ -36,7 +36,8 @@ type BusSpec = {
   delay: number;
 };
 
-const SPECS: Record<'perc' | 'mag' | 'impact' | 'ui', BusSpec> = {
+export type BusName = 'perc' | 'mag' | 'impact' | 'ui';
+const SPECS: Record<BusName, BusSpec> = {
   perc:   { hp: 80,  midDb: -2, midFreq: 350,  highDb: 3, highFreq: 5000, compThreshDb: -14, compRatio: 4, plate: 0.10, hall: 0.05, delay: 0.05 },
   mag:    { hp: 200, midDb:  0, midFreq: 700,  highDb: 3, highFreq: 3000, compThreshDb: -16, compRatio: 3, plate: 0.25, hall: 0.15, delay: 0.10 },
   impact: { hp: 0,   midDb:  0, midFreq: 600,  highDb: 0, highFreq: 5000, compThreshDb: -12, compRatio: 6, plate: 0.10, hall: 0.35, delay: 0.20 },
@@ -102,14 +103,32 @@ export async function buildBuses(): Promise<Buses> {
 }
 
 export function triggerDuck(buses: Buses, dB: number, attackMs: number, releaseMs: number): void {
-  const ctx = Tone.getContext().rawContext as unknown as AudioContext;
-  const now = ctx.currentTime;
+  if (dB <= 0) return; // 0 dB or negative = no-op; callers should pass a positive duck depth.
+  const now = Tone.now();
   const attackS = attackMs / 1000;
   const releaseS = releaseMs / 1000;
-  const target = Math.pow(10, -Math.abs(dB) / 20);
+  const target = Math.pow(10, -dB / 20);
   const param = buses.sidechainKey.gain;
-  param.cancelScheduledValues(now);
-  param.setValueAtTime(param.value, now);
+  // cancelAndHoldAtTime preserves the in-flight ramp value so rapid re-triggers
+  // start from where the gain *actually is*, not the last-set Web Audio .value.
+  if ('cancelAndHoldAtTime' in param && typeof (param as unknown as { cancelAndHoldAtTime: unknown }).cancelAndHoldAtTime === 'function') {
+    (param as unknown as { cancelAndHoldAtTime: (t: number) => void }).cancelAndHoldAtTime(now);
+  } else {
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(param.value, now);
+  }
   param.linearRampToValueAtTime(target, now + attackS);
   param.linearRampToValueAtTime(1, now + attackS + releaseS);
+}
+
+export function disposeBuses(b: Buses): void {
+  // Dispose every owned Tone node so HMR / repeated buildBuses calls don't leak.
+  const nodes: { dispose?: () => void }[] = [
+    b.perc.input, b.perc.eq, b.perc.comp, b.perc.plateSend, b.perc.hallSend, b.perc.delaySend, b.perc.output,
+    b.mag.input,  b.mag.eq,  b.mag.comp,  b.mag.plateSend,  b.mag.hallSend,  b.mag.delaySend,  b.mag.output,
+    b.impact.input, b.impact.eq, b.impact.comp, b.impact.plateSend, b.impact.hallSend, b.impact.delaySend, b.impact.output,
+    b.ui.input, b.ui.eq, b.ui.comp, b.ui.plateSend, b.ui.hallSend, b.ui.delaySend, b.ui.output,
+    b.plate, b.hall, b.delay, b.master, b.sidechainKey, b.postKey,
+  ];
+  nodes.forEach((n) => { try { n.dispose?.(); } catch { /* ignore */ } });
 }
