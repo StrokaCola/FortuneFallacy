@@ -52,6 +52,7 @@ class AudioEngineImpl {
   private saveTimer: number | null = null;
   private bigScoreReleased = false;
   private tension = 0;
+  private active = true;
 
   constructor() {
     const mem = loadMemory();
@@ -137,6 +138,14 @@ class AudioEngineImpl {
 
   getTension(): number {
     return this.tension;
+  }
+
+  setActive(active: boolean): void {
+    this.active = active;
+  }
+
+  isActive(): boolean {
+    return this.active;
   }
 
   bumpHeat(delta: number): void {
@@ -268,6 +277,13 @@ class AudioEngineImpl {
       baseTarget *= 0.4;
       comboTarget *= 0.2;
       peakTarget *= 0.0;
+    }
+
+    if (!this.active) {
+      baseTarget = 0;
+      comboTarget = 0;
+      peakTarget = 0;
+      failTarget = 0;
     }
 
     const lerpK = 0.12;
