@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { DebugPanel } from '../devtools/DebugPanel';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
@@ -14,12 +15,32 @@ import { Scores } from './screens/Scores';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { useMotion } from './hooks/useMotion';
 import { ScreenTransition } from './visual/ScreenTransition';
+import { audioEngine, ensureAudioAfterGesture } from '../audio/AudioEngine';
+import { screenMusic, type ScreenId } from '../audio/ScreenMusic';
 
 export function App() {
   useMotion();
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
+
+  useEffect(() => {
+    ensureAudioAfterGesture();
+  }, []);
+
+  useEffect(() => {
+    const isRound = screen === 'round';
+    audioEngine.setActive(isRound);
+    if (isRound) {
+      screenMusic.stop();
+      return;
+    }
+    if (screen === 'title' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
+      // win/scores reuse hub track to avoid silence on those rare screens.
+      const target: ScreenId = (screen === 'win' || screen === 'scores') ? 'hub' : screen;
+      screenMusic.start(target);
+    }
+  }, [screen, isBoss]);
 
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
