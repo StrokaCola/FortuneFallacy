@@ -16,6 +16,7 @@ export function ScreenTransition({
   const [renderedKey, setRenderedKey] = useState(screenKey);
   const [renderedChildren, setRenderedChildren] = useState<ReactNode>(children);
   const lastKey = useRef(screenKey);
+  const tEnterRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   useEffect(() => {
     if (screenKey === lastKey.current) return;
@@ -28,11 +29,19 @@ export function ScreenTransition({
       setRenderedKey(screenKey);
       setRenderedChildren(children);
       setPhase('entering');
-      const tEnter = window.setTimeout(() => setPhase('idle'), half);
-      return () => window.clearTimeout(tEnter);
+      tEnterRef.current = window.setTimeout(() => {
+        setPhase('idle');
+        tEnterRef.current = null;
+      }, half);
     }, half);
 
-    return () => window.clearTimeout(tExit);
+    return () => {
+      window.clearTimeout(tExit);
+      if (tEnterRef.current !== null) {
+        window.clearTimeout(tEnterRef.current);
+        tEnterRef.current = null;
+      }
+    };
   }, [screenKey, children]);
 
   // Keep rendered children fresh during 'idle'
