@@ -21,8 +21,10 @@ const THEMES: Record<ThemeKey, {
     star: '#dff7ff', accent: '#7be3ff' },
 };
 
-function Starfield({ density = 1, theme = 'voidlit', drift = true }: { density?: number; theme?: ThemeKey; drift?: boolean }) {
+function Starfield({ density = 1, theme = 'voidlit', drift = true, tension = 0 }: { density?: number; theme?: ThemeKey; drift?: boolean; tension?: number }) {
   const t = THEMES[theme];
+  // Speed up drift with tension: tension=0 → 1×, tension=1 → 1.4×
+  const driftMul = 1 + 0.4 * tension;
   const layers = useMemo(() => {
     const make = (count: number, sizeMin: number, sizeMax: number, dist: number) => {
       const stars = [];
@@ -49,7 +51,7 @@ function Starfield({ density = 1, theme = 'voidlit', drift = true }: { density?:
           viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"
           style={{
             position: 'absolute', inset: 0,
-            animation: drift ? `drift ${180 / layer.dist}s linear infinite alternate` : 'none',
+            animation: drift ? `drift ${(180 / layer.dist) / driftMul}s linear infinite alternate` : 'none',
             opacity: 0.5 + layer.dist * 0.4,
           }}>
           {layer.stars.map((s, i) => (
@@ -82,15 +84,29 @@ export function CosmosBackground({
   density = 1,
   nebula = true,
   drift = true,
-}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean }) {
+  tension = 0,
+}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number }) {
   const t = THEMES[theme];
+  const tensionClamped = Math.max(0, Math.min(1, tension));
+  // Crimson tint fades in from 0 starting at tension=0.3, reaching opacity 0.25 at tension=1.
+  const crimsonOpacity = tensionClamped < 0.3 ? 0 : (tensionClamped - 0.3) * (0.25 / 0.7);
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
       background: `radial-gradient(ellipse at 50% 35%, ${t.bgNear} 0%, ${t.bgMid} 45%, ${t.bgFar} 100%)`,
     }}>
       <Nebula theme={theme} intensity={nebula ? 1 : 0.3} />
-      <Starfield density={density} theme={theme} drift={drift} />
+      <Starfield density={density} theme={theme} drift={drift} tension={tensionClamped} />
+      {crimsonOpacity > 0 && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,1) 100%)',
+          opacity: crimsonOpacity,
+          mixBlendMode: 'multiply',
+          transition: 'opacity 600ms ease',
+        }} />
+      )}
     </div>
   );
 }

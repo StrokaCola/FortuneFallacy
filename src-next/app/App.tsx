@@ -3,7 +3,7 @@ import { EventLogger } from '../devtools/EventLogger';
 import { BossReveal } from './hud/BossReveal';
 import { Particles } from './hud/Particles';
 import { useStore } from '../state/store';
-import { selectScreen, selectIsBoss } from '../state/selectors';
+import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
 import { Title } from './screens/Title';
 import { Hub }   from './screens/Hub';
 import { Round } from './screens/Round';
@@ -19,6 +19,7 @@ export function App() {
   useMotion();
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
+  const tension = useStore(selectTensionFromState);
 
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
@@ -27,7 +28,7 @@ export function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
-      <CosmosBackground theme={theme} density={1} nebula drift />
+      <CosmosBackground theme={theme} density={1} nebula drift tension={tension} />
 
       <div className="absolute inset-0 pointer-events-none">
         <ScreenTransition screenKey={screen}>
