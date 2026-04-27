@@ -1,4 +1,4 @@
-import type { SimulationRequest, SimulationResult } from '../events/types';
+import type { SimulationRequest, SimulationResult, DieFrame } from '../events/types';
 import { faceFromQuaternion } from './faceFromPose';
 import { mulberry32 } from '../core/rng';
 
@@ -72,6 +72,8 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   const eventQueue = new r.EventQueue(true);
   const STEP_MS = 1000 / 60;
 
+  const frames: DieFrame[][] = bodies.map(() => []);
+
   for (let step = 0; step < 240; step++) {
     world.step(eventQueue);
     eventQueue.drainCollisionEvents(() => { collisionCount += 1; });
@@ -83,6 +85,8 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
       if (t.y > bounceHeights[i]!) bounceHeights[i] = t.y;
       const angV = b.angvel();
       const angSpeed = Math.hypot(angV.x, angV.y, angV.z);
+      const q = b.rotation();
+      frames[i]!.push({ px: t.x, py: t.y, pz: t.z, qx: q.x, qy: q.y, qz: q.z, qw: q.w });
       if (!settled[i] && speed < 0.05 && angSpeed < 0.05 && t.y < 1.0) {
         settled[i] = true;
         settleMs[i] = step * STEP_MS;
@@ -110,5 +114,6 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     peakVelocity,
     collisionCount,
     bounceHeights,
+    frames,
   };
 }
