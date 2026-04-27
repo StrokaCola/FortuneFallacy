@@ -61,14 +61,41 @@ vi.mock('tone', () => {
     threshold = new FakeParam();
     constructor(_t?: number) { super(); }
   }
+  class Voice extends Node {
+    frequency = new FakeParam();
+    volume = new FakeParam();
+    constructor(_opts?: unknown) { super(); }
+    triggerAttack() { return this; }
+    triggerRelease() { return this; }
+    triggerAttackRelease() { return this; }
+  }
+  class PluckSynth extends Voice {}
+  class NoiseSynth extends Voice {}
+  class MembraneSynth extends Voice {}
+  class FMSynth extends Voice {}
+  class MonoSynth extends Voice {}
+  class PolySynth extends Voice {
+    constructor(_voice?: unknown, _opts?: unknown) { super(); }
+  }
+  class MetalSynth extends Voice {}
+  class Synth extends Voice {}
+  class Filter extends Node {
+    frequency = new FakeParam();
+    constructor(_f?: number, _t?: string) { super(); }
+  }
   return {
     Gain, EQ3, Compressor, Reverb, PingPongDelay, Limiter,
+    PluckSynth, NoiseSynth, MembraneSynth, FMSynth, MonoSynth, PolySynth, MetalSynth, Synth, Filter,
     getContext: () => ({ rawContext: {} }),
     now: () => 0,
+    start: () => Promise.resolve(),
+    setContext: () => undefined,
     __connections: mockState.connections,
     __rampCalls: mockState.rampCalls,
   };
 });
+
+vi.mock('howler', () => ({ Howler: { ctx: null } }));
 
 const Tone = await import('tone');
 const { buildBuses, triggerDuck } = await import('../buses');
@@ -146,5 +173,22 @@ describe('buses', () => {
     triggerDuck(buses, 0, 80, 250);
     triggerDuck(buses, -3, 80, 250);
     expect(ramps.length).toBe(beforeRamps);
+  });
+});
+
+const { buildBank } = await import('../synthBank');
+
+describe('synthBank build', () => {
+  it('builds without throwing and exposes all voice keys', async () => {
+    const bank = await buildBank();
+    const required = [
+      'diceClack','lockTap','rerollPool','buyPool','combo','upgrade',
+      'bossSting','bigScore','winFanfare','bust','chipTick',
+      'castSwell','castBoom','sigilDraw','cardFlip','nodePulse','transitionWipe',
+      'master','buses',
+    ] as const;
+    for (const key of required) {
+      expect(bank).toHaveProperty(key);
+    }
   });
 });
