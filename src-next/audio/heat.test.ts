@@ -50,6 +50,14 @@ describe('selectTension', () => {
   it('clamps to 1 when score is negative (Soft Bust state)', () => {
     expect(selectTension({ ...base, score: -100 })).toBe(1);
   });
+
+  it('clamps handsRatio when handsLeft exceeds handsTotal (bonus-hand consumable)', () => {
+    // Bonus hand from `the_world`: handsLeft=4 > handsTotal=3 should not invert pace
+    const t = selectTension({ ...base, score: 500, handsLeft: 4, handsTotal: 3 });
+    // With clamp: handsRatio=1, pace=1, gap=0.5 → t=0.5
+    // Without clamp: handsRatio=1.33, pace=0.6, gap=0.5 → t=0.3 (wrong direction)
+    expect(t).toBeCloseTo(0.5, 2);
+  });
 });
 
 describe('selectTensionFromState', () => {
