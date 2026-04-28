@@ -24,6 +24,7 @@ export type RoundSlice = {
     mult: number;
     chain: { mult: number };
     total: number;
+    events: Array<{ type: string; payload: { id: string; phase: number; deltaChips: number; deltaMult: number } }>;
     state: { round: { dice: Array<{ face: number }> } };
   } | null;
   pendingRoundEnd?: 'clear' | 'bust' | null;

@@ -3,7 +3,7 @@ import { bus } from '../../events/bus';
 import { dispatch } from '../../actions/dispatch';
 import type { Beat } from '../../core/scoring/types';
 
-type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean };
+type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
 let slamId = 1;
 
@@ -43,7 +43,7 @@ export function ScoreMoment() {
           break;
         case 'mult-slam': {
           const id = slamId++;
-          setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed }]);
+          setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed, tint: beat.tint }]);
           setTimeout(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
           break;
         }
@@ -92,19 +92,23 @@ export function ScoreMoment() {
         </div>
       )}
       <div style={{ display: 'flex', gap: 18, marginBottom: 18 }}>
-        {slams.map((s) => (
-          <div key={s.id} className="f-mono" style={{
-            padding: '8px 18px', borderRadius: 8,
-            background: s.gold ? '#f5c45120' : '#ff784720',
-            border: `2px solid ${s.gold ? '#f5c451' : '#ff7847'}`,
-            color: s.gold ? '#f5c451' : '#ff7847',
-            fontSize: 28, fontWeight: 700,
-            boxShadow: `0 0 24px ${s.gold ? '#f5c451' : '#ff7847'}`,
-            animation: 'boomPop 250ms cubic-bezier(0.2, 1.4, 0.5, 1)',
-          }}>
-            ×{s.multiplier}
-          </div>
-        ))}
+        {slams.map((s) => {
+          const isMagenta = s.tint === 'magenta';
+          const baseColor = isMagenta ? '#cc88ff' : (s.gold ? '#f5c451' : '#ff7847');
+          return (
+            <div key={s.id} className="f-mono" style={{
+              padding: '8px 18px', borderRadius: 8,
+              background: `${baseColor}20`,
+              border: `2px solid ${baseColor}`,
+              color: baseColor,
+              fontSize: 28, fontWeight: 700,
+              boxShadow: `0 0 24px ${baseColor}`,
+              animation: 'boomPop 250ms cubic-bezier(0.2, 1.4, 0.5, 1)',
+            }}>
+              ×{s.multiplier}
+            </div>
+          );
+        })}
       </div>
       {stamp === 'target' && (
         <div style={{

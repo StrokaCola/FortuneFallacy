@@ -110,6 +110,9 @@ export const rollHandler: ActionHandler = (a, s) => {
             mult: final.mult ?? 1,
             chain: { mult: final.chain?.mult ?? 1 },
             total: final.total ?? 0,
+            events: final.events
+              .filter((e) => e.type === 'onUpgradeTriggered')
+              .map((e) => ({ type: e.type, payload: e.payload as { id: string; phase: number; deltaChips: number; deltaMult: number } })),
             state: { round: { dice: workingState.round.dice } },
           },
         },
