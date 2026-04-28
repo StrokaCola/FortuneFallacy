@@ -23,9 +23,9 @@ function offerMeta(kind: string, id: string): Meta {
     return {
       name: c?.name ?? id,
       icon: c?.icon ?? '◇',
-      color: c?.type === 'tarot' ? '#cc88ff' : '#7be3ff',
+      color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
       desc: c?.description ?? '',
-      kindLabel: c?.type ?? 'tarot',
+      kindLabel: c?.type ?? 'calibration',
     };
   }
   if (kind === 'voucher') {

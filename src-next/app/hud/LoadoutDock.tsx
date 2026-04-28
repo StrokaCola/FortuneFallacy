@@ -64,7 +64,7 @@ export function LoadoutDock() {
           {consumables.map((id, i) => {
             const def = lookupConsumable(id);
             if (!def) return null;
-            const accent = def.type === 'tarot' ? '#cc88ff' : '#f5c451';
+            const accent = def.type === 'calibration' ? '#cc88ff' : '#f5c451';
             return (
               <button
                 key={`c-${i}`}
