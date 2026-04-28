@@ -1,3 +1,6 @@
+import { bus } from '../events/bus';
+import { audioEngine } from './AudioEngine';
+
 export type AudioMemory = {
   heat: number;
   combo: number;
@@ -66,3 +69,24 @@ export function selectTension(inputs: TensionInputs): number {
   const pace = 1 + (1 - handsRatio) * 1.2;
   return Math.max(0, Math.min(1, gap * pace));
 }
+
+/**
+ * Subscribe to bus events that should drive heat layer changes.
+ * Returns an unsubscribe function (same pattern as installScoringRouter).
+ *
+ * Wire this up in audioBridge.startAudioBridge() alongside installScoringRouter.
+ *
+ * NOTE: AudioEngine.ts imports pure math functions from this module, so there
+ * is a circular reference in the import graph.  This is intentional and safe:
+ * AudioEngine.ts only uses heat.ts functions (defined synchronously), while
+ * heat.ts only touches the audioEngine singleton inside event callbacks that
+ * fire after both modules have fully initialised.
+ */
+export function installHeatRouter(): () => void {
+  return bus.on('onScoreBeat', ({ beat }) => {
+    if (beat.kind === 'cross-target') {
+      audioEngine.bumpHeat(0.25);
+    }
+  });
+}
+

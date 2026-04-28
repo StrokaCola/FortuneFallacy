@@ -1,0 +1,135 @@
+import type { Beat, ScoreSequence, SequenceCtx, SequenceInput, SequenceTier } from './types';
+
+function pickTier(input: SequenceInput, ctx: SequenceCtx): SequenceTier {
+  if (ctx.reducedMotion) return 'short';
+  const ratio = input.finalTotal / Math.max(1, ctx.target);
+  if (ratio >= 1) return 'full';
+  if (ratio < 0.25) return 'short';
+  return 'mid';
+}
+
+function lerpGaps(from: number, to: number, n: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(Math.round(from + (to - from) * (i / Math.max(1, n - 1))));
+  }
+  return out;
+}
+
+/**
+ * Builds a deterministic beat list for a scored hand.
+ *
+ * Contract: `input.mults` must be the ordered list of multipliers actually
+ * applied by the scoring engine, so the internally-accumulated `running`
+ * total converges to `input.finalTotal`. The adapter (`adapter.ts`) is
+ * responsible for honoring this contract. Cross-target detection and the
+ * boom's `crossedTarget` flag are derived from `running`, not `finalTotal`.
+ */
+export function buildScoreSequence(
+  input: SequenceInput,
+  ctx: SequenceCtx,
+): ScoreSequence {
+  const tier = pickTier(input, ctx);
+  const beats: Beat[] = [];
+  let t = 0;
+  let running = 0;
+  let crossEmitted = false;
+
+  if (ctx.isLastHand && ctx.maxRemaining < ctx.target) {
+    beats.push({ kind: 'cast-swell', t });
+    t += 200;
+    let bailRunning = 0;
+    for (let i = 0; i < input.faces.length; i++) {
+      bailRunning += input.faces[i]!;
+      beats.push({
+        kind: 'die-tick',
+        t,
+        dieIdx: i,
+        face: input.faces[i]!,
+        chipDelta: input.faces[i]!,
+        runningTotal: bailRunning,
+        pitchSemis: i,
+      });
+      t += 60;
+    }
+    t += 200;
+    beats.push({ kind: 'bail', t, runningTotal: bailRunning, target: ctx.target });
+    return { beats, tier, totalDurMs: t };
+  }
+
+  const checkCross = (beforeRunning: number) => {
+    if (!crossEmitted && beforeRunning < ctx.target && running >= ctx.target) {
+      beats.push({ kind: 'cross-target', t: t + 80, runningTotal: running, target: ctx.target });
+      crossEmitted = true;
+    }
+  };
+
+  beats.push({ kind: 'cast-swell', t });
+  t += 200;
+
+  const gaps = tier === 'full' ? lerpGaps(200, 60, input.faces.length)
+             : tier === 'mid'  ? lerpGaps(140, 80, input.faces.length)
+             :                   input.faces.map(() => 60);
+
+  for (let i = 0; i < input.faces.length; i++) {
+    const before = running;
+    running += input.faces[i]!;
+    beats.push({
+      kind: 'die-tick',
+      t,
+      dieIdx: i,
+      face: input.faces[i]!,
+      chipDelta: input.faces[i]!,
+      runningTotal: running,
+      pitchSemis: i,
+    });
+    checkCross(before);
+    t += gaps[i]!;
+  }
+
+  if (tier === 'short') {
+    t += 150;
+    beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: running >= ctx.target });
+    return { beats, tier, totalDurMs: t };
+  }
+
+  {
+    const before = running;
+    running += input.comboBonus;
+    beats.push({
+      kind: 'combo-bonus',
+      t,
+      comboLabel: input.comboLabel,
+      chipDelta: input.comboBonus,
+      runningTotal: running,
+    });
+    checkCross(before);
+    t += 300;
+  }
+
+  const multGap = tier === 'full' ? 450 : 250;
+  let multSemis = 12;
+  for (const m of input.mults) {
+    const before = running;
+    running = Math.round(running * m.value);
+    beats.push({
+      kind: 'mult-slam',
+      t,
+      label: m.label,
+      multiplier: m.value,
+      pitchSemis: multSemis,
+      ampScale: 1 + (multSemis - 12) * 0.1,
+    });
+    checkCross(before);
+    multSemis += 2;
+    t += multGap;
+  }
+
+  if (tier === 'full') {
+    beats.push({ kind: 'hold-breath', t, durMs: 400 });
+    t += 400;
+  }
+
+  beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: running >= ctx.target });
+  return { beats, tier, totalDurMs: t };
+}

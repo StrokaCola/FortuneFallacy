@@ -91,6 +91,14 @@ export const rollHandler: ActionHandler = (a, s) => {
           chainLen: final.chain?.len ?? s.round.chainLen,
           chainTier: final.chain?.tier ?? s.round.chainTier,
           dice: s.round.dice.map((d) => ({ ...d, locked: false })),
+          lastScoringCtx: {
+            combo: final.combo ?? null,
+            chips: final.chips ?? 0,
+            mult: final.mult ?? 1,
+            chain: { mult: final.chain?.mult ?? 1 },
+            total: final.total ?? 0,
+            state: { round: { dice: s.round.dice } },
+          },
         },
       };
       const baseEvents = [...final.events];
