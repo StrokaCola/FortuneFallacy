@@ -25,6 +25,7 @@ export type RoundSlice = {
     total: number;
     state: { round: { dice: Array<{ face: number }> } };
   } | null;
+  pendingRoundEnd?: 'clear' | 'bust' | null;
 };
 
 export const initialRoundSlice = (): RoundSlice => ({

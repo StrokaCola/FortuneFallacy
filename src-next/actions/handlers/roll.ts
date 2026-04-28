@@ -103,20 +103,30 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
       const baseEvents = [...final.events];
 
+      let pendingRoundEnd: 'clear' | 'bust' | null = null;
       if (s.round.active && newScore >= s.round.target && s.round.target > 0) {
-        const cleared = clearBlind(baseState);
-        return { state: cleared.state, events: [...baseEvents, ...cleared.events] };
+        pendingRoundEnd = 'clear';
+      } else if (s.round.active && newHandsLeft === 0 && newScore < s.round.target) {
+        pendingRoundEnd = 'bust';
       }
-      if (s.round.active && newHandsLeft === 0 && newScore < s.round.target) {
-        const busted = bustBlind(baseState);
-        return { state: busted.state, events: [...baseEvents, ...busted.events] };
-      }
-      return { state: baseState, events: baseEvents };
+      const stateWithPending = pendingRoundEnd
+        ? { ...baseState, round: { ...baseState.round, pendingRoundEnd } }
+        : baseState;
+      return { state: stateWithPending, events: baseEvents };
     }
     case 'END_SCORING': {
       if (!s.round.scoring) return { state: s, events: [] };
+      const cleared = { ...s, round: { ...s.round, scoring: false, pendingRoundEnd: null } };
+      if (s.round.pendingRoundEnd === 'clear') {
+        const result = clearBlind(cleared);
+        return result;
+      }
+      if (s.round.pendingRoundEnd === 'bust') {
+        const result = bustBlind(cleared);
+        return result;
+      }
       return {
-        state: { ...s, round: { ...s.round, scoring: false } },
+        state: cleared,
         events: [],
       };
     }
