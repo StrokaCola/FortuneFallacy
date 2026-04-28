@@ -17,6 +17,7 @@ const LEGACY_KEY = 'ff_sfx_legacy';
 let bank: SynthBank | LegacySynthBank | null = null;
 let legacyMode = false;
 let initPromise: Promise<void> | null = null;
+let sfxSettingsUnsub: (() => void) | null = null;
 
 function checkLegacyFlag(): boolean {
   try {
@@ -44,9 +45,21 @@ export async function sfxInit(): Promise<void> {
       if (bank) bank.master.gain.value = audioSettings.getMaster() * audioSettings.getSfx();
     };
     applyGain();
-    audioSettings.subscribe(applyGain);
+    sfxSettingsUnsub?.();
+    sfxSettingsUnsub = audioSettings.subscribe(applyGain);
   })();
   return initPromise;
+}
+
+declare global {
+  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
+}
+
+if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
+  (import.meta as ImportMeta).hot!.dispose(() => {
+    sfxSettingsUnsub?.();
+    sfxSettingsUnsub = null;
+  });
 }
 
 export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {

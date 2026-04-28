@@ -205,6 +205,13 @@ class AudioEngineImpl {
     this.layers.fail.volume(this.actual.fail * m);
   }
 
+  dispose(): void {
+    this.audioSettingsUnsub?.();
+    this.audioSettingsUnsub = null;
+    if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
+    this.rafHandle = null;
+  }
+
   private scheduleSave(): void {
     if (this.saveTimer != null) return;
     this.saveTimer = window.setTimeout(() => {
@@ -322,4 +329,14 @@ export function ensureAudioAfterGesture(): void {
     for (const e of events) document.removeEventListener(e, handler);
   };
   for (const e of events) document.addEventListener(e, handler);
+}
+
+declare global {
+  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
+}
+
+if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
+  (import.meta as ImportMeta).hot!.dispose(() => {
+    audioEngine.dispose();
+  });
 }

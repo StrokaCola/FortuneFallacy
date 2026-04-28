@@ -120,6 +120,12 @@ class ScreenMusicImpl {
     this.active = null;
     this.paused = false;
   }
+
+  dispose(): void {
+    this.audioSettingsUnsub?.();
+    this.audioSettingsUnsub = null;
+    this.reset();
+  }
 }
 
 export const screenMusic = new ScreenMusicImpl();
@@ -140,6 +146,6 @@ declare global {
 if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
   (import.meta as ImportMeta).hot!.dispose(() => {
     if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
-    screenMusic.reset();
+    screenMusic.dispose();
   });
 }
