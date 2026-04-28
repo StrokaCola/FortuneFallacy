@@ -87,5 +87,23 @@ export function migrateRetheme(saved: unknown): unknown {
     next.round = { ...round2, blindId: BOSS_ID_MAP[round2.blindId] };
   }
 
+  // run.handsPlayed default
+  const run5 = next.run as Record<string, unknown> | undefined;
+  if (run5 && typeof run5.handsPlayed !== 'number') {
+    next.run = { ...run5, handsPlayed: 0 };
+  }
+
+  // run.compoundingStacks default
+  const run6 = next.run as Record<string, unknown> | undefined;
+  if (run6 && typeof run6.compoundingStacks !== 'number') {
+    next.run = { ...run6, compoundingStacks: 0 };
+  }
+
+  // round.shardSinkPrimedThisHand default
+  const round3 = next.round as Record<string, unknown> | undefined;
+  if (round3 && typeof round3.shardSinkPrimedThisHand !== 'boolean') {
+    next.round = { ...round3, shardSinkPrimedThisHand: false };
+  }
+
   return next;
 }
