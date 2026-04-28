@@ -19,34 +19,46 @@ export function CatalystStrip() {
   const handsLeft = useStore(selectHandsLeft);
   const roundActive = useStore(selectActive);
 
-  const [pulsing, setPulsing] = useState<Record<string, boolean>>({});
-  const pulseTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'chain' | undefined>>({});
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
+    const timers = timersRef.current;
+    const track = (cb: () => void, delayMs: number): ReturnType<typeof setTimeout> => {
+      const t = setTimeout(() => {
+        timers.delete(t);
+        cb();
+      }, delayMs);
+      timers.add(t);
+      return t;
+    };
+
     const off = bus.on('onUpgradeTriggered', (payload: { id: string }) => {
       const id = payload.id;
       if (id === 'catalyst_bench') {
         const others = catalysts.filter((c) => c !== 'catalyst_bench');
         others.forEach((otherId, i) => {
-          setTimeout(() => {
-            setPulsing((s) => ({ ...s, [otherId]: true }));
-            const t = setTimeout(() => {
-              setPulsing((s) => ({ ...s, [otherId]: false }));
+          track(() => {
+            setPulsing((s) => ({ ...s, [otherId]: 'chain' }));
+            track(() => {
+              setPulsing((s) => ({ ...s, [otherId]: undefined }));
             }, PULSE_DURATION_MS);
-            pulseTimersRef.current[otherId] = t;
           }, i * CHAIN_PULSE_STEP_MS);
         });
         return;
       }
       if (catalysts.includes(id)) {
-        setPulsing((s) => ({ ...s, [id]: true }));
-        if (pulseTimersRef.current[id]) clearTimeout(pulseTimersRef.current[id]);
-        pulseTimersRef.current[id] = setTimeout(() => {
-          setPulsing((s) => ({ ...s, [id]: false }));
+        setPulsing((s) => ({ ...s, [id]: 'fire' }));
+        track(() => {
+          setPulsing((s) => ({ ...s, [id]: undefined }));
         }, PULSE_DURATION_MS);
       }
     });
-    return () => off();
+    return () => {
+      off();
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
   }, [catalysts]);
 
   if (catalysts.length === 0) return null;
@@ -59,11 +71,13 @@ export function CatalystStrip() {
       {catalysts.map((id, i) => {
         const c = lookupCatalyst(id);
         if (!c) return null;
-        const isPulsing = pulsing[id];
+        const pulseKind = pulsing[id];
         const showLastThrowWarn = id === 'last_throw' && roundActive && handsLeft === 1;
         const animation = showLastThrowWarn
           ? 'mat-telegraph-warn 1s ease-in-out infinite'
-          : isPulsing
+          : pulseKind === 'chain'
+          ? `mat-chain-pulse ${PULSE_DURATION_MS}ms ease-out`
+          : pulseKind === 'fire'
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms ease-out`
           : undefined;
         return (
