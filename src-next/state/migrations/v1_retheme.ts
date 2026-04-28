@@ -1,3 +1,5 @@
+// One-shot retheme migrator: legacy oracles/runes/tarot ids -> catalysts/mods/planet-moon ids.
+// Safe to delete after ~3 releases past v0.2.0 — by then any active save will have round-tripped through this on load.
 const CATALYST_ID_MAP: Record<string, string> = {
   the_oracle: 'stratifier',
   prophet: 'six_bias',
