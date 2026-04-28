@@ -282,6 +282,7 @@ type DieAnim = {
   faceFadeStart: number;                  // ms; 0 = idle
   faceFadeDurMs: number;
   upFace: number;                         // last known up-face from store
+  scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
 };
 
 const PIP_FADE_IN_MS = 520;
@@ -544,6 +545,12 @@ export class Dice3D {
         if (s.round.dice !== prev.round.dice) this.syncDice(s.round.dice);
       }),
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
+      bus.on('onScoreBeat', ({ beat }) => {
+        if (beat.kind === 'die-tick') {
+          const d = this.dice[beat.dieIdx];
+          if (d) d.scorePopStart = performance.now();
+        }
+      }),
     );
     this.syncDice(store.getState().round.dice);
     this.attachClick();
@@ -617,6 +624,7 @@ export class Dice3D {
         faceFadeStart: 0,
         faceFadeDurMs: PIP_FADE_IN_MS,
         upFace: 1,
+        scorePopStart: 0,
       });
     }
   }
@@ -1005,7 +1013,21 @@ export class Dice3D {
           const t = 1 - Math.pow(1 - tRaw, 3);
           d.group.position.lerpVectors(d.startPos, d.targetPos, t);
           const sc = d.startScale + (d.targetScale - d.startScale) * t;
-          d.group.scale.setScalar(sc);
+          let popMul = 1;
+          if (d.scorePopStart > 0) {
+            const popDt = now - d.scorePopStart;
+            const POP_DUR = 480;
+            if (popDt >= 0 && popDt < POP_DUR) {
+              const p = popDt / POP_DUR;
+              // 0..0.2 ramp up to 1.4, 0.2..1.0 ease back to 1.0
+              popMul = p < 0.2
+                ? 1 + 0.4 * (p / 0.2)
+                : 1 + 0.4 * Math.pow(1 - (p - 0.2) / 0.8, 2);
+            } else if (popDt >= POP_DUR) {
+              d.scorePopStart = 0;
+            }
+          }
+          d.group.scale.setScalar(sc * popMul);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);
 
           // Floaty held-die idle: bob + drift + gentle rotational shimmer once
