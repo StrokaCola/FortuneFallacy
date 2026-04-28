@@ -9,12 +9,13 @@ function ScoringTabView() {
   const [last, setLast] = useState<{ seq: ScoreSequence; emitted: Beat[] } | null>(null);
 
   useEffect(() => {
-    const off = bus.on('onScoreBeat', ({ beat }) => {
-      setLast((prev) => prev
-        ? { ...prev, emitted: [...prev.emitted, beat] }
-        : prev);
+    const offSeq = bus.on('onScoreSequenceBuilt', ({ sequence }) => {
+      setLast({ seq: sequence, emitted: [] });
     });
-    return () => off();
+    const offBeat = bus.on('onScoreBeat', ({ beat }) => {
+      setLast((prev) => prev ? { ...prev, emitted: [...prev.emitted, beat] } : prev);
+    });
+    return () => { offSeq(); offBeat(); };
   }, []);
 
   const replay = () => {
@@ -28,7 +29,7 @@ function ScoringTabView() {
         mults: [{ label: 'mult', value: 4 }, { label: 'chain', value: 2 }], finalTotal: 424 },
       { target: 100, isLastHand: false, maxRemaining: 1000, reducedMotion: false },
     );
-    setLast({ seq, emitted: [] });
+    bus.emit('onScoreSequenceBuilt', { sequence: seq });
     runScoreSequence(seq, (b) => bus.emit('onScoreBeat', { beat: b }));
   };
 

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
-type FloatText = { id: number; text: string; x: number; y: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
 type FlyNum = { id: number; fromX: number; fromY: number; toX: number; toY: number; text: string; color: string };
 
@@ -12,7 +11,6 @@ let nextId = 1;
 
 export function Particles() {
   const [bursts, setBursts] = useState<Burst[]>([]);
-  const [floats, setFloats] = useState<FloatText[]>([]);
   const [shocks, setShocks] = useState<Shock[]>([]);
   const [flies, setFlies] = useState<FlyNum[]>([]);
   const targetRef = useRef<HTMLDivElement>(null);
@@ -25,13 +23,6 @@ export function Particles() {
       const id = nextId++;
       setBursts((b) => [...b, { id, x, y, tier, color }]);
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 900);
-    });
-    const off2 = bus.on('onScoreCalculated', ({ total }) => {
-      const id = nextId++;
-      const x = window.innerWidth / 2;
-      const y = window.innerHeight / 2 - 60;
-      setFloats((f) => [...f, { id, text: `+${total.toLocaleString()}`, x, y, color: '#f5c451' }]);
-      setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1400);
     });
     const off3 = bus.on('onUpgradeTriggered', () => {
       const x = window.innerWidth * 0.2 + Math.random() * window.innerWidth * 0.6;
@@ -60,16 +51,13 @@ export function Particles() {
         setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 600);
       }
     });
-    return () => { off1(); off2(); off3(); off4(); };
+    return () => { off1(); off3(); off4(); };
   }, []);
 
   return (
     <div ref={targetRef} className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 10 }}>
       {bursts.map((b) => (
         <Ring key={b.id} x={b.x} y={b.y} color={b.color} tier={b.tier} />
-      ))}
-      {floats.map((f) => (
-        <FloatPop key={f.id} x={f.x} y={f.y} text={f.text} color={f.color} />
       ))}
       {shocks.map((s) => (
         <Shockwave key={s.id} x={s.x} y={s.y} scale={s.scale} />
@@ -98,26 +86,6 @@ function Ring({ x, y, color, tier }: { x: number; y: number; color: string; tier
         opacity: 0.95,
       }}
     />
-  );
-}
-
-function FloatPop({ x, y, text, color }: { x: number; y: number; text: string; color: string }) {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: x,
-        top: y,
-        transform: 'translate(-50%, 0)',
-        color,
-        fontFamily: '"Cinzel Decorative", serif',
-        fontSize: 32,
-        fontWeight: 700,
-        textShadow: `0 0 16px ${color}`,
-        animation: 'floatUp 1.4s ease-out forwards',
-      }}>
-      {text}
-    </div>
   );
 }
 
