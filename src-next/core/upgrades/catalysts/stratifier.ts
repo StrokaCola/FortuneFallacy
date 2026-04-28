@@ -2,7 +2,7 @@ import { register } from '../registry';
 import { Phase } from '../../pipeline/types';
 
 register({
-  id: 'the_oracle',
+  id: 'stratifier',
   phase: Phase.UPGRADES,
   priority: 100,
   apply: (ctx) => {
@@ -16,7 +16,7 @@ register({
         {
           type: 'onUpgradeTriggered',
           payload: {
-            id: 'the_oracle',
+            id: 'stratifier',
             phase: Phase.UPGRADES,
             deltaChips: 0,
             deltaMult: newMult - ctx.mult,

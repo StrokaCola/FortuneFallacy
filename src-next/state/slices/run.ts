@@ -3,7 +3,7 @@ export type RunSlice = {
   shards: number;
   ante: number;
   goalIdx: number;
-  oracles: string[];
+  catalysts: string[];
   vouchers: string[];
   consumables: string[];
 };
@@ -15,7 +15,7 @@ export const initialRunSlice = (): RunSlice => ({
   shards: 0,
   ante: 1,
   goalIdx: 0,
-  oracles: [],
+  catalysts: [],
   vouchers: [],
   consumables: [],
 });

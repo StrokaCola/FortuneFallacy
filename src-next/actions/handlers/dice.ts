@@ -1,7 +1,7 @@
 import type { ActionHandler } from './types';
 import { initialRoundSlice } from '../../state/slices/round';
-import { lookupRune } from '../../core/runes';
-import { maxRuneSlots } from '../../core/vouchers';
+import { lookupMod } from '../../core/mods';
+import { maxModSlots } from '../../core/vouchers';
 
 export const diceHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -18,18 +18,18 @@ export const diceHandler: ActionHandler = (a, s) => {
     }
     case 'RESET_ROUND':
       return { state: { ...s, round: initialRoundSlice() }, events: [] };
-    case 'ATTACH_RUNE': {
-      if (!lookupRune(a.runeId)) return { state: s, events: [] };
-      const slots = s.round.diceRunes[a.dieIdx];
-      if (!slots || slots.length >= maxRuneSlots(s)) return { state: s, events: [] };
-      const diceRunes = s.round.diceRunes.map((r, i) => (i === a.dieIdx ? [...r, a.runeId] : r));
-      return { state: { ...s, round: { ...s.round, diceRunes } }, events: [] };
+    case 'ATTACH_MOD': {
+      if (!lookupMod(a.modId)) return { state: s, events: [] };
+      const slots = s.round.diceMods[a.dieIdx];
+      if (!slots || slots.length >= maxModSlots(s)) return { state: s, events: [] };
+      const diceMods = s.round.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
+      return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
     }
-    case 'DETACH_RUNE': {
-      const diceRunes = s.round.diceRunes.map((r, i) =>
-        i === a.dieIdx ? r.filter((_, j) => j !== a.runeIdx) : r,
+    case 'DETACH_MOD': {
+      const diceMods = s.round.diceMods.map((r, i) =>
+        i === a.dieIdx ? r.filter((_, j) => j !== a.modIdx) : r,
       );
-      return { state: { ...s, round: { ...s.round, diceRunes } }, events: [] };
+      return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
     }
     default:
       return { state: s, events: [] };

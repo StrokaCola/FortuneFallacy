@@ -51,7 +51,7 @@ const FACE_ROT: Record<number, string> = {
   4: 'rotateX(90deg)',
 };
 
-export type DieRune = { icon: string; name: string; color: string };
+export type DieMod = { icon: string; name: string; color: string };
 
 export function Die3DCSS({
   face = 1,
@@ -59,13 +59,13 @@ export function Die3DCSS({
   style = 'celestial',
   locked = false,
   scoring = false,
-  runes = [],
+  mods = [],
   onClick,
   label,
   dim,
 }: {
   face?: number; size?: number; style?: Style; locked?: boolean; scoring?: boolean;
-  runes?: DieRune[]; onClick?: () => void; label?: string; dim?: boolean;
+  mods?: DieMod[]; onClick?: () => void; label?: string; dim?: boolean;
 }) {
   const s = DIE_STYLES[style];
   const half = size / 2;
@@ -117,9 +117,9 @@ export function Die3DCSS({
         })}
       </div>
       <div className="die3d-shadow" />
-      {runes.length > 0 && (
+      {mods.length > 0 && (
         <div style={{ position: 'absolute', top: -6, right: -6, display: 'flex', gap: 2, zIndex: 2 }}>
-          {runes.slice(0, 2).map((r, i) => (
+          {mods.slice(0, 2).map((r, i) => (
             <div
               key={i}
               title={r.name}

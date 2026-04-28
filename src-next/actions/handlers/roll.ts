@@ -2,7 +2,7 @@ import type { ActionHandler } from './types';
 import { runRollPipelineUpToSim, runRollPipelineAfterSim } from '../../core/pipeline/runRollPipeline';
 import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
-import { lookupRune } from '../../core/runes';
+import { lookupMod } from '../../core/mods';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -71,9 +71,9 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
       const final = runRollPipelineAfterSim(baseCtx, fakeResult);
       let shardBonus = 0;
-      for (const runes of s.round.diceRunes) {
-        for (const id of runes) {
-          const def = lookupRune(id);
+      for (const mods of s.round.diceMods) {
+        for (const id of mods) {
+          const def = lookupMod(id);
           if (def?.shardsBonus) shardBonus += def.shardsBonus;
         }
       }

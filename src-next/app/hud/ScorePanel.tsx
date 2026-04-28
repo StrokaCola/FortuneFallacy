@@ -24,7 +24,7 @@ export function ScorePanel() {
                     pointer-events-auto">
       <div ref={flashRef} className="text-3xl font-display font-bold tabular-nums">{score}</div>
       <div className="text-sm opacity-70">/ {target || '—'}</div>
-      <div className="text-xs mt-1 font-mono text-astral">
+      <div className="text-xs mt-1 font-mono text-vector">
         chain: {chainLen} {chainLen > 1 && <span className="text-gold">×{(1 + 0.25 * (chainLen - 1)).toFixed(2)}</span>}
       </div>
       <div className="text-[10px] opacity-50 mt-1 font-mono">pings: {pings}</div>

@@ -1,4 +1,5 @@
 import { store, type GameState } from './store';
+import { migrateRetheme } from './migrations/v1_retheme';
 
 const KEY = 'ff_next_save';
 
@@ -8,7 +9,8 @@ export function loadSaved(): SavedState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as SavedState;
+    const parsed = JSON.parse(raw);
+    return migrateRetheme(parsed) as SavedState;
   } catch {
     return null;
   }

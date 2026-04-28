@@ -1,33 +1,33 @@
 import { useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
-import { RUNES, lookupRune } from '../../core/runes';
-import { maxRuneSlots } from '../../core/vouchers';
+import { MODS, lookupMod } from '../../core/mods';
+import { maxModSlots } from '../../core/vouchers';
 import { Die3DCSS } from '../visual/Die3DCSS';
 import {
-  selectAnte, selectShards, selectOracles,
+  selectAnte, selectShards, selectCatalysts,
 } from '../../state/selectors';
 
-const selectDiceRunes = (s: GameState) => s.round.diceRunes;
+const selectDiceMods = (s: GameState) => s.round.diceMods;
 const selectDice = (s: GameState) => s.round.dice;
-const selectMaxRune = (s: GameState) => maxRuneSlots(s);
+const selectMaxMod = (s: GameState) => maxModSlots(s);
 
 export function Forge() {
   const dice = useStore(selectDice);
-  const diceRunes = useStore(selectDiceRunes);
+  const diceMods = useStore(selectDiceMods);
   const ante = useStore(selectAnte);
   const shards = useStore(selectShards);
-  const oracles = useStore(selectOracles);
-  const maxSlots = useStore(selectMaxRune);
+  const catalysts = useStore(selectCatalysts);
+  const maxSlots = useStore(selectMaxMod);
 
   const [selectedDie, setSelectedDie] = useState(0);
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const slots = diceRunes[selectedDie] ?? [];
+  const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
   const selectedFace = dice[selectedDie]?.face ?? 1;
-  const selectedRunes = slots
-    .map(lookupRune)
+  const selectedMods = slots
+    .map(lookupMod)
     .filter((r): r is NonNullable<typeof r> => !!r)
     .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' }));
 
@@ -49,12 +49,12 @@ export function Forge() {
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
         <span className="f-mono" style={{ color: '#f5c451', fontSize: 16 }}>◆ {shards}</span>
-        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>oracles {oracles.length}/6</span>
+        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>catalysts {catalysts.length}/6</span>
       </div>
 
       <div style={{ position: 'absolute', left: '50%', top: 160, transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4 }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
-          ◇ etch the cosmos ◇
+          ◇ etch a mod ◇
         </div>
         <div className="f-display" style={{ fontSize: 32, color: '#f3f0ff', marginTop: 6 }}>
           The Star Forge
@@ -77,10 +77,10 @@ export function Forge() {
               })}
             </g>
           </svg>
-          <Die3DCSS face={selectedFace} size={140} style="celestial" runes={selectedRunes} />
+          <Die3DCSS face={selectedFace} size={140} style="celestial" mods={selectedMods} />
           <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
             <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
-              die {selectedDie + 1} · {slots.length}/{maxSlots} runes
+              die {selectedDie + 1} · {slots.length}/{maxSlots} mods
             </div>
           </div>
         </div>
@@ -106,24 +106,24 @@ export function Forge() {
         ))}
       </div>
 
-      {/* Rune library */}
+      {/* Mod library */}
       <div style={{ position: 'absolute', right: 'calc(50% - 470px)', top: 260, width: 380, height: 440 }}>
         <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18 }}>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12 }}>
-            ◈ rune codex
+            ◈ mod codex
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {RUNES.map((r, i) => {
+            {MODS.map((r, i) => {
               const colorMap: Record<string, string> = {
                 amplify: '#7be3ff', sharpened: '#ff7847', gilded: '#f5c451',
-                loaded: '#e2334a', snake_cult: '#9577ff', high_roller: '#f5c451', blessed: '#bba8ff',
+                loaded: '#e2334a', snake_eyes: '#9577ff', high_roller: '#f5c451', backstop: '#bba8ff',
               };
               const c = colorMap[r.id] ?? '#7be3ff';
               const canAttach = slots.length < maxSlots;
               return (
                 <div
                   key={r.id}
-                  onClick={() => canAttach && dispatch({ type: 'ATTACH_RUNE', dieIdx: selectedDie, runeId: r.id })}
+                  onClick={() => canAttach && dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id })}
                   onMouseEnter={() => setHovered(i)}
                   onMouseLeave={() => setHovered(null)}
                   style={{
@@ -157,19 +157,19 @@ export function Forge() {
         </div>
       </div>
 
-      {/* Attached runes detach row */}
+      {/* Attached mods detach row */}
       {slots.length > 0 && (
         <div style={{
           position: 'absolute', left: 'calc(50% - 470px)', top: 660, width: 360,
           display: 'flex', gap: 10, justifyContent: 'center',
         }}>
           {slots.map((rid, idx) => {
-            const r = lookupRune(rid);
+            const r = lookupMod(rid);
             if (!r) return null;
             return (
               <button
                 key={idx}
-                onClick={() => dispatch({ type: 'DETACH_RUNE', dieIdx: selectedDie, runeIdx: idx })}
+                onClick={() => dispatch({ type: 'DETACH_MOD', dieIdx: selectedDie, modIdx: idx })}
                 className="f-mono uc"
                 style={{
                   fontSize: 9, padding: '4px 10px', borderRadius: 6,

@@ -63,7 +63,7 @@ export function PortalGate({
             <stop offset="100%" stopColor="#04020c" stopOpacity="1" />
           </radialGradient>
         </defs>
-        {/* outer brass ring with rune orbit */}
+        {/* outer brass ring with glyph orbit */}
         <g style={{ transformOrigin: '50% 50%', animation: 'orbit 24s linear infinite' }}>
           <circle cx="50" cy="50" r="46" fill="none" stroke="#d4a64c" strokeWidth="1.2" opacity={hover ? 0.85 : 0.6} />
           {RUNES.map((r, i) => {

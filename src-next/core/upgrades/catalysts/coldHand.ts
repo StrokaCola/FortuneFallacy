@@ -2,7 +2,7 @@ import { register } from '../registry';
 import { Phase } from '../../pipeline/types';
 
 register({
-  id: 'silver_tongue',
+  id: 'cold_hand',
   phase: Phase.UPGRADES,
   priority: 40,
   apply: (ctx) => {
@@ -14,7 +14,7 @@ register({
         ...ctx.events,
         {
           type: 'onUpgradeTriggered',
-          payload: { id: 'silver_tongue', phase: Phase.UPGRADES, deltaChips: 0, deltaMult: 4 },
+          payload: { id: 'cold_hand', phase: Phase.UPGRADES, deltaChips: 0, deltaMult: 4 },
         },
       ],
     };

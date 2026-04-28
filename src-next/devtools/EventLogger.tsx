@@ -53,7 +53,7 @@ export function EventLogger() {
         {visible.slice().reverse().map((e, i) => (
           <div key={i} className="flex gap-2">
             <span className="text-cosmos-300/70">{(e.t / 1000).toFixed(2)}s</span>
-            <span className="text-astral">{String(e.key)}</span>
+            <span className="text-vector">{String(e.key)}</span>
             <span className="text-cosmos-100/60 truncate">{JSON.stringify(e.payload)}</span>
           </div>
         ))}

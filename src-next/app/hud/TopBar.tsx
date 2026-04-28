@@ -9,13 +9,13 @@ export function TopBar({
   rerolls = 2,
   target = 0,
   score = 0,
-  oracleSlots,
+  catalystSlots,
   voucherCount = 0,
   accent = '#7be3ff',
 }: {
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
   target?: number; score?: number;
-  oracleSlots?: { used: number; max: number };
+  catalystSlots?: { used: number; max: number };
   voucherCount?: number;
   accent?: string;
 }) {
@@ -58,10 +58,10 @@ export function TopBar({
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          {oracleSlots && (
+          {catalystSlots && (
             <span className="f-mono" style={{ fontSize: 10, color: '#7be3ff', padding: '2px 6px',
               border: '1px solid rgba(123,227,255,0.4)', borderRadius: 4 }}>
-              oracles {oracleSlots.used}/{oracleSlots.max}
+              catalysts {catalystSlots.used}/{catalystSlots.max}
             </span>
           )}
           {voucherCount > 0 && (

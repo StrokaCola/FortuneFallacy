@@ -4,7 +4,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { TopBar } from '../hud/TopBar';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import {
-  selectAnte, selectGoalIdx, selectShards, selectOracles, selectVouchers, selectScore, selectTarget,
+  selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectVouchers, selectScore, selectTarget,
 } from '../../state/selectors';
 import { BLIND_DEFS, targetForBlind } from '../../data/blinds';
 import { sfxPlay } from '../../audio/sfx';
@@ -18,7 +18,7 @@ export function Hub() {
   const ante     = useStore(selectAnte);
   const goalIdx  = useStore(selectGoalIdx);
   const shards   = useStore(selectShards);
-  const oracles  = useStore(selectOracles);
+  const catalysts = useStore(selectCatalysts);
   const vouchers = useStore(selectVouchers);
   const handsLeft = useStore(selectHandsLeft);
   const rerollsLeft = useStore(selectRerollsLeft);
@@ -48,7 +48,7 @@ export function Hub() {
         rerolls={rerollsLeft}
         target={target}
         score={score}
-        oracleSlots={{ used: oracles.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: 6 }}
         voucherCount={vouchers.length}
         accent={accent}
       />
@@ -58,13 +58,13 @@ export function Hub() {
         textAlign: 'center', zIndex: 4,
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
-          ◇ choose your trial ◇
+          ◇ choose your blind ◇
         </div>
         <div className="f-display" style={{ fontSize: 36, color: '#f3f0ff', marginTop: 8 }}>
-          The Tribunal of Stars
+          Star Atlas
         </div>
         <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: 6, maxWidth: 460, marginInline: 'auto' }}>
-          Three blinds bar your ascension. Each cleared blind grants shards and admittance to the Bazaar.
+          Three blinds gate the run. Clear them for shards and shop access.
         </div>
       </div>
 

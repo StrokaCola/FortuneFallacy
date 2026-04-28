@@ -3,10 +3,10 @@ import type { GameState } from '../../state/store';
 
 export type Debuff =
   | 'no_rerolls'
-  | 'disable_oracles'
+  | 'disable_catalysts'
   | 'auto_unlock_after_roll'
   | 'hand_size_cap_4'
-  | 'no_rune_transforms_on_ones';
+  | 'no_mod_transforms_on_ones';
 
 export function activeDebuffs(s: GameState): Set<Debuff> {
   if (!s.round.isBoss || !s.round.blindId) return new Set();

@@ -3,20 +3,20 @@ import type { GameEventEmission } from '../../events/types';
 
 export type ConsumableDef = {
   id: string;
-  type: 'tarot' | 'spectral';
+  type: 'calibration' | 'resource';
   name: string;
   icon: string;
   description: string;
   requiresTarget: boolean;
-  targetType?: 'die' | 'oracle';
+  targetType?: 'die' | 'catalyst';
   apply: (s: GameState, targets: number[]) => { state: GameState; events: GameEventEmission[] };
 };
 
 export const CONSUMABLES: ConsumableDef[] = [
   {
-    id: 'the_moon',
-    type: 'tarot',
-    name: 'The Moon',
+    id: 'pin_six',
+    type: 'calibration',
+    name: 'Pin Six',
     icon: '☽',
     description: 'Set one die to face 6.',
     requiresTarget: true,
@@ -28,9 +28,9 @@ export const CONSUMABLES: ConsumableDef[] = [
     },
   },
   {
-    id: 'the_sun',
-    type: 'tarot',
-    name: 'The Sun',
+    id: 'pin_one',
+    type: 'calibration',
+    name: 'Pin One',
     icon: '☀',
     description: 'Set one die to face 1.',
     requiresTarget: true,
@@ -42,9 +42,9 @@ export const CONSUMABLES: ConsumableDef[] = [
     },
   },
   {
-    id: 'shard_strike',
-    type: 'spectral',
-    name: 'Shard Strike',
+    id: 'shard_drop',
+    type: 'resource',
+    name: 'Shard Drop',
     icon: '◇',
     description: '+5 shards.',
     requiresTarget: false,
@@ -54,9 +54,9 @@ export const CONSUMABLES: ConsumableDef[] = [
     }),
   },
   {
-    id: 'the_world',
-    type: 'spectral',
-    name: 'The World',
+    id: 'roll_token',
+    type: 'resource',
+    name: 'Roll Token',
     icon: '◈',
     description: '+1 hand.',
     requiresTarget: false,

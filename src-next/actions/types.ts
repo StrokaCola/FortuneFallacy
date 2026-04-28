@@ -12,8 +12,8 @@ export type Action =
   | { type: 'BUY_OFFER'; offerIdx: number }
   | { type: 'USE_CONSUMABLE'; index: number; targets?: number[] }
   | { type: 'TOGGLE_PAUSE' }
-  | { type: 'GRANT_ORACLE'; id: string }
-  | { type: 'REVOKE_ORACLE'; id: string }
+  | { type: 'GRANT_CATALYST'; id: string }
+  | { type: 'REVOKE_CATALYST'; id: string }
   | { type: 'TOGGLE_LOCK'; dieIdx: number }
   | { type: 'RESET_ROUND' }
   | { type: 'START_BLIND' }
@@ -22,8 +22,8 @@ export type Action =
   | { type: 'NEW_RUN' }
   | { type: 'GRANT_CONSUMABLE'; id: string }
   | { type: 'DISCARD_CONSUMABLE'; index: number }
-  | { type: 'ATTACH_RUNE'; dieIdx: number; runeId: string }
-  | { type: 'DETACH_RUNE'; dieIdx: number; runeIdx: number }
+  | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }
+  | { type: 'DETACH_MOD'; dieIdx: number; modIdx: number }
   | { type: 'SKIP_BLIND' }
   | { type: 'END_SCORING' };
 

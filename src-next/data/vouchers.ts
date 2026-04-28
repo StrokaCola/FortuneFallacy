@@ -6,8 +6,8 @@ export type VoucherDef = {
 };
 
 export const VOUCHERS: VoucherDef[] = [
-  { id: 'astral_plane', name: 'Astral Plane', description: '+1 oracle slot', price: 8 },
-  { id: 'forged_links', name: 'Forged Links', description: '+1 rune slot per die', price: 8 },
+  { id: 'bench',        name: 'Bench',        description: '+1 catalyst slot', price: 8 },
+  { id: 'forged_links', name: 'Forged Links', description: '+1 mod slot per die', price: 8 },
   { id: 'shard_streak', name: 'Shard Streak', description: '+1 shard per cleared blind', price: 6 },
 ];
 

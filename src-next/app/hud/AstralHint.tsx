@@ -48,9 +48,9 @@ export function AstralHint() {
         className="f-mono uc"
         style={{ letterSpacing: '0.2em', color: '#7be3ff', display: 'block', marginBottom: 4 }}
       >
-        ◇ astral hint
+        ◇ tip
       </span>
-      Click any die to lock it for the next roll. Highlighted dice form a constellation — your scoring pattern.
+      Click any die to lock for the next roll. Highlighted dice mark the scoring pattern — Lyra, Orion, etc.
     </div>
   );
 }

@@ -3,13 +3,13 @@ import { bus } from '../events/bus';
 import type { Action } from './types';
 import { metaHandler } from './handlers/meta';
 import { rollHandler } from './handlers/roll';
-import { oracleHandler } from './handlers/oracle';
+import { catalystHandler } from './handlers/catalyst';
 import { diceHandler } from './handlers/dice';
 import { roundHandler } from './handlers/round';
 import { shopHandler } from './handlers/shop';
 import { consumableHandler } from './handlers/consumable';
 import type { ActionHandler, HandlerResult } from './handlers/types';
-import '../core/upgrades/oracles';
+import '../core/upgrades/catalysts';
 
 const ROUTING: Record<Action['type'], ActionHandler> = {
   PING: metaHandler,
@@ -20,12 +20,12 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   ROLL_SETTLED: rollHandler,
   SCORE_HAND: rollHandler,
   END_SCORING: rollHandler,
-  GRANT_ORACLE: oracleHandler,
-  REVOKE_ORACLE: oracleHandler,
+  GRANT_CATALYST: catalystHandler,
+  REVOKE_CATALYST: catalystHandler,
   TOGGLE_LOCK: diceHandler,
   RESET_ROUND: diceHandler,
-  ATTACH_RUNE: diceHandler,
-  DETACH_RUNE: diceHandler,
+  ATTACH_MOD: diceHandler,
+  DETACH_MOD: diceHandler,
   START_BLIND: roundHandler,
   CLEAR_BLIND: roundHandler,
   BUST_BLIND: roundHandler,

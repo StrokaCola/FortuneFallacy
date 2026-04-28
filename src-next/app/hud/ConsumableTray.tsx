@@ -38,7 +38,7 @@ export function ConsumableTray() {
         {items.map((id, i) => {
           const def = lookupConsumable(id);
           if (!def) return null;
-          const color = def.type === 'tarot' ? '#bba8ff' : '#7be3ff';
+          const color = def.type === 'calibration' ? '#bba8ff' : '#7be3ff';
           return (
             <div key={`${id}-${i}`} className="has-tip" style={{ position: 'relative' }}>
               <button

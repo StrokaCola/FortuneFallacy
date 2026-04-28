@@ -16,7 +16,7 @@ export type RoundSlice = {
   scoring: boolean;
   chainLen: number;
   chainTier: number;
-  diceRunes: string[][];
+  diceMods: string[][];
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -45,5 +45,5 @@ export const initialRoundSlice = (): RoundSlice => ({
   scoring: false,
   chainLen: 0,
   chainTier: -1,
-  diceRunes: Array.from({ length: 5 }, () => [] as string[]),
+  diceMods: Array.from({ length: 5 }, () => [] as string[]),
 });

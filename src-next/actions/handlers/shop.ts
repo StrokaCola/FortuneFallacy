@@ -1,5 +1,5 @@
 import type { ActionHandler } from './types';
-import { ORACLE_IDS } from '../../core/upgrades/oracles';
+import { CATALYST_IDS } from '../../core/upgrades/catalysts';
 import { CONSUMABLES } from '../../core/consumables';
 import { VOUCHERS } from '../../core/vouchers';
 import type { ShopOffer } from '../../events/types';
@@ -14,9 +14,9 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function rollOffers(ownedVouchers: string[]): ShopOffer[] {
-  const oracleIds = shuffle([...ORACLE_IDS]).slice(0, 2);
+  const catalystIds = shuffle([...CATALYST_IDS]).slice(0, 2);
   const consId = shuffle(CONSUMABLES.map((c) => c.id))[0];
-  const offers: ShopOffer[] = oracleIds.map((id) => ({ kind: 'oracle' as const, id, price: 5 }));
+  const offers: ShopOffer[] = catalystIds.map((id) => ({ kind: 'catalyst' as const, id, price: 5 }));
   if (consId) offers.push({ kind: 'consumable', id: consId, price: 3 });
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
   if (availableVouchers.length > 0 && Math.random() < 0.5) {
@@ -44,7 +44,7 @@ export const shopHandler: ActionHandler = (a, s) => {
       const offer = s.shop.offers[a.offerIdx];
       if (!offer || s.run.shards < offer.price) return { state: s, events: [] };
       const remaining = s.shop.offers.filter((_, i) => i !== a.offerIdx);
-      const oracles = offer.kind === 'oracle' ? [...s.run.oracles, offer.id] : s.run.oracles;
+      const catalysts = offer.kind === 'catalyst' ? [...s.run.catalysts, offer.id] : s.run.catalysts;
       const consumables = offer.kind === 'consumable' && s.run.consumables.length < 4
         ? [...s.run.consumables, offer.id]
         : s.run.consumables;
@@ -52,7 +52,7 @@ export const shopHandler: ActionHandler = (a, s) => {
       return {
         state: {
           ...s,
-          run: { ...s.run, shards: s.run.shards - offer.price, oracles, consumables, vouchers },
+          run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers },
           shop: { ...s.shop, offers: remaining },
         },
         events: [{ type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } }],

@@ -1,38 +1,38 @@
 import { getByPhase } from '../upgrades/registry';
 import { Phase, type PhaseFn } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
-import { lookupRune } from '../runes';
+import { lookupMod } from '../mods';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
 export const upgrades: PhaseFn = (ctx) => {
   let next = ctx;
 
-  if (!hasDebuff(ctx.state, 'disable_oracles')) {
-    const owned = new Set(ctx.state.run.oracles);
+  if (!hasDebuff(ctx.state, 'disable_catalysts')) {
+    const owned = new Set(ctx.state.run.catalysts);
     for (const u of getByPhase(Phase.UPGRADES)) {
       if (!ALWAYS_ACTIVE.has(u.id) && !owned.has(u.id)) continue;
       next = u.apply(next);
     }
   }
 
-  next = applyRuneScoring(next);
+  next = applyModScoring(next);
 
   return next;
 };
 
-const applyRuneScoring: PhaseFn = (ctx) => {
+const applyModScoring: PhaseFn = (ctx) => {
   const faces = ctx.sim?.finalFaces ?? [];
-  const diceRunes = ctx.state.round.diceRunes;
+  const diceMods = ctx.state.round.diceMods;
   let chips = ctx.chips;
   let mult = ctx.mult;
   const events = [...ctx.events];
 
   for (let i = 0; i < faces.length; i++) {
     const face = faces[i]!;
-    const runes = diceRunes[i] ?? [];
-    for (const id of runes) {
-      const def = lookupRune(id);
+    const mods = diceMods[i] ?? [];
+    for (const id of mods) {
+      const def = lookupMod(id);
       if (!def) continue;
       let dChips = 0;
       let dMult = 0;
@@ -45,7 +45,7 @@ const applyRuneScoring: PhaseFn = (ctx) => {
         mult += dMult;
         events.push({
           type: 'onUpgradeTriggered',
-          payload: { id: `rune:${id}@${i}`, phase: Phase.UPGRADES, deltaChips: dChips, deltaMult: dMult },
+          payload: { id: `mod:${id}@${i}`, phase: Phase.UPGRADES, deltaChips: dChips, deltaMult: dMult },
         });
       }
     }

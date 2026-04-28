@@ -3,7 +3,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { useStore } from '../../state/store';
 import type { GameState } from '../../state/store';
 
-const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.oracles.length > 0;
+const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0;
 
 export function Title() {
   const hasRun = useStore(selectHasRun);
@@ -17,7 +17,7 @@ export function Title() {
           animation: 'titleStutter 1.4s steps(20, end) 200ms forwards',
           overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block',
         }}>
-          ◇ a roguelike of dice and divination ◇
+          ◇ the gambler's fallacy, weaponized ◇
         </div>
         <div className="f-display" style={{ fontSize: 96, lineHeight: 1, color: '#f3f0ff',
           textShadow: '0 0 40px rgba(123,227,255,0.5), 0 0 80px rgba(149,119,255,0.4)' }}>
