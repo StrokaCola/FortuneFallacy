@@ -72,7 +72,7 @@ export function Shop() {
         textAlign: 'center', zIndex: 4,
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
-          ◇ between the stars ◇
+          ◇ exchange ◇
         </div>
         <div className="f-display" style={{ fontSize: 36, color: '#f3f0ff', marginTop: 8 }}>
           The Celestial Bazaar

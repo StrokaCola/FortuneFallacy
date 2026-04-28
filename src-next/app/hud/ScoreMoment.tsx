@@ -12,7 +12,7 @@ const CONSTELLATION_NAMES: Record<string, string> = {
   FOUR_KIND: 'Orion',
   FULL_HOUSE: 'Pegasus',
   THREE_KIND: 'Auriga',
-  LG_STRAIGHT: 'The Lyre',
+  LG_STRAIGHT: 'Lyra',
   SM_STRAIGHT: 'Cassiopeia',
   TWO_PAIR: 'Gemini',
   ONE_PAIR: 'Vela',

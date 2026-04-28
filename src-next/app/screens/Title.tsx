@@ -17,7 +17,7 @@ export function Title() {
           animation: 'titleStutter 1.4s steps(20, end) 200ms forwards',
           overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block',
         }}>
-          ◇ a roguelike of dice and divination ◇
+          ◇ the gambler's fallacy, weaponized ◇
         </div>
         <div className="f-display" style={{ fontSize: 96, lineHeight: 1, color: '#f3f0ff',
           textShadow: '0 0 40px rgba(123,227,255,0.5), 0 0 80px rgba(149,119,255,0.4)' }}>

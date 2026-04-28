@@ -1,4 +1,4 @@
-export type Screen = 'title' | 'nameentry' | 'hub' | 'round' | 'shop' | 'forge' | 'runes' | 'scores' | 'pause' | 'win';
+export type Screen = 'title' | 'nameentry' | 'hub' | 'round' | 'shop' | 'forge' | 'scores' | 'pause' | 'win';
 
 export type UiSlice = {
   screen: Screen;

@@ -23,7 +23,7 @@ export function BossReveal() {
   if (!reveal) return null;
   const def = BOSS_BLINDS.find((b) => b.id === reveal.id);
   if (!def) return null;
-  const arcanumIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
+  const anomalyIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
 
   return (
     <div style={{
@@ -75,7 +75,7 @@ export function BossReveal() {
                 opacity: 0,
                 animation: 'fadein 600ms ease-out 1500ms both',
               }}>
-                arcanum {String(arcanumIdx).padStart(2, '0')} · ante {reveal.ante}
+                anomaly {String(anomalyIdx).padStart(2, '0')} · ante {reveal.ante}
               </div>
 
               <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: '20px 0' }} />
@@ -84,7 +84,7 @@ export function BossReveal() {
                 fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff',
                 opacity: 0, animation: 'fadein 500ms ease-out 1800ms both',
               }}>
-                hex
+                effect
               </div>
               <div style={{
                 fontFamily: '"Exo 2", sans-serif',
