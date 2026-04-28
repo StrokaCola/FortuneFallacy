@@ -1,21 +1,21 @@
-type Kind = 'oracle' | 'voucher' | 'consumable';
+type Kind = 'catalyst' | 'voucher' | 'consumable';
 
 const LINES: Record<Kind | 'default', string[]> = {
-  oracle: [
-    "Read the stars, traveler.",
-    "An Oracle remembers you.",
-    "The constellation listens.",
+  catalyst: [
+    "Bias the curve.",
+    "Hot tip — the catalyst remembers.",
+    "Tilt the table. Quietly.",
   ],
   voucher: [
-    "Brass and dust — useful, perhaps.",
-    "Take it. The void weighs nothing.",
+    "Brass tokens. Bureaucratic. Useful.",
+    "Permit's good through end of run.",
   ],
   consumable: [
-    "A small kindness, freely spent.",
-    "Spend it well. Spend it once.",
+    "Single use. Plan twice.",
+    "Spend it once. Spend it well.",
   ],
   default: [
-    "Choose well — the void keeps no change.",
+    "House doesn't refund.",
   ],
 };
 
