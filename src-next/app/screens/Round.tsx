@@ -3,6 +3,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { CatalystStrip } from '../hud/CatalystStrip';
+import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
 import { ConstellationOverlay } from '../hud/ConstellationOverlay';
@@ -60,6 +61,7 @@ export function Round() {
       />
 
       <CatalystStrip />
+      <ShardDeductToast />
       <ConsumableTray />
 
       <ComboBanner accent={accent} />

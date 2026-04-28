@@ -8,11 +8,15 @@ import type { GameState } from '../../state/store';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
+const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
+const selectHandsPlayed = (s: GameState) => s.run.handsPlayed;
 
 export function LoadoutDock() {
   const catalysts = useStore(selectCatalysts);
   const consumables = useStore(selectConsumables);
   const diceCount = useStore(selectDiceCount);
+  const compoundingStacks = useStore(selectCompoundingStacks);
+  const handsPlayed = useStore(selectHandsPlayed);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
 
   const onUseConsumable = (index: number) => {
@@ -57,6 +61,24 @@ export function LoadoutDock() {
                   fontSize: 18, color: cat.color,
                   filter: `drop-shadow(0 0 4px ${cat.color})`,
                 }}>{cat.icon}</span>
+                {id === 'compounding_bias' && compoundingStacks > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -6,
+                    fontSize: 8, fontFamily: '"JetBrains Mono", monospace',
+                    color: cat.color, fontWeight: 700,
+                    background: 'rgba(15,9,37,0.9)',
+                    padding: '0 3px', borderRadius: 3,
+                  }}>+{compoundingStacks}</span>
+                )}
+                {id === 'patience_counter' && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -6,
+                    fontSize: 8, fontFamily: '"JetBrains Mono", monospace',
+                    color: cat.color, fontWeight: 700,
+                    background: 'rgba(15,9,37,0.9)',
+                    padding: '0 3px', borderRadius: 3,
+                  }}>{handsPlayed % 5}/5</span>
+                )}
                 <span className="tip">{cat.name} — {cat.desc}</span>
               </div>
             );
