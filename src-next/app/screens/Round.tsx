@@ -9,10 +9,11 @@ import { ConstellationOverlay } from '../hud/ConstellationOverlay';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { AstralHint } from '../hud/AstralHint';
+import { useScoreDisplay } from '../hud/useScoreDisplay';
 import { TrayBase } from '../visual/TrayBase';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
-  selectScore, selectTarget, selectShards, selectAnte,
+  selectTarget, selectShards, selectAnte,
   selectOracles, selectVouchers, selectBlindId,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
@@ -21,7 +22,7 @@ export function Round() {
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
   const isBoss   = useStore(selectIsBoss);
-  const score    = useStore(selectScore);
+  const score    = useScoreDisplay();
   const target   = useStore(selectTarget);
   const shards   = useStore(selectShards);
   const ante     = useStore(selectAnte);

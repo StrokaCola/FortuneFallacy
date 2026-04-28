@@ -84,10 +84,11 @@ export const rollHandler: ActionHandler = (a, s) => {
         run: shardBonus > 0 ? { ...s.run, shards: s.run.shards + shardBonus } : s.run,
         round: {
           ...s.round,
-          score: newScore,
+          // score deferred to END_SCORING via pendingScoreDelta — keeps TopBar at old value while sequence climbs
           handsLeft: newHandsLeft,
           rerollsLeft: 2,
           scoring: true,
+          pendingScoreDelta: final.total,
           chainLen: final.chain?.len ?? s.round.chainLen,
           chainTier: final.chain?.tier ?? s.round.chainTier,
           dice: s.round.dice.map((d) => ({ ...d, locked: false })),
@@ -116,7 +117,17 @@ export const rollHandler: ActionHandler = (a, s) => {
     }
     case 'END_SCORING': {
       if (!s.round.scoring) return { state: s, events: [] };
-      const cleared = { ...s, round: { ...s.round, scoring: false, pendingRoundEnd: null } };
+      const finalScore = s.round.score + (s.round.pendingScoreDelta ?? 0);
+      const cleared = {
+        ...s,
+        round: {
+          ...s.round,
+          score: finalScore,
+          scoring: false,
+          pendingRoundEnd: null,
+          pendingScoreDelta: null,
+        },
+      };
       if (s.round.pendingRoundEnd === 'clear') {
         const result = clearBlind(cleared);
         return result;

@@ -26,6 +26,7 @@ export type RoundSlice = {
     state: { round: { dice: Array<{ face: number }> } };
   } | null;
   pendingRoundEnd?: 'clear' | 'bust' | null;
+  pendingScoreDelta?: number | null;
 };
 
 export const initialRoundSlice = (): RoundSlice => ({
