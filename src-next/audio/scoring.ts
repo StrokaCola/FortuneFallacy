@@ -30,7 +30,7 @@ export function installScoringRouter(): () => void {
         // Master duck handled by AudioEngine if exposed; otherwise no-op for SFX
         break;
       case 'boom':
-        sfxPlay('castBoom', { volume: beat.crossedTarget ? 1.2 : 0.85 });
+        sfxPlay('castBoom', { gain: beat.crossedTarget ? 1.2 : 0.85 });
         break;
       case 'bail':
         sfxPlay('notEnough');

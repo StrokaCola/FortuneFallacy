@@ -190,9 +190,10 @@ export function castSwell(bank: SynthBank): void {
 }
 
 // ---- castBoom --------------------------------------------------------------
-export function castBoom(bank: SynthBank): void {
+export function castBoom(bank: SynthBank, opts: VoiceOpts & { gain?: number } = {}): void {
   const t = jitteredTime();
-  bank.castBoom.kick.volume.value = vol('boomKick', -10);
+  const gain = opts.gain ?? 1;
+  bank.castBoom.kick.volume.value = vol('boomKick', -10 + Math.log2(gain) * 6);
   bank.castBoom.kick.triggerAttackRelease('A1', '2n', t);
   const stack = [PENTATONIC_CSM_HZ[0]!, MINOR_CSM_HZ[2]!, MINOR_CSM_HZ[4]!];
   bank.castBoom.bells.triggerAttackRelease(stack, '2n', t);

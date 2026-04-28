@@ -69,7 +69,7 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'bust':            v.bust(bank as never); break;
       case 'chipTick':        v.chipTick(bank as never, opts); break;
       case 'castSwell':       v.castSwell(bank as never); break;
-      case 'castBoom':        v.castBoom(bank as never); break;
+      case 'castBoom':        v.castBoom(bank as never, opts); break;
       case 'sigilDraw':       v.sigilDraw(bank as never); break;
       case 'cardFlip':        v.cardFlip(bank as never); break;
       case 'nodePulse':       v.nodePulse(bank as never); break;
