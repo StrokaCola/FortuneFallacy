@@ -131,13 +131,15 @@ Type union renamed: `'tarot' \| 'spectral'` → **`'calibration' \| 'resource'`*
 
 ### Boss anomalies (`data/blinds.ts`)
 
-| Old | New | Effect (unchanged) |
-|-----|-----|--------------------|
-| The Serpent | **Floor Lock** | Mods can't transform 1s |
-| The Fool | **Sample Cap** | Hand size capped 4 |
-| The Tower | **Single Pass** | No rerolls |
-| The Devil | **No Hold** | Locks release after roll |
-| The High Priestess | **Quiet Field** | Catalysts inert |
+Naming style: real planets/moons (parallels constellation-named combos). Numbering stays "anomaly NN · ante N".
+
+| Old | New | Effect (unchanged) | Flavor stem | Description |
+|-----|-----|--------------------|-------------|-------------|
+| The Serpent | **Pluto** | Mods can't transform 1s | Demoted dwarf — stuck at floor | "Demoted. 1s refuse to transform." |
+| The Fool | **Ceres** | Hand size capped 4 | Belt-bound dwarf — capped status | "Belt-bound. Hand capped at 4." |
+| The Tower | **Triton** | No rerolls | Voyager 2's single flyby | "Single flyby. No rerolls." |
+| The Devil | **Phobos** | Locks release after roll | Mars moon — orbit decays | "Orbit decays. Locks release on roll." |
+| The High Priestess | **Callisto** | Catalysts inert | Cratered, dead surface | "Cratered silence. Catalysts inert." |
 
 **Sigils**: existing tarot SVG paths kept as orphan placeholders with `// TODO art pass — sigil designed for tarot name` comment. Visual mismatch acceptable until later art pass.
 
@@ -234,7 +236,7 @@ Use `git mv` so rename history is preserved.
 | Mod ids | `snake_cult`→`snake_eyes`, `blessed`→`backstop` |
 | Voucher ids | `astral_plane`→`bench` |
 | Consumable ids | `the_moon`→`pin_six`, `the_sun`→`pin_one`, `shard_strike`→`shard_drop`, `the_world`→`roll_token` |
-| Boss ids | `the_serpent`→`floor_lock`, `the_fool`→`sample_cap`, `the_tower`→`single_pass`, `the_devil`→`no_hold`, `the_high_priestess`→`quiet_field` |
+| Boss ids | `the_serpent`→`pluto`, `the_fool`→`ceres`, `the_tower`→`triton`, `the_devil`→`phobos`, `the_high_priestess`→`callisto` |
 | Boss debuff strings | `disable_oracles`→`disable_catalysts`, `no_rune_transforms_on_ones`→`no_mod_transforms_on_ones` |
 
 ### State slice keys (`state/slices/run.ts`)
@@ -263,7 +265,8 @@ Use `git mv` so rename history is preserved.
   - Map `state.run.oracles[]` → `state.run.catalysts[]` with id remap.
   - Map `state.run.dice[*].runes[]` → `state.run.dice[*].mods[]` with id remap.
   - Remap consumable `type` field (`tarot`→`calibration`, `spectral`→`resource`) and ids.
-  - Remap voucher ids and boss ids.
+  - Remap voucher ids (`astral_plane`→`bench`).
+  - Remap boss ids: `the_serpent`→`pluto`, `the_fool`→`ceres`, `the_tower`→`triton`, `the_devil`→`phobos`, `the_high_priestess`→`callisto`.
 - Migrator file: `src-next/state/migrations/v{N}_retheme.ts` (or wherever migrations live — verify in plan).
 - Unit test: round-trip a fixture old-save through migrator → assert new shape.
 - Migrator stays for ~3 releases, then drop with comment.
