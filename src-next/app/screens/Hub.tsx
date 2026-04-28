@@ -4,7 +4,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { TopBar } from '../hud/TopBar';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import {
-  selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectVouchers, selectScore, selectTarget,
+  selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
 } from '../../state/selectors';
 import { BLIND_DEFS, targetForBlind } from '../../data/blinds';
 import { sfxPlay } from '../../audio/sfx';
@@ -19,6 +19,7 @@ export function Hub() {
   const goalIdx  = useStore(selectGoalIdx);
   const shards   = useStore(selectShards);
   const catalysts = useStore(selectCatalysts);
+  const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
   const handsLeft = useStore(selectHandsLeft);
   const rerollsLeft = useStore(selectRerollsLeft);
@@ -48,7 +49,7 @@ export function Hub() {
         rerolls={rerollsLeft}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
         accent={accent}
       />

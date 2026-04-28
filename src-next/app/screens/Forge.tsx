@@ -5,7 +5,7 @@ import { MODS, lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
 import { Die3DCSS } from '../visual/Die3DCSS';
 import {
-  selectAnte, selectShards, selectCatalysts,
+  selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots,
 } from '../../state/selectors';
 
 const selectDiceMods = (s: GameState) => s.round.diceMods;
@@ -18,6 +18,7 @@ export function Forge() {
   const ante = useStore(selectAnte);
   const shards = useStore(selectShards);
   const catalysts = useStore(selectCatalysts);
+  const maxCatalysts = useStore(selectMaxCatalystSlots);
   const maxSlots = useStore(selectMaxMod);
 
   const [selectedDie, setSelectedDie] = useState(0);
@@ -49,7 +50,7 @@ export function Forge() {
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
         <span className="f-mono" style={{ color: '#f5c451', fontSize: 16 }}>◆ {shards}</span>
-        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>catalysts {catalysts.length}/6</span>
+        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>catalysts {catalysts.length}/{maxCatalysts}</span>
       </div>
 
       <div style={{ position: 'absolute', left: '50%', top: 160, transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4 }}>

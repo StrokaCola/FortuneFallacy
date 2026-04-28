@@ -1,5 +1,6 @@
 import type { GameState } from './store';
 import { selectTension, type TensionInputs } from '../audio/heat';
+import { maxCatalystSlots } from '../core/vouchers';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
 export const selectScore       = (s: GameState) => s.round.score;
@@ -18,6 +19,7 @@ export const selectBlindId    = (s: GameState) => s.round.blindId;
 export const selectIsBoss     = (s: GameState) => s.round.isBoss;
 export const selectShopOffers = (s: GameState) => s.shop.offers;
 export const selectCatalysts  = (s: GameState) => s.run.catalysts;
+export const selectMaxCatalystSlots = (s: GameState) => maxCatalystSlots(s);
 export const selectVouchers   = (s: GameState) => s.run.vouchers;
 export const selectPlayerName = (s: GameState) => s.meta.playerName;
 

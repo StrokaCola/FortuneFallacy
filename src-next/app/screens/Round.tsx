@@ -14,7 +14,7 @@ import { TrayBase } from '../visual/TrayBase';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
   selectTarget, selectShards, selectAnte,
-  selectCatalysts, selectVouchers, selectBlindId,
+  selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectBlindId,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -27,6 +27,7 @@ export function Round() {
   const shards   = useStore(selectShards);
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
+  const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
   const blindId  = useStore(selectBlindId);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
@@ -53,7 +54,7 @@ export function Round() {
         rerolls={rerolls}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
         accent={accent}
       />

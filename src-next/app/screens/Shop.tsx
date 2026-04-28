@@ -3,7 +3,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import {
-  selectShards, selectShopOffers, selectAnte, selectCatalysts, selectVouchers,
+  selectShards, selectShopOffers, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
@@ -42,6 +42,7 @@ export function Shop() {
   const offers   = useStore(selectShopOffers);
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
+  const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
   const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
@@ -62,7 +63,7 @@ export function Shop() {
         rerolls={rerolls}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
         accent={accent}
       />

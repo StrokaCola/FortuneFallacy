@@ -28,13 +28,20 @@ export function lookupMod(id: string): ModDef | undefined {
   return MODS.find((m) => m.id === id);
 }
 
-export function applyFaceRemaps(faces: number[], diceMods: string[][]): number[] {
+export function applyFaceRemaps(
+  faces: number[],
+  diceMods: string[][],
+  lockOnes = false,
+): number[] {
   return faces.map((face, i) => {
     const mods = diceMods[i] ?? [];
     let f = face;
     for (const id of mods) {
       const def = lookupMod(id);
-      if (def?.faceRemap && f === def.faceRemap.from) f = def.faceRemap.to;
+      if (def?.faceRemap && f === def.faceRemap.from) {
+        if (lockOnes && def.faceRemap.from === 1) continue;
+        f = def.faceRemap.to;
+      }
     }
     const minMod = mods.map(lookupMod).find((d) => d?.scoreMin != null);
     if (minMod?.scoreMin != null && f < minMod.scoreMin) f = minMod.scoreMin;
