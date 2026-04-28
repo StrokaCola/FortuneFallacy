@@ -7,6 +7,18 @@ type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolea
 
 let slamId = 1;
 
+const CONSTELLATION_NAMES: Record<string, string> = {
+  FIVE_KIND: 'Cygnus',
+  FOUR_KIND: 'Orion',
+  FULL_HOUSE: 'Pegasus',
+  THREE_KIND: 'Auriga',
+  LG_STRAIGHT: 'The Lyre',
+  SM_STRAIGHT: 'Cassiopeia',
+  TWO_PAIR: 'Gemini',
+  ONE_PAIR: 'Vela',
+  CHANCE: 'Wandering Star',
+};
+
 export function ScoreMoment() {
   const [active, setActive] = useState(false);
   const [comboName, setComboName] = useState('');
@@ -27,7 +39,7 @@ export function ScoreMoment() {
           crossed = false;
           break;
         case 'combo-bonus':
-          setComboName(beat.comboLabel);
+          setComboName(CONSTELLATION_NAMES[beat.comboLabel] ?? beat.comboLabel);
           break;
         case 'mult-slam': {
           const id = slamId++;
