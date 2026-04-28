@@ -4,10 +4,12 @@ import { selectTensionFromState } from '../state/selectors';
 import { audioEngine, ensureAudioAfterGesture } from './AudioEngine';
 import { sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank } from './sfx';
 import { installScoringRouter } from './scoring';
+import { installHeatRouter } from './heat';
 
 export function startAudioBridge(): () => void {
   const subs = [
     installScoringRouter(),
+    installHeatRouter(),
     bus.on('onRollStart', () => {
       audioEngine.bumpHeat(0.04);
       const dice = store.getState().round.dice;
