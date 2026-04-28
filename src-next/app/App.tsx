@@ -5,8 +5,10 @@ import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
+import { PauseMenu } from './hud/PauseMenu';
 import { useStore } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
+import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
 import { Hub }   from './screens/Hub';
 import { Round } from './screens/Round';
@@ -45,6 +47,34 @@ export function App() {
     }
   }, [screen]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const cur = useStore.getState().ui.screen;
+      if (cur === 'round' || cur === 'hub' || cur === 'shop' || cur === 'forge') {
+        dispatch({ type: 'TOGGLE_PAUSE' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    let lastPaused: boolean | null = null;
+    const unsub = useStore.subscribe((s) => {
+      if (s.ui.paused === lastPaused) return;
+      lastPaused = s.ui.paused;
+      if (s.ui.paused) {
+        audioEngine.pause();
+        screenMusic.pause();
+      } else {
+        audioEngine.resume();
+        screenMusic.resume();
+      }
+    });
+    return () => unsub();
+  }, []);
+
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
     isBoss && screen === 'round' ? 'voidlit' :
@@ -70,6 +100,7 @@ export function App() {
       </div>
 
       <OrientationGate />
+      <PauseMenu />
       {import.meta.env.DEV && <DevConsole />}
     </div>
   );

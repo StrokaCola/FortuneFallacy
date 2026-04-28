@@ -7,8 +7,8 @@ export function PauseButton() {
       className="f-mono"
       style={{
         position: 'absolute',
-        top: 18,
-        right: 110,
+        top: 110,
+        right: 18,
         zIndex: 6,
         width: 36,
         height: 36,

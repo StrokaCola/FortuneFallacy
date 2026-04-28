@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
+import { PauseButton } from '../hud/PauseButton';
 import {
   selectShards, selectShopOffers, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft,
@@ -67,6 +68,7 @@ export function Shop() {
         voucherCount={vouchers.length}
         accent={accent}
       />
+      <PauseButton />
 
       <div style={{
         position: 'absolute', left: '50%', top: 180, transform: 'translateX(-50%)',
