@@ -1,4 +1,5 @@
 import type { Phase } from '../core/pipeline/types';
+import type { Beat } from '../core/scoring/types';
 
 export type DieSnapshot = {
   id: number;
@@ -55,6 +56,7 @@ export type GameEventMap = {
   onShopOpened:        { offers: ShopOffer[] };
   onLockToggled:       { dieIdx: number; locked: boolean };
   onOfferBought:       { kind: ShopOffer['kind']; id: string; price: number };
+  onScoreBeat:         { beat: Beat };
 };
 
 export type GameEventEmission = {
