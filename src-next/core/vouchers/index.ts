@@ -6,7 +6,7 @@ export function ownsVoucher(s: GameState, id: string): boolean {
 }
 
 export function maxCatalystSlots(s: GameState): number {
-  return ownsVoucher(s, 'astral_plane') ? 7 : 6;
+  return ownsVoucher(s, 'bench') ? 7 : 6;
 }
 
 export function maxModSlots(s: GameState): number {
