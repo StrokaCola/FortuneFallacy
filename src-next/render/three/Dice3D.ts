@@ -400,6 +400,8 @@ export class Dice3D {
   private pointer = new THREE.Vector2();
   private canvas: HTMLCanvasElement;
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
+  private scoringActive = false;
+  private activeScoringDie = -1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -546,9 +548,16 @@ export class Dice3D {
       }),
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
       bus.on('onScoreBeat', ({ beat }) => {
-        if (beat.kind === 'die-tick') {
+        if (beat.kind === 'cast-swell') {
+          this.scoringActive = true;
+          this.activeScoringDie = -1;
+        } else if (beat.kind === 'die-tick') {
           const d = this.dice[beat.dieIdx];
           if (d) d.scorePopStart = performance.now();
+          this.activeScoringDie = beat.dieIdx;
+        } else if (beat.kind === 'boom' || beat.kind === 'bail') {
+          this.scoringActive = false;
+          this.activeScoringDie = -1;
         }
       }),
     );
@@ -1014,18 +1023,28 @@ export class Dice3D {
           d.group.position.lerpVectors(d.startPos, d.targetPos, t);
           const sc = d.startScale + (d.targetScale - d.startScale) * t;
           let popMul = 1;
+          const dieIdx = this.dice.indexOf(d);
+          const isActiveScoring = this.scoringActive && this.activeScoringDie === dieIdx;
+          // Pop animation when this die just ticked. Scale ramps to 1.55 in 120ms,
+          // holds while still the active die, then falls off after handoff.
           if (d.scorePopStart > 0) {
             const popDt = now - d.scorePopStart;
-            const POP_DUR = 480;
-            if (popDt >= 0 && popDt < POP_DUR) {
-              const p = popDt / POP_DUR;
-              // 0..0.2 ramp up to 1.4, 0.2..1.0 ease back to 1.0
-              popMul = p < 0.2
-                ? 1 + 0.4 * (p / 0.2)
-                : 1 + 0.4 * Math.pow(1 - (p - 0.2) / 0.8, 2);
-            } else if (popDt >= POP_DUR) {
+            const RAMP_MS = 120;
+            const FALL_MS = 320;
+            if (popDt < RAMP_MS) {
+              popMul = 1 + 0.55 * (popDt / RAMP_MS);
+            } else if (isActiveScoring) {
+              popMul = 1.55;
+            } else if (popDt < RAMP_MS + FALL_MS) {
+              const k = 1 - (popDt - RAMP_MS) / FALL_MS;
+              popMul = 1 + 0.55 * Math.max(0, k);
+            } else {
               d.scorePopStart = 0;
             }
+          }
+          // While scoring, dim non-active dice slightly to draw focus to the active one.
+          if (this.scoringActive && !isActiveScoring && d.scorePopStart === 0) {
+            popMul *= 0.85;
           }
           d.group.scale.setScalar(sc * popMul);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);
