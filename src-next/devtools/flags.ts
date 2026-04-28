@@ -4,6 +4,7 @@ export type DevFlags = {
   audio: boolean;
   nebula: boolean;
   fixedSeed: number | null;
+  devConsoleTab: string | null;
 };
 
 const KEY = 'ff_next_devflags';
@@ -14,6 +15,7 @@ const defaults: DevFlags = {
   audio: true,
   nebula: true,
   fixedSeed: null,
+  devConsoleTab: null,
 };
 
 function load(): DevFlags {

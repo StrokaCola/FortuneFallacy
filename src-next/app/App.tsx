@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { DebugPanel } from '../devtools/DebugPanel';
+import { DevConsole } from '../devtools/DevConsole';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
@@ -66,7 +66,7 @@ export function App() {
         <Particles />
       </div>
 
-      {import.meta.env.DEV && <DebugPanel />}
+      {import.meta.env.DEV && <DevConsole />}
     </div>
   );
 }
