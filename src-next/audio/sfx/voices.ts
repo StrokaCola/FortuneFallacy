@@ -167,9 +167,9 @@ export function bust(bank: SynthBank): void {
 }
 
 // ---- chipTick (idx → pent climb) ------------------------------------------
-export function chipTick(bank: SynthBank, opts: { idx?: number } = {}): void {
+export function chipTick(bank: SynthBank, opts: VoiceOpts & { freq?: number } = {}): void {
   const idx = opts.idx ?? 0;
-  const hz = pickPent(idx) * centsToRatio(jitterCents());
+  const hz = opts.freq !== undefined ? opts.freq : pickPent(idx) * centsToRatio(jitterCents());
   bank.chipTick.fm.volume.value = vol('chipTick', -16);
   bank.chipTick.fm.triggerAttackRelease(hz, '32n', jitteredTime());
 }
@@ -248,4 +248,44 @@ export function transitionWipe(bank: SynthBank): void {
   bank.transitionWipe.arrive.volume.value = vol('wipeArrive', -22);
   bank.transitionWipe.arrive.triggerAttackRelease(pickPent(7), '8n', t + 0.45);
   lastTime = t + 0.55;
+}
+
+// ---- multSlam ---------------------------------------------------------------
+export function multSlam(bank: SynthBank, opts: VoiceOpts & { freq?: number; gain?: number } = {}): void {
+  const t = jitteredTime();
+  const hz = opts.freq ?? 220;
+  const gain = opts.gain ?? 1;
+  bank.castBoom.kick.volume.value = vol('multSlam', -10 + Math.log2(gain) * 6);
+  bank.castBoom.kick.triggerAttackRelease(hz, '16n', t);
+  triggerDuck(bank.buses, 4, 60, 120);
+}
+
+// ---- comboChime -------------------------------------------------------------
+export function comboChime(bank: SynthBank): void {
+  const t = jitteredTime();
+  const root = pickPent(7) * centsToRatio(jitterCents());
+  bank.lockTap.ping.volume.value = vol('comboChime', -14);
+  bank.lockTap.ping.triggerAttackRelease(root, '8n', t);
+  bank.lockTap.ping.triggerAttackRelease(root * 1.5, '8n', t + 0.04);
+}
+
+// ---- targetCross ------------------------------------------------------------
+export function targetCross(bank: SynthBank): void {
+  const t = jitteredTime();
+  const slot = bank.rerollPool[bank.rerollIdx.i % bank.rerollPool.length]!;
+  bank.rerollIdx.i++;
+  slot.sweep.volume.value = vol('targetSweep', -16);
+  slot.sweep.triggerAttackRelease('4n', t);
+  bank.lockTap.ping.volume.value = vol('targetSubChime', -10);
+  bank.lockTap.ping.triggerAttackRelease(110, '4n', t + 0.02);
+}
+
+// ---- notEnough --------------------------------------------------------------
+export function notEnough(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.lockTap.ping.volume.value = vol('notEnough', -14);
+  bank.lockTap.ping.triggerAttackRelease(220, '4n', t);
+  bank.lockTap.ping.triggerAttackRelease(174.6, '4n', t + 0.18);
+  bank.castBoom.kick.volume.value = vol('notEnoughThud', -16);
+  bank.castBoom.kick.triggerAttackRelease(80, '8n', t + 0.32);
 }
