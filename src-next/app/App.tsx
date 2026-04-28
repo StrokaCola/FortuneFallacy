@@ -6,7 +6,7 @@ import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
-import { useStore } from '../state/store';
+import { useStore, store } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
@@ -50,7 +50,7 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      const cur = useStore.getState().ui.screen;
+      const cur = store.getState().ui.screen;
       if (cur === 'round' || cur === 'hub' || cur === 'shop' || cur === 'forge') {
         dispatch({ type: 'TOGGLE_PAUSE' });
       }
@@ -61,7 +61,7 @@ export function App() {
 
   useEffect(() => {
     let lastPaused: boolean | null = null;
-    const unsub = useStore.subscribe((s) => {
+    const unsub = store.subscribe((s) => {
       if (s.ui.paused === lastPaused) return;
       lastPaused = s.ui.paused;
       if (s.ui.paused) {
