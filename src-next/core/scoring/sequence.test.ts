@@ -79,4 +79,36 @@ describe('buildScoreSequence — tier selection', () => {
     const idx = seq.beats.findIndex((b) => b.kind === 'cross-target');
     expect(seq.beats[idx - 1]?.kind).toBe('combo-bonus');
   });
+
+  it('emits bail beat on last hand when target is mathematically out of reach', () => {
+    const seq = buildScoreSequence(
+      baseInput({ faces: [1, 1, 1, 1, 1], comboBonus: 0, mults: [], finalTotal: 5 }),
+      baseCtx({ target: 100, isLastHand: true, maxRemaining: 5 }),
+    );
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).toContain('bail');
+    expect(kinds).not.toContain('boom');
+    // bail terminates sequence
+    expect(kinds[kinds.length - 1]).toBe('bail');
+  });
+
+  it('does NOT bail on non-last hand even if target out of reach', () => {
+    const seq = buildScoreSequence(
+      baseInput({ finalTotal: 5 }),
+      baseCtx({ target: 100, isLastHand: false, maxRemaining: 5 }),
+    );
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).not.toContain('bail');
+  });
+
+  it('reduced motion collapses all tiers to short', () => {
+    const seq = buildScoreSequence(
+      baseInput({ finalTotal: 5000 }),  // would be full normally
+      baseCtx({ target: 100, reducedMotion: true }),
+    );
+    expect(seq.tier).toBe('short');
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).not.toContain('mult-slam');
+    expect(kinds).not.toContain('hold-breath');
+  });
 });

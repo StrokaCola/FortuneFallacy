@@ -26,6 +26,28 @@ export function buildScoreSequence(
   let running = 0;
   let crossEmitted = false;
 
+  if (ctx.isLastHand && ctx.maxRemaining < ctx.target) {
+    beats.push({ kind: 'cast-swell', t });
+    t += 200;
+    let bailRunning = 0;
+    for (let i = 0; i < input.faces.length; i++) {
+      bailRunning += input.faces[i]!;
+      beats.push({
+        kind: 'die-tick',
+        t,
+        dieIdx: i,
+        face: input.faces[i]!,
+        chipDelta: input.faces[i]!,
+        runningTotal: bailRunning,
+        pitchSemis: i,
+      });
+      t += 60;
+    }
+    t += 200;
+    beats.push({ kind: 'bail', t, runningTotal: bailRunning, target: ctx.target });
+    return { beats, tier, totalDurMs: t };
+  }
+
   const checkCross = (beforeRunning: number) => {
     if (!crossEmitted && beforeRunning < ctx.target && running >= ctx.target) {
       beats.push({ kind: 'cross-target', t: t + 80, runningTotal: running, target: ctx.target });
