@@ -47,4 +47,36 @@ describe('buildScoreSequence — tier selection', () => {
     expect(kinds).not.toContain('hold-breath');
     expect(kinds[kinds.length - 1]).toBe('boom');
   });
+
+  it('emits full tier with hold-breath when ratio >= 1.0', () => {
+    const seq = buildScoreSequence(
+      baseInput({ finalTotal: 200, comboBonus: 25, mults: [{ label: 'mult', value: 3 }, { label: 'chain', value: 2 }] }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('full');
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).toContain('hold-breath');
+    expect(kinds).toContain('cross-target');
+    // hold-breath sits between last mult-slam (or cross-target) and boom
+    const breathIdx = kinds.indexOf('hold-breath');
+    const boomIdx = kinds.indexOf('boom');
+    expect(breathIdx).toBeLessThan(boomIdx);
+  });
+
+  it('emits cross-target on the FIRST beat that crosses target, never twice', () => {
+    const seq = buildScoreSequence(
+      baseInput({
+        faces: [10, 10, 10, 10, 10],         // running after dice = 50
+        comboBonus: 60,                      // running after combo = 110, crosses target=100
+        mults: [{ label: 'mult', value: 3 }],
+        finalTotal: 330,
+      }),
+      baseCtx({ target: 100 }),
+    );
+    const crossings = seq.beats.filter((b) => b.kind === 'cross-target');
+    expect(crossings).toHaveLength(1);
+    // beat just BEFORE cross-target should be combo-bonus (the one that crossed)
+    const idx = seq.beats.findIndex((b) => b.kind === 'cross-target');
+    expect(seq.beats[idx - 1]?.kind).toBe('combo-bonus');
+  });
 });
