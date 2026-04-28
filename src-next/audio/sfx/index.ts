@@ -6,9 +6,10 @@ import * as legacyVoices from './voices.legacy';
 export type SfxId =
   | 'diceClack' | 'lockTap' | 'reroll' | 'buy'
   | 'combo' | 'upgrade' | 'bossSting' | 'bigScore' | 'win' | 'bust'
-  | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe';
+  | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe'
+  | 'multSlam' | 'comboChime' | 'targetCross' | 'notEnough';
 
-export type SfxOpts = { tier?: number; volume?: number; idx?: number };
+export type SfxOpts = { tier?: number; volume?: number; idx?: number; freq?: number; gain?: number };
 
 const VOLUME_KEY = 'ff_next_sfxVol';
 const LEGACY_KEY = 'ff_sfx_legacy';
@@ -68,11 +69,15 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'bust':            v.bust(bank as never); break;
       case 'chipTick':        v.chipTick(bank as never, opts); break;
       case 'castSwell':       v.castSwell(bank as never); break;
-      case 'castBoom':        v.castBoom(bank as never); break;
+      case 'castBoom':        v.castBoom(bank as never, opts); break;
       case 'sigilDraw':       v.sigilDraw(bank as never); break;
       case 'cardFlip':        v.cardFlip(bank as never); break;
       case 'nodePulse':       v.nodePulse(bank as never); break;
       case 'transitionWipe':  v.transitionWipe(bank as never); break;
+      case 'multSlam':        (v as typeof voices).multSlam(bank as never, opts); break;
+      case 'comboChime':      (v as typeof voices).comboChime(bank as never); break;
+      case 'targetCross':     (v as typeof voices).targetCross(bank as never); break;
+      case 'notEnough':       (v as typeof voices).notEnough(bank as never); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);

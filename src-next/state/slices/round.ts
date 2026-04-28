@@ -17,6 +17,14 @@ export type RoundSlice = {
   chainLen: number;
   chainTier: number;
   diceRunes: string[][];
+  lastScoringCtx?: {
+    combo: { id: string; tier: number } | null;
+    chips: number;
+    mult: number;
+    chain: { mult: number };
+    total: number;
+    state: { round: { dice: Array<{ face: number }> } };
+  } | null;
 };
 
 export const initialRoundSlice = (): RoundSlice => ({
