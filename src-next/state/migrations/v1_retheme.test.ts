@@ -40,8 +40,14 @@ describe('migrateRetheme', () => {
 
   it('leaves new-shape data alone (idempotent)', () => {
     const fresh = {
-      run: { catalysts: ['stratifier'], vouchers: ['bench'], consumables: ['pin_six'] },
-      round: { diceMods: [['amplify']] },
+      run: {
+        catalysts: ['stratifier'],
+        vouchers: ['bench'],
+        consumables: ['pin_six'],
+        handsPlayed: 0,
+        compoundingStacks: 0,
+      },
+      round: { diceMods: [['amplify']], shardSinkPrimedThisHand: false },
     };
     expect(migrateRetheme(fresh)).toEqual(fresh);
   });
@@ -50,5 +56,27 @@ describe('migrateRetheme', () => {
     const old = { run: { oracles: ['unknown_oracle'], vouchers: [], consumables: [] } };
     const m = migrateRetheme(old);
     expect(m.run.catalysts).toEqual(['unknown_oracle']);
+  });
+
+  it('defaults handsPlayed, compoundingStacks, shardSinkPrimedThisHand when missing', () => {
+    const old = {
+      run: { catalysts: [], vouchers: [], consumables: [] },
+      round: { diceMods: [[], [], [], [], []] },
+    };
+    const m = migrateRetheme(old) as { run: { handsPlayed: number; compoundingStacks: number }; round: { shardSinkPrimedThisHand: boolean } };
+    expect(m.run.handsPlayed).toBe(0);
+    expect(m.run.compoundingStacks).toBe(0);
+    expect(m.round.shardSinkPrimedThisHand).toBe(false);
+  });
+
+  it('preserves existing handsPlayed and compoundingStacks values', () => {
+    const fresh = {
+      run: { catalysts: [], vouchers: [], consumables: [], handsPlayed: 12, compoundingStacks: 3 },
+      round: { diceMods: [], shardSinkPrimedThisHand: true },
+    };
+    const m = migrateRetheme(fresh) as { run: { handsPlayed: number; compoundingStacks: number }; round: { shardSinkPrimedThisHand: boolean } };
+    expect(m.run.handsPlayed).toBe(12);
+    expect(m.run.compoundingStacks).toBe(3);
+    expect(m.round.shardSinkPrimedThisHand).toBe(true);
   });
 });

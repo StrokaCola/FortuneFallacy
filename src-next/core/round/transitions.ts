@@ -52,6 +52,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         shards: s.run.shards + reward,
         goalIdx: nextGoal,
         ante: nextAnte,
+        compoundingStacks: s.run.compoundingStacks + 1,
       },
       round: { ...s.round, active: false },
       ui: { ...s.ui, screen: won ? 'win' : 'shop' },
@@ -74,7 +75,7 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
     return {
       state: {
         ...s,
-        run: { ...s.run, catalysts: droppedCatalysts, goalIdx: nextGoal, ante: nextAnte },
+        run: { ...s.run, catalysts: droppedCatalysts, goalIdx: nextGoal, ante: nextAnte, compoundingStacks: 0 },
         round: { ...s.round, active: false, chainLen: 0, chainTier: -1 },
         ui: { ...s.ui, screen: 'shop' },
       },
@@ -87,6 +88,7 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       ...s,
       ui: { ...s.ui, screen: 'hub' },
       round: { ...s.round, active: false },
+      run: { ...s.run, compoundingStacks: 0 },
       meta: { ...s.meta, highScores },
     },
     events: [],

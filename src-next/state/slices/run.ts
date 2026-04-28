@@ -6,6 +6,8 @@ export type RunSlice = {
   catalysts: string[];
   vouchers: string[];
   consumables: string[];
+  handsPlayed: number;
+  compoundingStacks: number;
 };
 
 export const MAX_CONSUMABLES = 4;
@@ -18,4 +20,6 @@ export const initialRunSlice = (): RunSlice => ({
   catalysts: [],
   vouchers: [],
   consumables: [],
+  handsPlayed: 0,
+  compoundingStacks: 0,
 });

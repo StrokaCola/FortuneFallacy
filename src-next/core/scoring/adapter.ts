@@ -6,6 +6,7 @@ type MinimalScoringCtx = {
   mult: number;
   chain: { mult: number };
   total: number;
+  events: Array<{ type: string; payload: { id: string; phase: number; deltaChips: number; deltaMult: number } }>;
   state: { round: { dice: Array<{ face: number }> } };
 };
 
@@ -14,8 +15,17 @@ export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
   const faceSum = faces.reduce((a, b) => a + b, 0);
   const comboBonus = Math.max(0, ctx.chips - faceSum);
   const comboLabel = (ctx.combo?.id ?? 'CHANCE').toUpperCase();
+  const patienceTriggered = (ctx.events ?? []).some(
+    (e) => e.type === 'onUpgradeTriggered' && e.payload.id === 'patience_counter',
+  );
   const mults: SequenceInput['mults'] = [];
-  if (ctx.mult !== 1) mults.push({ label: 'mult', value: ctx.mult });
+  if (ctx.mult !== 1) {
+    mults.push({
+      label: 'mult',
+      value: ctx.mult,
+      tint: patienceTriggered ? 'magenta' : undefined,
+    });
+  }
   if (ctx.chain.mult !== 1) mults.push({ label: 'chain', value: ctx.chain.mult });
   return {
     faces,

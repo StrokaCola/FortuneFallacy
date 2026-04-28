@@ -185,6 +185,7 @@ export function buildScoreSequence(
       multiplier: m.value,
       pitchSemis: multSemis,
       ampScale: 1 + (multSemis - 12) * 0.1,
+      tint: m.tint,
     });
     checkCross(before);
     multSemis += 2;

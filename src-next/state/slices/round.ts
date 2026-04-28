@@ -17,12 +17,14 @@ export type RoundSlice = {
   chainLen: number;
   chainTier: number;
   diceMods: string[][];
+  shardSinkPrimedThisHand: boolean;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
     mult: number;
     chain: { mult: number };
     total: number;
+    events: Array<{ type: string; payload: { id: string; phase: number; deltaChips: number; deltaMult: number } }>;
     state: { round: { dice: Array<{ face: number }> } };
   } | null;
   pendingRoundEnd?: 'clear' | 'bust' | null;
@@ -46,4 +48,5 @@ export const initialRoundSlice = (): RoundSlice => ({
   chainLen: 0,
   chainTier: -1,
   diceMods: Array.from({ length: 5 }, () => [] as string[]),
+  shardSinkPrimedThisHand: false,
 });

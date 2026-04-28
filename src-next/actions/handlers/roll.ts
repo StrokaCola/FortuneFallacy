@@ -3,6 +3,7 @@ import { runRollPipelineUpToSim, runRollPipelineAfterSim } from '../../core/pipe
 import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
 import { lookupMod } from '../../core/mods';
+import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -60,54 +61,68 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
     }
     case 'SCORE_HAND': {
-      const baseCtx = runRollPipelineUpToSim(s);
+      const primed = shardSinkActive(s);
+      const shardsAfter = primed ? s.run.shards - 1 : s.run.shards;
+      const workingState = {
+        ...s,
+        run: { ...s.run, shards: shardsAfter },
+        round: { ...s.round, shardSinkPrimedThisHand: primed },
+      };
+      const baseCtx = runRollPipelineUpToSim(workingState);
       const fakeResult = {
-        finalFaces: s.round.dice.map((d) => d.face),
-        restPositions: s.round.dice.map(() => ({ x: 0, y: 0, z: 0 })),
-        settleMs: s.round.dice.map(() => 0),
+        finalFaces: workingState.round.dice.map((d) => d.face),
+        restPositions: workingState.round.dice.map(() => ({ x: 0, y: 0, z: 0 })),
+        settleMs: workingState.round.dice.map(() => 0),
         peakVelocity: 0,
         collisionCount: 0,
-        bounceHeights: s.round.dice.map(() => 0),
+        bounceHeights: workingState.round.dice.map(() => 0),
       };
       const final = runRollPipelineAfterSim(baseCtx, fakeResult);
       let shardBonus = 0;
-      for (const mods of s.round.diceMods) {
+      for (const mods of workingState.round.diceMods) {
         for (const id of mods) {
           const def = lookupMod(id);
           if (def?.shardsBonus) shardBonus += def.shardsBonus;
         }
       }
-      const newScore = s.round.score + final.total;
-      const newHandsLeft = Math.max(0, s.round.handsLeft - 1);
+      const newScore = workingState.round.score + final.total;
+      const newHandsLeft = Math.max(0, workingState.round.handsLeft - 1);
       const baseState = {
-        ...s,
-        run: shardBonus > 0 ? { ...s.run, shards: s.run.shards + shardBonus } : s.run,
+        ...workingState,
+        run: {
+          ...workingState.run,
+          shards: shardBonus > 0 ? workingState.run.shards + shardBonus : workingState.run.shards,
+          handsPlayed: workingState.run.handsPlayed + 1,
+        },
         round: {
-          ...s.round,
-          // score deferred to END_SCORING via pendingScoreDelta — keeps TopBar at old value while sequence climbs
+          ...workingState.round,
           handsLeft: newHandsLeft,
           rerollsLeft: 2,
           scoring: true,
           pendingScoreDelta: final.total,
-          chainLen: final.chain?.len ?? s.round.chainLen,
-          chainTier: final.chain?.tier ?? s.round.chainTier,
-          dice: s.round.dice.map((d) => ({ ...d, locked: false })),
+          chainLen: final.chain?.len ?? workingState.round.chainLen,
+          chainTier: final.chain?.tier ?? workingState.round.chainTier,
+          dice: workingState.round.dice.map((d) => ({ ...d, locked: false })),
+          shardSinkPrimedThisHand: false,
           lastScoringCtx: {
             combo: final.combo ?? null,
             chips: final.chips ?? 0,
             mult: final.mult ?? 1,
             chain: { mult: final.chain?.mult ?? 1 },
             total: final.total ?? 0,
-            state: { round: { dice: s.round.dice } },
+            events: final.events
+              .filter((e) => e.type === 'onUpgradeTriggered')
+              .map((e) => ({ type: e.type, payload: e.payload as { id: string; phase: number; deltaChips: number; deltaMult: number } })),
+            state: { round: { dice: workingState.round.dice } },
           },
         },
       };
       const baseEvents = [...final.events];
 
       let pendingRoundEnd: 'clear' | 'bust' | null = null;
-      if (s.round.active && newScore >= s.round.target && s.round.target > 0) {
+      if (workingState.round.active && newScore >= workingState.round.target && workingState.round.target > 0) {
         pendingRoundEnd = 'clear';
-      } else if (s.round.active && newHandsLeft === 0 && newScore < s.round.target) {
+      } else if (workingState.round.active && newHandsLeft === 0 && newScore < workingState.round.target) {
         pendingRoundEnd = 'bust';
       }
       const stateWithPending = pendingRoundEnd
