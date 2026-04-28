@@ -282,6 +282,7 @@ type DieAnim = {
   faceFadeStart: number;                  // ms; 0 = idle
   faceFadeDurMs: number;
   upFace: number;                         // last known up-face from store
+  scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
 };
 
 const PIP_FADE_IN_MS = 520;
@@ -399,6 +400,8 @@ export class Dice3D {
   private pointer = new THREE.Vector2();
   private canvas: HTMLCanvasElement;
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
+  private scoringActive = false;
+  private activeScoringDie = -1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -544,6 +547,19 @@ export class Dice3D {
         if (s.round.dice !== prev.round.dice) this.syncDice(s.round.dice);
       }),
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
+      bus.on('onScoreBeat', ({ beat }) => {
+        if (beat.kind === 'cast-swell') {
+          this.scoringActive = true;
+          this.activeScoringDie = -1;
+        } else if (beat.kind === 'die-tick') {
+          const d = this.dice[beat.dieIdx];
+          if (d) d.scorePopStart = performance.now();
+          this.activeScoringDie = beat.dieIdx;
+        } else if (beat.kind === 'boom' || beat.kind === 'bail') {
+          this.scoringActive = false;
+          this.activeScoringDie = -1;
+        }
+      }),
     );
     this.syncDice(store.getState().round.dice);
     this.attachClick();
@@ -617,6 +633,7 @@ export class Dice3D {
         faceFadeStart: 0,
         faceFadeDurMs: PIP_FADE_IN_MS,
         upFace: 1,
+        scorePopStart: 0,
       });
     }
   }
@@ -1005,7 +1022,31 @@ export class Dice3D {
           const t = 1 - Math.pow(1 - tRaw, 3);
           d.group.position.lerpVectors(d.startPos, d.targetPos, t);
           const sc = d.startScale + (d.targetScale - d.startScale) * t;
-          d.group.scale.setScalar(sc);
+          let popMul = 1;
+          const dieIdx = this.dice.indexOf(d);
+          const isActiveScoring = this.scoringActive && this.activeScoringDie === dieIdx;
+          // Pop animation when this die just ticked. Scale ramps to 1.55 in 120ms,
+          // holds while still the active die, then falls off after handoff.
+          if (d.scorePopStart > 0) {
+            const popDt = now - d.scorePopStart;
+            const RAMP_MS = 120;
+            const FALL_MS = 320;
+            if (popDt < RAMP_MS) {
+              popMul = 1 + 0.55 * (popDt / RAMP_MS);
+            } else if (isActiveScoring) {
+              popMul = 1.55;
+            } else if (popDt < RAMP_MS + FALL_MS) {
+              const k = 1 - (popDt - RAMP_MS) / FALL_MS;
+              popMul = 1 + 0.55 * Math.max(0, k);
+            } else {
+              d.scorePopStart = 0;
+            }
+          }
+          // While scoring, dim non-active dice slightly to draw focus to the active one.
+          if (this.scoringActive && !isActiveScoring && d.scorePopStart === 0) {
+            popMul *= 0.85;
+          }
+          d.group.scale.setScalar(sc * popMul);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);
 
           // Floaty held-die idle: bob + drift + gentle rotational shimmer once

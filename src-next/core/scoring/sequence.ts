@@ -67,9 +67,9 @@ export function buildScoreSequence(
   beats.push({ kind: 'cast-swell', t });
   t += 200;
 
-  const gaps = tier === 'full' ? lerpGaps(200, 60, input.faces.length)
-             : tier === 'mid'  ? lerpGaps(140, 80, input.faces.length)
-             :                   input.faces.map(() => 60);
+  const gaps = tier === 'full' ? lerpGaps(700, 480, input.faces.length)
+             : tier === 'mid'  ? lerpGaps(550, 350, input.faces.length)
+             :                   input.faces.map(() => 220);
 
   for (let i = 0; i < input.faces.length; i++) {
     const before = running;
