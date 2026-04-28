@@ -20,7 +20,7 @@ export default {
         ember:   '#ff7847',
         crimson: '#e2334a',
         gold:    '#f5c451',
-        astral:  '#7be3ff',
+        vector:  '#7be3ff',
       },
       fontFamily: {
         display: ['"Cinzel Decorative"', 'serif'],
