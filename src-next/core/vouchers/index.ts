@@ -9,7 +9,7 @@ export function maxOracleSlots(s: GameState): number {
   return ownsVoucher(s, 'astral_plane') ? 7 : 6;
 }
 
-export function maxRuneSlots(s: GameState): number {
+export function maxModSlots(s: GameState): number {
   return ownsVoucher(s, 'forged_links') ? 3 : 2;
 }
 

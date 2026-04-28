@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
-import { RUNES, lookupRune } from '../../core/runes';
-import { maxRuneSlots } from '../../core/vouchers';
+import { MODS, lookupMod } from '../../core/mods';
+import { maxModSlots } from '../../core/vouchers';
 import { Die3DCSS } from '../visual/Die3DCSS';
 import {
   selectAnte, selectShards, selectOracles,
 } from '../../state/selectors';
 
-const selectDiceRunes = (s: GameState) => s.round.diceRunes;
+const selectDiceRunes = (s: GameState) => s.round.diceMods;
 const selectDice = (s: GameState) => s.round.dice;
-const selectMaxRune = (s: GameState) => maxRuneSlots(s);
+const selectMaxRune = (s: GameState) => maxModSlots(s);
 
 export function Forge() {
   const dice = useStore(selectDice);
@@ -27,7 +27,7 @@ export function Forge() {
   const accent = '#7be3ff';
   const selectedFace = dice[selectedDie]?.face ?? 1;
   const selectedRunes = slots
-    .map(lookupRune)
+    .map(lookupMod)
     .filter((r): r is NonNullable<typeof r> => !!r)
     .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' }));
 
@@ -113,10 +113,10 @@ export function Forge() {
             ◈ rune codex
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {RUNES.map((r, i) => {
+            {MODS.map((r, i) => {
               const colorMap: Record<string, string> = {
                 amplify: '#7be3ff', sharpened: '#ff7847', gilded: '#f5c451',
-                loaded: '#e2334a', snake_cult: '#9577ff', high_roller: '#f5c451', blessed: '#bba8ff',
+                loaded: '#e2334a', snake_eyes: '#9577ff', high_roller: '#f5c451', backstop: '#bba8ff',
               };
               const c = colorMap[r.id] ?? '#7be3ff';
               const canAttach = slots.length < maxSlots;
@@ -164,7 +164,7 @@ export function Forge() {
           display: 'flex', gap: 10, justifyContent: 'center',
         }}>
           {slots.map((rid, idx) => {
-            const r = lookupRune(rid);
+            const r = lookupMod(rid);
             if (!r) return null;
             return (
               <button

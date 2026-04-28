@@ -475,7 +475,7 @@ export class Dice3D {
     this.scene.add(this.holdGlow);
 
     // Cinematic constellation — two-strand line:
-    //   • holdLinksGlow: wide soft halo (additive, low opacity, astral tint)
+    //   • holdLinksGlow: wide soft halo (additive, low opacity, vector tint)
     //   • holdLinks:     thin bright core (additive, high opacity, near-white)
     // Both share the same per-frame vertex buffer.
     const linkGlowMat = new THREE.LineBasicMaterial({
