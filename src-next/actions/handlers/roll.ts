@@ -84,10 +84,11 @@ export const rollHandler: ActionHandler = (a, s) => {
         run: shardBonus > 0 ? { ...s.run, shards: s.run.shards + shardBonus } : s.run,
         round: {
           ...s.round,
-          score: newScore,
+          // score deferred to END_SCORING via pendingScoreDelta — keeps TopBar at old value while sequence climbs
           handsLeft: newHandsLeft,
           rerollsLeft: 2,
           scoring: true,
+          pendingScoreDelta: final.total,
           chainLen: final.chain?.len ?? s.round.chainLen,
           chainTier: final.chain?.tier ?? s.round.chainTier,
           dice: s.round.dice.map((d) => ({ ...d, locked: false })),
@@ -103,20 +104,40 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
       const baseEvents = [...final.events];
 
+      let pendingRoundEnd: 'clear' | 'bust' | null = null;
       if (s.round.active && newScore >= s.round.target && s.round.target > 0) {
-        const cleared = clearBlind(baseState);
-        return { state: cleared.state, events: [...baseEvents, ...cleared.events] };
+        pendingRoundEnd = 'clear';
+      } else if (s.round.active && newHandsLeft === 0 && newScore < s.round.target) {
+        pendingRoundEnd = 'bust';
       }
-      if (s.round.active && newHandsLeft === 0 && newScore < s.round.target) {
-        const busted = bustBlind(baseState);
-        return { state: busted.state, events: [...baseEvents, ...busted.events] };
-      }
-      return { state: baseState, events: baseEvents };
+      const stateWithPending = pendingRoundEnd
+        ? { ...baseState, round: { ...baseState.round, pendingRoundEnd } }
+        : baseState;
+      return { state: stateWithPending, events: baseEvents };
     }
     case 'END_SCORING': {
       if (!s.round.scoring) return { state: s, events: [] };
+      const finalScore = s.round.score + (s.round.pendingScoreDelta ?? 0);
+      const cleared = {
+        ...s,
+        round: {
+          ...s.round,
+          score: finalScore,
+          scoring: false,
+          pendingRoundEnd: null,
+          pendingScoreDelta: null,
+        },
+      };
+      if (s.round.pendingRoundEnd === 'clear') {
+        const result = clearBlind(cleared);
+        return result;
+      }
+      if (s.round.pendingRoundEnd === 'bust') {
+        const result = bustBlind(cleared);
+        return result;
+      }
       return {
-        state: { ...s, round: { ...s.round, scoring: false } },
+        state: cleared,
         events: [],
       };
     }

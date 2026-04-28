@@ -54,11 +54,12 @@ export function ScoreMoment() {
           break;
         case 'boom':
           setBoom({ total: beat.finalTotal, gold: beat.crossedTarget });
+          // Round-clearing booms get a longer hold so the player savors the final number.
           setTimeout(() => {
             setActive(false);
             setBoom(null);
             dispatch({ type: 'END_SCORING' });
-          }, 1100);
+          }, beat.crossedTarget ? 2600 : 1400);
           break;
         case 'bail':
           setStamp('bail');
@@ -66,7 +67,7 @@ export function ScoreMoment() {
             setActive(false);
             setStamp(null);
             dispatch({ type: 'END_SCORING' });
-          }, 1200);
+          }, 2400);
           break;
       }
     });
