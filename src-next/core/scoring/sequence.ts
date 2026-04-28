@@ -52,7 +52,32 @@ export function buildScoreSequence(
     return { beats, tier, totalDurMs: t };
   }
 
-  // mid + full handled in subsequent tasks
-  beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: false });
+  running += input.comboBonus;
+  beats.push({
+    kind: 'combo-bonus',
+    t,
+    comboLabel: input.comboLabel,
+    chipDelta: input.comboBonus,
+    runningTotal: running,
+  });
+  t += 300;
+
+  const multGap = tier === 'full' ? 450 : 250;
+  let multSemis = 12;
+  for (const m of input.mults) {
+    running = Math.round(running * m.value);
+    beats.push({
+      kind: 'mult-slam',
+      t,
+      label: m.label,
+      multiplier: m.value,
+      pitchSemis: multSemis,
+      ampScale: 1 + (multSemis - 12) * 0.1,
+    });
+    multSemis += 2;
+    t += multGap;
+  }
+
+  beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: running >= ctx.target });
   return { beats, tier, totalDurMs: t };
 }
