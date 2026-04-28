@@ -80,10 +80,10 @@ function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number;
     <div
       style={{
         position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5, pointerEvents: 'auto',
+        display: 'flex', gap: 16, zIndex: 5, pointerEvents: 'auto',
       }}>
       <button
-        className="btn btn-ghost mat-interactive"
+        className="btn btn-ghost mat-interactive tap"
         disabled={rerolls === 0 || hands === 0}
         onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -92,7 +92,7 @@ function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number;
         </span>
       </button>
       <button
-        className="btn btn-primary mat-interactive"
+        className="btn btn-primary mat-interactive tap"
         disabled={hands === 0}
         onClick={() => dispatch({ type: 'SCORE_HAND' })}>
         ✦ Cast Hand

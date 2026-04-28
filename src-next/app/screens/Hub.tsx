@@ -7,7 +7,6 @@ import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
 } from '../../state/selectors';
 import { BLIND_DEFS, targetForBlind } from '../../data/blinds';
-import { sfxPlay } from '../../audio/sfx';
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -82,7 +81,6 @@ export function Hub() {
           return (
             <div
               key={i}
-              onMouseEnter={() => sfxPlay('nodePulse')}
               className="panel-strong"
               style={{
                 width: 240, height: 320, padding: 20, position: 'relative',

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { attachGestures } from '../input/gestures';
 
 const KEY = 'ff:hintSeen';
 
@@ -18,11 +19,10 @@ export function AstralHint() {
       try { window.localStorage.setItem(KEY, '1'); } catch { /* ignore */ }
     };
     const t = setTimeout(dismiss, 8000);
-    const onAny = () => dismiss();
-    window.addEventListener('pointerdown', onAny, { once: true });
+    const detach = attachGestures(document.body, { onTap: dismiss });
     return () => {
       clearTimeout(t);
-      window.removeEventListener('pointerdown', onAny);
+      detach();
     };
   }, [show]);
 

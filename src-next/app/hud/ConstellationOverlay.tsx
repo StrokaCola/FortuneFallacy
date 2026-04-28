@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bus } from '../../events/bus';
 import { ConstellationLines } from '../visual/ConstellationLines';
+import { STAGE_W } from '../../render/stage';
 
 type Pt = { x: number; y: number };
 type ConstellationDraw = { id: number; points: Pt[] };
@@ -57,11 +58,8 @@ export function ConstellationOverlay() {
     const offCombo = bus.on('onComboDetected', ({ combo }) => {
       const idxs = scoringIndices(lastFaces, combo);
       if (idxs.length < 2) return;
-      // Dice render inside the curved tray base — design tray center at stage y=600
-      // (stage 1280×800 centered on viewport).
-      const stageTop = (window.innerHeight - 800) / 2;
-      const trayY = stageTop + 600;
-      const startX = window.innerWidth / 2 - (lastFaces.length - 1) * 70;
+      const trayY = 600;
+      const startX = STAGE_W / 2 - (lastFaces.length - 1) * 70;
       const points = idxs.map((i) => ({ x: startX + i * 140, y: trayY }));
       const id = nextId++;
       setDraws((d) => [...d, { id, points }]);
