@@ -12,8 +12,8 @@ export type Action =
   | { type: 'BUY_OFFER'; offerIdx: number }
   | { type: 'USE_CONSUMABLE'; index: number; targets?: number[] }
   | { type: 'TOGGLE_PAUSE' }
-  | { type: 'GRANT_ORACLE'; id: string }
-  | { type: 'REVOKE_ORACLE'; id: string }
+  | { type: 'GRANT_CATALYST'; id: string }
+  | { type: 'REVOKE_CATALYST'; id: string }
   | { type: 'TOGGLE_LOCK'; dieIdx: number }
   | { type: 'RESET_ROUND' }
   | { type: 'START_BLIND' }

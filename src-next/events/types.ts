@@ -37,7 +37,7 @@ export type UpgradeId = string;
 export type BlindId = string;
 
 export type ShopOffer = {
-  kind: 'oracle' | 'voucher' | 'consumable';
+  kind: 'catalyst' | 'voucher' | 'consumable';
   id: string;
   price: number;
 };

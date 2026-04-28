@@ -2,7 +2,7 @@ import { register } from '../registry';
 import { Phase } from '../../pipeline/types';
 
 register({
-  id: 'fools_fortune',
+  id: 'twin_sample',
   phase: Phase.UPGRADES,
   priority: 60,
   apply: (ctx) => {
@@ -15,7 +15,7 @@ register({
         ...ctx.events,
         {
           type: 'onUpgradeTriggered',
-          payload: { id: 'fools_fortune', phase: Phase.UPGRADES, deltaChips: newChips - ctx.chips, deltaMult: 0 },
+          payload: { id: 'twin_sample', phase: Phase.UPGRADES, deltaChips: newChips - ctx.chips, deltaMult: 0 },
         },
       ],
     };

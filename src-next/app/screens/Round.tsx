@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
-import { OracleStrip } from '../hud/OracleStrip';
+import { CatalystStrip } from '../hud/CatalystStrip';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
 import { ConstellationOverlay } from '../hud/ConstellationOverlay';
@@ -14,7 +14,7 @@ import { TrayBase } from '../visual/TrayBase';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
   selectTarget, selectShards, selectAnte,
-  selectOracles, selectVouchers, selectBlindId,
+  selectCatalysts, selectVouchers, selectBlindId,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -26,7 +26,7 @@ export function Round() {
   const target   = useStore(selectTarget);
   const shards   = useStore(selectShards);
   const ante     = useStore(selectAnte);
-  const oracles  = useStore(selectOracles);
+  const catalysts = useStore(selectCatalysts);
   const vouchers = useStore(selectVouchers);
   const blindId  = useStore(selectBlindId);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
@@ -53,12 +53,12 @@ export function Round() {
         rerolls={rerolls}
         target={target}
         score={score}
-        oracleSlots={{ used: oracles.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: 6 }}
         voucherCount={vouchers.length}
         accent={accent}
       />
 
-      <OracleStrip />
+      <CatalystStrip />
       <ConsumableTray />
 
       <ComboBanner accent={accent} />

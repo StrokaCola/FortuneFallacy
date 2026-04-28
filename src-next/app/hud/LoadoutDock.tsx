@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
-import { selectOracles } from '../../state/selectors';
-import { lookupOracle } from '../../data/oracles';
+import { selectCatalysts } from '../../state/selectors';
+import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import type { GameState } from '../../state/store';
 
@@ -10,7 +10,7 @@ const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
 
 export function LoadoutDock() {
-  const oracles = useStore(selectOracles);
+  const catalysts = useStore(selectCatalysts);
   const consumables = useStore(selectConsumables);
   const diceCount = useStore(selectDiceCount);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
@@ -41,23 +41,23 @@ export function LoadoutDock() {
         }}>
         <span className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.28em', color: '#bba8ff' }}>Loadout</span>
         <div style={{ display: 'flex', gap: 6 }}>
-          {oracles.length === 0 && consumables.length === 0 && (
+          {catalysts.length === 0 && consumables.length === 0 && (
             <span className="f-mono" style={{ fontSize: 10, color: 'rgba(220,212,255,0.4)' }}>empty</span>
           )}
-          {oracles.map((id, i) => {
-            const o = lookupOracle(id);
-            if (!o) return null;
+          {catalysts.map((id, i) => {
+            const cat = lookupCatalyst(id);
+            if (!cat) return null;
             return (
               <div key={`o-${i}`} className="has-tip" style={{ position: 'relative' }}>
                 <span style={{
                   display: 'inline-grid', placeItems: 'center',
                   width: 32, height: 32, borderRadius: 6,
-                  background: `${o.color}25`,
-                  border: `1px solid ${o.color}80`,
-                  fontSize: 18, color: o.color,
-                  filter: `drop-shadow(0 0 4px ${o.color})`,
-                }}>{o.icon}</span>
-                <span className="tip">{o.name} — {o.desc}</span>
+                  background: `${cat.color}25`,
+                  border: `1px solid ${cat.color}80`,
+                  fontSize: 18, color: cat.color,
+                  filter: `drop-shadow(0 0 4px ${cat.color})`,
+                }}>{cat.icon}</span>
+                <span className="tip">{cat.name} — {cat.desc}</span>
               </div>
             );
           })}

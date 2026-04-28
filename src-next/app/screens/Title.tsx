@@ -3,7 +3,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { useStore } from '../../state/store';
 import type { GameState } from '../../state/store';
 
-const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.oracles.length > 0;
+const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0;
 
 export function Title() {
   const hasRun = useStore(selectHasRun);

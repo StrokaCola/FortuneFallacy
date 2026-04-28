@@ -3,10 +3,10 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import {
-  selectShards, selectShopOffers, selectAnte, selectOracles, selectVouchers,
+  selectShards, selectShopOffers, selectAnte, selectCatalysts, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft,
 } from '../../state/selectors';
-import { lookupOracle } from '../../data/oracles';
+import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import { lookupVoucher } from '../../data/vouchers';
 import { sfxPlay } from '../../audio/sfx';
@@ -14,9 +14,9 @@ import { sfxPlay } from '../../audio/sfx';
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string };
 
 function offerMeta(kind: string, id: string): Meta {
-  if (kind === 'oracle') {
-    const o = lookupOracle(id);
-    return { name: o?.name ?? id, icon: o?.icon ?? '✦', color: o?.color ?? '#7be3ff', desc: o?.desc ?? '', kindLabel: 'oracle' };
+  if (kind === 'catalyst') {
+    const c = lookupCatalyst(id);
+    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst' };
   }
   if (kind === 'consumable') {
     const c = lookupConsumable(id);
@@ -41,7 +41,7 @@ export function Shop() {
   const shards   = useStore(selectShards);
   const offers   = useStore(selectShopOffers);
   const ante     = useStore(selectAnte);
-  const oracles  = useStore(selectOracles);
+  const catalysts = useStore(selectCatalysts);
   const vouchers = useStore(selectVouchers);
   const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
@@ -62,7 +62,7 @@ export function Shop() {
         rerolls={rerolls}
         target={target}
         score={score}
-        oracleSlots={{ used: oracles.length, max: 6 }}
+        catalystSlots={{ used: catalysts.length, max: 6 }}
         voucherCount={vouchers.length}
         accent={accent}
       />

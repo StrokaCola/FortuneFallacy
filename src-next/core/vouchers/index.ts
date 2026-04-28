@@ -5,7 +5,7 @@ export function ownsVoucher(s: GameState, id: string): boolean {
   return s.run.vouchers.includes(id);
 }
 
-export function maxOracleSlots(s: GameState): number {
+export function maxCatalystSlots(s: GameState): number {
   return ownsVoucher(s, 'astral_plane') ? 7 : 6;
 }
 

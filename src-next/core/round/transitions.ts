@@ -68,13 +68,13 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
 
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   if (s.round.target > 0 && s.round.score >= Math.floor(s.round.target * 0.75)) {
-    const droppedOracles = s.run.oracles.length > 0 ? s.run.oracles.slice(1) : [];
+    const droppedCatalysts = s.run.catalysts.length > 0 ? s.run.catalysts.slice(1) : [];
     const nextGoal = s.run.goalIdx + 1;
     const nextAnte = Math.floor(nextGoal / 3) + 1;
     return {
       state: {
         ...s,
-        run: { ...s.run, oracles: droppedOracles, goalIdx: nextGoal, ante: nextAnte },
+        run: { ...s.run, catalysts: droppedCatalysts, goalIdx: nextGoal, ante: nextAnte },
         round: { ...s.round, active: false, chainLen: 0, chainTier: -1 },
         ui: { ...s.ui, screen: 'shop' },
       },

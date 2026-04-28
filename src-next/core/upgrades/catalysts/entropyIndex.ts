@@ -2,7 +2,7 @@ import { register } from '../registry';
 import { Phase } from '../../pipeline/types';
 
 register({
-  id: 'entropy_stone',
+  id: 'entropy_index',
   phase: Phase.UPGRADES,
   priority: 200,
   apply: (ctx) => {
@@ -18,7 +18,7 @@ register({
         ...ctx.events,
         {
           type: 'onUpgradeTriggered',
-          payload: { id: 'entropy_stone', phase: Phase.UPGRADES, deltaChips: 0, deltaMult: newMult - ctx.mult },
+          payload: { id: 'entropy_index', phase: Phase.UPGRADES, deltaChips: 0, deltaMult: newMult - ctx.mult },
         },
       ],
     };

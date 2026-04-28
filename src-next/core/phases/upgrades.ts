@@ -8,8 +8,8 @@ const ALWAYS_ACTIVE = new Set<string>();
 export const upgrades: PhaseFn = (ctx) => {
   let next = ctx;
 
-  if (!hasDebuff(ctx.state, 'disable_oracles')) {
-    const owned = new Set(ctx.state.run.oracles);
+  if (!hasDebuff(ctx.state, 'disable_catalysts')) {
+    const owned = new Set(ctx.state.run.catalysts);
     for (const u of getByPhase(Phase.UPGRADES)) {
       if (!ALWAYS_ACTIVE.has(u.id) && !owned.has(u.id)) continue;
       next = u.apply(next);
