@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { DevConsole } from '../devtools/DevConsole';
+import { useScoreSequenceController } from './hud/scoreSequenceController';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
@@ -20,6 +21,7 @@ import { screenMusic, type ScreenId } from '../audio/ScreenMusic';
 
 export function App() {
   useMotion();
+  useScoreSequenceController();
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
