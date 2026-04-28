@@ -33,49 +33,58 @@ const BOSS_ID_MAP: Record<string, string> = {
   the_high_priestess: 'callisto',
 };
 
-export function migrateRetheme(saved: any): any {
+export function migrateRetheme(saved: unknown): unknown {
   if (!saved || typeof saved !== 'object') return saved;
-  const next = { ...saved };
+  const next = { ...(saved as Record<string, unknown>) };
+
+  const run = next.run as Record<string, unknown> | undefined;
 
   // run.oracles -> run.catalysts
-  if (next.run && Array.isArray(next.run.oracles) && !Array.isArray(next.run.catalysts)) {
-    next.run = {
-      ...next.run,
-      catalysts: next.run.oracles.map((id: string) => CATALYST_ID_MAP[id] ?? id),
+  if (run && Array.isArray(run.oracles) && !Array.isArray(run.catalysts)) {
+    const updated: Record<string, unknown> = {
+      ...run,
+      catalysts: (run.oracles as string[]).map((id) => CATALYST_ID_MAP[id] ?? id),
     };
-    delete next.run.oracles;
+    delete updated.oracles;
+    next.run = updated;
   }
 
   // run.vouchers — id remap (in place; new ids stay as-is)
-  if (next.run && Array.isArray(next.run.vouchers)) {
+  const run2 = next.run as Record<string, unknown> | undefined;
+  if (run2 && Array.isArray(run2.vouchers)) {
     next.run = {
-      ...next.run,
-      vouchers: next.run.vouchers.map((id: string) => VOUCHER_ID_MAP[id] ?? id),
+      ...run2,
+      vouchers: (run2.vouchers as string[]).map((id) => VOUCHER_ID_MAP[id] ?? id),
     };
   }
 
   // run.consumables — id remap
-  if (next.run && Array.isArray(next.run.consumables)) {
+  const run3 = next.run as Record<string, unknown> | undefined;
+  if (run3 && Array.isArray(run3.consumables)) {
     next.run = {
-      ...next.run,
-      consumables: next.run.consumables.map((id: string) => CONSUMABLE_ID_MAP[id] ?? id),
+      ...run3,
+      consumables: (run3.consumables as string[]).map((id) => CONSUMABLE_ID_MAP[id] ?? id),
     };
   }
 
+  const round = next.round as Record<string, unknown> | undefined;
+
   // round.diceRunes -> round.diceMods
-  if (next.round && Array.isArray(next.round.diceRunes) && !Array.isArray(next.round.diceMods)) {
-    next.round = {
-      ...next.round,
-      diceMods: next.round.diceRunes.map((arr: string[]) =>
+  if (round && Array.isArray(round.diceRunes) && !Array.isArray(round.diceMods)) {
+    const updated: Record<string, unknown> = {
+      ...round,
+      diceMods: (round.diceRunes as string[][]).map((arr) =>
         arr.map((id) => MOD_ID_MAP[id] ?? id),
       ),
     };
-    delete next.round.diceRunes;
+    delete updated.diceRunes;
+    next.round = updated;
   }
 
   // round.blindId — boss id remap (only if it matches a known old id)
-  if (next.round && typeof next.round.blindId === 'string' && BOSS_ID_MAP[next.round.blindId]) {
-    next.round = { ...next.round, blindId: BOSS_ID_MAP[next.round.blindId] };
+  const round2 = next.round as Record<string, unknown> | undefined;
+  if (round2 && typeof round2.blindId === 'string' && BOSS_ID_MAP[round2.blindId]) {
+    next.round = { ...round2, blindId: BOSS_ID_MAP[round2.blindId] };
   }
 
   return next;
