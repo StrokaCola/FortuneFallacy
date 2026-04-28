@@ -123,7 +123,7 @@ export function Forge() {
               return (
                 <div
                   key={r.id}
-                  onClick={() => canAttach && dispatch({ type: 'ATTACH_RUNE', dieIdx: selectedDie, runeId: r.id })}
+                  onClick={() => canAttach && dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id })}
                   onMouseEnter={() => setHovered(i)}
                   onMouseLeave={() => setHovered(null)}
                   style={{
@@ -169,7 +169,7 @@ export function Forge() {
             return (
               <button
                 key={idx}
-                onClick={() => dispatch({ type: 'DETACH_RUNE', dieIdx: selectedDie, runeIdx: idx })}
+                onClick={() => dispatch({ type: 'DETACH_MOD', dieIdx: selectedDie, modIdx: idx })}
                 className="f-mono uc"
                 style={{
                   fontSize: 9, padding: '4px 10px', borderRadius: 6,

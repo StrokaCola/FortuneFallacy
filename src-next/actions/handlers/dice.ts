@@ -18,16 +18,16 @@ export const diceHandler: ActionHandler = (a, s) => {
     }
     case 'RESET_ROUND':
       return { state: { ...s, round: initialRoundSlice() }, events: [] };
-    case 'ATTACH_RUNE': {
-      if (!lookupMod(a.runeId)) return { state: s, events: [] };
+    case 'ATTACH_MOD': {
+      if (!lookupMod(a.modId)) return { state: s, events: [] };
       const slots = s.round.diceMods[a.dieIdx];
       if (!slots || slots.length >= maxModSlots(s)) return { state: s, events: [] };
-      const diceMods = s.round.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.runeId] : r));
+      const diceMods = s.round.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
       return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
     }
-    case 'DETACH_RUNE': {
+    case 'DETACH_MOD': {
       const diceMods = s.round.diceMods.map((r, i) =>
-        i === a.dieIdx ? r.filter((_, j) => j !== a.runeIdx) : r,
+        i === a.dieIdx ? r.filter((_, j) => j !== a.modIdx) : r,
       );
       return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
     }

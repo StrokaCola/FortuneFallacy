@@ -22,8 +22,8 @@ export type Action =
   | { type: 'NEW_RUN' }
   | { type: 'GRANT_CONSUMABLE'; id: string }
   | { type: 'DISCARD_CONSUMABLE'; index: number }
-  | { type: 'ATTACH_RUNE'; dieIdx: number; runeId: string }
-  | { type: 'DETACH_RUNE'; dieIdx: number; runeIdx: number }
+  | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }
+  | { type: 'DETACH_MOD'; dieIdx: number; modIdx: number }
   | { type: 'SKIP_BLIND' }
   | { type: 'END_SCORING' };
 
