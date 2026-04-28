@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioEngine } from '../../audio/AudioEngine';
+import * as audioSettings from '../../audio/audioSettings';
 import {
   deltaToHeat,
   multiplierToCombo,
@@ -24,7 +25,7 @@ function AudioTabView() {
   }, []);
 
   const s = audioEngine.getState();
-  const master = audioEngine.getMaster();
+  const master = audioSettings.getMaster();
   const progress = audioEngine.getProgress();
   const tension = audioEngine.getTension();
 
@@ -39,7 +40,7 @@ function AudioTabView() {
             max={1}
             step={0.01}
             value={master}
-            onChange={(e) => audioEngine.setMaster(Number(e.target.value))}
+            onChange={(e) => audioSettings.setMaster(Number(e.target.value))}
             className="flex-1"
           />
           <span className="w-10 text-right">{master.toFixed(2)}</span>
@@ -105,7 +106,7 @@ function AudioTabView() {
           </button>
           <button
             onClick={() => {
-              audioEngine.setMaster(master);
+              audioSettings.setMaster(master);
               localStorage.removeItem('ff_next_audio');
             }}
             className="px-2 py-1 bg-cosmos-800 hover:bg-cosmos-700 rounded"

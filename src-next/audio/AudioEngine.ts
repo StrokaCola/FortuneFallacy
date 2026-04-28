@@ -8,8 +8,7 @@ import {
   loadMemory,
   type AudioMemory,
 } from './heat';
-
-const VOLUME_KEY = 'ff_next_audioVol';
+import * as audioSettings from './audioSettings';
 
 type Mode = 'idle' | 'active' | 'peak' | 'fail';
 
@@ -31,18 +30,11 @@ type Layers = {
 
 const BASE_PATH = '/FortuneFallacy/audio';
 
-function loadVolume(): number {
-  const raw = localStorage.getItem(VOLUME_KEY);
-  if (!raw) return 0.6;
-  const n = Number(raw);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.6;
-}
-
 class AudioEngineImpl {
   private layers: Layers | null = null;
   private state: State;
   private actual = { base: 0, combo: 0, peak: 0, fail: 0 };
-  private master = loadVolume();
+  private audioSettingsUnsub: (() => void) | null = null;
   private rafHandle: number | null = null;
   private lastTick = 0;
   private started = false;
@@ -106,6 +98,7 @@ class AudioEngineImpl {
 
     this.lastTick = performance.now();
     this.tick();
+    this.audioSettingsUnsub = audioSettings.subscribe(() => this.applyVolumes());
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
@@ -125,15 +118,6 @@ class AudioEngineImpl {
     this.paused = false;
     const ctx = Howler.ctx as AudioContext | null;
     if (ctx && ctx.state === 'suspended') ctx.resume();
-  }
-
-  setMaster(v: number): void {
-    this.master = Math.max(0, Math.min(1, v));
-    localStorage.setItem(VOLUME_KEY, String(this.master));
-  }
-
-  getMaster(): number {
-    return this.master;
   }
 
   setTension(t: number): void {
@@ -209,7 +193,23 @@ class AudioEngineImpl {
   }
 
   getState(): Readonly<State & { actual: typeof this.actual; master: number }> {
-    return { ...this.state, actual: { ...this.actual }, master: this.master };
+    return { ...this.state, actual: { ...this.actual }, master: audioSettings.getMaster() };
+  }
+
+  private applyVolumes(): void {
+    if (!this.layers) return;
+    const m = audioSettings.getMaster() * audioSettings.getMusic() * (this.paused ? 0 : 1);
+    this.layers.base.volume(this.actual.base * m);
+    this.layers.combo.volume(this.actual.combo * m);
+    this.layers.peak.volume(this.actual.peak * m);
+    this.layers.fail.volume(this.actual.fail * m);
+  }
+
+  dispose(): void {
+    this.audioSettingsUnsub?.();
+    this.audioSettingsUnsub = null;
+    if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
+    this.rafHandle = null;
   }
 
   private scheduleSave(): void {
@@ -306,11 +306,7 @@ class AudioEngineImpl {
     this.actual.peak += (peakTarget - this.actual.peak) * lerpK;
     this.actual.fail += (failTarget - this.actual.fail) * lerpK;
 
-    const m = this.master * (this.paused ? 0 : 1);
-    this.layers.base.volume(this.actual.base * m);
-    this.layers.combo.volume(this.actual.combo * m);
-    this.layers.peak.volume(this.actual.peak * m);
-    this.layers.fail.volume(this.actual.fail * m);
+    this.applyVolumes();
 
     if (this.filter) {
       // tension narrows the filter further; mode=fail still hard-overrides to 800Hz.
@@ -333,4 +329,14 @@ export function ensureAudioAfterGesture(): void {
     for (const e of events) document.removeEventListener(e, handler);
   };
   for (const e of events) document.addEventListener(e, handler);
+}
+
+declare global {
+  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
+}
+
+if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
+  (import.meta as ImportMeta).hot!.dispose(() => {
+    audioEngine.dispose();
+  });
 }

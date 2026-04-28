@@ -4,6 +4,7 @@ import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
 import { Die3DCSS } from '../visual/Die3DCSS';
+import { PauseButton } from '../hud/PauseButton';
 import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots,
 } from '../../state/selectors';
@@ -51,6 +52,7 @@ export function Forge() {
         <span className="f-mono" style={{ color: '#f5c451', fontSize: 16 }}>◆ {shards}</span>
         <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>catalysts {catalysts.length}/{maxCatalysts}</span>
       </div>
+      <PauseButton />
 
       <div style={{ position: 'absolute', left: '50%', top: 160, transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4 }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>

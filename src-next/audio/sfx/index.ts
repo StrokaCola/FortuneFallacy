@@ -2,6 +2,7 @@ import { buildBank, type SynthBank } from './synthBank';
 import { buildLegacyBank, type LegacySynthBank } from './synthBank.legacy';
 import * as voices from './voices';
 import * as legacyVoices from './voices.legacy';
+import * as audioSettings from '../audioSettings';
 
 export type SfxId =
   | 'diceClack' | 'lockTap' | 'reroll' | 'buy'
@@ -11,19 +12,12 @@ export type SfxId =
 
 export type SfxOpts = { tier?: number; volume?: number; idx?: number; freq?: number; gain?: number };
 
-const VOLUME_KEY = 'ff_next_sfxVol';
 const LEGACY_KEY = 'ff_sfx_legacy';
 
 let bank: SynthBank | LegacySynthBank | null = null;
 let legacyMode = false;
 let initPromise: Promise<void> | null = null;
-
-function loadVolume(): number {
-  const raw = localStorage.getItem(VOLUME_KEY);
-  if (!raw) return 0.7;
-  const n = Number(raw);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.7;
-}
+let sfxSettingsUnsub: (() => void) | null = null;
 
 function checkLegacyFlag(): boolean {
   try {
@@ -47,9 +41,25 @@ export async function sfxInit(): Promise<void> {
   legacyMode = checkLegacyFlag();
   initPromise = (async () => {
     bank = legacyMode ? await buildLegacyBank() : await buildBank();
-    bank.master.gain.value = loadVolume();
+    const applyGain = () => {
+      if (bank) bank.master.gain.value = audioSettings.getMaster() * audioSettings.getSfx();
+    };
+    applyGain();
+    sfxSettingsUnsub?.();
+    sfxSettingsUnsub = audioSettings.subscribe(applyGain);
   })();
   return initPromise;
+}
+
+declare global {
+  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
+}
+
+if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
+  (import.meta as ImportMeta).hot!.dispose(() => {
+    sfxSettingsUnsub?.();
+    sfxSettingsUnsub = null;
+  });
 }
 
 export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
@@ -85,13 +95,11 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
 }
 
 export function sfxSetMaster(v: number): void {
-  const clamped = Math.max(0, Math.min(1, v));
-  localStorage.setItem(VOLUME_KEY, String(clamped));
-  if (bank) bank.master.gain.value = clamped;
+  audioSettings.setSfx(v);
 }
 
 export function sfxGetMaster(): number {
-  return loadVolume();
+  return audioSettings.getSfx();
 }
 
 export function sfxBank(): SynthBank | LegacySynthBank | null {

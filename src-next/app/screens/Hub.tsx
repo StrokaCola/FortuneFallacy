@@ -2,6 +2,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { PortalGate } from '../portal/PortalGate';
 import { TopBar } from '../hud/TopBar';
+import { PauseButton } from '../hud/PauseButton';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
@@ -52,6 +53,7 @@ export function Hub() {
         voucherCount={vouchers.length}
         accent={accent}
       />
+      <PauseButton />
 
       <div style={{
         position: 'absolute', left: '50%', top: 200, transform: 'translateX(-50%)',

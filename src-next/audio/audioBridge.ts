@@ -5,6 +5,7 @@ import { audioEngine, ensureAudioAfterGesture } from './AudioEngine';
 import { sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank } from './sfx';
 import { installScoringRouter } from './scoring';
 import { installHeatRouter } from './heat';
+import * as audioSettings from './audioSettings';
 
 export function startAudioBridge(): () => void {
   const subs = [
@@ -87,8 +88,8 @@ export function startAudioBridge(): () => void {
 export { audioEngine, ensureAudioAfterGesture, sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank };
 
 export function getMaster(): number {
-  return audioEngine.getMaster();
+  return audioSettings.getMaster();
 }
 export function setMaster(v: number): void {
-  audioEngine.setMaster(v);
+  audioSettings.setMaster(v);
 }

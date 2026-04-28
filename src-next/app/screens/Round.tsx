@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
+import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
@@ -59,6 +60,7 @@ export function Round() {
         voucherCount={vouchers.length}
         accent={accent}
       />
+      <PauseButton />
 
       <CatalystStrip />
       <ShardDeductToast />
