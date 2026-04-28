@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fortune Fallacy — Die GLB Generator</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #07051a; color: #f3f0ff;
+               font-family: 'JetBrains Mono', ui-monospace, monospace; overflow: hidden; }
+  #ui { position: fixed; top: 16px; left: 16px; z-index: 10;
+        background: rgba(15,9,37,.85); border: 1px solid rgba(149,119,255,.35);
+        padding: 16px 20px; border-radius: 12px; min-width: 280px;
+        backdrop-filter: blur(8px); }
+  h1 { font-family: 'Cinzel Decorative', serif; font-size: 18px; margin: 0 0 4px;
+       letter-spacing: .04em; color: #7be3ff; }
+  p  { font-size: 11px; color: #bba8ff; line-height: 1.5; margin: 0 0 14px; }
+  label { display: block; font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+          color: #9577ff; margin-top: 10px; margin-bottom: 4px; }
+  select, button { width: 100%; padding: 8px 10px; font-family: inherit; font-size: 12px;
+                   background: rgba(46,29,107,.5); color: #f3f0ff;
+                   border: 1px solid rgba(149,119,255,.4); border-radius: 6px; }
+  button { cursor: pointer; margin-top: 14px; background: linear-gradient(180deg, #ff8a5e, #e85a28);
+           color: #20100a; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+           border: none; }
+  button:hover { filter: brightness(1.1); }
+  #status { font-size: 10px; color: #7be3ff; margin-top: 10px; min-height: 14px; }
+  #canvas { position: fixed; inset: 0; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>Celestial Die — GLB</h1>
+  <p>Renders a beveled cube with embossed pip wells in the cosmos style. Click below to download the .glb.</p>
+
+  <label>Style</label>
+  <select id="style">
+    <option value="celestial">Celestial (default)</option>
+    <option value="obsidian">Obsidian / Gold</option>
+    <option value="ember">Ember</option>
+    <option value="ivory">Ivory</option>
+    <option value="glass">Glass / Astral</option>
+  </select>
+
+  <label>Pip Style</label>
+  <select id="pip">
+    <option value="indent">Indented wells (default)</option>
+    <option value="emboss">Raised emboss</option>
+  </select>
+
+  <label>Size (units)</label>
+  <select id="size">
+    <option value="1">1.0</option>
+    <option value="2" selected>2.0</option>
+    <option value="4">4.0</option>
+  </select>
+
+  <button id="download">⬇ Download .glb</button>
+  <div id="status"></div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three":           "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":   "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter }     from 'three/addons/exporters/GLTFExporter.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+// ---- Style presets — tuned to match index.html CSS dice -------------------
+// Celestial CSS die: radial-gradient(circle at 30% 25%, #2e1d6b, #0f0925 80%),
+// border rgba(187,168,255,.4), pip #dcd4ff, accent halo #7be3ff.
+const STYLES = {
+  celestial: { bodyTop: 0x2e1d6b, bodyBot: 0x0f0925, edge: 0xbba8ff, pip: 0xdcd4ff, halo: 0x7be3ff, eIntensity: 0.55, metal: 0.10, rough: 0.55 },
+  obsidian:  { bodyTop: 0x1a0f2e, bodyBot: 0x07051a, edge: 0xf5c451, pip: 0xf5c451, halo: 0xf5c451, eIntensity: 0.30, metal: 0.55, rough: 0.30 },
+  ember:     { bodyTop: 0xff8a5e, bodyBot: 0xc93a18, edge: 0xffe9c8, pip: 0xfff7e8, halo: 0xff7847, eIntensity: 0.40, metal: 0.20, rough: 0.45 },
+  ivory:     { bodyTop: 0xf5efe0, bodyBot: 0xd6c9aa, edge: 0xffffff, pip: 0x1c1245, halo: 0x5c39c4, eIntensity: 0.0,  metal: 0.0,  rough: 0.55 },
+  glass:     { bodyTop: 0x162844, bodyBot: 0x0a1422, edge: 0x7be3ff, pip: 0xf3f0ff, halo: 0x7be3ff, eIntensity: 0.55, metal: 0.10, rough: 0.20 },
+};
+
+// pip patterns 1..6 (in [-0.5..0.5] of face)
+const PIPS = {
+  1: [[0, 0]],
+  2: [[-0.25,-0.25], [0.25, 0.25]],
+  3: [[-0.25,-0.25], [0,0], [0.25, 0.25]],
+  4: [[-0.25,-0.25], [0.25,-0.25], [-0.25,0.25], [0.25,0.25]],
+  5: [[-0.25,-0.25], [0.25,-0.25], [0,0], [-0.25,0.25], [0.25,0.25]],
+  6: [[-0.25,-0.30], [0.25,-0.30], [-0.25,0], [0.25,0], [-0.25,0.30], [0.25,0.30]],
+};
+
+// face -> outward normal direction
+const FACE_DEFS = [
+  { val: 1, axis: 'z',  sign:  1 },  // front
+  { val: 6, axis: 'z',  sign: -1 },  // back
+  { val: 2, axis: 'x',  sign:  1 },  // right
+  { val: 5, axis: 'x',  sign: -1 },  // left
+  { val: 3, axis: 'y',  sign:  1 },  // top
+  { val: 4, axis: 'y',  sign: -1 },  // bottom
+];
+
+// ---- Build the die group ---------------------------------------------------
+function buildDie({ size = 2, styleKey = 'celestial', pipStyle = 'indent' }) {
+  const S = STYLES[styleKey];
+  const group = new THREE.Group();
+  group.name = `FortuneFallacyDie_${styleKey}`;
+
+  // Body — softly beveled cube to match the rounded-corner CSS look (radius ≈ 12px / 88px ≈ 14%)
+  const bodyGeo = new RoundedBoxGeometry(size, size, size, 5, size * 0.14);
+
+  // Vertex-color radial gradient: brighter at the highlight corner (top-left-front),
+  // darker at the opposite corner — matches `radial-gradient(circle at 30% 25%, #2e1d6b, #0f0925 80%)`
+  const top = new THREE.Color(S.bodyTop);
+  const bot = new THREE.Color(S.bodyBot);
+  const colors = [];
+  const pos = bodyGeo.attributes.position;
+  const highlight = new THREE.Vector3(-size * 0.25, size * 0.25, size * 0.5).normalize();
+  for (let i = 0; i < pos.count; i++) {
+    const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize();
+    const t = (v.dot(highlight) + 1) * 0.5; // 0..1
+    const c = bot.clone().lerp(top, Math.pow(t, 1.4));
+    colors.push(c.r, c.g, c.b);
+  }
+  bodyGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  const bodyMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    metalness: S.metal,
+    roughness: S.rough,
+    emissive: S.halo,
+    emissiveIntensity: 0.05,
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.name = 'Body';
+  group.add(body);
+
+  // Soft edge highlight (matches CSS `border: 1px solid rgba(187,168,255,.4)`)
+  const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(size * 1.001, size * 1.001, size * 1.001));
+  const edgeMat = new THREE.LineBasicMaterial({ color: S.edge, transparent: true, opacity: 0.30 });
+  const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+  edges.name = 'Edges';
+  group.add(edges);
+
+  // Pip — flat puck on the surface with a glowing halo (matches CSS pip + drop-shadow)
+  const pipMat = new THREE.MeshStandardMaterial({
+    color: S.pip, metalness: 0.3, roughness: 0.25,
+    emissive: S.pip, emissiveIntensity: S.eIntensity,
+  });
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: S.halo, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false,
+  });
+
+  const half = size / 2;
+  const pipR = size * 0.07;
+  const pipDepth = size * 0.012;          // very flat
+  const offset = pipStyle === 'indent' ? -pipDepth : pipDepth;
+
+  FACE_DEFS.forEach(({ val, axis, sign }) => {
+    const positions = PIPS[val];
+    positions.forEach(([u, v], i) => {
+      // Pip body — short cylinder pressed against face
+      const pipGeo = new THREE.CylinderGeometry(pipR, pipR * 0.9, pipDepth * 2, 24, 1);
+      const pip = new THREE.Mesh(pipGeo, pipMat);
+      pip.name = `Pip_face${val}_${i}`;
+
+      // halo ring (slightly larger flat disc behind pip)
+      const haloGeo = new THREE.CircleGeometry(pipR * 1.7, 24);
+      const halo = new THREE.Mesh(haloGeo, haloMat);
+      halo.name = `Halo_face${val}_${i}`;
+
+      // Place + orient so cylinder axis is along the face normal
+      const placeOnFace = (mesh, depthOffset) => {
+        if (axis === 'z') {
+          mesh.position.set(u * size, v * size, sign * (half + depthOffset));
+          mesh.rotation.x = Math.PI / 2;
+        } else if (axis === 'x') {
+          mesh.position.set(sign * (half + depthOffset), v * size, -u * size * sign);
+          mesh.rotation.z = Math.PI / 2;
+        } else {
+          mesh.position.set(u * size, sign * (half + depthOffset), -v * size * sign);
+          // already aligned to Y
+        }
+      };
+
+      placeOnFace(pip, offset);
+      placeOnFace(halo, offset + (pipStyle === 'indent' ? -0.002 : 0.001));
+      // Halo is a flat circle: needs to face outward, not the cylinder orientation
+      halo.rotation.set(0, 0, 0);
+      if (axis === 'x') halo.rotation.y = sign * Math.PI / 2;
+      else if (axis === 'y') halo.rotation.x = -sign * Math.PI / 2;
+      else if (axis === 'z' && sign < 0) halo.rotation.y = Math.PI;
+
+      group.add(halo);
+      group.add(pip);
+    });
+  });
+
+  return group;
+}
+
+// ---- Scene -----------------------------------------------------------------
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x07051a, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x07051a, 0.05);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(4, 3, 5);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+// lights — match constellation/astral look (purple key + cyan rim, like CSS shadow)
+scene.add(new THREE.AmbientLight(0x9577ff, 0.55));
+const key = new THREE.DirectionalLight(0xbba8ff, 0.9);
+key.position.set(-3, 4, 5);  // matches CSS highlight at top-left-front
+scene.add(key);
+const rim = new THREE.PointLight(0x7be3ff, 1.6, 18);
+rim.position.set(3, -2, -2);
+scene.add(rim);
+const fill = new THREE.PointLight(0x9577ff, 0.5, 16);
+fill.position.set(-2, -3, 3);
+scene.add(fill);
+
+// star backdrop
+{
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 600;
+  const positions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const r = 25 + Math.random() * 10;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(2 * Math.random() - 1);
+    positions[i*3+0] = r * Math.sin(p) * Math.cos(t);
+    positions[i*3+1] = r * Math.sin(p) * Math.sin(t);
+    positions[i*3+2] = r * Math.cos(p);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const starMat = new THREE.PointsMaterial({ color: 0xdcd4ff, size: 0.06, sizeAttenuation: true, transparent: true, opacity: 0.7 });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+}
+
+// state
+let currentDie = null;
+function rebuild() {
+  if (currentDie) { scene.remove(currentDie); currentDie.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); }
+  const styleKey = document.getElementById('style').value;
+  const pipStyle = document.getElementById('pip').value;
+  const size     = parseFloat(document.getElementById('size').value);
+  currentDie = buildDie({ size, styleKey, pipStyle });
+  scene.add(currentDie);
+}
+rebuild();
+['style', 'pip', 'size'].forEach(id => document.getElementById(id).addEventListener('change', rebuild));
+
+// loop
+function tick(t) {
+  if (currentDie) currentDie.rotation.y = t * 0.0004;
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---- Export GLB ------------------------------------------------------------
+const status = document.getElementById('status');
+document.getElementById('download').addEventListener('click', () => {
+  if (!currentDie) return;
+  status.textContent = 'exporting…';
+
+  // Clone & freeze rotation for export
+  const exportGroup = currentDie.clone(true);
+  exportGroup.rotation.set(0, 0, 0);
+
+  const exporter = new GLTFExporter();
+  exporter.parse(
+    exportGroup,
+    (result) => {
+      const blob = new Blob([result], { type: 'model/gltf-binary' });
+      const url = URL.createObjectURL(blob);
+      const styleKey = document.getElementById('style').value;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fortune-fallacy-die-${styleKey}.glb`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      status.textContent = `✓ saved fortune-fallacy-die-${styleKey}.glb`;
+    },
+    (err) => { status.textContent = '✗ export failed: ' + err.message; console.error(err); },
+    { binary: true, embedImages: true }
+  );
+});
+</script>
+</body>
+</html>
