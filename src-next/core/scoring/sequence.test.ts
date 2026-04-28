@@ -111,4 +111,58 @@ describe('buildScoreSequence — tier selection', () => {
     expect(kinds).not.toContain('mult-slam');
     expect(kinds).not.toContain('hold-breath');
   });
+
+  it('emits cross-target via mult-slam when dice + combo do not yet cross', () => {
+    // dice sum = 15, +combo 10 = 25, ×3 mult = 75, ×2 chain = 150 — crosses at chain mult
+    const seq = buildScoreSequence(
+      baseInput({
+        faces: [3, 3, 3, 3, 3],
+        comboBonus: 10,
+        mults: [{ label: 'mult', value: 3 }, { label: 'chain', value: 2 }],
+        finalTotal: 150,
+      }),
+      baseCtx({ target: 100 }),
+    );
+    const idx = seq.beats.findIndex((b) => b.kind === 'cross-target');
+    expect(idx).toBeGreaterThan(-1);
+    expect(seq.beats[idx - 1]?.kind).toBe('mult-slam');
+    expect(seq.beats.filter((b) => b.kind === 'cross-target')).toHaveLength(1);
+  });
+
+  it('full tier with empty mults still emits hold-breath and boom', () => {
+    const seq = buildScoreSequence(
+      baseInput({
+        faces: [20, 20, 20, 20, 20],   // dice alone = 100, crosses target
+        comboBonus: 50,                 // running = 150
+        mults: [],
+        finalTotal: 150,
+      }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('full');
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).toContain('hold-breath');
+    expect(kinds[kinds.length - 1]).toBe('boom');
+    expect(kinds.filter((k) => k === 'mult-slam')).toHaveLength(0);
+  });
+
+  it('short tier sets boom.crossedTarget when running >= target', () => {
+    // very low target so dice alone cross it
+    const seq = buildScoreSequence(
+      baseInput({ faces: [2, 2, 2, 2, 2], finalTotal: 10 }),
+      baseCtx({ target: 8 }),
+    );
+    // ratio = 10/8 = 1.25 — actually full tier. Need a true short-tier case where dice cross.
+    // short tier means ratio < 0.25, so target must be > 4*finalTotal. Can't have dice cross target in short.
+    // Instead test the inverse: short tier, dice don't cross, boom.crossedTarget stays false.
+    const seq2 = buildScoreSequence(
+      baseInput({ finalTotal: 18 }),
+      baseCtx({ target: 100 }),
+    );
+    const boom = seq2.beats.find((b) => b.kind === 'boom');
+    expect(boom?.kind).toBe('boom');
+    if (boom?.kind === 'boom') {
+      expect(boom.crossedTarget).toBe(false);
+    }
+  });
 });

@@ -16,6 +16,15 @@ function lerpGaps(from: number, to: number, n: number): number[] {
   return out;
 }
 
+/**
+ * Builds a deterministic beat list for a scored hand.
+ *
+ * Contract: `input.mults` must be the ordered list of multipliers actually
+ * applied by the scoring engine, so the internally-accumulated `running`
+ * total converges to `input.finalTotal`. The adapter (`adapter.ts`) is
+ * responsible for honoring this contract. Cross-target detection and the
+ * boom's `crossedTarget` flag are derived from `running`, not `finalTotal`.
+ */
 export function buildScoreSequence(
   input: SequenceInput,
   ctx: SequenceCtx,
