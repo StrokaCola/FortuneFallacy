@@ -51,9 +51,15 @@ export function installStage(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
   recompute();
-  const ro = new ResizeObserver(() => scheduleRecompute());
-  ro.observe(document.documentElement);
+  window.addEventListener('resize', scheduleRecompute);
   window.addEventListener('orientationchange', scheduleRecompute);
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => scheduleRecompute());
+    ro.observe(document.documentElement);
+  }
+  if (typeof window.visualViewport !== 'undefined' && window.visualViewport) {
+    window.visualViewport.addEventListener('resize', scheduleRecompute);
+  }
 }
 
 export function stageScale(): number {

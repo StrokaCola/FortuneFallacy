@@ -589,13 +589,13 @@ export class Dice3D {
       if (idx < 0) return;
       dispatch({ type: 'TOGGLE_LOCK', dieIdx: idx });
     };
-    this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    document.addEventListener('pointerdown', this.onPointerDown);
   }
 
   destroy(): void {
     if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
     this.unsubscribers.forEach((u) => u());
-    if (this.onPointerDown) this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
     this.renderer.dispose();
   }
 

@@ -48,7 +48,7 @@ html, body {
   width: 1280px;
   height: 800px;
   z-index: 3;
-  pointer-events: auto;
+  pointer-events: none;
   display: none;
 }
 #three-next.active { display: block; }
