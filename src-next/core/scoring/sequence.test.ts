@@ -146,23 +146,16 @@ describe('buildScoreSequence — tier selection', () => {
     expect(kinds.filter((k) => k === 'mult-slam')).toHaveLength(0);
   });
 
-  it('short tier sets boom.crossedTarget when running >= target', () => {
-    // very low target so dice alone cross it
+  it('short tier boom.crossedTarget is always false (target unreachable by construction)', () => {
+    // Short tier requires ratio < 0.25, so finalTotal < target/4.
+    // Dice sum <= finalTotal < target — dice can never cross target in short tier.
     const seq = buildScoreSequence(
-      baseInput({ faces: [2, 2, 2, 2, 2], finalTotal: 10 }),
-      baseCtx({ target: 8 }),
-    );
-    // ratio = 10/8 = 1.25 — actually full tier. Need a true short-tier case where dice cross.
-    // short tier means ratio < 0.25, so target must be > 4*finalTotal. Can't have dice cross target in short.
-    // Instead test the inverse: short tier, dice don't cross, boom.crossedTarget stays false.
-    const seq2 = buildScoreSequence(
       baseInput({ finalTotal: 18 }),
       baseCtx({ target: 100 }),
     );
-    const boom = seq2.beats.find((b) => b.kind === 'boom');
+    expect(seq.tier).toBe('short');
+    const boom = seq.beats.find((b) => b.kind === 'boom');
     expect(boom?.kind).toBe('boom');
-    if (boom?.kind === 'boom') {
-      expect(boom.crossedTarget).toBe(false);
-    }
+    if (boom?.kind === 'boom') expect(boom.crossedTarget).toBe(false);
   });
 });
