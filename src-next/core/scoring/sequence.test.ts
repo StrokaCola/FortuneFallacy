@@ -26,13 +26,12 @@ describe('buildScoreSequence — tier selection', () => {
       baseCtx({ target: 100 }),
     );
     expect(seq.tier).toBe('short');
-    // short tier: cast-swell + 5 die-ticks + boom = 7 beats
-    expect(seq.beats).toHaveLength(7);
-    expect(seq.beats[0]?.kind).toBe('cast-swell');
-    expect(seq.beats[6]?.kind).toBe('boom');
-    for (let i = 1; i <= 5; i++) {
-      expect(seq.beats[i]?.kind).toBe('die-tick');
-    }
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds[0]).toBe('cast-swell');
+    expect(kinds.filter((k) => k === 'die-tick')).toHaveLength(5);
+    expect(kinds).toContain('combo-bonus');
+    expect(kinds).toContain('hold-breath');
+    expect(kinds[kinds.length - 1]).toBe('boom');
   });
 
   it('emits mid tier when 0.25 <= ratio < 1.0', () => {
@@ -44,7 +43,7 @@ describe('buildScoreSequence — tier selection', () => {
     const kinds = seq.beats.map((b) => b.kind);
     expect(kinds).toContain('combo-bonus');
     expect(kinds.filter((k) => k === 'mult-slam')).toHaveLength(2);
-    expect(kinds).not.toContain('hold-breath');
+    expect(kinds).toContain('hold-breath');
     expect(kinds[kinds.length - 1]).toBe('boom');
   });
 
@@ -157,5 +156,77 @@ describe('buildScoreSequence — tier selection', () => {
     const boom = seq.beats.find((b) => b.kind === 'boom');
     expect(boom?.kind).toBe('boom');
     if (boom?.kind === 'boom') expect(boom.crossedTarget).toBe(false);
+  });
+
+  it('emits combo-bonus beat on every non-reduced-motion tier including Chance hand', () => {
+    for (const total of [18, 50, 200]) {
+      const seq = buildScoreSequence(
+        baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: total }),
+        baseCtx({ target: 100 }),
+      );
+      expect(seq.beats.some((b) => b.kind === 'combo-bonus')).toBe(true);
+    }
+  });
+
+  it('emits hold-breath before boom on every non-reduced-motion tier', () => {
+    for (const total of [18, 50, 200]) {
+      const seq = buildScoreSequence(
+        baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: total }),
+        baseCtx({ target: 100 }),
+      );
+      const breathIdx = seq.beats.findIndex((b) => b.kind === 'hold-breath');
+      const boomIdx = seq.beats.findIndex((b) => b.kind === 'boom');
+      expect(breathIdx).toBeGreaterThanOrEqual(0);
+      expect(breathIdx).toBeLessThan(boomIdx);
+    }
+  });
+
+  it('short tier total duration is at least 2000ms for typical 5-die no-mult hand', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 18 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('short');
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(2000);
+  });
+
+  it('mid tier total duration is at least 3000ms', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'TWO_PAIR', comboBonus: 20, mults: [], finalTotal: 50 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('mid');
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(3000);
+  });
+
+  it('full tier total duration is at least 3500ms', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'FULL_HOUSE', comboBonus: 35, mults: [{ label: 'mult', value: 2 }], finalTotal: 200 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('full');
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(3500);
+  });
+
+  it('reduced-motion path emits no combo-bonus and no hold-breath', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 18 }),
+      baseCtx({ target: 100, reducedMotion: true }),
+    );
+    expect(seq.beats.some((b) => b.kind === 'combo-bonus')).toBe(false);
+    expect(seq.beats.some((b) => b.kind === 'hold-breath')).toBe(false);
+    expect(seq.beats.some((b) => b.kind === 'boom')).toBe(true);
+  });
+
+  it('bail path emits no combo-bonus and no hold-breath (unchanged behavior)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ faces: [1,1,1,1,1], comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 5 }),
+      baseCtx({ target: 100, isLastHand: true, maxRemaining: 5 }),
+    );
+    expect(seq.beats[0]?.kind).toBe('cast-swell');
+    expect(seq.beats.some((b) => b.kind === 'die-tick')).toBe(true);
+    expect(seq.beats[seq.beats.length - 1]?.kind).toBe('bail');
+    expect(seq.beats.some((b) => b.kind === 'combo-bonus')).toBe(false);
+    expect(seq.beats.some((b) => b.kind === 'hold-breath')).toBe(false);
   });
 });
