@@ -607,9 +607,10 @@ import { PauseMenu } from './hud/PauseMenu';
 import { dispatch } from '../actions/dispatch';
 import { selectScreen } from '../state/selectors';
 import { screenMusic } from '../audio/ScreenMusic';
+import { store } from '../state/store';
 ```
 
-(`selectScreen`, `screenMusic`, `dispatch` may already be imported — keep imports unique.)
+(`selectScreen`, `screenMusic`, `dispatch`, `store` may already be imported — keep imports unique. The vanilla zustand `store` is the one with `.getState()`/`.subscribe()`; the existing `useStore` is a React hook selector and does NOT have those methods.)
 
 (b) Inside the `App` component body, after the existing `useEffect` hooks, add an Esc keydown listener:
 
@@ -617,7 +618,7 @@ import { screenMusic } from '../audio/ScreenMusic';
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      const cur = useStore.getState().ui.screen;
+      const cur = store.getState().ui.screen;
       if (cur === 'round' || cur === 'hub' || cur === 'shop' || cur === 'forge') {
         dispatch({ type: 'TOGGLE_PAUSE' });
       }
@@ -631,7 +632,7 @@ import { screenMusic } from '../audio/ScreenMusic';
 
 ```tsx
   useEffect(() => {
-    const unsub = useStore.subscribe((s) => {
+    const unsub = store.subscribe((s) => {
       if (s.ui.paused) {
         audioEngine.pause();
         screenMusic.pause();
@@ -644,7 +645,7 @@ import { screenMusic } from '../audio/ScreenMusic';
   }, []);
 ```
 
-Note: `useStore.subscribe(fn)` fires `fn` on every state change; the function reads `s.ui.paused` and calls the appropriate engine method idempotently (engines guard against double-pause/resume internally).
+Note: `store.subscribe(fn)` fires `fn` on every state change; the function reads `s.ui.paused` and calls the appropriate engine method idempotently (engines guard against double-pause/resume internally).
 
 (d) In the JSX, inside the outer `<div>`, add `<PauseMenu />` near the bottom (after `OrientationGate`, before `DevConsole`):
 
