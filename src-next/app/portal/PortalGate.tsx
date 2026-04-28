@@ -14,7 +14,6 @@ export function PortalGate({
   refUrl?: string | null;
 }) {
   const [busy, setBusy] = useState(false);
-  const [hover, setHover] = useState(false);
   const playerName = useStore((s) => s.meta.playerName);
 
   const onClick = async () => {
@@ -41,9 +40,8 @@ export function PortalGate({
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       disabled={busy}
+      className="portal-gate tap"
       title={refUrl ? 'Return to previous game' : 'Travel to another game in the jam'}
       style={{
         position: 'relative',
@@ -51,7 +49,7 @@ export function PortalGate({
         border: 'none', background: 'transparent',
         cursor: busy ? 'wait' : 'pointer',
         padding: 0,
-        transform: busy ? 'scale(1.4)' : hover ? 'scale(1.06)' : 'scale(1)',
+        transform: busy ? 'scale(1.4)' : 'scale(1)',
         opacity: busy ? 0.7 : 1,
         transition: 'transform 320ms ease, opacity 320ms ease',
       }}>
@@ -65,7 +63,7 @@ export function PortalGate({
         </defs>
         {/* outer brass ring with glyph orbit */}
         <g style={{ transformOrigin: '50% 50%', animation: 'orbit 24s linear infinite' }}>
-          <circle cx="50" cy="50" r="46" fill="none" stroke="#d4a64c" strokeWidth="1.2" opacity={hover ? 0.85 : 0.6} />
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#d4a64c" strokeWidth="1.2" opacity={0.7} />
           {RUNES.map((r, i) => {
             const a = (i / RUNES.length) * Math.PI * 2;
             const x = 50 + Math.cos(a) * 46;
@@ -79,7 +77,7 @@ export function PortalGate({
         </g>
         {/* inner brass ring counter-orbit */}
         <g style={{ transformOrigin: '50% 50%', animation: 'orbit 16s linear infinite reverse' }}>
-          <circle cx="50" cy="50" r="36" fill="none" stroke="#8a6720" strokeWidth="0.8" opacity={hover ? 0.7 : 0.5} strokeDasharray="2 2" />
+          <circle cx="50" cy="50" r="36" fill="none" stroke="#8a6720" strokeWidth="0.8" opacity={0.55} strokeDasharray="2 2" />
         </g>
         {/* void center */}
         <circle cx="50" cy="50" r="30" fill={`url(#pg-void-${size})`} />

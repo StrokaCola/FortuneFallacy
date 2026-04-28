@@ -22,7 +22,6 @@ export function Forge() {
   const maxSlots = useStore(selectMaxMod);
 
   const [selectedDie, setSelectedDie] = useState(0);
-  const [hovered, setHovered] = useState<number | null>(null);
 
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
@@ -114,7 +113,7 @@ export function Forge() {
             ◈ mod codex
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {MODS.map((r, i) => {
+            {MODS.map((r) => {
               const colorMap: Record<string, string> = {
                 amplify: '#7be3ff', sharpened: '#ff7847', gilded: '#f5c451',
                 loaded: '#e2334a', snake_eyes: '#9577ff', high_roller: '#f5c451', backstop: '#bba8ff',
@@ -125,17 +124,17 @@ export function Forge() {
                 <div
                   key={r.id}
                   onClick={() => canAttach && dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id })}
-                  onMouseEnter={() => setHovered(i)}
-                  onMouseLeave={() => setHovered(null)}
+                  className="forge-mod-row"
                   style={{
                     cursor: canAttach ? 'pointer' : 'not-allowed',
                     opacity: canAttach ? 1 : 0.4,
-                    padding: 10, borderRadius: 8,
-                    background: hovered === i ? `${c}15` : 'rgba(15,9,37,0.5)',
-                    border: `1px solid ${hovered === i ? c : 'rgba(149,119,255,0.2)'}`,
+                    padding: 14, borderRadius: 8,
+                    background: 'rgba(15,9,37,0.5)',
+                    border: '1px solid rgba(149,119,255,0.2)',
                     transition: 'all 150ms',
                     display: 'flex', alignItems: 'center', gap: 10,
-                  }}>
+                    ['--mod-c' as never]: c,
+                  } as React.CSSProperties}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 6,
                     background: `${c}25`, border: `1px solid ${c}80`,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
+import { STAGE_W, STAGE_H, mapClientToStage } from '../../render/stage';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
@@ -17,16 +18,16 @@ export function Particles() {
 
   useEffect(() => {
     const off1 = bus.on('onComboDetected', ({ tier }) => {
-      const x = window.innerWidth / 2;
-      const y = window.innerHeight / 2 - 80;
+      const x = STAGE_W / 2;
+      const y = STAGE_H / 2 - 80;
       const color = TIER_COLORS[Math.min(tier, TIER_COLORS.length - 1)] ?? '#9577ff';
       const id = nextId++;
       setBursts((b) => [...b, { id, x, y, tier, color }]);
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 900);
     });
     const off3 = bus.on('onUpgradeTriggered', () => {
-      const x = window.innerWidth * 0.2 + Math.random() * window.innerWidth * 0.6;
-      const y = window.innerHeight * 0.4 + Math.random() * 80;
+      const x = STAGE_W * 0.2 + Math.random() * STAGE_W * 0.6;
+      const y = STAGE_H * 0.4 + Math.random() * 80;
       const id = nextId++;
       setBursts((b) => [...b, { id, x, y, tier: 0, color: '#7be3ff' }]);
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 700);
@@ -34,19 +35,26 @@ export function Particles() {
     const off4 = bus.on('onScoreBeat', ({ beat }) => {
       if (beat.kind === 'mult-slam') {
         const id = nextId++;
-        const x = window.innerWidth / 2;
-        const y = window.innerHeight / 2;
+        const x = STAGE_W / 2;
+        const y = STAGE_H / 2;
         setShocks((s) => [...s, { id, x, y, scale: beat.ampScale }]);
         setTimeout(() => setShocks((s) => s.filter((v) => v.id !== id)), 600);
       }
       if (beat.kind === 'die-tick') {
         const id = nextId++;
         const counterEl = document.querySelector('[data-score-counter]') as HTMLElement | null;
-        const r = counterEl?.getBoundingClientRect();
-        const toX = r ? r.left + r.width / 2 : window.innerWidth / 2;
-        const toY = r ? r.top + r.height / 2 : 80;
-        const fromX = window.innerWidth * (0.2 + 0.15 * beat.dieIdx);
-        const fromY = window.innerHeight * 0.65;
+        const stageRoot = document.getElementById('stage-root');
+        let toX = STAGE_W / 2;
+        let toY = 80;
+        if (counterEl && stageRoot) {
+          const r = counterEl.getBoundingClientRect();
+          const sr = stageRoot.getBoundingClientRect();
+          const center = mapClientToStage(r.left + r.width / 2, r.top + r.height / 2, sr);
+          toX = center.x;
+          toY = center.y;
+        }
+        const fromX = STAGE_W * (0.2 + 0.15 * beat.dieIdx);
+        const fromY = STAGE_H * 0.65;
         setFlies((f) => [...f, { id, fromX, fromY, toX, toY, text: `+${beat.chipDelta}`, color: '#7be3ff' }]);
         setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 600);
       }

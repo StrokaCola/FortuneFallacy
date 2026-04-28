@@ -10,7 +10,10 @@ import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from 
 import { sfxInit } from './audio/sfx';
 import { startLeaderboard } from './online/leaderboard';
 import { Dice3D } from './render/three/Dice3D';
+import { installStage } from './render/stage';
 import './styles/index.css';
+
+installStage();
 
 const threeCanvas = document.getElementById('three-next');
 if (threeCanvas instanceof HTMLCanvasElement) {
@@ -46,13 +49,12 @@ startPersistence();
 startLeaderboard();
 ensureAudioAfterGesture();
 
+const sfxUnlockEvents = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
 const sfxGestureHandler = () => {
   void sfxInit();
-  document.removeEventListener('click', sfxGestureHandler);
-  document.removeEventListener('keydown', sfxGestureHandler);
+  for (const e of sfxUnlockEvents) document.removeEventListener(e, sfxGestureHandler);
 };
-document.addEventListener('click', sfxGestureHandler);
-document.addEventListener('keydown', sfxGestureHandler);
+for (const e of sfxUnlockEvents) document.addEventListener(e, sfxGestureHandler);
 
 if (import.meta.env.DEV) {
   (window as unknown as { __ff: unknown }).__ff = { store, dispatch, audio: audioEngine, sfx: { bank: sfxBank } };

@@ -327,11 +327,10 @@ export const audioEngine = new AudioEngineImpl();
 
 export function ensureAudioAfterGesture(): void {
   if (audioEngine.getState().master >= 0 && (audioEngine as unknown as { started: boolean }).started) return;
+  const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
   const handler = () => {
     audioEngine.start();
-    document.removeEventListener('click', handler);
-    document.removeEventListener('keydown', handler);
+    for (const e of events) document.removeEventListener(e, handler);
   };
-  document.addEventListener('click', handler);
-  document.addEventListener('keydown', handler);
+  for (const e of events) document.addEventListener(e, handler);
 }

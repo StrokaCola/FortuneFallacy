@@ -4,6 +4,7 @@ import { useScoreSequenceController } from './hud/scoreSequenceController';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
+import { OrientationGate } from './hud/OrientationGate';
 import { useStore } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
 import { Title } from './screens/Title';
@@ -50,7 +51,7 @@ export function App() {
     'voidlit';
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden">
       <CosmosBackground theme={theme} density={1} nebula drift tension={tension} />
 
       <div className="absolute inset-0 pointer-events-none">
@@ -68,6 +69,7 @@ export function App() {
         <Particles />
       </div>
 
+      <OrientationGate />
       {import.meta.env.DEV && <DevConsole />}
     </div>
   );

@@ -43,6 +43,7 @@ export function ConsumableTray() {
             <div key={`${id}-${i}`} className="has-tip" style={{ position: 'relative' }}>
               <button
                 onClick={() => onUse(i)}
+                className="tap"
                 style={{
                   width: 64, height: 88, borderRadius: 8,
                   background: 'linear-gradient(180deg, rgba(28,18,69,0.9), rgba(15,9,37,0.95))',
