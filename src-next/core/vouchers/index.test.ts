@@ -80,5 +80,8 @@ describe('maxModSlots', () => {
   it('returns 3 if forged_links owned', () => {
     expect(maxModSlots(makeState({ vouchers: ['forged_links'] }))).toBe(3);
   });
-  it.todo('returns 1 if mod_slots_capped_1 debuff active (covered in T4)');
+  it('returns 1 if mod_slots_capped_1 debuff active (Sedna boss, overrides forged_links)', () => {
+    const s = makeState({ vouchers: ['forged_links'], isBoss: true, blindId: 'sedna' });
+    expect(maxModSlots(s)).toBe(1);
+  });
 });
