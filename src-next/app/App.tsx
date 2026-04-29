@@ -14,6 +14,7 @@ import { Hub }   from './screens/Hub';
 import { Round } from './screens/Round';
 import { Shop }  from './screens/Shop';
 import { Win }   from './screens/Win';
+import { Fail }  from './screens/Fail';
 import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
@@ -92,6 +93,7 @@ export function App() {
           {screen === 'shop'   && <Shop />}
           {screen === 'forge'  && <Forge />}
           {screen === 'win'    && <Win />}
+          {screen === 'fail'   && <Fail />}
           {screen === 'scores' && <Scores />}
         </ScreenTransition>
         <BossReveal />
