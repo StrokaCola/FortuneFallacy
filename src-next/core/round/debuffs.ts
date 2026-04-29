@@ -6,7 +6,9 @@ export type Debuff =
   | 'disable_catalysts'
   | 'auto_unlock_after_roll'
   | 'hand_size_cap_4'
-  | 'no_mod_transforms_on_ones';
+  | 'no_mod_transforms_on_ones'
+  | 'disable_catalysts_first_hand'
+  | 'mod_slots_capped_1';
 
 export function activeDebuffs(s: GameState): Set<Debuff> {
   if (!s.round.isBoss || !s.round.blindId) return new Set();

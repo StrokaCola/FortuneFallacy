@@ -1,11 +1,11 @@
 import type { ActionHandler } from './types';
 import { lookupConsumable } from '../../core/consumables';
-import { MAX_CONSUMABLES } from '../../state/slices/run';
+import { maxConsumableSlots } from '../../core/vouchers';
 
 export const consumableHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'GRANT_CONSUMABLE': {
-      if (s.run.consumables.length >= MAX_CONSUMABLES) return { state: s, events: [] };
+      if (s.run.consumables.length >= maxConsumableSlots(s)) return { state: s, events: [] };
       if (!lookupConsumable(a.id)) return { state: s, events: [] };
       return {
         state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, a.id] } },
