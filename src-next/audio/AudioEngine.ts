@@ -79,6 +79,14 @@ class AudioEngineImpl {
     this.layers.peak.play();
     this.layers.fail.play();
 
+    // iOS Safari can ignore the `volume: 0` constructor option for html5:false
+    // Howls and play the first frames at full volume — pin each gain to 0 here
+    // so the tick() lerp ramps up from silence.
+    this.layers.base.volume(0);
+    this.layers.combo.volume(0);
+    this.layers.peak.volume(0);
+    this.layers.fail.volume(0);
+
     try {
       const ctx = Howler.ctx as AudioContext | null;
       const masterGain = (Howler as unknown as { masterGain?: GainNode }).masterGain;
