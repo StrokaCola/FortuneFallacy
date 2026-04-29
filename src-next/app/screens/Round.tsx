@@ -6,12 +6,10 @@ import { CatalystStrip } from '../hud/CatalystStrip';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
-import { ConstellationOverlay } from '../hud/ConstellationOverlay';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { AstralHint } from '../hud/AstralHint';
 import { useScoreDisplay } from '../hud/useScoreDisplay';
-import { TrayBase } from '../visual/TrayBase';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
   selectTarget, selectShards, selectAnte,
@@ -38,7 +36,6 @@ export function Round() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      <TrayBase />
       <TopBar
         ante={ante}
         blind={blindName}
@@ -59,7 +56,6 @@ export function Round() {
 
       <ComboBanner accent={accent} />
       <ScoreBreakdown />
-      <ConstellationOverlay />
       <ScoreMoment />
       <AstralHint />
 
