@@ -105,5 +105,11 @@ export function migrateRetheme(saved: unknown): unknown {
     next.round = { ...round3, shardSinkPrimedThisHand: false };
   }
 
+  // round.firstRollDone default
+  const round4 = next.round as Record<string, unknown> | undefined;
+  if (round4 && typeof round4.firstRollDone !== 'boolean') {
+    next.round = { ...round4, firstRollDone: false };
+  }
+
   return next;
 }

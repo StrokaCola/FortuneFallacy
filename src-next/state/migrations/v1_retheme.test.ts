@@ -47,7 +47,7 @@ describe('migrateRetheme', () => {
         handsPlayed: 0,
         compoundingStacks: 0,
       },
-      round: { diceMods: [['amplify']], shardSinkPrimedThisHand: false },
+      round: { diceMods: [['amplify']], shardSinkPrimedThisHand: false, firstRollDone: false },
     };
     expect(migrateRetheme(fresh)).toEqual(fresh);
   });
