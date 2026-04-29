@@ -30,7 +30,7 @@ export type BossBlind = {
 };
 
 export const BOSS_BLINDS: BossBlind[] = [
-  { id: 'pluto', name: 'Pluto', icon: '🐍', color: '#44bb66',
+  { id: 'pluto', name: 'Pluto', icon: '♇', color: '#44bb66',
     description: 'Demoted. 1s refuse to transform.', debuffs: ['no_mod_transforms_on_ones'],
     sigil: {
       viewBox: '0 0 100 100',
@@ -42,7 +42,7 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
-  { id: 'ceres', name: 'Ceres', icon: '🃏', color: '#ffaa44',
+  { id: 'ceres', name: 'Ceres', icon: '⚳', color: '#ffaa44',
     description: 'Belt-bound. Hand capped at 4.', debuffs: ['hand_size_cap_4'],
     sigil: {
       viewBox: '0 0 100 100',
@@ -54,7 +54,7 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
-  { id: 'triton', name: 'Triton', icon: '🏰', color: '#aa6644',
+  { id: 'triton', name: 'Triton', icon: '♆', color: '#aa6644',
     description: 'Single flyby. No rerolls.', debuffs: ['no_rerolls'],
     sigil: {
       viewBox: '0 0 100 100',
@@ -67,7 +67,7 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
-  { id: 'phobos', name: 'Phobos', icon: '👹', color: '#cc2244',
+  { id: 'phobos', name: 'Phobos', icon: '♂', color: '#cc2244',
     description: 'Orbit decays. Locks release on roll.', debuffs: ['auto_unlock_after_roll'],
     sigil: {
       viewBox: '0 0 100 100',
@@ -79,7 +79,7 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
-  { id: 'callisto', name: 'Callisto', icon: '⚜', color: '#aa66ff',
+  { id: 'callisto', name: 'Callisto', icon: '♃', color: '#aa66ff',
     description: 'Cratered silence. Catalysts inert.', debuffs: ['disable_catalysts'],
     sigil: {
       viewBox: '0 0 100 100',
