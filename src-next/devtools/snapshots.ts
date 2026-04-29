@@ -1,23 +1,18 @@
 import type { GameState } from '../state/store';
+import { safeReadJSON, safeWriteJSON } from '../state/storage';
 
 const KEY = 'dev:snapshots';
 
 type Bag = Record<string, GameState>;
 
 function load(): Bag {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return parsed as Bag;
-  } catch {
-    return {};
-  }
+  const parsed = safeReadJSON(KEY);
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return parsed as Bag;
 }
 
 function persist(bag: Bag): void {
-  try { localStorage.setItem(KEY, JSON.stringify(bag)); } catch { /* ignore */ }
+  safeWriteJSON(KEY, bag);
 }
 
 export function listSnapshots(): { name: string; state: GameState }[] {

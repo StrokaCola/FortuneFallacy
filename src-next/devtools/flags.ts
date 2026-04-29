@@ -1,3 +1,5 @@
+import { safeReadJSON, safeWriteJSON } from '../state/storage';
+
 export type DevFlags = {
   pixiFx: boolean;
   three: boolean;
@@ -19,12 +21,8 @@ const defaults: DevFlags = {
 };
 
 function load(): DevFlags {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
-  } catch {
-    return defaults;
-  }
+  const parsed = safeReadJSON<Partial<DevFlags>>(KEY);
+  return parsed ? { ...defaults, ...parsed } : defaults;
 }
 
 let flags = load();
@@ -32,5 +30,5 @@ let flags = load();
 export const getFlags = (): DevFlags => flags;
 export const setFlag  = <K extends keyof DevFlags>(k: K, v: DevFlags[K]): void => {
   flags = { ...flags, [k]: v };
-  try { localStorage.setItem(KEY, JSON.stringify(flags)); } catch { /* ignore */ }
+  safeWriteJSON(KEY, flags);
 };
