@@ -8,13 +8,21 @@ import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'ROLL_REQUESTED': {
-      const ctx = runRollPipelineUpToSim(s);
+      const isFirstRoll = !s.round.firstRollDone;
+      const dice = isFirstRoll
+        ? s.round.dice.map((d) => ({ ...d, locked: false }))
+        : s.round.dice;
+      const workingState = {
+        ...s,
+        round: { ...s.round, dice, firstRollDone: true, handInProgress: true },
+      };
+      const ctx = runRollPipelineUpToSim(workingState);
       return {
-        state: { ...s, round: { ...s.round, handInProgress: true } },
+        state: workingState,
         events: [
           {
             type: 'onRollStart',
-            payload: { dice: s.round.dice, lockedMask: s.round.dice.map((d) => d.locked) },
+            payload: { dice, lockedMask: dice.map((d) => d.locked) },
           },
           ...(ctx.simRequest
             ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
@@ -102,7 +110,6 @@ export const rollHandler: ActionHandler = (a, s) => {
           pendingScoreDelta: final.total,
           chainLen: final.chain?.len ?? workingState.round.chainLen,
           chainTier: final.chain?.tier ?? workingState.round.chainTier,
-          dice: workingState.round.dice.map((d) => ({ ...d, locked: false })),
           shardSinkPrimedThisHand: false,
           lastScoringCtx: {
             combo: final.combo ?? null,
@@ -152,7 +159,14 @@ export const rollHandler: ActionHandler = (a, s) => {
         return result;
       }
       return {
-        state: cleared,
+        state: {
+          ...cleared,
+          round: {
+            ...cleared.round,
+            dice: cleared.round.dice.map((d) => ({ ...d, locked: true })),
+            firstRollDone: false,
+          },
+        },
         events: [],
       };
     }

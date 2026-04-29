@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
@@ -32,18 +31,10 @@ export function Round() {
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
   const blindId  = useStore(selectBlindId);
+  const firstRollDone = useStore((s) => s.round.firstRollDone);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
 
   const blindName = BLIND_DEFS.find((b) => b.index === blindId)?.name ?? 'Blind';
-
-  // Auto-roll when handsLeft changes (existing behavior)
-  const lastHandsRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (lastHandsRef.current !== hands && hands > 0) {
-      lastHandsRef.current = hands;
-      dispatch({ type: 'ROLL_REQUESTED' });
-    }
-  }, [hands]);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -72,32 +63,43 @@ export function Round() {
       <ScoreMoment />
       <AstralHint />
 
-      <ActionBar hands={hands} rerolls={rerolls} accent={accent} />
+      <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} />
     </div>
   );
 }
 
-function ActionBar({ hands, rerolls, accent }: { hands: number; rerolls: number; accent: string }) {
+function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean }) {
   return (
     <div
       style={{
         position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 16, zIndex: 5, pointerEvents: 'auto',
       }}>
-      <button
-        className="btn btn-ghost mat-interactive tap"
-        disabled={rerolls === 0 || hands === 0}
-        onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: accent }}>↻</span> Reroll
-          <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
-        </span>
-      </button>
+      {firstRollDone ? (
+        <button
+          className="btn btn-ghost mat-interactive tap"
+          disabled={rerolls === 0 || hands === 0}
+          onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: accent }}>↻</span> Reroll
+            <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
+          </span>
+        </button>
+      ) : (
+        <button
+          className="btn btn-ghost mat-interactive tap"
+          disabled={hands === 0}
+          onClick={() => dispatch({ type: 'ROLL_REQUESTED' })}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: accent }}>⤴</span> Roll
+          </span>
+        </button>
+      )}
       <button
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0}
         onClick={() => dispatch({ type: 'SCORE_HAND' })}>
-        ✦ Cast Hand
+        ✦ Play Hand
       </button>
     </div>
   );

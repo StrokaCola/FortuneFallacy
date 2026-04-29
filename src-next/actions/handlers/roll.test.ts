@@ -32,6 +32,7 @@ function makeState(overrides: Partial<{ shards: number; catalysts: string[]; han
       hand: [],
       handInProgress: false,
       scoring: false,
+      firstRollDone: false,
       chainLen: 0,
       chainTier: -1,
       diceMods: [[], [], [], [], []],

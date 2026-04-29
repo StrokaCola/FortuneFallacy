@@ -55,8 +55,8 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     const z = (rng.next() - 0.5) * 1.5;
     const bodyDesc = r.RigidBodyDesc.dynamic()
       .setTranslation(x, 4 + rng.next() * 1.5, z)
-      .setLinvel((rng.next() - 0.5) * 6, -2, (rng.next() - 0.5) * 6)
-      .setAngvel({ x: rng.next() * 12 - 6, y: rng.next() * 12 - 6, z: rng.next() * 12 - 6 });
+      .setLinvel((rng.next() - 0.5) * 11, -4, (rng.next() - 0.5) * 11)
+      .setAngvel({ x: rng.next() * 20 - 10, y: rng.next() * 20 - 10, z: rng.next() * 20 - 10 });
     const body = world.createRigidBody(bodyDesc);
     const cube = r.ColliderDesc.cuboid(0.4, 0.4, 0.4).setRestitution(0.35).setDensity(1.5);
     world.createCollider(cube, body);

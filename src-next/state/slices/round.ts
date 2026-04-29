@@ -14,6 +14,7 @@ export type RoundSlice = {
   hand: number[];
   handInProgress: boolean;
   scoring: boolean;
+  firstRollDone: boolean;
   chainLen: number;
   chainTier: number;
   diceMods: string[][];
@@ -41,10 +42,11 @@ export const initialRoundSlice = (): RoundSlice => ({
   handsLeft: 3,
   handsMax: 3,
   rerollsLeft: 2,
-  dice: Array.from({ length: 5 }, (_, id) => ({ id, face: 1, locked: false })),
+  dice: Array.from({ length: 5 }, (_, id) => ({ id, face: 1, locked: true })),
   hand: [],
   handInProgress: false,
   scoring: false,
+  firstRollDone: false,
   chainLen: 0,
   chainTier: -1,
   diceMods: Array.from({ length: 5 }, () => [] as string[]),

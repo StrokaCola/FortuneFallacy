@@ -926,8 +926,8 @@ export class Dice3D {
         Math.random() * 2 - 1,
       ).normalize();
       d.rollAxis = ax;
-      d.rollSpeed = 8 + Math.random() * 6;     // ~8-14 rad/s
-      d.bouncePeak = 1.6 + Math.random() * 0.8;
+      d.rollSpeed = 14 + Math.random() * 8;    // ~14-22 rad/s
+      d.bouncePeak = 2.4 + Math.random() * 1.0;
       d.startQuat.copy(d.group.quaternion);
       d.startPos.copy(d.group.position);
       // Stay roughly at home X but drift slightly during roll for liveliness
