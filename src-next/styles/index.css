@@ -95,7 +95,6 @@ html, body {
 .die3d-face::before { content:""; position:absolute; inset:1px; border-radius:11px; background:linear-gradient(160deg, rgba(255,255,255,.10), transparent 55%); pointer-events:none; }
 .die3d-wrap.idle .die3d { animation: idle-tumble 8s ease-in-out infinite; }
 .die3d-wrap.locked { transform: translateY(-12px); }
-.die3d-wrap.scoring::after { content:""; position:absolute; inset:-10px; border-radius:22px; border:1.5px solid var(--vector); box-shadow: 0 0 28px var(--vector), inset 0 0 12px rgba(123,227,255,.4); pointer-events:none; animation: pulse-glow 1.6s ease-in-out infinite; }
 .die3d-shadow { position: absolute; left: 50%; bottom: -10px; width: 70%; height: 12px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); filter: blur(4px); pointer-events:none; }
 
 /* Tooltips */
@@ -113,9 +112,7 @@ html, body {
 @keyframes twinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
 @keyframes orbit   { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes drift   { 0% { transform: translate(0,0); } 100% { transform: translate(-2%, 1%); } }
-@keyframes pulse-glow { 0%,100% { filter: drop-shadow(0 0 6px var(--vector)); } 50% { filter: drop-shadow(0 0 18px var(--vector)); } }
 @keyframes float-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes constellation-draw { from { stroke-dashoffset: var(--len, 200); } to { stroke-dashoffset: 0; } }
 @keyframes idle-tumble {
   0%, 100% { transform: var(--face-rot) rotateX(0deg) rotateY(0deg); }
   25%      { transform: var(--face-rot) rotateX(4deg) rotateY(-3deg); }
@@ -151,7 +148,6 @@ html, body {
   transition-delay: 0ms !important;
 }
 .reduce-motion .die3d-wrap.idle .die3d { animation: none; }
-.reduce-motion .die3d-wrap.scoring::after { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   html:not(.allow-motion) *,
