@@ -103,7 +103,7 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
-  { id: 'sedna', name: 'Sedna', icon: '⯲', color: '#cc88ff',
+  { id: 'sedna', name: 'Sedna', icon: '⯲', color: '#4477cc',
     description: 'Mod slots capped at 1.', debuffs: ['mod_slots_capped_1'],
     sigil: {
       viewBox: '0 0 100 100',
