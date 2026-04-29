@@ -57,10 +57,12 @@ export function startAudioBridge(): () => void {
   let lastTension = -1;
   let lastProgress = -1;
   const offStore = store.subscribe((s, prev) => {
-    if (prev.round.active && !s.round.active && s.ui.screen === 'hub') {
+    if (s.ui.screen === 'fail' && prev.ui.screen !== 'fail') {
       audioEngine.enterFail();
       sfxPlay('bust');
-      window.setTimeout(() => audioEngine.exitFail(), 4000);
+    }
+    if (prev.ui.screen === 'fail' && s.ui.screen !== 'fail') {
+      audioEngine.exitFail();
     }
     if (s.ui.screen !== prev.ui.screen) {
       if (s.ui.screen === 'title') audioEngine.pause();

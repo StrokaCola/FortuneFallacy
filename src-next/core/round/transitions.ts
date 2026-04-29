@@ -86,7 +86,7 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
   return {
     state: {
       ...s,
-      ui: { ...s.ui, screen: 'hub' },
+      ui: { ...s.ui, screen: 'fail' },
       round: { ...s.round, active: false },
       run: { ...s.run, compoundingStacks: 0 },
       meta: { ...s.meta, highScores },
