@@ -1,28 +1,24 @@
+import { safeReadJSON, safeWriteJSON } from '../state/storage';
+
 export type SeedEntry = { name: string; seed: number; note?: string };
 
 const KEY = 'dev:seeds';
 
 export function listSeeds(): SeedEntry[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isSeedEntry);
-  } catch {
-    return [];
-  }
+  const parsed = safeReadJSON(KEY);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(isSeedEntry);
 }
 
 export function saveSeed(entry: SeedEntry): void {
   const all = listSeeds().filter((s) => s.name !== entry.name);
   all.push(entry);
-  try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* ignore */ }
+  safeWriteJSON(KEY, all);
 }
 
 export function deleteSeed(name: string): void {
   const all = listSeeds().filter((s) => s.name !== name);
-  try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* ignore */ }
+  safeWriteJSON(KEY, all);
 }
 
 function isSeedEntry(x: unknown): x is SeedEntry {

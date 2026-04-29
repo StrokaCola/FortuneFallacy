@@ -1,4 +1,5 @@
 import { store, type GameState } from './store';
+import { safeReadJSON, safeWriteJSON } from './storage';
 import { migrateRetheme } from './migrations/v1_retheme';
 
 const KEY = 'ff_next_save';
@@ -6,14 +7,9 @@ const KEY = 'ff_next_save';
 type SavedState = Pick<GameState, 'run' | 'meta' | 'round' | 'ui'>;
 
 export function loadSaved(): SavedState | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return migrateRetheme(parsed) as SavedState;
-  } catch {
-    return null;
-  }
+  const parsed = safeReadJSON(KEY);
+  if (parsed === undefined) return null;
+  return migrateRetheme(parsed) as SavedState;
 }
 
 export function startPersistence(): () => void {
@@ -22,10 +18,8 @@ export function startPersistence(): () => void {
     if (timer != null) return;
     timer = window.setTimeout(() => {
       timer = null;
-      try {
-        const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
-        localStorage.setItem(KEY, JSON.stringify(snapshot));
-      } catch { /* ignore */ }
+      const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
+      safeWriteJSON(KEY, snapshot);
     }, 400);
   });
 }
