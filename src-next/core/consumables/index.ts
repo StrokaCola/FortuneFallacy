@@ -65,6 +65,32 @@ export const CONSUMABLES: ConsumableDef[] = [
       events: [],
     }),
   },
+  {
+    id: 'pin_three',
+    type: 'calibration',
+    name: 'Pin Three',
+    icon: '☷',
+    description: 'Set one die to face 3.',
+    requiresTarget: true,
+    targetType: 'die',
+    apply: (s, [idx]) => {
+      if (idx == null || !s.round.dice[idx]) return { state: s, events: [] };
+      const dice = s.round.dice.map((d, i) => (i === idx ? { ...d, face: 3 } : d));
+      return { state: { ...s, round: { ...s.round, dice } }, events: [] };
+    },
+  },
+  {
+    id: 'spare_reroll',
+    type: 'resource',
+    name: 'Spare Reroll',
+    icon: '↻',
+    description: '+1 reroll this round.',
+    requiresTarget: false,
+    apply: (s) => ({
+      state: { ...s, round: { ...s.round, rerollsLeft: s.round.rerollsLeft + 1 } },
+      events: [],
+    }),
+  },
 ];
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {
