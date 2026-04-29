@@ -190,6 +190,15 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.totalDurMs).toBeGreaterThanOrEqual(2000);
   });
 
+  it('short tier total duration is at most 5000ms (sanity ceiling)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 18 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('short');
+    expect(seq.totalDurMs).toBeLessThan(5000);
+  });
+
   it('mid tier total duration is at least 3000ms', () => {
     const seq = buildScoreSequence(
       baseInput({ comboLabel: 'TWO_PAIR', comboBonus: 20, mults: [], finalTotal: 50 }),
@@ -199,6 +208,15 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.totalDurMs).toBeGreaterThanOrEqual(3000);
   });
 
+  it('mid tier total duration is at most 6000ms (sanity ceiling)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'TWO_PAIR', comboBonus: 20, mults: [], finalTotal: 50 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('mid');
+    expect(seq.totalDurMs).toBeLessThan(6000);
+  });
+
   it('full tier total duration is at least 3500ms', () => {
     const seq = buildScoreSequence(
       baseInput({ comboLabel: 'FULL_HOUSE', comboBonus: 35, mults: [{ label: 'mult', value: 2 }], finalTotal: 200 }),
@@ -206,6 +224,15 @@ describe('buildScoreSequence — tier selection', () => {
     );
     expect(seq.tier).toBe('full');
     expect(seq.totalDurMs).toBeGreaterThanOrEqual(3500);
+  });
+
+  it('full tier total duration is at most 8000ms (sanity ceiling)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ comboLabel: 'FULL_HOUSE', comboBonus: 35, mults: [{ label: 'mult', value: 2 }], finalTotal: 200 }),
+      baseCtx({ target: 100 }),
+    );
+    expect(seq.tier).toBe('full');
+    expect(seq.totalDurMs).toBeLessThan(8000);
   });
 
   it('reduced-motion path emits no combo-bonus and no hold-breath', () => {

@@ -27,9 +27,13 @@ const PACING = {
 } as const;
 
 const REDUCED_MOTION_DIE_GAP_MS = 220;
+const REDUCED_MOTION_PRE_BOOM_MS = 150;
 const BAIL_DIE_GAP_MS = 60;
 const BAIL_LEAD_IN_MS = 200;
 const BAIL_LEAD_OUT_MS = 200;
+// Cross-target beat fires CROSS_TARGET_DELAY_MS after the running-total mutation
+// that crossed the threshold, so the visual stamp lands AFTER the chip/mult slam.
+const CROSS_TARGET_DELAY_MS = 80;
 
 function pickTier(input: SequenceInput, ctx: SequenceCtx): SequenceTier {
   if (ctx.reducedMotion) return 'short';
@@ -113,19 +117,19 @@ export function buildScoreSequence(
         pitchSemis: i,
       });
       if (!crossEmitted && before < ctx.target && running >= ctx.target) {
-        beats.push({ kind: 'cross-target', t: t + 80, runningTotal: running, target: ctx.target });
+        beats.push({ kind: 'cross-target', t: t + CROSS_TARGET_DELAY_MS, runningTotal: running, target: ctx.target });
         crossEmitted = true;
       }
       t += REDUCED_MOTION_DIE_GAP_MS;
     }
-    t += 150;
+    t += REDUCED_MOTION_PRE_BOOM_MS;
     beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: running >= ctx.target });
     return { beats, tier, totalDurMs: t };
   }
 
   const checkCross = (beforeRunning: number) => {
     if (!crossEmitted && beforeRunning < ctx.target && running >= ctx.target) {
-      beats.push({ kind: 'cross-target', t: t + 80, runningTotal: running, target: ctx.target });
+      beats.push({ kind: 'cross-target', t: t + CROSS_TARGET_DELAY_MS, runningTotal: running, target: ctx.target });
       crossEmitted = true;
     }
   };
