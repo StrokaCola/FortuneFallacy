@@ -40,6 +40,12 @@ const applyModScoring: PhaseFn = (ctx) => {
       if (def.multBonus) dMult += def.multBonus;
       if (def.snakeEyes && face === 1) dMult += def.snakeEyes;
       if (def.highFaceMult && (face === 5 || face === 6)) dMult += def.highFaceMult;
+      if (def.chipPerPip) dChips += def.chipPerPip * face;
+      if (def.evenFaceMult && face % 2 === 0) dMult += def.evenFaceMult;
+      if (def.pairBonus) {
+        const matches = faces.filter((f) => f === face).length - 1;
+        if (matches > 0) dMult += def.pairBonus * matches;
+      }
       if (dChips !== 0 || dMult !== 0) {
         chips += dChips;
         mult += dMult;
