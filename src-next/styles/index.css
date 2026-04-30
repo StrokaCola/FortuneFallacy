@@ -283,3 +283,26 @@ html, body {
   0%   { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-30px); }
 }
+
+/* Button juice — press scale + accent shockwave on release. */
+.btn-primary {
+  transition: transform 180ms ease-out;
+}
+.btn-primary:active {
+  transform: scale(0.96);
+  transition: transform 60ms ease-out;
+}
+.btn-shockwave {
+  position: fixed;
+  pointer-events: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--wave-accent, #7be3ff);
+  box-shadow: 0 0 16px var(--wave-accent, #7be3ff);
+  transform: translate(-50%, -50%) scale(0.4);
+  animation: ringExpand 400ms ease-out forwards;
+  z-index: 999;
+}
+.reduce-motion .btn-primary { transition: none; }
+.reduce-motion .btn-primary:active { transform: none; }
