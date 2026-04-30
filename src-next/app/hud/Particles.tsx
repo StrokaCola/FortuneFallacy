@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { STAGE_W, STAGE_H, mapClientToStage } from '../../render/stage';
+import { animateOrbital } from './orbitalFly';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
@@ -56,7 +57,7 @@ export function Particles() {
         const fromX = STAGE_W * (0.2 + 0.15 * beat.dieIdx);
         const fromY = STAGE_H * 0.65;
         setFlies((f) => [...f, { id, fromX, fromY, toX, toY, text: `+${beat.chipDelta}`, color: '#7be3ff' }]);
-        setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 600);
+        setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 1200);
       }
     });
     return () => { off1(); off3(); off4(); };
@@ -111,18 +112,31 @@ function Shockwave({ x, y, scale }: { x: number; y: number; scale: number }) {
 }
 
 function FlyingNumber({ from, to, text, color }: { from: { x: number; y: number }; to: { x: number; y: number }; text: string; color: string }) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.style.transform = `translate(${from.x}px, ${from.y}px)`;
+    ref.current.style.opacity = '1';
+    const handle = animateOrbital(ref.current, {
+      startX: from.x,
+      startY: from.y,
+      endX: to.x,
+      endY: to.y,
+      durationMs: 1100,
+    });
+    return () => handle.dispose();
+  }, [from.x, from.y, to.x, to.y]);
+
   return (
-    <div style={{
+    <div ref={ref} style={{
       position: 'absolute',
-      left: from.x, top: from.y,
+      left: 0, top: 0,
       color, fontFamily: '"Cinzel Decorative", serif',
       fontSize: 24, fontWeight: 700,
       textShadow: `0 0 10px ${color}`,
-      ['--dx' as never]: `${dx}px`,
-      ['--dy' as never]: `${dy}px`,
-      animation: 'flyToCounter 0.55s ease-in forwards',
-    } as React.CSSProperties}>{text}</div>
+      transform: `translate(${from.x}px, ${from.y}px)`,
+      willChange: 'transform, opacity',
+    }}>{text}</div>
   );
 }

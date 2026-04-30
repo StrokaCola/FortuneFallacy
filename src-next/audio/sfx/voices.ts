@@ -290,3 +290,67 @@ export function notEnough(bank: SynthBank): void {
   bank.castBoom.kick.volume.value = vol('notEnoughThud', -16);
   bank.castBoom.kick.triggerAttackRelease(80, '8n', t + 0.32);
 }
+
+// ---- modPulse: short bright chime per generic mod fire -------------------
+export function modPulse(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = pickPent(7) * centsToRatio(jitterCents());
+  bank.modPulse.chime.volume.value = vol('modPulse', -18);
+  bank.modPulse.chime.triggerAttackRelease(hz, '16n', t);
+}
+
+// ---- modLoaded: rising bronze chord + whoosh -----------------------------
+export function modLoaded(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modLoaded.chord.volume.value = vol('modLoadedChord', -16);
+  bank.modLoaded.whoosh.volume.value = vol('modLoadedWhoosh', -22);
+  bank.modLoaded.chord.triggerAttackRelease(['C4', 'E4', 'G4'], '4n', t);
+  bank.modLoaded.whoosh.triggerAttackRelease('8n', t);
+}
+
+// ---- modPipCharge: percussive amber tick ---------------------------------
+export function modPipCharge(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = 880 * centsToRatio(jitterCents());
+  bank.modPipCharge.tick.volume.value = vol('modPipCharge', -16);
+  bank.modPipCharge.tick.triggerAttackRelease(hz, '32n', t);
+}
+
+// ---- modBackstop: warm low ding + soft rumble ----------------------------
+export function modBackstop(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modBackstop.ding.volume.value = vol('modBackstop', -16);
+  bank.modBackstop.rumble.volume.value = vol('modBackstopRumble', -22);
+  bank.modBackstop.ding.triggerAttackRelease('A3', '4n', t);
+  bank.modBackstop.rumble.triggerAttackRelease('8n', t + 0.02);
+}
+
+// ---- uiClick: short white noise burst ------------------------------------
+export function uiClick(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.uiClick.click.volume.value = vol('uiClick', -22);
+  bank.uiClick.click.triggerAttackRelease('64n', t);
+}
+
+// ---- uiHover: brief metallic shimmer -------------------------------------
+export function uiHover(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.uiHover.shimmer.volume.value = vol('uiHover', -28);
+  bank.uiHover.shimmer.triggerAttackRelease('32n', t);
+}
+
+// ---- modAttach: chime + soft thud ----------------------------------------
+export function modAttach(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = pickPent(5) * centsToRatio(jitterCents());
+  bank.modAttach.chime.volume.value = vol('modAttachChime', -18);
+  bank.modAttach.thud.volume.value = vol('modAttachThud', -20);
+  bank.modAttach.chime.triggerAttackRelease(hz, '8n', t);
+  bank.modAttach.thud.triggerAttackRelease('C2', '16n', t + 0.005);
+}
+
+// ---- modDetach: descending pluck -----------------------------------------
+export function modDetach(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modDetach.pluck.triggerAttackRelease('A4', '8n', t);
+}

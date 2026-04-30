@@ -1,11 +1,14 @@
 import { bus } from '../events/bus';
 import { store } from '../state/store';
 import { selectTensionFromState } from '../state/selectors';
+import { lookupMod } from '../core/mods';
 import { audioEngine, ensureAudioAfterGesture } from './AudioEngine';
-import { sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank } from './sfx';
+import * as sfxModule from './sfx';
 import { installScoringRouter } from './scoring';
 import { installHeatRouter } from './heat';
 import * as audioSettings from './audioSettings';
+
+const { sfxSetMaster, sfxGetMaster, sfxBank } = sfxModule;
 
 export function startAudioBridge(): () => void {
   const subs = [
@@ -16,42 +19,52 @@ export function startAudioBridge(): () => void {
       const dice = store.getState().round.dice;
       const rolling = dice.filter((d) => !d.locked).length || dice.length;
       for (let i = 0; i < rolling; i++) {
-        window.setTimeout(() => sfxPlay('diceClack'), i * (30 + Math.random() * 50));
+        window.setTimeout(() => sfxModule.sfxPlay('diceClack'), i * (30 + Math.random() * 50));
       }
     }),
     bus.on('onSimulationEnd', () => audioEngine.bumpHeat(0.06)),
     bus.on('onComboDetected', ({ tier }) => {
       audioEngine.bumpComboFromTier(tier);
-      sfxPlay('combo', { tier });
+      sfxModule.sfxPlay('combo', { tier });
     }),
     bus.on('onUpgradeTriggered', () => {
       audioEngine.bumpHeat(0.05);
       audioEngine.noteStability(0.03);
-      sfxPlay('upgrade');
+      sfxModule.sfxPlay('upgrade');
     }),
     bus.on('onScoreCalculated', ({ total }) => {
       const target = store.getState().round.target;
       audioEngine.bumpHeatFromScore(total, target);
       if (target > 0 && total >= target * 2) {
         audioEngine.triggerBigScore();
-        sfxPlay('bigScore');
+        sfxModule.sfxPlay('bigScore');
       }
     }),
     bus.on('onBlindCleared', () => {
       audioEngine.noteStability(0.25);
-      sfxPlay('win');
+      sfxModule.sfxPlay('win');
     }),
     bus.on('onBossRevealed', () => {
       audioEngine.enterFail();
-      sfxPlay('bossSting');
+      sfxModule.sfxPlay('bossSting');
       window.setTimeout(() => audioEngine.exitFail(), 800);
     }),
     bus.on('onShopOpened', () => {
       audioEngine.setMode('idle');
-      sfxPlay('reroll');
+      sfxModule.sfxPlay('reroll');
     }),
-    bus.on('onLockToggled', () => sfxPlay('lockTap')),
-    bus.on('onOfferBought', () => sfxPlay('buy')),
+    bus.on('onLockToggled', () => sfxModule.sfxPlay('lockTap')),
+    bus.on('onOfferBought', () => sfxModule.sfxPlay('buy')),
+    bus.on('onModFired', ({ modId }) => {
+      const def = lookupMod(modId);
+      const trigger = def?.visual?.triggerFx;
+      switch (trigger) {
+        case 'pulse':     sfxModule.sfxPlay('modPulse'); break;
+        case 'loaded':    sfxModule.sfxPlay('modLoaded'); break;
+        case 'pipCharge': sfxModule.sfxPlay('modPipCharge'); break;
+        case 'backstop':  sfxModule.sfxPlay('modBackstop'); break;
+      }
+    }),
   ];
 
   let lastTension = -1;
@@ -59,7 +72,7 @@ export function startAudioBridge(): () => void {
   const offStore = store.subscribe((s, prev) => {
     if (s.ui.screen === 'fail' && prev.ui.screen !== 'fail') {
       audioEngine.enterFail();
-      sfxPlay('bust');
+      sfxModule.sfxPlay('bust');
     }
     if (prev.ui.screen === 'fail' && s.ui.screen !== 'fail') {
       audioEngine.exitFail();
@@ -87,7 +100,8 @@ export function startAudioBridge(): () => void {
   };
 }
 
-export { audioEngine, ensureAudioAfterGesture, sfxPlay, sfxSetMaster, sfxGetMaster, sfxBank };
+export { audioEngine, ensureAudioAfterGesture, sfxSetMaster, sfxGetMaster, sfxBank };
+export const sfxPlay = sfxModule.sfxPlay;
 
 export function getMaster(): number {
   return audioSettings.getMaster();

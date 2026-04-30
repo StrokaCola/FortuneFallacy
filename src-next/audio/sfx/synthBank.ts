@@ -24,6 +24,14 @@ export type SynthBank = {
   cardFlip: { paper: Tone.NoiseSynth; whoosh: Tone.NoiseSynth; chime: Tone.FMSynth };
   nodePulse: { bell: Tone.FMSynth; shimmer: Tone.MetalSynth };
   transitionWipe: { sweep: Tone.NoiseSynth; pad: Tone.PolySynth; arrive: Tone.FMSynth };
+  modPulse: { chime: Tone.FMSynth };
+  modLoaded: { chord: Tone.PolySynth; whoosh: Tone.NoiseSynth };
+  modPipCharge: { tick: Tone.FMSynth };
+  modBackstop: { ding: Tone.FMSynth; rumble: Tone.NoiseSynth };
+  uiClick: { click: Tone.NoiseSynth };
+  uiHover: { shimmer: Tone.MetalSynth };
+  modAttach: { chime: Tone.FMSynth; thud: Tone.MembraneSynth };
+  modDetach: { pluck: Tone.PluckSynth };
   buses: Buses;
   master: Tone.Gain;
 };
@@ -233,10 +241,107 @@ export async function buildBank(): Promise<SynthBank> {
   transitionWipe.arrive.volume.value = -22;
   connectAll([transitionWipe.sweep, transitionWipe.pad, transitionWipe.arrive], buses.ui.input);
 
+  // ---- modPulse: bright single chime ----
+  const modPulse = {
+    chime: new Tone.FMSynth({
+      modulationIndex: 6,
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.12 },
+      modulationEnvelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 },
+    }),
+  };
+  modPulse.chime.connect(buses.mag.input);
+
+  // ---- modLoaded: rising chord + whoosh ----
+  const modLoaded = {
+    chord: new Tone.PolySynth(Tone.FMSynth, {
+      envelope: { attack: 0.04, decay: 0.4, sustain: 0.0, release: 0.3 },
+    }),
+    whoosh: new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.05, decay: 0.3, sustain: 0, release: 0.2 },
+    }),
+  };
+  modLoaded.chord.connect(buses.mag.input);
+  modLoaded.whoosh.connect(buses.perc.input);
+
+  // ---- modPipCharge: percussive electrical tick ----
+  const modPipCharge = {
+    tick: new Tone.FMSynth({
+      modulationIndex: 12,
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
+    }),
+  };
+  modPipCharge.tick.connect(buses.perc.input);
+
+  // ---- modBackstop: warm low ding + soft rumble ----
+  const modBackstop = {
+    ding: new Tone.FMSynth({
+      envelope: { attack: 0.005, decay: 0.25, sustain: 0.05, release: 0.4 },
+    }),
+    rumble: new Tone.NoiseSynth({
+      noise: { type: 'brown' },
+      envelope: { attack: 0.02, decay: 0.5, sustain: 0, release: 0.3 },
+    }),
+  };
+  modBackstop.ding.connect(buses.mag.input);
+  modBackstop.rumble.connect(buses.perc.input);
+
+  // ---- uiClick: very short white noise burst ----
+  const uiClick = {
+    click: new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.002, decay: 0.012, sustain: 0, release: 0.008 },
+    }),
+  };
+  const uiClickHP = new Tone.Filter(2500, 'highpass');
+  uiClick.click.connect(uiClickHP);
+  uiClickHP.connect(buses.ui.input);
+
+  // ---- uiHover: brief metallic shimmer ----
+  const uiHover = {
+    shimmer: new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 },
+      harmonicity: 5.1,
+      modulationIndex: 32,
+      resonance: 4000,
+      octaves: 1.5,
+    }),
+  };
+  uiHover.shimmer.connect(buses.ui.input);
+
+  // ---- modAttach: chime + soft thud ----
+  const modAttach = {
+    chime: new Tone.FMSynth({
+      modulationIndex: 4,
+      envelope: { attack: 0.005, decay: 0.18, sustain: 0, release: 0.12 },
+    }),
+    thud: new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 4,
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.04 },
+    }),
+  };
+  modAttach.chime.connect(buses.mag.input);
+  modAttach.thud.connect(buses.perc.input);
+
+  // ---- modDetach: descending pluck ----
+  const modDetach = {
+    pluck: new Tone.PluckSynth({ attackNoise: 0.4, dampening: 1500, resonance: 0.5 }),
+  };
+  modDetach.pluck.connect(buses.mag.input);
+
   return {
     diceClack, lockTap, rerollPool, rerollIdx: { i: 0 },
     buyPool, buyIdx: { i: 0 }, combo, upgrade, bossSting, bigScore, winFanfare, bust, chipTick,
     castSwell, castBoom, sigilDraw, cardFlip, nodePulse, transitionWipe,
+    modPulse,
+    modLoaded,
+    modPipCharge,
+    modBackstop,
+    uiClick,
+    uiHover,
+    modAttach,
+    modDetach,
     buses, master: buses.master,
   };
 }

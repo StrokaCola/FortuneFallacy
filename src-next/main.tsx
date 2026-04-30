@@ -8,6 +8,7 @@ import { store, setStateRaw } from './state/store';
 import { applySavedToInitial, startPersistence } from './state/persistence';
 import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from './audio/audioBridge';
 import { sfxInit } from './audio/sfx';
+import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
@@ -46,6 +47,7 @@ if (portal?.fromPortal) {
 startSimRunner();
 startAudioBridge();
 startPersistence();
+installButtonJuice();
 startLeaderboard();
 ensureAudioAfterGesture();
 
