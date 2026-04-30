@@ -91,6 +91,30 @@ export const BOSS_BLINDS: BossBlind[] = [
       ],
     },
   },
+  { id: 'eris', name: 'Eris', icon: '⯰', color: '#ff7847',
+    description: 'Catalysts inert on first hand.', debuffs: ['disable_catalysts_first_hand'],
+    sigil: {
+      viewBox: '0 0 100 100',
+      paths: [
+        // TODO art pass — sigil designed for Eris, currently a placeholder triangle
+        'M 50 15 L 85 80 L 15 80 Z',
+        'M 50 30 L 50 65',
+        'M 35 75 L 65 75',
+      ],
+    },
+  },
+  { id: 'sedna', name: 'Sedna', icon: '⯲', color: '#4477cc',
+    description: 'Mod slots capped at 1.', debuffs: ['mod_slots_capped_1'],
+    sigil: {
+      viewBox: '0 0 100 100',
+      paths: [
+        // TODO art pass — sigil designed for Sedna, currently a placeholder ring
+        'M 50 20 a 30 30 0 1 0 0 60 a 30 30 0 1 0 0 -60',
+        'M 50 35 L 50 65',
+        'M 35 50 L 65 50',
+      ],
+    },
+  },
 ];
 
 export function targetForBlind(ante: number, blindIndex: number): number {

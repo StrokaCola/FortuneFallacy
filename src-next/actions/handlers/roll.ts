@@ -107,6 +107,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           handsLeft: newHandsLeft,
           rerollsLeft: 2,
           scoring: true,
+          firstHandPlayed: true,
           pendingScoreDelta: final.total,
           chainLen: final.chain?.len ?? workingState.round.chainLen,
           chainTier: final.chain?.tier ?? workingState.round.chainTier,

@@ -10,8 +10,6 @@ export type RunSlice = {
   compoundingStacks: number;
 };
 
-export const MAX_CONSUMABLES = 4;
-
 export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
   shards: 0,

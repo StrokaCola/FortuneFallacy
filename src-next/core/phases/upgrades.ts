@@ -8,7 +8,12 @@ const ALWAYS_ACTIVE = new Set<string>();
 export const upgrades: PhaseFn = (ctx) => {
   let next = ctx;
 
-  if (!hasDebuff(ctx.state, 'disable_catalysts')) {
+  const isFirstHand = !ctx.state.round.firstHandPlayed;
+  const catalystsBlocked =
+    hasDebuff(ctx.state, 'disable_catalysts') ||
+    (isFirstHand && hasDebuff(ctx.state, 'disable_catalysts_first_hand'));
+
+  if (!catalystsBlocked) {
     const owned = new Set(ctx.state.run.catalysts);
     for (const u of getByPhase(Phase.UPGRADES)) {
       if (!ALWAYS_ACTIVE.has(u.id) && !owned.has(u.id)) continue;
@@ -40,6 +45,12 @@ const applyModScoring: PhaseFn = (ctx) => {
       if (def.multBonus) dMult += def.multBonus;
       if (def.snakeEyes && face === 1) dMult += def.snakeEyes;
       if (def.highFaceMult && (face === 5 || face === 6)) dMult += def.highFaceMult;
+      if (def.chipPerPip) dChips += def.chipPerPip * face;
+      if (def.evenFaceMult && face % 2 === 0) dMult += def.evenFaceMult;
+      if (def.pairBonus) {
+        const matches = faces.filter((f) => f === face).length - 1;
+        if (matches > 0) dMult += def.pairBonus * matches;
+      }
       if (dChips !== 0 || dMult !== 0) {
         chips += dChips;
         mult += dMult;

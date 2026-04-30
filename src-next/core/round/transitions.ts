@@ -2,7 +2,7 @@ import type { GameState } from '../../state/store';
 import type { GameEventEmission } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
-import { blindClearShardBonus } from '../vouchers';
+import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
 
 export function startBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const ante = s.run.ante;
@@ -13,6 +13,8 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   const blindId = isBoss
     ? BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id
     : def.name.toLowerCase().replace(/\s+/g, '_');
+  const baseHandsMax = 3;
+  const handsMax = baseHandsMax + extraHandsPerRound(s);
   return {
     state: {
       ...s,
@@ -24,6 +26,8 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         blindIndex,
         isBoss,
         target,
+        handsMax,
+        handsLeft: handsMax,
       },
     },
     events: isBoss

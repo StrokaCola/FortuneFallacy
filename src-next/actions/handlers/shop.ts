@@ -1,7 +1,7 @@
 import type { ActionHandler } from './types';
 import { CATALYST_IDS } from '../../core/upgrades/catalysts';
 import { CONSUMABLES } from '../../core/consumables';
-import { VOUCHERS } from '../../core/vouchers';
+import { VOUCHERS, freeShopReroll, maxConsumableSlots } from '../../core/vouchers';
 import type { ShopOffer } from '../../events/types';
 
 function shuffle<T>(arr: T[]): T[] {
@@ -31,7 +31,7 @@ export const shopHandler: ActionHandler = (a, s) => {
     case 'OPEN_SHOP': {
       const offers = rollOffers(s.run.vouchers);
       return {
-        state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: 5 }, ui: { ...s.ui, screen: 'shop' } },
+        state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: freeShopReroll(s) ? 0 : 5 }, ui: { ...s.ui, screen: 'shop' } },
         events: [{ type: 'onShopOpened', payload: { offers } }],
       };
     }
@@ -45,7 +45,7 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (!offer || s.run.shards < offer.price) return { state: s, events: [] };
       const remaining = s.shop.offers.filter((_, i) => i !== a.offerIdx);
       const catalysts = offer.kind === 'catalyst' ? [...s.run.catalysts, offer.id] : s.run.catalysts;
-      const consumables = offer.kind === 'consumable' && s.run.consumables.length < 4
+      const consumables = offer.kind === 'consumable' && s.run.consumables.length < maxConsumableSlots(s)
         ? [...s.run.consumables, offer.id]
         : s.run.consumables;
       const vouchers = offer.kind === 'voucher' ? [...s.run.vouchers, offer.id] : s.run.vouchers;
