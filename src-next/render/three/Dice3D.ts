@@ -184,11 +184,15 @@ export class Dice3D {
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
   private onPointerMove: ((ev: PointerEvent) => void) | null = null;
   private onPointerUp: ((ev: PointerEvent) => void) | null = null;
+  private onKeyDown: ((ev: KeyboardEvent) => void) | null = null;
+  private onPointerLeave: (() => void) | null = null;
   // Drag-reorder state (locked-die hold strip).
   private dragStart: { dieIdx: number; screenX: number; screenY: number; time: number } | null = null;
   private isDragging = false;
   private dragOriginalSlotX = 0;
   private dragPlane: THREE.Plane | null = null;
+  private dragGhostSlot: number | null = null;
+  private dragGhostSprite: THREE.Sprite | null = null;
   private scoringActive = false;
   private activeScoringDie = -1;
   // Queued FX requests per die — `onModFired` enqueues; `die-tick` drains.
@@ -435,13 +439,30 @@ export class Dice3D {
     };
 
     this.onPointerMove = (ev: PointerEvent) => {
+      // Hover cursor when not dragging: 'grab' over a locked die, default elsewhere.
+      if (!this.isDragging && !this.dragStart) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+        this.pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+        const groups = this.dice.map((d) => d.group);
+        const hits = this.raycaster.intersectObjects(groups, true);
+        let hoverIdx = -1;
+        if (hits.length > 0) {
+          let obj: THREE.Object3D | null = hits[0]!.object;
+          while (obj && !groups.includes(obj as THREE.Group)) obj = obj.parent;
+          if (obj) hoverIdx = groups.indexOf(obj as THREE.Group);
+        }
+        const isLocked = hoverIdx >= 0 && !!this.dice[hoverIdx]?.locked;
+        this.canvas.style.cursor = isLocked ? 'grab' : '';
+        return;
+      }
+
       if (!this.dragStart) return;
       const dx = ev.clientX - this.dragStart.screenX;
       const dy = ev.clientY - this.dragStart.screenY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (!this.isDragging && dist > 6) {
-        // Only locked dice can be dragged. If unlocked, abort drag detection
-        // so the upcoming pointerup still fires TOGGLE_LOCK as a click.
         const die = this.dice[this.dragStart.dieIdx];
         if (!die || !die.locked) {
           this.dragStart = null;
@@ -449,6 +470,7 @@ export class Dice3D {
         }
         this.isDragging = true;
         this.dragOriginalSlotX = die.group.position.x;
+        this.canvas.style.cursor = 'grabbing';
       }
       if (this.isDragging) {
         const rect = this.canvas.getBoundingClientRect();
@@ -458,7 +480,25 @@ export class Dice3D {
         const target = new THREE.Vector3();
         if (this.dragPlane && this.raycaster.ray.intersectPlane(this.dragPlane, target)) {
           const die = this.dice[this.dragStart.dieIdx];
-          if (die) die.group.position.x = target.x;
+          if (die) {
+            const reduced = document.documentElement.classList.contains('reduce-motion');
+            die.group.position.x = target.x;
+            die.group.position.y = reduced ? HOLD_Y : HOLD_Y + 0.6; // +Y is toward the top-down camera at Y=14, so this raises the die above the strip plane
+            die.group.scale.setScalar(reduced ? HOLD_SCALE : HOLD_SCALE * 1.15);
+
+            // Ghost slot sprite at the candidate drop position.
+            if (!reduced) {
+              const order = store.getState().round.scoringOrder ?? [];
+              const otherInOrder = order.filter((i) => i !== this.dragStart!.dieIdx);
+              const slotCount = otherInOrder.length + 1;
+              const slotXs: number[] = [];
+              for (let pos = 0; pos < slotCount; pos++) {
+                slotXs.push(this.holdSlotX(pos, slotCount));
+              }
+              const slotIdx = computeDropSlot(target.x, slotXs);
+              this.updateGhostSlot(slotIdx, slotXs);
+            }
+          }
         }
       }
     };
@@ -469,9 +509,6 @@ export class Dice3D {
       if (this.isDragging) {
         const draggedDie = this.dice[draggedIdx];
         if (draggedDie) {
-          // Compute slot Xs: every position in the new ordering except the
-          // dragged die has a slot, plus one extra slot for the dragged die
-          // itself (totalling otherInOrder.length + 1 slots).
           const order = store.getState().round.scoringOrder ?? [];
           const otherInOrder = order.filter((i) => i !== draggedIdx);
           const slotCount = otherInOrder.length + 1;
@@ -485,8 +522,13 @@ export class Dice3D {
             newOrder.splice(slotIdx, 0, draggedIdx);
             dispatch({ type: 'REORDER_HOLD', newOrder });
           }
+          // Restore die transform — syncDice will lerp to the new slot from here.
+          draggedDie.group.position.y = HOLD_Y;
+          draggedDie.group.scale.setScalar(HOLD_SCALE);
         }
+        this.disposeGhostSlot();
         this.isDragging = false;
+        this.canvas.style.cursor = '';
       } else {
         // No movement past threshold → treat as click.
         dispatch({ type: 'TOGGLE_LOCK', dieIdx: draggedIdx });
@@ -494,9 +536,70 @@ export class Dice3D {
       this.dragStart = null;
     };
 
+    this.onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape' && this.isDragging) this.cancelDrag();
+    };
+
+    this.onPointerLeave = () => {
+      if (this.isDragging) this.cancelDrag();
+    };
+
     document.addEventListener('pointerdown', this.onPointerDown);
     document.addEventListener('pointermove', this.onPointerMove);
     document.addEventListener('pointerup', this.onPointerUp);
+    document.addEventListener('keydown', this.onKeyDown);
+    this.canvas.addEventListener('pointerleave', this.onPointerLeave);
+  }
+
+  private updateGhostSlot(slotIdx: number, slotXs: number[]): void {
+    if (slotIdx < 0 || slotIdx >= slotXs.length) {
+      this.disposeGhostSlot();
+      return;
+    }
+    if (this.dragGhostSlot === slotIdx && this.dragGhostSprite) {
+      this.dragGhostSprite.position.x = slotXs[slotIdx]!;
+      return;
+    }
+    this.disposeGhostSlot();
+    const mat = new THREE.SpriteMaterial({
+      map: getHaloTexture(),
+      color: 0x7be3ff,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.position.set(slotXs[slotIdx]!, HOLD_Y - 0.05, HOLD_Z);
+    sprite.scale.set(DIE_SIZE * 1.6, DIE_SIZE * 1.6, 1);
+    this.scene.add(sprite);
+    this.dragGhostSprite = sprite;
+    this.dragGhostSlot = slotIdx;
+  }
+
+  private disposeGhostSlot(): void {
+    if (this.dragGhostSprite) {
+      this.scene.remove(this.dragGhostSprite);
+      const mat = this.dragGhostSprite.material as THREE.SpriteMaterial;
+      mat.dispose();
+      this.dragGhostSprite = null;
+      this.dragGhostSlot = null;
+    }
+  }
+
+  private cancelDrag(): void {
+    if (!this.dragStart || !this.isDragging) return;
+    const die = this.dice[this.dragStart.dieIdx];
+    if (die) {
+      die.group.position.x = this.dragOriginalSlotX;
+      die.group.position.y = HOLD_Y;
+      die.group.scale.setScalar(HOLD_SCALE);
+    }
+    this.disposeGhostSlot();
+    this.isDragging = false;
+    this.canvas.style.cursor = '';
+    this.dragStart = null;
   }
 
   destroy(): void {
@@ -505,6 +608,9 @@ export class Dice3D {
     if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
     if (this.onPointerMove) document.removeEventListener('pointermove', this.onPointerMove);
     if (this.onPointerUp) document.removeEventListener('pointerup', this.onPointerUp);
+    if (this.onKeyDown) document.removeEventListener('keydown', this.onKeyDown);
+    if (this.onPointerLeave) this.canvas.removeEventListener('pointerleave', this.onPointerLeave);
+    this.disposeGhostSlot();
     this.renderer.dispose();
   }
 
