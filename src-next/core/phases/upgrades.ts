@@ -8,7 +8,7 @@ const ALWAYS_ACTIVE = new Set<string>();
 export const upgrades: PhaseFn = (ctx) => {
   let next = ctx;
 
-  const isFirstHand = ctx.state.round.handsLeft === ctx.state.round.handsMax;
+  const isFirstHand = !ctx.state.round.firstHandPlayed;
   const catalystsBlocked =
     hasDebuff(ctx.state, 'disable_catalysts') ||
     (isFirstHand && hasDebuff(ctx.state, 'disable_catalysts_first_hand'));

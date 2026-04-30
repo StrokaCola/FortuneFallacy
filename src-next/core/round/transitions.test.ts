@@ -75,14 +75,23 @@ describe('Eris boss (disable_catalysts_first_hand)', () => {
     expect(hasDebuff(s, 'disable_catalysts_first_hand')).toBe(true);
   });
 
-  it('first hand check uses handsLeft === handsMax', () => {
+  it('first hand check uses firstHandPlayed flag (false = first hand)', () => {
     const s = makeState();
     s.round.isBoss = true;
     s.round.blindId = 'eris';
-    s.round.handsLeft = 2;
+    (s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed = false;
+    expect(!(s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed).toBe(true);
+  });
+
+  it('firstHandPlayed=true means subsequent hands are not first hand (roll_token-safe)', () => {
+    const s = makeState();
+    s.round.isBoss = true;
+    s.round.blindId = 'eris';
+    // roll_token bumped handsLeft back up, but firstHandPlayed stays true
+    s.round.handsLeft = 3;
     s.round.handsMax = 3;
-    const isFirstHand = s.round.handsLeft === s.round.handsMax;
-    expect(isFirstHand).toBe(false);
+    (s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed = true;
+    expect(!(s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed).toBe(false);
   });
 });
 
