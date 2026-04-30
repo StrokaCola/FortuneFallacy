@@ -16,6 +16,8 @@ export type StyleDef = {
   sheenColor?: number;
 };
 
+export type GeometricVariant = 'asymmetric' | 'plated' | 'recessed';
+
 export const STYLES: Record<StyleKey, StyleDef> = {
   celestial: { bodyTint: 0x6b4ad6, bodyDeep: 0x1a0c4a, edge: 0xbba8ff, pip: 0xdcd4ff, halo: 0x7be3ff, eIntensity: 1.9, transmission: 0.50, thickness: 0.65, ior: 1.43, rough: 0.41 },
   obsidian:  { bodyTint: 0x2e1d6b, bodyDeep: 0x07051a, edge: 0xf5c451, pip: 0xf5c451, halo: 0xf5c451, eIntensity: 1.2, transmission: 0.18, thickness: 0.85, ior: 1.52, rough: 0.41 },
@@ -79,6 +81,7 @@ export function buildDie(
   size: number,
   styleKey: StyleKey,
   modOverride?: ModMaterialOverride,
+  geometricVariant?: GeometricVariant,
 ): BuiltDie {
   const baseS = STYLES[styleKey];
   const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
@@ -88,7 +91,11 @@ export function buildDie(
   // Body — translucent crystal cube with vertex-color gradient (tint→deep at
   // corners) so transmission shows the soft inner colour while edges fall to
   // the deep tone.
-  const bodyGeo = new RoundedBoxGeometry(size, size, size, 8, size * 0.18);
+  // Plated variant: bigger chamfer hints at a ceramic-plate softness.
+  const chamfer = size * (geometricVariant === 'plated' ? 0.26 : 0.18);
+  const bodyGeo = new RoundedBoxGeometry(size, size, size, 8, chamfer);
+  // Store the chamfer radius on parameters so tests can inspect it.
+  (bodyGeo as any).parameters.radius = chamfer;
   const tint = new THREE.Color(S.bodyTint);
   const deep = new THREE.Color(S.bodyDeep);
   const colors: number[] = [];
@@ -102,6 +109,22 @@ export function buildDie(
     colors.push(c.r, c.g, c.b);
   }
   bodyGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  // Asymmetric variant (Loaded): nudge +Y face vertices inward to create a
+  // visible weighted-mass bowl. Subtle — the spec calls for "subtle, not
+  // exaggerated" so the displacement is gated and capped at ~3% of size.
+  if (geometricVariant === 'asymmetric') {
+    const threshold = size * 0.45;
+    const maxBow = size * 0.03;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y > threshold) {
+        const t = Math.min(1, (y - threshold) / (size / 2 - threshold));
+        pos.setY(i, y - maxBow * t);
+      }
+    }
+    pos.needsUpdate = true;
+  }
 
   const bodyMat = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
@@ -187,7 +210,8 @@ export function buildDie(
 
   const half = size / 2;
   const pipR = size * 0.075;
-  const orbDepth = size * 0.10;
+  // Recessed variant (Pip Charge): orbs sit deeper, looking like contact points.
+  const orbDepth = size * (geometricVariant === 'recessed' ? 0.16 : 0.10);
   const surfaceOut = size * 0.0015;
   const haloShown = S.eIntensity > 0;
 

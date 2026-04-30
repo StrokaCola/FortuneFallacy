@@ -73,4 +73,52 @@ describe('buildDie', () => {
     const mat = body.material as THREE.MeshPhysicalMaterial;
     expect(mat.metalness).toBe(0);
   });
+
+  it("plated variant uses a larger RoundedBoxGeometry chamfer radius", () => {
+    const baseline = buildDie(0.85, 'celestial');
+    const plated = buildDie(0.85, 'celestial', undefined, 'plated');
+    const baseBody = baseline.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const platedBody = plated.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    // RoundedBoxGeometry stores its radius parameter on .parameters.radius.
+    const baseRadius = (baseBody.geometry as any).parameters.radius as number;
+    const platedRadius = (platedBody.geometry as any).parameters.radius as number;
+    expect(platedRadius).toBeGreaterThan(baseRadius);
+    expect(platedRadius).toBeCloseTo(0.85 * 0.26, 4);
+  });
+
+  it("asymmetric variant nudges +Y face vertices inward", () => {
+    const baseline = buildDie(0.85, 'celestial');
+    const asym = buildDie(0.85, 'celestial', undefined, 'asymmetric');
+    const baseBody = baseline.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const asymBody = asym.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const basePos = baseBody.geometry.attributes.position!;
+    const asymPos = asymBody.geometry.attributes.position!;
+    // Find the maximum Y across all vertices for each. Asymmetric should have
+    // a smaller max-Y because the +Y face was nudged inward.
+    let baseMaxY = -Infinity;
+    let asymMaxY = -Infinity;
+    for (let i = 0; i < basePos.count; i++) baseMaxY = Math.max(baseMaxY, basePos.getY(i));
+    for (let i = 0; i < asymPos.count; i++) asymMaxY = Math.max(asymMaxY, asymPos.getY(i));
+    expect(asymMaxY).toBeLessThan(baseMaxY);
+    // The displacement should be subtle — at most ~5% of die size below the
+    // baseline's max-Y. (Spec calls for "subtle, not exaggerated".)
+    expect(baseMaxY - asymMaxY).toBeLessThan(0.85 * 0.05);
+  });
+
+  it("recessed variant places pip orbs deeper inside the body", () => {
+    const baseline = buildDie(0.85, 'celestial');
+    const recessed = buildDie(0.85, 'celestial', undefined, 'recessed');
+    // First face's first pip has the orb mesh at index 0 within its faceGroup.
+    // We can grab it via pipGroup.children[0].children[0].
+    const baseFirstFaceGroup = baseline.pipGroup.children[0]!;
+    const recFirstFaceGroup = recessed.pipGroup.children[0]!;
+    const baseOrb = baseFirstFaceGroup.children[0] as THREE.Mesh;
+    const recOrb = recFirstFaceGroup.children[0] as THREE.Mesh;
+    // Orb is sunk along local -Z; smaller (more negative) z = deeper.
+    expect(recOrb.position.z).toBeLessThan(baseOrb.position.z);
+    // Recessed should match `size * 0.16` exactly.
+    expect(recOrb.position.z).toBeCloseTo(-0.85 * 0.16, 4);
+    // Baseline should match `size * 0.10`.
+    expect(baseOrb.position.z).toBeCloseTo(-0.85 * 0.10, 4);
+  });
 });
