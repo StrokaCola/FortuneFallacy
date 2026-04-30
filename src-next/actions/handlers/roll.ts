@@ -15,7 +15,13 @@ export const rollHandler: ActionHandler = (a, s) => {
         : s.round.dice;
       const workingState = {
         ...s,
-        round: { ...s.round, dice, firstRollDone: true, handInProgress: true },
+        round: {
+          ...s.round,
+          dice,
+          firstRollDone: true,
+          handInProgress: true,
+          scoringOrder: dice.map((d, i) => (d.locked ? i : -1)).filter((i) => i >= 0),
+        },
       };
       const ctx = runRollPipelineUpToSim(workingState);
       return {
