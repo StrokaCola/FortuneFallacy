@@ -52,7 +52,8 @@ export function DieView(props: Props) {
     const matchedMod = resolveMod(props.mods?.[0]);
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
-    const built = buildDieMod.buildDie(0.85, style, modOverride);
+    const geometricVariant = matchedMod?.visual?.geometricVariant;
+    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant);
     // Snap to canonical face rotation so the requested face is up.
     built.group.rotation.set(...(FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!));
     // Fade up only the visible face's pip lens for legibility.
