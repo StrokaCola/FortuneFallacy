@@ -58,6 +58,10 @@ const applyModScoring: PhaseFn = (ctx) => {
           type: 'onUpgradeTriggered',
           payload: { id: `mod:${id}@${i}`, phase: Phase.UPGRADES, deltaChips: dChips, deltaMult: dMult },
         });
+        events.push({
+          type: 'onModFired',
+          payload: { dieIdx: i, modId: id, faceValue: face },
+        });
       }
     }
   }
