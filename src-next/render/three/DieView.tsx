@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Die3DCSS, type DieMod } from '../../app/visual/Die3DCSS';
 import * as buildDieMod from './buildDie';
 import type { StyleKey } from './buildDie';
-import { MODS } from '../../core/mods';
+import { resolveMod } from '../../core/mods';
 import { MOD_MATERIALS } from './dieMaterials';
 import { registerView } from './sharedRenderer';
 import * as webglDetect from './webglDetect';
@@ -47,14 +47,9 @@ export function DieView(props: Props) {
     dir.position.set(2, 4, 3);
     scene.add(dir);
 
-    // Phase 3: lookup by id (preferred) with name fallback for backward
-    // compatibility. Secondary/tertiary mods get orbital satellite + rim-band
-    // (built later in this effect — Phase 3 task 4).
-    const firstMod = props.mods?.[0];
-    const matchedMod = firstMod
-      ? (firstMod.id ? MODS.find((m) => m.id === firstMod.id) : undefined)
-        ?? MODS.find((m) => m.name.toLowerCase() === firstMod.name.toLowerCase())
-      : undefined;
+    // Phase 4: primary mod material + optional geometric variant. Secondary
+    // and tertiary mods (orbital satellite + rim-band) are built below.
+    const matchedMod = resolveMod(props.mods?.[0]);
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const built = buildDieMod.buildDie(0.85, style, modOverride);
@@ -68,13 +63,6 @@ export function DieView(props: Props) {
     }
     scene.add(built.group);
 
-    // Resolve the secondary + tertiary mod definitions (if present) the same
-    // way as primary — id preferred, name fallback.
-    function resolveMod(m: DieMod | undefined) {
-      if (!m) return undefined;
-      return (m.id ? MODS.find((mm) => mm.id === m.id) : undefined)
-        ?? MODS.find((mm) => mm.name.toLowerCase() === m.name.toLowerCase());
-    }
     const secondary = resolveMod(props.mods?.[1]);
     const tertiary = resolveMod(props.mods?.[2]);
 
