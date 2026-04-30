@@ -40,6 +40,9 @@ export type ModDef = {
   chipPerPip?: number;
   evenFaceMult?: number;
   pairBonus?: number;
+  firstBonus?: number;
+  lastBonus?: number;
+  chainMult?: number;
   visual?: ModVisual;
 };
 
