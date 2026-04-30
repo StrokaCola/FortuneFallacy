@@ -3,7 +3,6 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
-import { Die3DCSS } from '../visual/Die3DCSS';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
 import {
@@ -107,7 +106,7 @@ export function Forge() {
               transform: i === selectedDie ? 'translateY(-4px)' : 'none',
               transition: 'all 200ms',
             }}>
-            <Die3DCSS face={d.face} size={56} style="celestial" />
+            <DieView face={d.face} size={56} style="celestial" />
           </div>
         ))}
       </div>
