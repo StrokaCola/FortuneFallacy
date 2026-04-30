@@ -14,6 +14,9 @@ export const MOD_IDS = [
   'pip_charge',
   'even_keel',
   'mirror_pair',
+  'vanguard',
+  'capstone',
+  'conduit',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -96,6 +99,24 @@ export const MODS: ModDef[] = [
     id: 'mirror_pair', name: 'Mirror Pair', icon: '⚉',
     desc: '+3 mult per other die in hand sharing this face', pairBonus: 3,
     visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'vanguard', name: 'Vanguard', icon: '◀',
+    desc: '+5 chips if scored first',
+    firstBonus: 5,
+    visual: { materialKey: 'vanguard', accentColor: '#ff7847', triggerFx: 'pulse' },
+  },
+  {
+    id: 'capstone', name: 'Capstone', icon: '▶',
+    desc: '+10 chips if scored last',
+    lastBonus: 10,
+    visual: { materialKey: 'capstone', accentColor: '#5be8a4', triggerFx: 'pulse' },
+  },
+  {
+    id: 'conduit', name: 'Conduit', icon: '⫸',
+    desc: '+1 mult per die scored before this one',
+    chainMult: 1,
+    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse' },
   },
 ];
 

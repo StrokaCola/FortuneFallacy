@@ -5,6 +5,7 @@ import { MOD_MATERIALS, type ModMaterialKey } from './dieMaterials';
 const ALL_KEYS: ModMaterialKey[] = [
   'amplify', 'sharpened', 'gilded', 'loaded', 'snake_eyes',
   'high_roller', 'backstop', 'pip_charge', 'even_keel', 'mirror_pair',
+  'vanguard', 'capstone', 'conduit',
 ];
 
 describe('MOD_MATERIALS', () => {
@@ -36,7 +37,7 @@ describe('MOD_MATERIALS', () => {
     }
   });
 
-  it('has exactly 10 entries (one per mod)', () => {
-    expect(Object.keys(MOD_MATERIALS).length).toBe(10);
+  it('has exactly 13 entries (one per mod)', () => {
+    expect(Object.keys(MOD_MATERIALS).length).toBe(13);
   });
 });

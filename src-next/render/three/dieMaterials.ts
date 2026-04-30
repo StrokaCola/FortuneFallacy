@@ -89,4 +89,23 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0xe0c8ff, halo: 0xe0c8ff,
     transmission: 0.20, rough: 0.05, ior: 1.70, metalness: 0.95,
   },
+  // 11. Vanguard — Bright orange flame finish (urgency, lead).
+  vanguard: {
+    bodyTint: 0xff7847, bodyDeep: 0x6b1f08,
+    edge: 0xffb074, halo: 0xff7847,
+    transmission: 0.30, rough: 0.35, eIntensity: 1.8,
+  },
+  // 12. Capstone — Deep teal/jade plated (capping, completion).
+  capstone: {
+    bodyTint: 0x5be8a4, bodyDeep: 0x1f5a3e,
+    edge: 0x9bf0c8, halo: 0x5be8a4,
+    transmission: 0.25, rough: 0.40, eIntensity: 1.4,
+    metalness: 0.3,
+  },
+  // 13. Conduit — Purple electric thread finish (chain, energy flow).
+  conduit: {
+    bodyTint: 0x8a6ad4, bodyDeep: 0x2e1d6b,
+    edge: 0xe0c8ff, halo: 0xbba8ff,
+    transmission: 0.18, rough: 0.30, eIntensity: 2.0,
+  },
 };

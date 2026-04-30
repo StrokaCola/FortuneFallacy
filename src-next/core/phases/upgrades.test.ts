@@ -168,4 +168,32 @@ describe('applyModScoring with scoringOrder', () => {
     const out = upgrades(ctx);
     expect(out.chips).toBe(2);
   });
+
+  it('vanguard fires +5 chips only when its die is at position 0', () => {
+    // Die 0 has Vanguard. scoringOrder [0,1,2,3,4] → die 0 is first → fires.
+    const first = makeModCtx([3, 3, 3, 3, 3], [['vanguard'], [], [], [], []], [0, 1, 2, 3, 4]);
+    expect(upgrades(first).chips).toBe(5);
+    // scoringOrder [4,1,2,3,0] → die 0 is last → does NOT fire.
+    const last = makeModCtx([3, 3, 3, 3, 3], [['vanguard'], [], [], [], []], [4, 1, 2, 3, 0]);
+    expect(upgrades(last).chips).toBe(0);
+  });
+
+  it('capstone fires +10 chips only when its die is at the last position', () => {
+    // Die 0 has Capstone. scoringOrder [4,1,2,3,0] → die 0 is last → fires.
+    const last = makeModCtx([3, 3, 3, 3, 3], [['capstone'], [], [], [], []], [4, 1, 2, 3, 0]);
+    expect(upgrades(last).chips).toBe(10);
+    // scoringOrder [0,1,2,3,4] → die 0 is first → does NOT fire.
+    const first = makeModCtx([3, 3, 3, 3, 3], [['capstone'], [], [], [], []], [0, 1, 2, 3, 4]);
+    expect(upgrades(first).chips).toBe(0);
+  });
+
+  it('conduit fires +1 mult per prior die (chainMult × pos)', () => {
+    // Die 0 has Conduit. scoringOrder [4,1,2,3,0] → die 0 is at pos 4 → +4 mult.
+    const lastPos = makeModCtx([3, 3, 3, 3, 3], [['conduit'], [], [], [], []], [4, 1, 2, 3, 0]);
+    const lastOut = upgrades(lastPos);
+    expect(lastOut.mult).toBe(1 + 4); // base 1 + 4 from chainMult
+    // scoringOrder [0,1,2,3,4] → die 0 is at pos 0 → no mult bonus.
+    const firstPos = makeModCtx([3, 3, 3, 3, 3], [['conduit'], [], [], [], []], [0, 1, 2, 3, 4]);
+    expect(upgrades(firstPos).mult).toBe(1);
+  });
 });
