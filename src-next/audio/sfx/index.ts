@@ -8,7 +8,9 @@ export type SfxId =
   | 'diceClack' | 'lockTap' | 'reroll' | 'buy'
   | 'combo' | 'upgrade' | 'bossSting' | 'bigScore' | 'win' | 'bust'
   | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe'
-  | 'multSlam' | 'comboChime' | 'targetCross' | 'notEnough';
+  | 'multSlam' | 'comboChime' | 'targetCross' | 'notEnough'
+  | 'modPulse' | 'modLoaded' | 'modPipCharge' | 'modBackstop'
+  | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover';
 
 export type SfxOpts = { tier?: number; volume?: number; idx?: number; freq?: number; gain?: number };
 
@@ -88,6 +90,14 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'comboChime':      (v as typeof voices).comboChime(bank as never); break;
       case 'targetCross':     (v as typeof voices).targetCross(bank as never); break;
       case 'notEnough':       (v as typeof voices).notEnough(bank as never); break;
+      case 'modPulse':        (v as typeof voices).modPulse(bank as never); break;
+      case 'modLoaded':       (v as typeof voices).modLoaded(bank as never); break;
+      case 'modPipCharge':    (v as typeof voices).modPipCharge(bank as never); break;
+      case 'modBackstop':     (v as typeof voices).modBackstop(bank as never); break;
+      case 'modAttach':       (v as typeof voices).modAttach(bank as never); break;
+      case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
+      case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;
+      case 'uiHover':         (v as typeof voices).uiHover(bank as never); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);
