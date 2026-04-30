@@ -116,23 +116,38 @@ export function resolveMod(
     ?? MODS.find((mm) => mm.name.toLowerCase() === m.name.toLowerCase());
 }
 
+export type FaceRemapResult = {
+  faces: number[];
+  events: { dieIdx: number; modId: string; faceValue: number }[];
+};
+
 export function applyFaceRemaps(
   faces: number[],
   diceMods: string[][],
   lockOnes = false,
-): number[] {
-  return faces.map((face, i) => {
+): FaceRemapResult {
+  const events: { dieIdx: number; modId: string; faceValue: number }[] = [];
+  const remapped = faces.map((face, i) => {
     const mods = diceMods[i] ?? [];
     let f = face;
     for (const id of mods) {
       const def = lookupMod(id);
       if (def?.faceRemap && f === def.faceRemap.from) {
         if (lockOnes && def.faceRemap.from === 1) continue;
+        // Emit before transforming so faceValue is the pre-remap value.
+        events.push({ dieIdx: i, modId: id, faceValue: f });
         f = def.faceRemap.to;
       }
     }
-    const minMod = mods.map(lookupMod).find((d) => d?.scoreMin != null);
-    if (minMod?.scoreMin != null && f < minMod.scoreMin) f = minMod.scoreMin;
+    // Backstop: raise sub-min faces. Emit only if a raise actually happens.
+    const minModEntry = mods
+      .map((id) => ({ id, def: lookupMod(id) }))
+      .find((m) => m.def?.scoreMin != null);
+    if (minModEntry?.def?.scoreMin != null && f < minModEntry.def.scoreMin) {
+      events.push({ dieIdx: i, modId: minModEntry.id, faceValue: f });
+      f = minModEntry.def.scoreMin;
+    }
     return f;
   });
+  return { faces: remapped, events };
 }
