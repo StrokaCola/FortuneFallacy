@@ -20,7 +20,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           dice,
           firstRollDone: true,
           handInProgress: true,
-          scoringOrder: dice.map((d, i) => (d.locked ? i : -1)).filter((i) => i >= 0),
+          scoringOrder: dice.flatMap((d, i) => (d.locked ? [i] : [])),
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);

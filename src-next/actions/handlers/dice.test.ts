@@ -38,10 +38,12 @@ describe('REORDER_HOLD', () => {
 
   it('rejects newOrder containing unlocked die idx (no-op)', () => {
     const s = baseState();
-    // Die at index 2 is unlocked; locked dice are [0,1,3,4] — only 4 locked dice
+    // Die at index 2 is unlocked; locked dice are [0,1,3,4] — 4 locked dice
     const sUnlocked = { ...s, round: { ...s.round, dice: s.round.dice.map((d, i) => i === 2 ? { ...d, locked: false } : d) } };
-    // newOrder has length 5 but only 4 dice are locked — wrong length, should reject
-    const r = diceHandler({ type: 'REORDER_HOLD', newOrder: [0, 1, 2, 3, 4] }, sUnlocked);
+    // newOrder has length 4 (matches locked count) and no dupes, but contains
+    // idx 2 which is unlocked → should reject on the every-locked-includes check.
+    const r = diceHandler({ type: 'REORDER_HOLD', newOrder: [0, 1, 2, 3] }, sUnlocked);
+    // No-op preserves initial scoringOrder (since we mutated dice without going through TOGGLE_LOCK).
     expect(r.state.round.scoringOrder).toEqual([0, 1, 2, 3, 4]);
   });
 });
