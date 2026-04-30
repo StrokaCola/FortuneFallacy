@@ -114,11 +114,11 @@ export function Forge() {
 
       {/* Mod library */}
       <div style={{ position: 'absolute', right: 'calc(50% - 470px)', top: 260, width: 380, height: 440 }}>
-        <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18 }}>
-          <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12 }}>
+        <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto' }}>
             ◈ mod codex
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
             {MODS.map((r) => {
               const c = r.visual?.accentColor ?? '#7be3ff';
               const canAttach = slots.length < maxSlots;
