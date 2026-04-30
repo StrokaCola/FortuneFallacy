@@ -3,6 +3,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
+import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
 import {
@@ -124,7 +125,11 @@ export function Forge() {
               return (
                 <div
                   key={r.id}
-                  onClick={() => canAttach && dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id })}
+                  onClick={() => {
+                    if (!canAttach) return;
+                    dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
+                    sfxPlay('modAttach');
+                  }}
                   className="forge-mod-row"
                   style={{
                     cursor: canAttach ? 'pointer' : 'not-allowed',
@@ -170,7 +175,10 @@ export function Forge() {
             return (
               <button
                 key={idx}
-                onClick={() => dispatch({ type: 'DETACH_MOD', dieIdx: selectedDie, modIdx: idx })}
+                onClick={() => {
+                  dispatch({ type: 'DETACH_MOD', dieIdx: selectedDie, modIdx: idx });
+                  sfxPlay('modDetach');
+                }}
                 className="f-mono uc"
                 style={{
                   fontSize: 9, padding: '4px 10px', borderRadius: 6,
