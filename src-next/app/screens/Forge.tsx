@@ -24,8 +24,6 @@ export function Forge() {
   const maxSlots = useStore(selectMaxMod);
 
   const [selectedDie, setSelectedDie] = useState(0);
-  const useDieView = typeof window !== 'undefined'
-    && window.localStorage.getItem('ff_dieview_central') === '1';
 
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
@@ -85,11 +83,7 @@ export function Forge() {
               })}
             </g>
           </svg>
-          {useDieView ? (
-            <DieView face={selectedFace} size={140} style="celestial" mods={selectedMods} />
-          ) : (
-            <Die3DCSS face={selectedFace} size={140} style="celestial" mods={selectedMods} />
-          )}
+          <DieView face={selectedFace} size={140} style="celestial" mods={selectedMods} />
           <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
             <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
               die {selectedDie + 1} · {slots.length}/{maxSlots} mods
