@@ -100,6 +100,18 @@ describe('DieView', () => {
     unmount();
   });
 
+  it("threads the primary mod's geometricVariant into buildDie", () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const spy = vi.spyOn(buildDieMod, 'buildDie');
+    // Loaded mod has visual.geometricVariant = 'asymmetric' per Phase 2 wiring.
+    const mods = [{ id: 'loaded' as const, icon: '⚔', name: 'Loaded', color: '#c87a4a' }];
+    const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
+    const lastCall = spy.mock.calls[spy.mock.calls.length - 1]!;
+    // 4th argument is the geometricVariant.
+    expect(lastCall[3]).toBe('asymmetric');
+    unmount();
+  });
+
   it('builds an orbital satellite when 2 mods are attached', async () => {
     vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
     const spy = vi.spyOn(orbitalMod, 'buildOrbitalSatellite');

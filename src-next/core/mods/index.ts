@@ -102,6 +102,20 @@ export function lookupMod(id: string): ModDef | undefined {
   return MODS.find((m) => m.id === id);
 }
 
+/**
+ * Resolve a DieMod-shaped object (typically `{ id, name, ... }`) to its full
+ * `ModDef`. Prefers stable `id` lookup; falls back to case-insensitive name
+ * match if `id` is absent or doesn't resolve. Used by `DieView` to look up
+ * primary/secondary/tertiary mods consistently.
+ */
+export function resolveMod(
+  m: { id?: ModId; name: string } | undefined,
+): ModDef | undefined {
+  if (!m) return undefined;
+  return (m.id ? MODS.find((mm) => mm.id === m.id) : undefined)
+    ?? MODS.find((mm) => mm.name.toLowerCase() === m.name.toLowerCase());
+}
+
 export function applyFaceRemaps(
   faces: number[],
   diceMods: string[][],

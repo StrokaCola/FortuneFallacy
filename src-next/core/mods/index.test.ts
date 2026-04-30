@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyFaceRemaps, MODS, MOD_IDS } from './index';
+import { applyFaceRemaps, MODS, MOD_IDS, resolveMod } from './index';
 import { MOD_MATERIALS, type ModMaterialKey } from '../../render/three/dieMaterials';
 
 describe('applyFaceRemaps', () => {
@@ -76,5 +76,32 @@ describe('MODS visual contract', () => {
 
   it('MOD_IDS and MODS list the same set of ids in the same order', () => {
     expect(MODS.map((m) => m.id)).toEqual([...MOD_IDS]);
+  });
+});
+
+describe('resolveMod', () => {
+  it('returns undefined for undefined input', () => {
+    expect(resolveMod(undefined)).toBeUndefined();
+  });
+
+  it('prefers id when both id and name are provided', () => {
+    // Name says one mod, id says another — id should win.
+    const r = resolveMod({ id: 'gilded', name: 'Renamed' });
+    expect(r?.id).toBe('gilded');
+  });
+
+  it('falls back to name (case-insensitive) when id is absent', () => {
+    const r = resolveMod({ name: 'sharpened' });
+    expect(r?.id).toBe('sharpened');
+  });
+
+  it('falls back to name when id refers to no known mod', () => {
+    const r = resolveMod({ id: 'nonexistent' as never, name: 'Loaded' });
+    expect(r?.id).toBe('loaded');
+  });
+
+  it('returns undefined when neither id nor name resolves', () => {
+    const r = resolveMod({ name: 'no-such-mod' });
+    expect(r).toBeUndefined();
   });
 });
