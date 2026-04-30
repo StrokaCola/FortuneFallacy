@@ -1,3 +1,5 @@
+import type { ModId } from '../../core/mods';
+
 type Style = 'celestial' | 'obsidian' | 'ivory' | 'ember' | 'glass';
 
 const PIPS: Record<number, [number, number][]> = {
@@ -51,7 +53,7 @@ const FACE_ROT: Record<number, string> = {
   4: 'rotateX(90deg)',
 };
 
-export type DieMod = { icon: string; name: string; color: string };
+export type DieMod = { id?: ModId; icon: string; name: string; color: string };
 
 export function Die3DCSS({
   face = 1,
