@@ -4,6 +4,8 @@ import { render, cleanup } from '@testing-library/react';
 import * as sharedRenderer from './sharedRenderer';
 import * as webglDetect from './webglDetect';
 import * as buildDieMod from './buildDie';
+import * as orbitalMod from './orbitalSatellite';
+import * as rimMod from './rimOverlay';
 import { DieView } from './DieView';
 
 vi.mock('three', async () => {
@@ -42,6 +44,7 @@ describe('DieView', () => {
   beforeEach(() => {
     sharedRenderer._resetSharedRenderer();
     webglDetect._resetWebGLCache();
+    vi.clearAllMocks();
     cleanup();
   });
 
@@ -94,6 +97,52 @@ describe('DieView', () => {
     const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
     const lastCall = spy.mock.calls[spy.mock.calls.length - 1]!;
     expect(lastCall[2]?.bodyTint).toBe(0xf5c451);
+    unmount();
+  });
+
+  it('builds an orbital satellite when 2 mods are attached', async () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const spy = vi.spyOn(orbitalMod, 'buildOrbitalSatellite');
+    const mods = [
+      { id: 'gilded' as const, icon: '◆', name: 'Gilded', color: '#f5c451' },
+      { id: 'sharpened' as const, icon: '▲', name: 'Sharpened', color: '#a4d4ff' },
+    ];
+    const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
+    expect(spy).toHaveBeenCalled();
+    // Secondary's accent color should drive the satellite.
+    const lastCall = spy.mock.calls[spy.mock.calls.length - 1]!;
+    expect(lastCall[0].accentColor).toBe('#a4d4ff');
+    unmount();
+  });
+
+  it('builds rim+satellite when 3 mods are attached (voucher case)', async () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const rimSpy = vi.spyOn(rimMod, 'buildRimOverlay');
+    const orbitalSpy = vi.spyOn(orbitalMod, 'buildOrbitalSatellite');
+    const mods = [
+      { id: 'gilded' as const, icon: '◆', name: 'Gilded', color: '#f5c451' },
+      { id: 'sharpened' as const, icon: '▲', name: 'Sharpened', color: '#a4d4ff' },
+      { id: 'loaded' as const, icon: '⚔', name: 'Loaded', color: '#c87a4a' },
+    ];
+    const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
+    // Rim is built from secondary's accent.
+    expect(rimSpy).toHaveBeenCalled();
+    expect(rimSpy.mock.calls[rimSpy.mock.calls.length - 1]![0].accentColor).toBe('#a4d4ff');
+    // Orbital satellite is built from tertiary's accent.
+    expect(orbitalSpy).toHaveBeenCalled();
+    expect(orbitalSpy.mock.calls[orbitalSpy.mock.calls.length - 1]![0].accentColor).toBe('#c87a4a');
+    unmount();
+  });
+
+  it('does NOT build a satellite at size < 80', async () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const spy = vi.spyOn(orbitalMod, 'buildOrbitalSatellite');
+    const mods = [
+      { id: 'gilded' as const, icon: '◆', name: 'Gilded', color: '#f5c451' },
+      { id: 'sharpened' as const, icon: '▲', name: 'Sharpened', color: '#a4d4ff' },
+    ];
+    const { unmount } = render(<DieView size={56} face={1} mods={mods} />);
+    expect(spy).not.toHaveBeenCalled();
     unmount();
   });
 });

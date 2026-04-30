@@ -8,6 +8,8 @@ import { MODS } from '../../core/mods';
 import { MOD_MATERIALS } from './dieMaterials';
 import { registerView } from './sharedRenderer';
 import * as webglDetect from './webglDetect';
+import * as orbitalMod from './orbitalSatellite';
+import * as rimMod from './rimOverlay';
 
 const FACE_ROT_EULER: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -66,6 +68,47 @@ export function DieView(props: Props) {
     }
     scene.add(built.group);
 
+    // Resolve the secondary + tertiary mod definitions (if present) the same
+    // way as primary — id preferred, name fallback.
+    function resolveMod(m: DieMod | undefined) {
+      if (!m) return undefined;
+      return (m.id ? MODS.find((mm) => mm.id === m.id) : undefined)
+        ?? MODS.find((mm) => mm.name.toLowerCase() === m.name.toLowerCase());
+    }
+    const secondary = resolveMod(props.mods?.[1]);
+    const tertiary = resolveMod(props.mods?.[2]);
+
+    // 2-mod case: secondary drives orbital satellite (hidden at small sizes).
+    // 3-mod case: secondary drives rim, tertiary drives orbital satellite.
+    const SATELLITE_MIN_SIZE = 80;
+    const showSatellite = size >= SATELLITE_MIN_SIZE;
+
+    let orbital: ReturnType<typeof orbitalMod.buildOrbitalSatellite> | null = null;
+    let rim: ReturnType<typeof rimMod.buildRimOverlay> | null = null;
+
+    if (props.mods?.length === 2 && secondary?.visual?.accentColor && showSatellite) {
+      orbital = orbitalMod.buildOrbitalSatellite({
+        accentColor: secondary.visual.accentColor,
+        dieSize: 0.85,
+      });
+      scene.add(orbital.group);
+    } else if (props.mods?.length === 3) {
+      if (secondary?.visual?.accentColor) {
+        rim = rimMod.buildRimOverlay({
+          accentColor: secondary.visual.accentColor,
+          dieSize: 0.85,
+        });
+        scene.add(rim.group);
+      }
+      if (tertiary?.visual?.accentColor && showSatellite) {
+        orbital = orbitalMod.buildOrbitalSatellite({
+          accentColor: tertiary.visual.accentColor,
+          dieSize: 0.85,
+        });
+        scene.add(orbital.group);
+      }
+    }
+
     const camera = new THREE.OrthographicCamera(-0.6, 0.6, 0.6, -0.6, 0.1, 100);
     camera.position.set(0, 0, 3);
     camera.lookAt(0, 0, 0);
@@ -78,6 +121,7 @@ export function DieView(props: Props) {
     // Idle tumble: gentle wobble around the canonical pose.
     const baseEuler = FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!;
     const t0 = performance.now();
+    const ORBIT_PERIOD_S = 8;
     const tick = () => {
       const dt = (performance.now() - t0) / 1000;
       built.group.rotation.set(
@@ -85,6 +129,10 @@ export function DieView(props: Props) {
         baseEuler[1] + Math.sin(dt * 0.60 + 1.0) * 0.05,
         baseEuler[2] + Math.sin(dt * 0.50 + 2.1) * 0.07,
       );
+      if (orbital) {
+        const angle = (dt / ORBIT_PERIOD_S) * Math.PI * 2;
+        orbital.setAngle(angle);
+      }
       tumbleHandleRef.current = requestAnimationFrame(tick);
     };
     tumbleHandleRef.current = requestAnimationFrame(tick);
@@ -92,6 +140,8 @@ export function DieView(props: Props) {
     return () => {
       if (tumbleHandleRef.current != null) cancelAnimationFrame(tumbleHandleRef.current);
       dispose();
+      orbital?.dispose();
+      rim?.dispose();
       // Dispose materials/geometries owned by the die.
       built.group.traverse((obj: THREE.Object3D) => {
         const mesh = obj as THREE.Mesh;
