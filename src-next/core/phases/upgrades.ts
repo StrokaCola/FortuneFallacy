@@ -29,11 +29,17 @@ export const upgrades: PhaseFn = (ctx) => {
 const applyModScoring: PhaseFn = (ctx) => {
   const faces = ctx.sim?.finalFaces ?? [];
   const diceMods = ctx.state.round.diceMods;
+  const fallbackOrder = faces.map((_, i) => i);
+  const order = ctx.state.round.scoringOrder ?? fallbackOrder;
+  // Filter to valid indices in case scoringOrder references stale dice.
+  const scoringDice = order.filter((idx) => idx >= 0 && idx < faces.length);
+
   let chips = ctx.chips;
   let mult = ctx.mult;
   const events = [...ctx.events];
 
-  for (let i = 0; i < faces.length; i++) {
+  for (let pos = 0; pos < scoringDice.length; pos++) {
+    const i = scoringDice[pos]!;
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
     for (const id of mods) {
@@ -51,6 +57,10 @@ const applyModScoring: PhaseFn = (ctx) => {
         const matches = faces.filter((f) => f === face).length - 1;
         if (matches > 0) dMult += def.pairBonus * matches;
       }
+      // Order-aware fields (mod entries added in Task 3).
+      if (def.firstBonus && pos === 0) dChips += def.firstBonus;
+      if (def.lastBonus && pos === scoringDice.length - 1) dChips += def.lastBonus;
+      if (def.chainMult && pos > 0) dMult += def.chainMult * pos;
       if (dChips !== 0 || dMult !== 0) {
         chips += dChips;
         mult += dMult;

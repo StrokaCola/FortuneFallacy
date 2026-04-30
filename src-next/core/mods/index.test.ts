@@ -105,6 +105,46 @@ describe('MODS visual contract', () => {
   });
 });
 
+describe('order-aware mods', () => {
+  it('vanguard mod exists with firstBonus: 5', () => {
+    const m = MODS.find((x) => x.id === 'vanguard');
+    expect(m).toBeDefined();
+    expect(m?.firstBonus).toBe(5);
+  });
+
+  it('capstone mod exists with lastBonus: 10', () => {
+    const m = MODS.find((x) => x.id === 'capstone');
+    expect(m).toBeDefined();
+    expect(m?.lastBonus).toBe(10);
+  });
+
+  it('conduit mod exists with chainMult: 1', () => {
+    const m = MODS.find((x) => x.id === 'conduit');
+    expect(m).toBeDefined();
+    expect(m?.chainMult).toBe(1);
+  });
+
+  it('all 3 new mods have visual blocks with valid materialKey + accent + pulse trigger', () => {
+    const ids = ['vanguard', 'capstone', 'conduit'] as const;
+    for (const id of ids) {
+      const m = MODS.find((x) => x.id === id);
+      expect(m?.visual?.materialKey).toBe(id);
+      expect(m?.visual?.accentColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(m?.visual?.triggerFx).toBe('pulse');
+    }
+  });
+
+  it('MODS has 13 entries total (10 prior + 3 new)', () => {
+    expect(MODS.length).toBe(13);
+  });
+
+  it('MOD_IDS includes the 3 new ids', () => {
+    expect(MOD_IDS).toContain('vanguard');
+    expect(MOD_IDS).toContain('capstone');
+    expect(MOD_IDS).toContain('conduit');
+  });
+});
+
 describe('resolveMod', () => {
   it('returns undefined for undefined input', () => {
     expect(resolveMod(undefined)).toBeUndefined();

@@ -20,6 +20,7 @@ export type RoundSlice = {
   diceMods: string[][];
   shardSinkPrimedThisHand: boolean;
   firstHandPlayed: boolean;
+  scoringOrder: number[];
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -53,4 +54,5 @@ export const initialRoundSlice = (): RoundSlice => ({
   diceMods: Array.from({ length: 5 }, () => [] as string[]),
   shardSinkPrimedThisHand: false,
   firstHandPlayed: false,
+  scoringOrder: [0, 1, 2, 3, 4],
 });

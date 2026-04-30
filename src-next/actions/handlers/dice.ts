@@ -3,17 +3,30 @@ import { initialRoundSlice } from '../../state/slices/round';
 import { lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
 
+function lockedIdxs(dice: { locked: boolean }[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < dice.length; i++) if (dice[i]!.locked) out.push(i);
+  return out;
+}
+
 export const diceHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'TOGGLE_LOCK': {
       const target = s.round.dice[a.dieIdx];
       if (!target) return { state: s, events: [] };
+      const newLocked = !target.locked;
       const dice = s.round.dice.map((d, i) =>
-        i === a.dieIdx ? { ...d, locked: !d.locked } : d,
+        i === a.dieIdx ? { ...d, locked: newLocked } : d,
       );
+      let scoringOrder = s.round.scoringOrder ?? [];
+      if (newLocked) {
+        if (!scoringOrder.includes(a.dieIdx)) scoringOrder = [...scoringOrder, a.dieIdx];
+      } else {
+        scoringOrder = scoringOrder.filter((i) => i !== a.dieIdx);
+      }
       return {
-        state: { ...s, round: { ...s.round, dice } },
-        events: [{ type: 'onLockToggled', payload: { dieIdx: a.dieIdx, locked: !target.locked } }],
+        state: { ...s, round: { ...s.round, dice, scoringOrder } },
+        events: [{ type: 'onLockToggled', payload: { dieIdx: a.dieIdx, locked: newLocked } }],
       };
     }
     case 'RESET_ROUND':
@@ -30,6 +43,23 @@ export const diceHandler: ActionHandler = (a, s) => {
         i === a.dieIdx ? r.filter((_, j) => j !== a.modIdx) : r,
       );
       return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
+    }
+    case 'REORDER_HOLD': {
+      const locked = lockedIdxs(s.round.dice);
+      const valid =
+        a.newOrder.length === locked.length &&
+        new Set(a.newOrder).size === a.newOrder.length &&
+        a.newOrder.every((idx) => locked.includes(idx));
+      if (!valid) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[REORDER_HOLD] invalid newOrder', a.newOrder, 'locked=', locked);
+        }
+        return { state: s, events: [] };
+      }
+      return {
+        state: { ...s, round: { ...s.round, scoringOrder: a.newOrder } },
+        events: [],
+      };
     }
     default:
       return { state: s, events: [] };

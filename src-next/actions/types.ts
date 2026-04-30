@@ -24,6 +24,7 @@ export type Action =
   | { type: 'DISCARD_CONSUMABLE'; index: number }
   | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }
   | { type: 'DETACH_MOD'; dieIdx: number; modIdx: number }
+  | { type: 'REORDER_HOLD'; newOrder: number[] }
   | { type: 'SKIP_BLIND' }
   | { type: 'END_SCORING' };
 
