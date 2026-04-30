@@ -345,7 +345,9 @@ export class Dice3D {
 
     this.unsubscribers.push(
       store.subscribe((s, prev) => {
-        if (s.round.dice !== prev.round.dice) this.syncDice(s.round.dice);
+        if (s.round.dice !== prev.round.dice || s.round.scoringOrder !== prev.round.scoringOrder) {
+          this.syncDice(s.round.dice);
+        }
       }),
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
       bus.on('onScoreBeat', ({ beat }) => {
@@ -683,10 +685,18 @@ export class Dice3D {
   }
 
   private syncDice(diceState: { face: number; locked?: boolean }[]) {
-    // Compute hold-area indices (sequential among locked dice)
-    const lockedIndices: number[] = [];
-    diceState.forEach((d, i) => { if (d.locked) lockedIndices.push(i); });
-    const holdCount = lockedIndices.length;
+    // Hold-strip layout follows scoringOrder so player-driven reorder is
+    // visible. Falls back to natural order if scoringOrder is empty / stale
+    // (e.g. before first roll or after RESET_ROUND).
+    const rawOrder = store.getState().round.scoringOrder ?? [];
+    const naturalOrder: number[] = [];
+    diceState.forEach((d, i) => { if (d.locked) naturalOrder.push(i); });
+    // Filter scoringOrder to only currently-locked indices, then append any
+    // locked indices missing from it (defensive against desync).
+    const lockedSet = new Set(naturalOrder);
+    const holdOrder = rawOrder.filter((i) => lockedSet.has(i));
+    for (const i of naturalOrder) if (!holdOrder.includes(i)) holdOrder.push(i);
+    const holdCount = holdOrder.length;
 
     diceState.forEach((d, i) => {
       const die = this.dice[i];
@@ -710,8 +720,9 @@ export class Dice3D {
       let newTargetPos: THREE.Vector3;
       let newTargetScale: number;
       if (isLocked) {
-        // Locked dice slide down into the holding tray, organized into slots.
-        const holdIdx = lockedIndices.indexOf(i);
+        // Locked dice slide down into the holding tray, organized into slots
+        // according to scoringOrder (player drag-reorder respected).
+        const holdIdx = holdOrder.indexOf(i);
         newTargetPos = new THREE.Vector3(this.holdSlotX(holdIdx, holdCount), HOLD_Y, HOLD_Z);
         newTargetScale = HOLD_SCALE;
       } else if (wasLocked) {
@@ -980,7 +991,12 @@ export class Dice3D {
     const loop = () => {
       this.rafHandle = requestAnimationFrame(loop);
       const now = performance.now();
-      for (const d of this.dice) {
+      const draggedIdx = this.isDragging && this.dragStart ? this.dragStart.dieIdx : -1;
+      for (let dIdx = 0; dIdx < this.dice.length; dIdx++) {
+        const d = this.dice[dIdx]!;
+        // Skip per-frame transforms for the actively-dragged die — the drag
+        // handler owns its position/scale until pointerup.
+        if (dIdx === draggedIdx) continue;
         const elapsed = now - d.t0;
         if (elapsed < 0) {
           // pre-stagger; stay at start
