@@ -3,7 +3,6 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
-import { Die3DCSS } from '../visual/Die3DCSS';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
 import {
@@ -24,8 +23,6 @@ export function Forge() {
   const maxSlots = useStore(selectMaxMod);
 
   const [selectedDie, setSelectedDie] = useState(0);
-  const useDieView = typeof window !== 'undefined'
-    && window.localStorage.getItem('ff_dieview_central') === '1';
 
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
@@ -85,11 +82,7 @@ export function Forge() {
               })}
             </g>
           </svg>
-          {useDieView ? (
-            <DieView face={selectedFace} size={140} style="celestial" mods={selectedMods} />
-          ) : (
-            <Die3DCSS face={selectedFace} size={140} style="celestial" mods={selectedMods} />
-          )}
+          <DieView face={selectedFace} size={140} style="celestial" mods={selectedMods} />
           <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
             <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
               die {selectedDie + 1} · {slots.length}/{maxSlots} mods
@@ -113,7 +106,7 @@ export function Forge() {
               transform: i === selectedDie ? 'translateY(-4px)' : 'none',
               transition: 'all 200ms',
             }}>
-            <Die3DCSS face={d.face} size={56} style="celestial" />
+            <DieView face={d.face} size={56} style="celestial" />
           </div>
         ))}
       </div>
