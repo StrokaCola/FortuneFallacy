@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
 import { dispatch } from '../../actions/dispatch';
+import { lookupMod } from '../../core/mods';
 import { createCosmicEnv } from './MaterialEnv';
 import {
   buildDie, getHaloTexture,
   type FaceMatMap,
 } from './buildDie';
+import { firePulse } from './modFx/pulse';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
@@ -178,6 +180,10 @@ export class Dice3D {
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
   private scoringActive = false;
   private activeScoringDie = -1;
+  // Queued pulse colors per die — `onModFired` enqueues; `die-tick` drains.
+  // Keeps pulse FX visually in sync with the score-sequence animation rather
+  // than firing all at once at action-dispatch time.
+  private pendingPulses: Map<number, string[]> = new Map();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -331,10 +337,33 @@ export class Dice3D {
           const d = this.dice[beat.dieIdx];
           if (d) d.scorePopStart = performance.now();
           this.activeScoringDie = beat.dieIdx;
+          // Drain any pending pulses for this die into firePulse calls so
+          // the halos appear during the score-pop animation.
+          const queue = this.pendingPulses.get(beat.dieIdx);
+          if (queue && d) {
+            for (const accent of queue) {
+              firePulse(this.scene, d.group.position.clone(), accent, DIE_SIZE);
+            }
+            this.pendingPulses.set(beat.dieIdx, []);
+          }
         } else if (beat.kind === 'boom' || beat.kind === 'bail') {
           this.scoringActive = false;
           this.activeScoringDie = -1;
+          this.pendingPulses.clear();
         }
+      }),
+      bus.on('onModFired', ({ dieIdx, modId, faceValue }) => {
+        const def = lookupMod(modId);
+        const trigger = def?.visual?.triggerFx;
+        const accent = def?.visual?.accentColor;
+        // Pilot mods (loaded/pipCharge/backstop) get their own phenomena in
+        // Phase 6 — skip generic pulse for them.
+        if (trigger !== 'pulse' || !accent) return;
+        void faceValue;
+        // Queue this pulse to fire when score-sequence reaches this die-tick.
+        const list = this.pendingPulses.get(dieIdx) ?? [];
+        list.push(accent);
+        this.pendingPulses.set(dieIdx, list);
       }),
     );
     this.syncDice(store.getState().round.dice);

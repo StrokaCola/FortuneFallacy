@@ -50,6 +50,7 @@ export type GameEventMap = {
   onRollEnd:           { faces: number[]; metrics: SimMetrics };
   onScoreCalculated:   { combo: ComboId; chips: number; mult: number; total: number };
   onUpgradeTriggered:  { id: UpgradeId; phase: Phase; deltaChips: number; deltaMult: number };
+  onModFired:          { dieIdx: number; modId: string; faceValue: number };
   onComboDetected:     { combo: ComboId; tier: number };
   onBlindCleared:      { blindId: BlindId; ante: number };
   onBossRevealed:      { blindId: BlindId; ante: number };

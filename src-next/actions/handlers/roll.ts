@@ -4,6 +4,7 @@ import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
 import { lookupMod } from '../../core/mods';
 import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
+import type { GameEventEmission } from '../../events/types';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -87,12 +88,20 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
       const final = runRollPipelineAfterSim(baseCtx, fakeResult);
       let shardBonus = 0;
-      for (const mods of workingState.round.diceMods) {
+      const modFiredEvents: GameEventEmission[keyof GameEventEmission][] = [];
+      const finalFaces = fakeResult.finalFaces;
+      workingState.round.diceMods.forEach((mods, dieIdx) => {
         for (const id of mods) {
           const def = lookupMod(id);
-          if (def?.shardsBonus) shardBonus += def.shardsBonus;
+          if (def?.shardsBonus) {
+            shardBonus += def.shardsBonus;
+            modFiredEvents.push({
+              type: 'onModFired',
+              payload: { dieIdx, modId: id, faceValue: finalFaces[dieIdx] ?? 0 },
+            });
+          }
         }
-      }
+      });
       const newScore = workingState.round.score + final.total;
       const newHandsLeft = Math.max(0, workingState.round.handsLeft - 1);
       const baseState = {
@@ -125,7 +134,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           },
         },
       };
-      const baseEvents = [...final.events];
+      const baseEvents = [...final.events, ...modFiredEvents];
 
       let pendingRoundEnd: 'clear' | 'bust' | null = null;
       if (workingState.round.active && newScore >= workingState.round.target && workingState.round.target > 0) {
