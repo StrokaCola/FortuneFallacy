@@ -1,18 +1,10 @@
 // src-next/render/three/dieMaterials.ts
 
-// Mod material keys — one per mod in src-next/core/mods/index.ts.
-// MUST stay in sync with the mod ids there.
-export type ModMaterialKey =
-  | 'amplify'
-  | 'sharpened'
-  | 'gilded'
-  | 'loaded'
-  | 'snake_eyes'
-  | 'high_roller'
-  | 'backstop'
-  | 'pip_charge'
-  | 'even_keel'
-  | 'mirror_pair';
+import type { ModId } from '../../core/mods';
+
+// Mod material keys are exactly the mod ids. Deriving from ModId means a new
+// mod added to MOD_IDS without an entry in MOD_MATERIALS is a TypeScript error.
+export type ModMaterialKey = ModId;
 
 // Partial StyleDef override applied on top of the base die-style. Anything
 // not specified inherits from the player's chosen base style. Hex colors are

@@ -123,11 +123,7 @@ export function Forge() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {MODS.map((r) => {
-              const colorMap: Record<string, string> = {
-                amplify: '#7be3ff', sharpened: '#ff7847', gilded: '#f5c451',
-                loaded: '#e2334a', snake_eyes: '#9577ff', high_roller: '#f5c451', backstop: '#bba8ff',
-              };
-              const c = colorMap[r.id] ?? '#7be3ff';
+              const c = r.visual?.accentColor ?? '#7be3ff';
               const canAttach = slots.length < maxSlots;
               return (
                 <div
