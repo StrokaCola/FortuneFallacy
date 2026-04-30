@@ -51,4 +51,26 @@ describe('buildDie', () => {
     expect(built.faceLensMats[1]).toBeInstanceOf(THREE.MeshStandardMaterial);
     expect(built.faceHaloMats[1]).toBeInstanceOf(THREE.SpriteMaterial);
   });
+
+  it('respects modOverride bodyTint over base style', () => {
+    const built = buildDie(0.85, 'celestial', { bodyTint: 0xff0000, bodyDeep: 0x000000 });
+    const body = built.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const mat = body.material as THREE.MeshPhysicalMaterial;
+    // sheenColor defaults to bodyTint when not overridden — so it should be red.
+    expect(mat.sheenColor.getHex()).toBe(0xff0000);
+  });
+
+  it('respects modOverride.metalness', () => {
+    const built = buildDie(0.85, 'celestial', { metalness: 0.85 });
+    const body = built.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const mat = body.material as THREE.MeshPhysicalMaterial;
+    expect(mat.metalness).toBe(0.85);
+  });
+
+  it('without modOverride, base style metalness defaults to 0', () => {
+    const built = buildDie(0.85, 'celestial');
+    const body = built.group.children.find((c: { name: string }) => c.name === 'Body') as THREE.Mesh;
+    const mat = body.material as THREE.MeshPhysicalMaterial;
+    expect(mat.metalness).toBe(0);
+  });
 });

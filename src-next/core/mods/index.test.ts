@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyFaceRemaps, MODS } from './index';
+import { applyFaceRemaps, MODS, MOD_IDS } from './index';
+import { MOD_MATERIALS, type ModMaterialKey } from '../../render/three/dieMaterials';
 
 describe('applyFaceRemaps', () => {
   it('passes faces through when no mods are attached', () => {
@@ -41,5 +42,39 @@ describe('D-2 mod entries', () => {
     const m = MODS.find((x) => x.id === 'mirror_pair');
     expect(m).toBeDefined();
     expect(m?.pairBonus).toBe(3);
+  });
+});
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+const VALID_TRIGGERS = new Set(['loaded', 'pipCharge', 'backstop', 'pulse']);
+
+describe('MODS visual contract', () => {
+  it('every mod has a visual block', () => {
+    for (const m of MODS) {
+      expect(m.visual, `mod ${m.id} missing visual`).toBeDefined();
+    }
+  });
+
+  it('every visual.materialKey resolves in MOD_MATERIALS', () => {
+    for (const m of MODS) {
+      const key = m.visual!.materialKey as ModMaterialKey;
+      expect(MOD_MATERIALS[key], `mod ${m.id} -> unknown material ${key}`).toBeDefined();
+    }
+  });
+
+  it('every visual.accentColor is a #rrggbb hex string', () => {
+    for (const m of MODS) {
+      expect(m.visual!.accentColor).toMatch(HEX_RE);
+    }
+  });
+
+  it('every visual.triggerFx is a valid family', () => {
+    for (const m of MODS) {
+      expect(VALID_TRIGGERS.has(m.visual!.triggerFx)).toBe(true);
+    }
+  });
+
+  it('MOD_IDS and MODS list the same set of ids in the same order', () => {
+    expect(MODS.map((m) => m.id)).toEqual([...MOD_IDS]);
   });
 });

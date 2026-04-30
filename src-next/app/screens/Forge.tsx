@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
@@ -30,10 +30,13 @@ export function Forge() {
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
   const selectedFace = dice[selectedDie]?.face ?? 1;
-  const selectedMods = slots
-    .map(lookupMod)
-    .filter((r): r is NonNullable<typeof r> => !!r)
-    .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' }));
+  const selectedMods = useMemo(
+    () => slots
+      .map(lookupMod)
+      .filter((r): r is NonNullable<typeof r> => !!r)
+      .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' })),
+    [slots],
+  );
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
@@ -123,11 +126,7 @@ export function Forge() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {MODS.map((r) => {
-              const colorMap: Record<string, string> = {
-                amplify: '#7be3ff', sharpened: '#ff7847', gilded: '#f5c451',
-                loaded: '#e2334a', snake_eyes: '#9577ff', high_roller: '#f5c451', backstop: '#bba8ff',
-              };
-              const c = colorMap[r.id] ?? '#7be3ff';
+              const c = r.visual?.accentColor ?? '#7be3ff';
               const canAttach = slots.length < maxSlots;
               return (
                 <div

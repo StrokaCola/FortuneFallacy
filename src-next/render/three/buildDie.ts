@@ -1,6 +1,7 @@
 // src-next/render/three/buildDie.ts
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { ModMaterialOverride } from './dieMaterials';
 
 export type StyleKey = 'celestial' | 'obsidian' | 'ember' | 'ivory' | 'glass';
 
@@ -9,6 +10,10 @@ export type StyleDef = {
   edge: number; pip: number; halo: number;
   eIntensity: number;
   transmission: number; thickness: number; ior: number; rough: number;
+  // Optional — defaults applied in buildDie when not set on the resolved style.
+  metalness?: number;
+  sheen?: number;
+  sheenColor?: number;
 };
 
 export const STYLES: Record<StyleKey, StyleDef> = {
@@ -70,8 +75,13 @@ export function getHaloTexture(): THREE.CanvasTexture {
   return _haloTex;
 }
 
-export function buildDie(size: number, styleKey: StyleKey): BuiltDie {
-  const S = STYLES[styleKey];
+export function buildDie(
+  size: number,
+  styleKey: StyleKey,
+  modOverride?: ModMaterialOverride,
+): BuiltDie {
+  const baseS = STYLES[styleKey];
+  const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${styleKey}`;
 
@@ -95,7 +105,7 @@ export function buildDie(size: number, styleKey: StyleKey): BuiltDie {
 
   const bodyMat = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
-    metalness: 0.0,
+    metalness: S.metalness ?? 0.0,
     roughness: S.rough,
     transmission: S.transmission,
     thickness: S.thickness,
@@ -104,8 +114,8 @@ export function buildDie(size: number, styleKey: StyleKey): BuiltDie {
     attenuationDistance: size * 1.4,
     clearcoat: 0.55,
     clearcoatRoughness: 0.73,
-    sheen: 0.28,
-    sheenColor: new THREE.Color(S.bodyTint),
+    sheen: S.sheen ?? 0.28,
+    sheenColor: new THREE.Color(S.sheenColor ?? S.bodyTint),
     sheenRoughness: 0.6,
     transparent: true,
     opacity: 1.0,

@@ -2,7 +2,10 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Die3DCSS, type DieMod } from '../../app/visual/Die3DCSS';
-import { buildDie, type StyleKey } from './buildDie';
+import * as buildDieMod from './buildDie';
+import type { StyleKey } from './buildDie';
+import { MODS } from '../../core/mods';
+import { MOD_MATERIALS } from './dieMaterials';
 import { registerView } from './sharedRenderer';
 import * as webglDetect from './webglDetect';
 
@@ -42,7 +45,17 @@ export function DieView(props: Props) {
     dir.position.set(2, 4, 3);
     scene.add(dir);
 
-    const built = buildDie(0.85, style);
+    // Phase 2: only the first mod's material is applied. The secondary mod
+    // gets its own orbital satellite in Phase 3; until then it's invisible
+    // in the Three.js path (the badge in Die3DCSS still shows for the CSS
+    // fallback, but DieView doesn't render badges).
+    const firstModName = props.mods?.[0]?.name?.toLowerCase();
+    const matchedMod = firstModName
+      ? MODS.find((m) => m.name.toLowerCase() === firstModName)
+      : undefined;
+    const modKey = matchedMod?.visual?.materialKey;
+    const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
+    const built = buildDieMod.buildDie(0.85, style, modOverride);
     // Snap to canonical face rotation so the requested face is up.
     built.group.rotation.set(...(FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!));
     // Fade up only the visible face's pip lens for legibility.
@@ -88,7 +101,7 @@ export function DieView(props: Props) {
         else if (mat) mat.dispose();
       });
     };
-  }, [face, style]);
+  }, [face, style, props.mods]);
 
   if (!webglDetect.hasWebGL()) return <Die3DCSS {...props} />;
 
