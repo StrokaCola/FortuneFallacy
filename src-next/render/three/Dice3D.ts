@@ -12,6 +12,7 @@ import { firePulse } from './modFx/pulse';
 import { fireLoaded } from './modFx/loaded';
 import { firePipCharge } from './modFx/pipCharge';
 import { fireBackstop } from './modFx/backstop';
+import { computeDropSlot } from './dragSlot';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
@@ -181,6 +182,13 @@ export class Dice3D {
   private pointer = new THREE.Vector2();
   private canvas: HTMLCanvasElement;
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
+  private onPointerMove: ((ev: PointerEvent) => void) | null = null;
+  private onPointerUp: ((ev: PointerEvent) => void) | null = null;
+  // Drag-reorder state (locked-die hold strip).
+  private dragStart: { dieIdx: number; screenX: number; screenY: number; time: number } | null = null;
+  private isDragging = false;
+  private dragOriginalSlotX = 0;
+  private dragPlane: THREE.Plane | null = null;
   private scoringActive = false;
   private activeScoringDie = -1;
   // Queued FX requests per die — `onModFired` enqueues; `die-tick` drains.
@@ -390,6 +398,12 @@ export class Dice3D {
   }
 
   private attachClick(): void {
+    // Drag plane: horizontal plane at the hold strip's Z. Pointer rays
+    // intersect it to give a world X for the dragged die to follow.
+    // THREE.Plane(normal, constant) where the plane equation is normal · p + constant = 0.
+    // Normal (0,0,1), constant -HOLD_Z → z = HOLD_Z plane.
+    this.dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -HOLD_Z);
+
     this.onPointerDown = (ev: PointerEvent) => {
       // Skip if any die is mid-roll/playback — no locking during animation.
       if (this.dice.some((d) => d.playback != null || d.rolling)) return;
@@ -403,22 +417,94 @@ export class Dice3D {
       const hits = this.raycaster.intersectObjects(groups, true);
       if (hits.length === 0) return;
 
-      // Find the top-level group ancestor matching one of our dice.
       let obj: THREE.Object3D | null = hits[0]!.object;
       while (obj && !groups.includes(obj as THREE.Group)) obj = obj.parent;
       if (!obj) return;
 
       const idx = groups.indexOf(obj as THREE.Group);
       if (idx < 0) return;
-      dispatch({ type: 'TOGGLE_LOCK', dieIdx: idx });
+
+      // Record drag start. Click vs drag is decided in onPointerMove based on
+      // movement distance — we don't dispatch TOGGLE_LOCK yet.
+      this.dragStart = {
+        dieIdx: idx,
+        screenX: ev.clientX,
+        screenY: ev.clientY,
+        time: performance.now(),
+      };
     };
+
+    this.onPointerMove = (ev: PointerEvent) => {
+      if (!this.dragStart) return;
+      const dx = ev.clientX - this.dragStart.screenX;
+      const dy = ev.clientY - this.dragStart.screenY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (!this.isDragging && dist > 6) {
+        // Only locked dice can be dragged. If unlocked, abort drag detection
+        // so the upcoming pointerup still fires TOGGLE_LOCK as a click.
+        const die = this.dice[this.dragStart.dieIdx];
+        if (!die || !die.locked) {
+          this.dragStart = null;
+          return;
+        }
+        this.isDragging = true;
+        this.dragOriginalSlotX = die.group.position.x;
+      }
+      if (this.isDragging) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+        this.pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+        const target = new THREE.Vector3();
+        if (this.dragPlane && this.raycaster.ray.intersectPlane(this.dragPlane, target)) {
+          const die = this.dice[this.dragStart.dieIdx];
+          if (die) die.group.position.x = target.x;
+        }
+      }
+    };
+
+    this.onPointerUp = (_ev: PointerEvent) => {
+      if (!this.dragStart) return;
+      const draggedIdx = this.dragStart.dieIdx;
+      if (this.isDragging) {
+        const draggedDie = this.dice[draggedIdx];
+        if (draggedDie) {
+          // Compute slot Xs: every position in the new ordering except the
+          // dragged die has a slot, plus one extra slot for the dragged die
+          // itself (totalling otherInOrder.length + 1 slots).
+          const order = store.getState().round.scoringOrder ?? [];
+          const otherInOrder = order.filter((i) => i !== draggedIdx);
+          const slotCount = otherInOrder.length + 1;
+          const slotXs: number[] = [];
+          for (let pos = 0; pos < slotCount; pos++) {
+            slotXs.push(this.holdSlotX(pos, slotCount));
+          }
+          const slotIdx = computeDropSlot(draggedDie.group.position.x, slotXs);
+          if (slotIdx >= 0) {
+            const newOrder = [...otherInOrder];
+            newOrder.splice(slotIdx, 0, draggedIdx);
+            dispatch({ type: 'REORDER_HOLD', newOrder });
+          }
+        }
+        this.isDragging = false;
+      } else {
+        // No movement past threshold → treat as click.
+        dispatch({ type: 'TOGGLE_LOCK', dieIdx: draggedIdx });
+      }
+      this.dragStart = null;
+    };
+
     document.addEventListener('pointerdown', this.onPointerDown);
+    document.addEventListener('pointermove', this.onPointerMove);
+    document.addEventListener('pointerup', this.onPointerUp);
   }
 
   destroy(): void {
     if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
     this.unsubscribers.forEach((u) => u());
     if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
+    if (this.onPointerMove) document.removeEventListener('pointermove', this.onPointerMove);
+    if (this.onPointerUp) document.removeEventListener('pointerup', this.onPointerUp);
     this.renderer.dispose();
   }
 
