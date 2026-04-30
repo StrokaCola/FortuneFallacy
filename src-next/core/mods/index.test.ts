@@ -4,24 +4,50 @@ import { MOD_MATERIALS, type ModMaterialKey } from '../../render/three/dieMateri
 
 describe('applyFaceRemaps', () => {
   it('passes faces through when no mods are attached', () => {
-    expect(applyFaceRemaps([1, 2, 3], [[], [], []])).toEqual([1, 2, 3]);
+    expect(applyFaceRemaps([1, 2, 3], [[], [], []]).faces).toEqual([1, 2, 3]);
   });
 
   it('loaded mod remaps 1 to 6 by default', () => {
-    expect(applyFaceRemaps([1, 1, 5], [['loaded'], [], []])).toEqual([6, 1, 5]);
+    expect(applyFaceRemaps([1, 1, 5], [['loaded'], [], []]).faces).toEqual([6, 1, 5]);
   });
 
   it('lockOnes=true blocks loaded 1->6 remap', () => {
-    expect(applyFaceRemaps([1, 1, 5], [['loaded'], ['loaded'], []], true)).toEqual([1, 1, 5]);
+    expect(applyFaceRemaps([1, 1, 5], [['loaded'], ['loaded'], []], true).faces).toEqual([1, 1, 5]);
   });
 
   it('lockOnes=true does not affect non-1 dice', () => {
-    expect(applyFaceRemaps([1, 4, 5], [['loaded'], [], []], true)).toEqual([1, 4, 5]);
+    expect(applyFaceRemaps([1, 4, 5], [['loaded'], [], []], true).faces).toEqual([1, 4, 5]);
   });
 
   it('backstop raises sub-min faces independently of lockOnes', () => {
-    expect(applyFaceRemaps([1, 3, 5], [['backstop'], ['backstop'], []])).toEqual([4, 4, 5]);
-    expect(applyFaceRemaps([1, 3, 5], [['backstop'], ['backstop'], []], true)).toEqual([4, 4, 5]);
+    expect(applyFaceRemaps([1, 3, 5], [['backstop'], ['backstop'], []]).faces).toEqual([4, 4, 5]);
+    expect(applyFaceRemaps([1, 3, 5], [['backstop'], ['backstop'], []], true).faces).toEqual([4, 4, 5]);
+  });
+
+  it('emits loaded onModFired event when 1->6 remap fires', () => {
+    const result = applyFaceRemaps([1, 2, 5], [['loaded'], [], []]);
+    const ev = result.events.find((e) => e.modId === 'loaded' && e.dieIdx === 0);
+    expect(ev).toBeDefined();
+    expect(ev?.faceValue).toBe(1); // pre-remap value
+  });
+
+  it('does NOT emit loaded onModFired when face is not 1', () => {
+    const result = applyFaceRemaps([2, 3, 5], [['loaded'], [], []]);
+    const ev = result.events.find((e) => e.modId === 'loaded');
+    expect(ev).toBeUndefined();
+  });
+
+  it('emits backstop onModFired event when sub-min raise fires', () => {
+    const result = applyFaceRemaps([1, 4, 5], [['backstop'], ['backstop'], []]);
+    const ev = result.events.find((e) => e.modId === 'backstop' && e.dieIdx === 0);
+    expect(ev).toBeDefined();
+    expect(ev?.faceValue).toBe(1); // pre-raise value
+  });
+
+  it('does NOT emit backstop onModFired when face >= scoreMin', () => {
+    const result = applyFaceRemaps([4, 5, 6], [['backstop'], ['backstop'], ['backstop']]);
+    const ev = result.events.find((e) => e.modId === 'backstop');
+    expect(ev).toBeUndefined();
   });
 });
 
