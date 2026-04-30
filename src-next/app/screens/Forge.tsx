@@ -34,7 +34,7 @@ export function Forge() {
     () => slots
       .map(lookupMod)
       .filter((r): r is NonNullable<typeof r> => !!r)
-      .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' })),
+      .map((r) => ({ id: r.id, icon: r.icon, name: r.name, color: r.visual?.accentColor ?? '#7be3ff' })),
     [slots],
   );
 

@@ -84,4 +84,16 @@ describe('DieView', () => {
     expect(override?.bodyTint).toBe(0xf5c451);
     unmount();
   });
+
+  it('looks up mod by id when available (preferring id over name)', () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const spy = vi.spyOn(buildDieMod, 'buildDie');
+    // Pass a "mismatched name" — name says one thing, id says another. The id
+    // should win; the override should be the gilded mod's bodyTint.
+    const mods = [{ id: 'gilded' as const, icon: '◆', name: 'Renamed', color: '#f5c451' }];
+    const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
+    const lastCall = spy.mock.calls[spy.mock.calls.length - 1]!;
+    expect(lastCall[2]?.bodyTint).toBe(0xf5c451);
+    unmount();
+  });
 });

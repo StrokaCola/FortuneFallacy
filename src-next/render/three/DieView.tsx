@@ -45,13 +45,13 @@ export function DieView(props: Props) {
     dir.position.set(2, 4, 3);
     scene.add(dir);
 
-    // Phase 2: only the first mod's material is applied. The secondary mod
-    // gets its own orbital satellite in Phase 3; until then it's invisible
-    // in the Three.js path (the badge in Die3DCSS still shows for the CSS
-    // fallback, but DieView doesn't render badges).
-    const firstModName = props.mods?.[0]?.name?.toLowerCase();
-    const matchedMod = firstModName
-      ? MODS.find((m) => m.name.toLowerCase() === firstModName)
+    // Phase 3: lookup by id (preferred) with name fallback for backward
+    // compatibility. Secondary/tertiary mods get orbital satellite + rim-band
+    // (built later in this effect — Phase 3 task 4).
+    const firstMod = props.mods?.[0];
+    const matchedMod = firstMod
+      ? (firstMod.id ? MODS.find((m) => m.id === firstMod.id) : undefined)
+        ?? MODS.find((m) => m.name.toLowerCase() === firstMod.name.toLowerCase())
       : undefined;
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
