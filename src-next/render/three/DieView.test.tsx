@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vites
 import { render, cleanup } from '@testing-library/react';
 import * as sharedRenderer from './sharedRenderer';
 import * as webglDetect from './webglDetect';
+import * as buildDieMod from './buildDie';
 import { DieView } from './DieView';
 
 vi.mock('three', async () => {
@@ -68,5 +69,19 @@ describe('DieView', () => {
     const { container } = render(<DieView size={88} face={2} />);
     expect(container.querySelector('.die3d-wrap')).not.toBeNull();
     expect(container.querySelector('[data-die-view]')).toBeNull();
+  });
+
+  it('passes the first mod\'s material override to buildDie', () => {
+    vi.spyOn(webglDetect, 'hasWebGL').mockReturnValue(true);
+    const spy = vi.spyOn(buildDieMod, 'buildDie');
+    const mods = [{ icon: '◆', name: 'Gilded', color: '#f5c451' }];
+    // The component looks up by mod.name (case-insensitive). 'Gilded' resolves to
+    // the gilded mod whose materialKey is 'gilded' — its bodyTint is 0xf5c451.
+    const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
+    expect(spy).toHaveBeenCalled();
+    const lastCall = spy.mock.calls[spy.mock.calls.length - 1]!;
+    const override = lastCall[2];
+    expect(override?.bodyTint).toBe(0xf5c451);
+    unmount();
   });
 });

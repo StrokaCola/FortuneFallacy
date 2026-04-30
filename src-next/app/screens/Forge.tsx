@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { MODS, lookupMod } from '../../core/mods';
@@ -30,10 +30,13 @@ export function Forge() {
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
   const selectedFace = dice[selectedDie]?.face ?? 1;
-  const selectedMods = slots
-    .map(lookupMod)
-    .filter((r): r is NonNullable<typeof r> => !!r)
-    .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' }));
+  const selectedMods = useMemo(
+    () => slots
+      .map(lookupMod)
+      .filter((r): r is NonNullable<typeof r> => !!r)
+      .map((r) => ({ icon: r.icon, name: r.name, color: '#7be3ff' })),
+    [slots],
+  );
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
