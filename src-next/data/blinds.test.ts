@@ -34,4 +34,25 @@ describe('BOSS_BLINDS shape contract', () => {
       expect((b as Record<string, unknown>).icon).toBeUndefined();
     }
   });
+
+  it('at least 6 of 7 bosses have an orbit-class group (Callisto exempt)', () => {
+    const withOrbit = BOSS_BLINDS.filter((b) =>
+      b.sigil.groups.some((g) => g.class === 'orbit-main' || g.class === 'orbit-aux'),
+    );
+    expect(withOrbit.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('every sigil group has at least one path', () => {
+    for (const b of BOSS_BLINDS) {
+      for (const g of b.sigil.groups) {
+        expect(g.paths.length, `${b.id}: empty paths in group "${g.class}"`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('every sigil viewBox matches "x y w h" format', () => {
+    for (const b of BOSS_BLINDS) {
+      expect(b.sigil.viewBox, `${b.id}: malformed sigil viewBox`).toMatch(/^\d+ \d+ \d+ \d+$/);
+    }
+  });
 });
