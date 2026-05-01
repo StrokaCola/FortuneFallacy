@@ -13,8 +13,7 @@ const baseInput = (overrides: Partial<SequenceInput> = {}): SequenceInput => ({
 
 const baseCtx = (overrides: Partial<SequenceCtx> = {}): SequenceCtx => ({
   target: 100,
-  isLastHand: false,
-  maxRemaining: 100,
+  bail: false,
   reducedMotion: false,
   ...overrides,
 });
@@ -79,10 +78,10 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.beats[idx - 1]?.kind).toBe('combo-bonus');
   });
 
-  it('emits bail beat on last hand when target is mathematically out of reach', () => {
+  it('emits bail beat when ctx.bail is true', () => {
     const seq = buildScoreSequence(
       baseInput({ faces: [1, 1, 1, 1, 1], comboBonus: 0, mults: [], finalTotal: 5 }),
-      baseCtx({ target: 100, isLastHand: true, maxRemaining: 5 }),
+      baseCtx({ target: 100, bail: true }),
     );
     const kinds = seq.beats.map((b) => b.kind);
     expect(kinds).toContain('bail');
@@ -91,13 +90,23 @@ describe('buildScoreSequence — tier selection', () => {
     expect(kinds[kinds.length - 1]).toBe('bail');
   });
 
-  it('does NOT bail on non-last hand even if target out of reach', () => {
+  it('does NOT bail when ctx.bail is false', () => {
     const seq = buildScoreSequence(
       baseInput({ finalTotal: 5 }),
-      baseCtx({ target: 100, isLastHand: false, maxRemaining: 5 }),
+      baseCtx({ target: 100, bail: false }),
     );
     const kinds = seq.beats.map((b) => b.kind);
     expect(kinds).not.toContain('bail');
+  });
+
+  it('does not bail on a clutch clear (last hand, finalTotal alone < target, but engine cleared)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ finalTotal: 250 }),
+      baseCtx({ target: 1000, bail: false }),
+    );
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds).not.toContain('bail');
+    expect(kinds[kinds.length - 1]).toBe('boom');
   });
 
   it('reduced motion collapses all tiers to short', () => {
@@ -248,7 +257,7 @@ describe('buildScoreSequence — tier selection', () => {
   it('bail path emits no combo-bonus and no hold-breath (unchanged behavior)', () => {
     const seq = buildScoreSequence(
       baseInput({ faces: [1,1,1,1,1], comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 5 }),
-      baseCtx({ target: 100, isLastHand: true, maxRemaining: 5 }),
+      baseCtx({ target: 100, bail: true }),
     );
     expect(seq.beats[0]?.kind).toBe('cast-swell');
     expect(seq.beats.some((b) => b.kind === 'die-tick')).toBe(true);

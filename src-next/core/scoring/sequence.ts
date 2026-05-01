@@ -76,8 +76,8 @@ export function buildScoreSequence(
   let running = 0;
   let crossEmitted = false;
 
-  // Bail branch: last hand, target out of reach. Stripped sequence ending in bail.
-  if (ctx.isLastHand && ctx.maxRemaining < ctx.target) {
+  // Bail branch: engine determined the round busted. Stripped sequence ending in bail.
+  if (ctx.bail) {
     beats.push({ kind: 'cast-swell', t });
     t += BAIL_LEAD_IN_MS;
     let bailRunning = 0;
