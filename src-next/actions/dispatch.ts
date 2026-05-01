@@ -35,6 +35,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   OPEN_SHOP: shopHandler,
   CLOSE_SHOP: shopHandler,
   BUY_OFFER: shopHandler,
+  REROLL_SHOP: shopHandler,
   USE_CONSUMABLE: consumableHandler,
   GRANT_CONSUMABLE: consumableHandler,
   DISCARD_CONSUMABLE: consumableHandler,

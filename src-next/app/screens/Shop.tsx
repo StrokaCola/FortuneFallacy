@@ -4,12 +4,13 @@ import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
 import {
-  selectShards, selectShopOffers, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
+  selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import { lookupVoucher } from '../../data/vouchers';
+import { lookupMod } from '../../core/mods';
 import { sfxPlay } from '../../audio/sfx';
 
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string };
@@ -33,6 +34,16 @@ function offerMeta(kind: string, id: string): Meta {
     const v = lookupVoucher(id);
     return { name: v?.name ?? id, icon: '◆', color: '#f5c451', desc: v?.description ?? '', kindLabel: 'voucher' };
   }
+  if (kind === 'mod') {
+    const m = lookupMod(id);
+    return {
+      name: m?.name ?? id,
+      icon: m?.icon ?? '⫶',
+      color: m?.visual?.accentColor ?? '#bba8ff',
+      desc: m?.desc ?? '',
+      kindLabel: 'mod',
+    };
+  }
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
 }
 
@@ -41,6 +52,7 @@ const accent = '#7be3ff';
 export function Shop() {
   const shards   = useStore(selectShards);
   const offers   = useStore(selectShopOffers);
+  const rerollCost = useStore(selectShopRerollCost);
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
@@ -147,8 +159,24 @@ export function Shop() {
 
       <div style={{
         position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5,
+        display: 'flex', gap: 12, zIndex: 5, alignItems: 'center',
       }}>
+        <button
+          className="btn mat-interactive"
+          onClick={() => {
+            if (shards >= rerollCost) {
+              dispatch({ type: 'REROLL_SHOP' });
+              sfxPlay('cardFlip');
+            }
+          }}
+          disabled={shards < rerollCost}
+          style={{
+            opacity: shards >= rerollCost ? 1 : 0.5,
+            cursor: shards >= rerollCost ? 'pointer' : 'not-allowed',
+          }}
+        >
+          ↻ Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
+        </button>
         <button
           className="btn btn-primary mat-interactive"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}

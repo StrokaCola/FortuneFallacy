@@ -35,7 +35,7 @@ function loop(): void {
   if (_views.length === 0 || !_renderer) {
     // Clear stale pixels left behind by the last view (otherwise they
     // appear to "stick" on the screen after navigating away).
-    if (_renderer) {
+    if (_renderer && typeof _renderer.clear === 'function') {
       _renderer.setScissorTest(false);
       _renderer.clear();
       _renderer.setScissorTest(true);

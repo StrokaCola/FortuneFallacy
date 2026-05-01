@@ -6,6 +6,7 @@ export type RunSlice = {
   catalysts: string[];
   vouchers: string[];
   consumables: string[];
+  ownedMods: string[];
   handsPlayed: number;
   compoundingStacks: number;
 };
@@ -18,6 +19,7 @@ export const initialRunSlice = (): RunSlice => ({
   catalysts: [],
   vouchers: [],
   consumables: [],
+  ownedMods: [],
   handsPlayed: 0,
   compoundingStacks: 0,
 });
