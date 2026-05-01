@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { BossBlind, SigilGroup } from '../../data/blinds';
 
 export type BossSigilAnimate = 'none' | 'idle' | 'reveal' | 'both';
@@ -17,6 +18,30 @@ export function BossSigil({
 }: Props) {
   const reveal = animate === 'reveal' || animate === 'both';
   const idle = animate === 'idle' || animate === 'both';
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (!reveal || !svgRef.current) return;
+    const reduced = document.documentElement.classList.contains('reduce-motion');
+    if (reduced) return;
+    const paths = svgRef.current.querySelectorAll<SVGPathElement>(
+      '.boss-sigil__orbit-main path',
+    );
+    paths.forEach((p) => {
+      // jsdom and other non-rendering environments lack getTotalLength
+      if (typeof p.getTotalLength !== 'function') return;
+      const len = p.getTotalLength();
+      // Initial: fully invisible (offset == dasharray length)
+      p.style.strokeDasharray = `${len}`;
+      p.style.strokeDashoffset = `${len}`;
+      p.style.transition = 'stroke-dashoffset 600ms cubic-bezier(.4,0,.2,1) 100ms';
+      // Force layout flush so transition picks up the change
+      void p.getBoundingClientRect();
+      requestAnimationFrame(() => {
+        p.style.strokeDashoffset = '0';
+      });
+    });
+  }, [reveal, boss.id]);
 
   const className = [
     'boss-sigil',
@@ -28,6 +53,7 @@ export function BossSigil({
 
   return (
     <svg
+      ref={svgRef}
       className={className}
       viewBox={boss.sigil.viewBox}
       width={size}

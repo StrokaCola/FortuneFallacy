@@ -88,4 +88,9 @@ describe('BossSigil', () => {
     const svg = container.querySelector('svg.boss-sigil') as SVGSVGElement;
     expect(svg.style.getPropertyValue('--boss-color')).toBe('#ff7847');
   });
+
+  it("animate='reveal' does not throw on jsdom render", () => {
+    // jsdom does not implement getTotalLength; the effect must guard or accept the no-op.
+    expect(() => render(<BossSigil boss={fakeBoss} animate="reveal" />)).not.toThrow();
+  });
 });
