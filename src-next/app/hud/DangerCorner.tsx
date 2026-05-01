@@ -38,7 +38,7 @@ export function DangerCorner() {
             borderColor: 'rgba(226,51,74,0.6)',
             cursor: 'help',
           }}>
-          <BossSigil boss={bossDef} size={28} rotate glow />
+          <BossSigil boss={bossDef} size={28} animate="idle" glow />
           <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.22em', color: '#ff8e9c' }}>
             Boss · {bossDef.name}
           </span>

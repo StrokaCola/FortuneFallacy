@@ -60,7 +60,7 @@ export function BossReveal() {
                 filter: `drop-shadow(0 0 30px ${def.color}cc)`,
                 lineHeight: 1,
               }}>
-                <BossSigil boss={def} size={180} drawIn drawDurationMs={1200} glow />
+                <BossSigil boss={def} size={180} animate="both" glow />
               </div>
 
               <div className="f-display" style={{
