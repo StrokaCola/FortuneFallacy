@@ -35,14 +35,35 @@ export const diceHandler: ActionHandler = (a, s) => {
       if (!lookupMod(a.modId)) return { state: s, events: [] };
       const slots = s.round.diceMods[a.dieIdx];
       if (!slots || slots.length >= maxModSlots(s)) return { state: s, events: [] };
+      // Mods are inventory items: must own one to attach. Consume on attach.
+      const ownedIdx = s.run.ownedMods.indexOf(a.modId);
+      if (ownedIdx < 0) return { state: s, events: [] };
+      const ownedMods = s.run.ownedMods.filter((_, i) => i !== ownedIdx);
       const diceMods = s.round.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
-      return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
+      return {
+        state: {
+          ...s,
+          run: { ...s.run, ownedMods },
+          round: { ...s.round, diceMods },
+        },
+        events: [],
+      };
     }
     case 'DETACH_MOD': {
+      const detachedId = s.round.diceMods[a.dieIdx]?.[a.modIdx];
       const diceMods = s.round.diceMods.map((r, i) =>
         i === a.dieIdx ? r.filter((_, j) => j !== a.modIdx) : r,
       );
-      return { state: { ...s, round: { ...s.round, diceMods } }, events: [] };
+      // Detach returns the mod to the inventory (free swaps within shop budget).
+      const ownedMods = detachedId ? [...s.run.ownedMods, detachedId] : s.run.ownedMods;
+      return {
+        state: {
+          ...s,
+          run: { ...s.run, ownedMods },
+          round: { ...s.round, diceMods },
+        },
+        events: [],
+      };
     }
     case 'REORDER_HOLD': {
       const locked = lockedIdxs(s.round.dice);
