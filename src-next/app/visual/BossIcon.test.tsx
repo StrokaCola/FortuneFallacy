@@ -37,4 +37,18 @@ describe('BossIcon', () => {
     rerender(<BossIcon boss={fakeBoss} size={32} />);
     expect(container.querySelector('svg')?.getAttribute('width')).toBe('32');
   });
+
+  it('exposes aria-label and role for screen readers', () => {
+    const { container } = render(<BossIcon boss={fakeBoss} />);
+    const svg = container.querySelector('svg');
+    expect(svg?.getAttribute('aria-label')).toBe('Test');
+    expect(svg?.getAttribute('role')).toBe('img');
+  });
+
+  it('strokes at 1.5 with no fill', () => {
+    const { container } = render(<BossIcon boss={fakeBoss} />);
+    const path = container.querySelector('path');
+    expect(path?.getAttribute('stroke-width')).toBe('1.5');
+    expect(path?.getAttribute('fill')).toBe('none');
+  });
 });
