@@ -342,7 +342,7 @@ html, body {
   100% { transform: scale(1) rotate(0);         opacity: 1; }
 }
 @keyframes drawStroke {
-  from { stroke-dashoffset: 240; }
+  from { stroke-dashoffset: 600; }
   to   { stroke-dashoffset: 0; }
 }
 @keyframes drawDots {
@@ -368,8 +368,8 @@ html, body {
   transform-origin: 50% 50%;
 }
 .boss-sigil__body-core {
-  transform-origin: 50px 50px;
-  transform-box: view-box;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 html:not(.reduce-motion) .boss-sigil--idle-on .boss-sigil__orbit-main {
@@ -390,7 +390,7 @@ html:not(.reduce-motion) .boss-sigil--reveal {
   transform-origin: 50% 50%;
 }
 html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__orbit-main path {
-  stroke-dasharray: 240;
+  stroke-dasharray: 600;
   animation: drawStroke 600ms cubic-bezier(.4,0,.2,1) 100ms forwards;
 }
 html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__satellite path,
