@@ -27,7 +27,7 @@ function ScoringTabView() {
     const seq = buildScoreSequence(
       { faces: [6, 6, 6, 5, 5], comboLabel: 'FULL_HOUSE', comboBonus: 25,
         mults: [{ label: 'mult', value: 4 }, { label: 'chain', value: 2 }], finalTotal: 424 },
-      { target: 100, isLastHand: false, maxRemaining: 1000, reducedMotion: false },
+      { target: 100, bail: false, reducedMotion: false },
     );
     bus.emit('onScoreSequenceBuilt', { sequence: seq });
     runScoreSequence(seq, (b) => bus.emit('onScoreBeat', { beat: b }));

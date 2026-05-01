@@ -26,7 +26,6 @@ export type SequenceInput = {
 
 export type SequenceCtx = {
   target: number;
-  isLastHand: boolean;
-  maxRemaining: number;
+  bail: boolean;
   reducedMotion: boolean;
 };
