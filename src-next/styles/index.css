@@ -333,3 +333,61 @@ html, body {
   animation: none;
   transform: none;
 }
+
+/* ---- Boss sigil animations (T4) ----------------------------------- */
+
+@keyframes sigilReveal {
+  0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+  60%  { transform: scale(1.1) rotate(2deg);   opacity: 1; }
+  100% { transform: scale(1) rotate(0);         opacity: 1; }
+}
+@keyframes drawDots {
+  0%, 50% { opacity: 0; transform: scale(0); }
+  100%    { opacity: 1; transform: scale(1); }
+}
+@keyframes idleRotate {
+  from { transform: rotate(0); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes idleBreathe {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.08); opacity: 0.85; }
+}
+@keyframes satOrbit {
+  from { transform: rotate(0); }
+  to   { transform: rotate(-360deg); }
+}
+
+.boss-sigil__orbit-main,
+.boss-sigil__orbit-aux,
+.boss-sigil__satellite {
+  transform-origin: 50% 50%;
+}
+.boss-sigil__body-core {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+html:not(.reduce-motion) .boss-sigil--idle-on .boss-sigil__orbit-main {
+  animation: idleRotate 24s linear infinite;
+}
+html:not(.reduce-motion) .boss-sigil--idle-on .boss-sigil__orbit-aux {
+  animation: idleRotate 36s linear infinite reverse;
+}
+html:not(.reduce-motion) .boss-sigil--idle-on .boss-sigil__body-core {
+  animation: idleBreathe 4s ease-in-out infinite;
+}
+html:not(.reduce-motion) .boss-sigil--idle-on .boss-sigil__satellite {
+  animation: satOrbit 12s linear infinite;
+}
+
+html:not(.reduce-motion) .boss-sigil--reveal {
+  animation: sigilReveal 700ms cubic-bezier(.2,.8,.2,1) forwards;
+  transform-origin: 50% 50%;
+}
+html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__satellite path,
+html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__mark path {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: drawDots 700ms ease-out 300ms backwards;
+}

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
-import { MODS, lookupMod } from '../../core/mods';
+import { lookupMod } from '../../core/mods';
 import { maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
 import {
-  selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots,
+  selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
 } from '../../state/selectors';
 
 const selectDiceMods = (s: GameState) => s.round.diceMods;
@@ -22,6 +22,7 @@ export function Forge() {
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const maxSlots = useStore(selectMaxMod);
+  const ownedMods = useStore(selectOwnedMods);
 
   const [selectedDie, setSelectedDie] = useState(0);
 
@@ -112,54 +113,82 @@ export function Forge() {
         ))}
       </div>
 
-      {/* Mod library */}
+      {/* Mod inventory */}
       <div style={{ position: 'absolute', right: 'calc(50% - 470px)', top: 260, width: 380, height: 440 }}>
         <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto' }}>
-            ◈ mod codex
+          <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between' }}>
+            <span>◈ mod inventory</span>
+            <span style={{ color: '#f5c451' }}>{ownedMods.length}</span>
           </div>
-          <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
-            {MODS.map((r) => {
-              const c = r.visual?.accentColor ?? '#7be3ff';
-              const canAttach = slots.length < maxSlots;
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => {
-                    if (!canAttach) return;
-                    dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
-                    sfxPlay('modAttach');
-                  }}
-                  className="forge-mod-row"
-                  style={{
-                    cursor: canAttach ? 'pointer' : 'not-allowed',
-                    opacity: canAttach ? 1 : 0.4,
-                    padding: 14, borderRadius: 8,
-                    background: 'rgba(15,9,37,0.5)',
-                    border: '1px solid rgba(149,119,255,0.2)',
-                    transition: 'all 150ms',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    ['--mod-c' as never]: c,
-                  } as React.CSSProperties}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 6,
-                    background: `${c}25`, border: `1px solid ${c}80`,
-                    display: 'grid', placeItems: 'center',
-                    color: c, fontSize: 16,
-                    filter: `drop-shadow(0 0 4px ${c})`,
-                  }}>{r.icon}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="f-head" style={{ fontSize: 12, color: '#f3f0ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      {r.name}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#bba8ff', lineHeight: 1.3 }}>
-                      {r.desc}
-                    </div>
-                  </div>
+          {ownedMods.length === 0 ? (
+            <div style={{ flex: '1 1 auto', display: 'grid', placeItems: 'center', textAlign: 'center', padding: 20 }}>
+              <div>
+                <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em', opacity: 0.6 }}>— empty —</div>
+                <div style={{ fontSize: 11, color: '#bba8ff', marginTop: 12, opacity: 0.7, lineHeight: 1.5 }}>
+                  Buy mods at the Bazaar to etch them onto your dice here.
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
+              {(() => {
+                const counts = new Map<string, number>();
+                for (const id of ownedMods) counts.set(id, (counts.get(id) ?? 0) + 1);
+                return [...counts.entries()].map(([id, count]) => {
+                  const r = lookupMod(id);
+                  if (!r) return null;
+                  const c = r.visual?.accentColor ?? '#7be3ff';
+                  const canAttach = slots.length < maxSlots;
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => {
+                        if (!canAttach) return;
+                        dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
+                        sfxPlay('modAttach');
+                      }}
+                      className="forge-mod-row"
+                      style={{
+                        cursor: canAttach ? 'pointer' : 'not-allowed',
+                        opacity: canAttach ? 1 : 0.4,
+                        padding: 14, borderRadius: 8,
+                        background: 'rgba(15,9,37,0.5)',
+                        border: '1px solid rgba(149,119,255,0.2)',
+                        transition: 'all 150ms',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        position: 'relative',
+                        ['--mod-c' as never]: c,
+                      } as React.CSSProperties}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 6,
+                        background: `${c}25`, border: `1px solid ${c}80`,
+                        display: 'grid', placeItems: 'center',
+                        color: c, fontSize: 16,
+                        filter: `drop-shadow(0 0 4px ${c})`,
+                      }}>{r.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="f-head" style={{ fontSize: 12, color: '#f3f0ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          {r.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#bba8ff', lineHeight: 1.3 }}>
+                          {r.desc}
+                        </div>
+                      </div>
+                      {count > 1 && (
+                        <div className="f-mono num" style={{
+                          position: 'absolute', top: 4, right: 4,
+                          fontSize: 10, color: c,
+                          background: 'rgba(15,9,37,0.8)',
+                          border: `1px solid ${c}80`,
+                          borderRadius: 8, padding: '1px 6px',
+                        }}>×{count}</div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
       </div>
 

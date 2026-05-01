@@ -37,7 +37,7 @@ export type UpgradeId = string;
 export type BlindId = string;
 
 export type ShopOffer = {
-  kind: 'catalyst' | 'voucher' | 'consumable';
+  kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
   id: string;
   price: number;
 };
