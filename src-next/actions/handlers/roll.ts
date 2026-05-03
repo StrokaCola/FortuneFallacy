@@ -96,7 +96,7 @@ export const rollHandler: ActionHandler = (a, s) => {
       let shardBonus = 0;
       const modFiredEvents: GameEventEmission[keyof GameEventEmission][] = [];
       const finalFaces = fakeResult.finalFaces;
-      workingState.round.diceMods.forEach((mods, dieIdx) => {
+      workingState.run.diceMods.forEach((mods, dieIdx) => {
         for (const id of mods) {
           const def = lookupMod(id);
           if (def?.shardsBonus) {

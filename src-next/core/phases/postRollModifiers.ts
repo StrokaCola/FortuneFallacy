@@ -9,7 +9,7 @@ export const postRollModifiers: PhaseFn = (ctx) => {
     const lockOnes = hasDebuff(ctx.state, 'no_mod_transforms_on_ones');
     const { faces, events: remapEvents } = applyFaceRemaps(
       ctx.sim.finalFaces,
-      ctx.state.round.diceMods,
+      ctx.state.run.diceMods,
       lockOnes,
     );
     const modFiredEvents = remapEvents.map((p) => ({ type: 'onModFired' as const, payload: p }));

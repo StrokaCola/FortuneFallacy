@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { clearBlind, bustBlind } from './transitions';
+import { clearBlind, bustBlind, startBlind } from './transitions';
 import { hasDebuff } from './debuffs';
 import { maxModSlots } from '../vouchers';
 import type { GameState } from '../../state/store';
 
-function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: number; compoundingStacks: number; score: number; target: number; isBoss: boolean; catalysts: string[]; vouchers: string[]; consumables: string[]; handsPlayed: number; }> = {}): GameState {
+function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: number; compoundingStacks: number; score: number; target: number; isBoss: boolean; catalysts: string[]; vouchers: string[]; consumables: string[]; handsPlayed: number; diceMods: string[][]; }> = {}): GameState {
   return {
     run: {
       seed: 1,
@@ -14,6 +14,8 @@ function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: n
       catalysts: overrides.catalysts ?? [],
       vouchers: overrides.vouchers ?? [],
       consumables: overrides.consumables ?? [],
+      ownedMods: [],
+      diceMods: overrides.diceMods ?? [[], [], [], [], []],
       handsPlayed: overrides.handsPlayed ?? 0,
       compoundingStacks: overrides.compoundingStacks ?? 0,
     },
@@ -33,7 +35,6 @@ function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: n
       scoring: false,
       chainLen: 0,
       chainTier: -1,
-      diceMods: [],
       shardSinkPrimedThisHand: false,
     },
     meta: { playerName: 'test', highScores: [] },
@@ -92,6 +93,22 @@ describe('Eris boss (disable_catalysts_first_hand)', () => {
     s.round.handsMax = 3;
     (s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed = true;
     expect(!(s.round as unknown as { firstHandPlayed: boolean }).firstHandPlayed).toBe(false);
+  });
+});
+
+describe('startBlind preserves run.diceMods (Forge persistence)', () => {
+  it('keeps run.diceMods when starting a new blind', () => {
+    const s = makeState({ diceMods: [['amplify'], [], ['snake_eyes', 'backstop'], [], ['loaded']] });
+    const { state } = startBlind(s);
+    expect(state.run.diceMods).toEqual([['amplify'], [], ['snake_eyes', 'backstop'], [], ['loaded']]);
+  });
+
+  it('keeps run.diceMods after clearBlind -> startBlind cycle', () => {
+    const s = makeState({ diceMods: [['amplify'], [], [], [], []], score: 200, target: 100 });
+    const cleared = clearBlind(s).state;
+    expect(cleared.run.diceMods).toEqual([['amplify'], [], [], [], []]);
+    const next = startBlind(cleared).state;
+    expect(next.run.diceMods).toEqual([['amplify'], [], [], [], []]);
   });
 });
 
