@@ -18,12 +18,12 @@ export const diceHandler: ActionHandler = (a, s) => {
       const dice = s.round.dice.map((d, i) =>
         i === a.dieIdx ? { ...d, locked: newLocked } : d,
       );
-      let scoringOrder = s.round.scoringOrder ?? [];
-      if (newLocked) {
-        if (!scoringOrder.includes(a.dieIdx)) scoringOrder = [...scoringOrder, a.dieIdx];
-      } else {
-        scoringOrder = scoringOrder.filter((i) => i !== a.dieIdx);
-      }
+      // Held-only scoring contract: scoringOrder = locked die indices in
+      // id-ascending order (visual left-to-right). Toggle resets any prior
+      // REORDER_HOLD customization — drag should be applied AFTER all locks
+      // are settled. This keeps lock-clicks predictable: face position drives
+      // score order by default, drag overrides for the current state.
+      const scoringOrder = lockedIdxs(dice);
       return {
         state: { ...s, round: { ...s.round, dice, scoringOrder } },
         events: [{ type: 'onLockToggled', payload: { dieIdx: a.dieIdx, locked: newLocked } }],
