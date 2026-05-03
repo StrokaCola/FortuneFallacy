@@ -12,6 +12,54 @@ const baseState = (): GameState => ({
   pingCount: 0,
 } as unknown as GameState);
 
+describe('TOGGLE_LOCK scoringOrder rewrite', () => {
+  // Build state with all dice unlocked (initial state has all locked).
+  const unlockedState = (): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      round: {
+        ...s.round,
+        dice: s.round.dice.map((d) => ({ ...d, locked: false })),
+        scoringOrder: [],
+      },
+    };
+  };
+
+  it('locking d2 first sets scoringOrder=[2]', () => {
+    const r = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 2 }, unlockedState());
+    expect(r.state.round.scoringOrder).toEqual([2]);
+  });
+
+  it('locking d4 then d0 then d2 yields id-ascending [0,2,4] (left-to-right)', () => {
+    let s = unlockedState();
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 4 }, s).state;
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 0 }, s).state;
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 2 }, s).state;
+    expect(s.round.scoringOrder).toEqual([0, 2, 4]);
+  });
+
+  it('unlocking removes the index and preserves id-ascending order', () => {
+    let s = unlockedState();
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 0 }, s).state;
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 2 }, s).state;
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 4 }, s).state;
+    expect(s.round.scoringOrder).toEqual([0, 2, 4]);
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 2 }, s).state;
+    expect(s.round.scoringOrder).toEqual([0, 4]);
+  });
+
+  it('relocking after unlock places back in id-position', () => {
+    let s = unlockedState();
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 4 }, s).state;
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 0 }, s).state;
+    expect(s.round.scoringOrder).toEqual([0, 4]);
+    // Now lock d2 — should slot between 0 and 4.
+    s = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 2 }, s).state;
+    expect(s.round.scoringOrder).toEqual([0, 2, 4]);
+  });
+});
+
 describe('REORDER_HOLD', () => {
   it('initializes scoringOrder to [0,1,2,3,4]', () => {
     const s = baseState();
