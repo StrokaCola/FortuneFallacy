@@ -28,9 +28,9 @@ export async function ensureRapier(): Promise<RapierModule | null> {
   }
 }
 
-const TRAY_MIN = -4;
-const TRAY_MAX =  4;
-const FLOOR_Y  = 0;
+const TRAY_X = 6.5;
+const TRAY_Z = 4;
+const FLOOR_Y = 0;
 
 export async function runRapierSim(req: SimulationRequest, prevFaces: number[]): Promise<SimulationResult | null> {
   const r = await ensureRapier();
@@ -39,24 +39,24 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   const rng = mulberry32(req.seed >>> 0);
   const world: World = new r.World({ x: 0, y: -9.81, z: 0 });
 
-  const floorDesc = r.ColliderDesc.cuboid(10, 0.1, 8).setTranslation(0, FLOOR_Y - 0.1, 0).setRestitution(0.45);
+  const floorDesc = r.ColliderDesc.cuboid(TRAY_X + 2, 0.1, TRAY_Z + 2).setTranslation(0, FLOOR_Y - 0.1, 0).setRestitution(0.45);
   world.createCollider(floorDesc);
   for (const w of [
-    r.ColliderDesc.cuboid(0.1, 4, 8).setTranslation(TRAY_MIN, 2, 0),
-    r.ColliderDesc.cuboid(0.1, 4, 8).setTranslation(TRAY_MAX, 2, 0),
-    r.ColliderDesc.cuboid(10, 4, 0.1).setTranslation(0, 2, TRAY_MIN),
-    r.ColliderDesc.cuboid(10, 4, 0.1).setTranslation(0, 2, TRAY_MAX),
+    r.ColliderDesc.cuboid(0.1, 4, TRAY_Z).setTranslation(-TRAY_X, 2, 0),
+    r.ColliderDesc.cuboid(0.1, 4, TRAY_Z).setTranslation( TRAY_X, 2, 0),
+    r.ColliderDesc.cuboid(TRAY_X, 4, 0.1).setTranslation(0, 2, -TRAY_Z),
+    r.ColliderDesc.cuboid(TRAY_X, 4, 0.1).setTranslation(0, 2,  TRAY_Z),
   ]) world.createCollider(w);
 
   const bodies: RigidBody[] = [];
   const diceCount = Math.max(prevFaces.length, 5);
   for (let i = 0; i < diceCount; i++) {
-    const x = TRAY_MIN + 0.8 + i * 1.6;
+    const x = (i - (diceCount - 1) / 2) * 1.6;
     const z = (rng.next() - 0.5) * 1.5;
     const bodyDesc = r.RigidBodyDesc.dynamic()
       .setTranslation(x, 4 + rng.next() * 1.5, z)
-      .setLinvel((rng.next() - 0.5) * 11, -4, (rng.next() - 0.5) * 11)
-      .setAngvel({ x: rng.next() * 20 - 10, y: rng.next() * 20 - 10, z: rng.next() * 20 - 10 });
+      .setLinvel((rng.next() - 0.5) * 16, -6, (rng.next() - 0.5) * 16)
+      .setAngvel({ x: rng.next() * 26 - 13, y: rng.next() * 26 - 13, z: rng.next() * 26 - 13 });
     const body = world.createRigidBody(bodyDesc);
     const cube = r.ColliderDesc.cuboid(0.4, 0.4, 0.4).setRestitution(0.35).setDensity(1.5);
     world.createCollider(cube, body);

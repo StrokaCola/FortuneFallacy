@@ -106,7 +106,12 @@ export function Hub() {
                   }}>
                     trial {String(i + 1).padStart(2, '0')}
                   </div>
-                  <div className="f-display" style={{ fontSize: 22, color: '#f3f0ff', marginTop: 6 }}>
+                  <div className="f-display" style={{
+                    fontSize: 20, color: '#f3f0ff', marginTop: 6,
+                    whiteSpace: 'nowrap', maxWidth: '100%',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    textAlign: 'center',
+                  }}>
                     {b.def.name}
                   </div>
                   <div style={{

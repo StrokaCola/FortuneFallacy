@@ -154,7 +154,8 @@ export function DieView(props: Props) {
         cursor: props.onClick ? 'pointer' : 'default',
         opacity: props.dim ? 0.45 : 1,
         position: 'relative',
-        // Reserve space; actual pixels are drawn by sharedRenderer overlay.
+        pointerEvents: props.onClick ? 'auto' : 'none',
+        touchAction: 'manipulation',
       }}
     />
   );
