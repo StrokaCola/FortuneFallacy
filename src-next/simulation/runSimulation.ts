@@ -46,15 +46,25 @@ function runSeededSim(
   lockedMask: boolean[],
 ): Promise<SimulationResult> {
   return new Promise((resolve) => {
-    const rng = mulberry32(req.seed ^ Date.now());
+    const rng = mulberry32(req.seed >>> 0);
     const state = store.getState();
     const cap = hasDebuff(state, 'hand_size_cap_4') ? 4 : 5;
     const diceCount = Math.min(cap, Math.max(prevFaces.length, 5));
 
+    // Faces come from the predetermined sequence built in initSimulation;
+    // the pipeline RNG already accounted for locks, but we still respect
+    // lockedMask defensively in case of a stale request.
+    const targets = req.predeterminedFaces ?? [];
     const finalFaces: number[] = [];
     for (let i = 0; i < diceCount; i++) {
-      const rolling = req.diceToRoll.includes(i) || prevFaces[i] == null;
-      finalFaces.push(rolling && !lockedMask[i] ? rng.int(1, 6) : prevFaces[i] ?? 1);
+      const target = targets[i];
+      if (lockedMask[i]) {
+        finalFaces.push(prevFaces[i] ?? target ?? 1);
+      } else if (target != null) {
+        finalFaces.push(target);
+      } else {
+        finalFaces.push(prevFaces[i] ?? 1);
+      }
     }
     const settleMs = finalFaces.map(() => SETTLE_MS + rng.int(-80, 120));
     const bounceHeights = finalFaces.map(() => 1 + rng.next() * 2);

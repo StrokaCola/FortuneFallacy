@@ -17,6 +17,7 @@ function makeState(overrides: Partial<{ shards: number; catalysts: string[]; han
       consumables: [],
       handsPlayed: overrides.handsPlayed ?? 0,
       compoundingStacks: 0,
+      rollCounter: 0,
       ownedMods: [],
       diceMods: [[], [], [], [], []],
     },
@@ -45,6 +46,76 @@ function makeState(overrides: Partial<{ shards: number; catalysts: string[]; han
     pingCount: 0,
   } as unknown as GameState;
 }
+
+type SimReq = { diceToRoll: number[]; seed: number; predeterminedFaces: number[] };
+
+function simRequestFrom(events: Array<{ type: string; payload: unknown }>): SimReq | null {
+  const ev = events.find((e) => e.type === 'onSimulationStart');
+  if (!ev) return null;
+  return (ev.payload as { request: SimReq }).request;
+}
+
+describe('ROLL_REQUESTED determinism', () => {
+  it('produces identical predeterminedFaces for identical inputs', () => {
+    const a = rollHandler({ type: 'ROLL_REQUESTED' }, makeState());
+    const b = rollHandler({ type: 'ROLL_REQUESTED' }, makeState());
+    const reqA = simRequestFrom(a.events as Array<{ type: string; payload: unknown }>)!;
+    const reqB = simRequestFrom(b.events as Array<{ type: string; payload: unknown }>)!;
+    expect(reqA.predeterminedFaces).toEqual(reqB.predeterminedFaces);
+    expect(reqA.predeterminedFaces).toHaveLength(5);
+    reqA.predeterminedFaces.forEach((f) => {
+      expect(f).toBeGreaterThanOrEqual(1);
+      expect(f).toBeLessThanOrEqual(6);
+    });
+  });
+
+  it('advances rollCounter so each roll varies but stays reproducible', () => {
+    const first = rollHandler({ type: 'ROLL_REQUESTED' }, makeState());
+    expect(first.state.run.rollCounter).toBe(1);
+    // Second roll uses the post-first state (firstRollDone=true so dice
+    // are not auto-unlocked) and should advance rollCounter again.
+    const second = rollHandler({ type: 'ROLL_REQUESTED' }, first.state);
+    expect(second.state.run.rollCounter).toBe(2);
+    const reqA = simRequestFrom(first.events as Array<{ type: string; payload: unknown }>)!;
+    const reqB = simRequestFrom(second.events as Array<{ type: string; payload: unknown }>)!;
+    // The two rolls should not be identical (extremely unlikely with mulberry32).
+    expect(reqA.predeterminedFaces).not.toEqual(reqB.predeterminedFaces);
+  });
+
+  it('keeps locked dice on their existing face in predeterminedFaces', () => {
+    const base = makeState();
+    const withLock: GameState = {
+      ...base,
+      round: {
+        ...base.round,
+        firstRollDone: true,
+        dice: base.round.dice.map((d, i) => (i === 2 ? { ...d, face: 6, locked: true } : d)),
+      },
+    };
+    const result = rollHandler({ type: 'ROLL_REQUESTED' }, withLock);
+    const req = simRequestFrom(result.events as Array<{ type: string; payload: unknown }>)!;
+    expect(req.predeterminedFaces[2]).toBe(6);
+    expect(req.diceToRoll).not.toContain(2);
+  });
+});
+
+describe('REROLL_REQUESTED determinism', () => {
+  it('advances rollCounter and decrements rerollsLeft', () => {
+    const result = rollHandler({ type: 'REROLL_REQUESTED' }, makeState());
+    expect(result.state.run.rollCounter).toBe(1);
+    expect(result.state.round.rerollsLeft).toBe(1);
+    const req = simRequestFrom(result.events as Array<{ type: string; payload: unknown }>);
+    expect(req?.predeterminedFaces).toHaveLength(5);
+  });
+
+  it('no-ops when rerollsLeft is 0', () => {
+    const base = makeState();
+    const exhausted: GameState = { ...base, round: { ...base.round, rerollsLeft: 0 } };
+    const result = rollHandler({ type: 'REROLL_REQUESTED' }, exhausted);
+    expect(result.state).toBe(exhausted);
+    expect(result.state.run.rollCounter).toBe(0);
+  });
+});
 
 describe('SCORE_HAND', () => {
   it('increments handsPlayed by 1', () => {

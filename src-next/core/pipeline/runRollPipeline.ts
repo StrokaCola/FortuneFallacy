@@ -11,8 +11,18 @@ import { upgrades }         from '../phases/upgrades';
 import { scoring }          from '../phases/scoring';
 import { emitEvents }       from '../phases/emitEvents';
 
+// Mix the run-level roll counter into the pipeline seed so each physical
+// roll within a round produces a different (but reproducible) outcome.
+// The 0x9E3779B1 constant is the integer fractional bits of the golden
+// ratio — a cheap, well-known way to spread a small counter across all
+// 32 bits before XOR'ing.
+const ROLL_COUNTER_HASH = 0x9E3779B1;
+
 export function runRollPipelineUpToSim(state: GameState): PipelineCtx {
-  const rng = mulberry32(state.run.seed ^ state.run.goalIdx);
+  const rollCounter = state.run.rollCounter ?? 0;
+  const rng = mulberry32(
+    (state.run.seed ^ state.run.goalIdx ^ Math.imul(rollCounter, ROLL_COUNTER_HASH)) >>> 0,
+  );
   let ctx: PipelineCtx = {
     state,
     chips: 0,

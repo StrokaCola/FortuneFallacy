@@ -122,6 +122,12 @@ export function migrateRetheme(saved: unknown): unknown {
     next.run = { ...run6, compoundingStacks: 0 };
   }
 
+  // run.rollCounter default
+  const run7 = next.run as Record<string, unknown> | undefined;
+  if (run7 && typeof run7.rollCounter !== 'number') {
+    next.run = { ...run7, rollCounter: 0 };
+  }
+
   // round.shardSinkPrimedThisHand default
   const round3 = next.round as Record<string, unknown> | undefined;
   if (round3 && typeof round3.shardSinkPrimedThisHand !== 'boolean') {

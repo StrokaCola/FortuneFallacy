@@ -12,6 +12,10 @@ export type RunSlice = {
   diceMods: string[][];
   handsPlayed: number;
   compoundingStacks: number;
+  // Monotonic counter advanced once per ROLL_REQUESTED / REROLL_REQUESTED.
+  // Mixed into the pipeline seed so each physical roll within a round
+  // produces a different (but reproducible) outcome.
+  rollCounter: number;
 };
 
 export const initialRunSlice = (): RunSlice => ({
@@ -26,4 +30,5 @@ export const initialRunSlice = (): RunSlice => ({
   diceMods: Array.from({ length: 5 }, () => [] as string[]),
   handsPlayed: 0,
   compoundingStacks: 0,
+  rollCounter: 0,
 });

@@ -15,6 +15,7 @@ export const rollHandler: ActionHandler = (a, s) => {
         : s.round.dice;
       const workingState = {
         ...s,
+        run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 },
         round: {
           ...s.round,
           dice,
@@ -40,13 +41,17 @@ export const rollHandler: ActionHandler = (a, s) => {
     case 'REROLL_REQUESTED': {
       if (s.round.rerollsLeft <= 0) return { state: s, events: [] };
       if (hasDebuff(s, 'no_rerolls')) return { state: s, events: [] };
-      const ctx = runRollPipelineUpToSim(s);
+      const advanced = { ...s, run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 } };
+      const ctx = runRollPipelineUpToSim(advanced);
       return {
-        state: { ...s, round: { ...s.round, handInProgress: true, rerollsLeft: s.round.rerollsLeft - 1 } },
+        state: {
+          ...advanced,
+          round: { ...advanced.round, handInProgress: true, rerollsLeft: advanced.round.rerollsLeft - 1 },
+        },
         events: [
           {
             type: 'onRollStart',
-            payload: { dice: s.round.dice, lockedMask: s.round.dice.map((d) => d.locked) },
+            payload: { dice: advanced.round.dice, lockedMask: advanced.round.dice.map((d) => d.locked) },
           },
           ...(ctx.simRequest
             ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
