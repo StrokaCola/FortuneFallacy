@@ -93,7 +93,7 @@ function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; r
       )}
       <button
         className="btn btn-primary mat-interactive tap"
-        disabled={hands === 0}
+        disabled={hands === 0 || !firstRollDone}
         onClick={() => dispatch({ type: 'SCORE_HAND' })}>
         ✦ Play Hand
       </button>
