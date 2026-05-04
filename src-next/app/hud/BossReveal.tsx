@@ -51,7 +51,7 @@ export function BossReveal() {
               <div className="f-mono uc" style={{
                 fontSize: 10, letterSpacing: '0.5em', color: '#e2334a', marginTop: 12,
               }}>
-                boss blind
+                final trial
               </div>
               <div style={{ width: 36, height: 1, background: def.color, marginTop: 8, opacity: 0.6 }} />
 

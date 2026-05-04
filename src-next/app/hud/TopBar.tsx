@@ -3,7 +3,7 @@ import { Sigil } from '../visual/Sigil';
 
 export function TopBar({
   ante = 1,
-  blind = 'Blind',
+  blind = 'Trial',
   shards = 0,
   hands = 3,
   rerolls = 2,

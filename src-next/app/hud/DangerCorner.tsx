@@ -42,7 +42,7 @@ export function DangerCorner() {
           <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.22em', color: '#ff8e9c' }}>
             Boss · {bossDef.name}
           </span>
-          <span className="tip">{(bossDef as { description?: string }).description ?? 'Boss blind active'}</span>
+          <span className="tip">{(bossDef as { description?: string }).description ?? 'Final trial active'}</span>
         </div>
       )}
       {debuffList.length > 0 && (

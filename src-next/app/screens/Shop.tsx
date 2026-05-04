@@ -181,7 +181,7 @@ export function Shop() {
           className="btn btn-primary mat-interactive"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
         >
-          Next Blind →
+          Next Trial →
         </button>
       </div>
     </div>

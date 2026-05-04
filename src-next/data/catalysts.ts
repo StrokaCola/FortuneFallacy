@@ -22,7 +22,7 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'entropy_index',  name: 'Entropy Index',  icon: '◈',   color: '#a080c0',
     desc: 'Each unique face → ×1.25 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare'    },
   { id: 'compounding_bias', name: 'Compounding Bias', icon: '∆', color: '#88ddff',
-    desc: 'Each cleared blind: +0.05× mult permanently. Resets on bust.',
+    desc: 'Each cleared trial: +0.05× mult permanently. Resets on bust.',
     flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon' },
   { id: 'last_throw', name: 'Last Throw', icon: '🔔', color: '#ff7847',
     desc: 'Last hand of round: +25 chips.',
