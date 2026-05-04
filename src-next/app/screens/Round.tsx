@@ -32,7 +32,7 @@ export function Round() {
   const firstRollDone = useStore((s) => s.round.firstRollDone);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
 
-  const blindName = BLIND_DEFS.find((b) => b.index === blindId)?.name ?? 'Blind';
+  const blindName = BLIND_DEFS.find((b) => b.index === blindId)?.name ?? 'Trial';
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>

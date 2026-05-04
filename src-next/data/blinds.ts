@@ -7,9 +7,9 @@ export type BlindDef = {
 };
 
 export const BLIND_DEFS: BlindDef[] = [
-  { index: 0, name: 'Small Blind', targetMult: 1.0, isBoss: false, skipReward: 3 },
-  { index: 1, name: 'Big Blind',   targetMult: 1.5, isBoss: false, skipReward: 5 },
-  { index: 2, name: 'Boss Blind',  targetMult: 2.0, isBoss: true,  skipReward: 0 },
+  { index: 0, name: 'Lesser Trial',  targetMult: 1.0, isBoss: false, skipReward: 3 },
+  { index: 1, name: 'Greater Trial', targetMult: 1.5, isBoss: false, skipReward: 5 },
+  { index: 2, name: 'Final Trial',   targetMult: 2.0, isBoss: true,  skipReward: 0 },
 ];
 
 export const ANTE_BASE_TARGETS: number[][] = [
@@ -44,6 +44,51 @@ export type BossBlind = {
   debuffs: string[];
   sigil: { viewBox: string; groups: SigilGroup[] };
 };
+
+export type TierSigilDef = {
+  viewBox: string;
+  groups: SigilGroup[];
+  color: string;
+};
+
+export const TIER_SIGILS: TierSigilDef[] = [
+  // Lesser Trial — waxing: lone body in a thin dashed orbit
+  { color: '#9577ff', viewBox: '0 0 100 100', groups: [
+    { class: 'orbit-aux', dashed: true, opacity: 0.5,
+      paths: ['M 50 18 a 32 32 0 1 0 0.01 0'] },
+    { class: 'body-core', filled: true,
+      paths: ['M 45 50 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0'] },
+    { class: 'mark', strokeWidth: 1.5, opacity: 0.8,
+      paths: ['M 50 12 L 50 22'] },
+  ]},
+  // Greater Trial — zenith: body + satellite + orbit ring with cardinal marks
+  { color: '#7be3ff', viewBox: '0 0 100 100', groups: [
+    { class: 'orbit-main', paths: ['M 50 14 a 36 36 0 1 0 0.01 0'] },
+    { class: 'body-core', paths: ['M 39 50 a 11 11 0 1 0 22 0 a 11 11 0 1 0 -22 0'] },
+    { class: 'body-core', filled: true,
+      paths: ['M 47 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0'] },
+    { class: 'satellite', filled: true,
+      paths: ['M 82 50 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0'] },
+    { class: 'mark', opacity: 0.7, paths: [
+      'M 50 8 L 50 14', 'M 50 86 L 50 92', 'M 8 50 L 14 50',
+    ]},
+  ]},
+  // Final Trial — eclipse: outer ring with an inner pinpoint and crossed rays
+  { color: '#e2334a', viewBox: '0 0 100 100', groups: [
+    { class: 'body-core',
+      paths: ['M 18 50 a 32 32 0 1 0 64 0 a 32 32 0 1 0 -64 0'] },
+    { class: 'body-core', filled: true,
+      paths: ['M 47 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0'] },
+    { class: 'orbit-main', strokeWidth: 1.25, opacity: 0.85, paths: [
+      'M 12 50 L 30 50', 'M 70 50 L 88 50',
+      'M 50 12 L 50 30', 'M 50 70 L 50 88',
+    ]},
+    { class: 'mark', opacity: 0.6, paths: [
+      'M 22 22 L 28 28', 'M 78 22 L 72 28',
+      'M 22 78 L 28 72', 'M 78 78 L 72 72',
+    ]},
+  ]},
+];
 
 export const BOSS_BLINDS: BossBlind[] = [
   {
