@@ -6,7 +6,7 @@ import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
 import { lookupMod } from '../mods';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
-// the blind (both hard-bust and soft-bust ≥75% paths).
+// the blind.
 function dropBrittleMods(diceMods: string[][]): string[][] {
   return diceMods.map((mods) =>
     mods.filter((id) => !lookupMod(id)?.loseOnBust),
@@ -68,6 +68,8 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         compoundingStacks: s.run.compoundingStacks + 1,
       },
       round: { ...s.round, active: false },
+      // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
+      shop: { ...s.shop, offers: [] },
       ui: { ...s.ui, screen: won ? 'win' : 'shop' },
       meta: won ? { ...s.meta, highScores } : s.meta,
     },
@@ -81,27 +83,6 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
 }
 
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
-  if (s.round.target > 0 && s.round.score >= Math.floor(s.round.target * 0.75)) {
-    const droppedCatalysts = s.run.catalysts.length > 0 ? s.run.catalysts.slice(1) : [];
-    const nextGoal = s.run.goalIdx + 1;
-    const nextAnte = Math.floor(nextGoal / 3) + 1;
-    return {
-      state: {
-        ...s,
-        run: {
-          ...s.run,
-          catalysts: droppedCatalysts,
-          goalIdx: nextGoal,
-          ante: nextAnte,
-          compoundingStacks: 0,
-          diceMods: dropBrittleMods(s.run.diceMods),
-        },
-        round: { ...s.round, active: false, chainLen: 0, chainTier: -1 },
-        ui: { ...s.ui, screen: 'shop' },
-      },
-      events: [{ type: 'onBlindCleared', payload: { blindId: s.round.blindId ?? 'soft_bust', ante: s.run.ante } }],
-    };
-  }
   const highScores = pushHighScore(s, s.round.score);
   return {
     state: {
