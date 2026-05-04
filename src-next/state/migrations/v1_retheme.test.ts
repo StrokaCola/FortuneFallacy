@@ -68,8 +68,17 @@ describe('migrateRetheme', () => {
         handsPlayed: 0,
         compoundingStacks: 0,
         rollCounter: 0,
+        tempoStreak: 0,
+        tempoLastTier: -1,
+        lastComboId: null,
+        comboStreak: 0,
       },
-      round: { shardSinkPrimedThisHand: false, firstRollDone: false },
+      round: {
+        shardSinkPrimedThisHand: false,
+        firstRollDone: false,
+        tithePrimedThisHand: 0,
+        recursiveSinkPrimedThisHand: false,
+      },
     };
     expect(migrateRetheme(fresh)).toEqual(fresh);
   });

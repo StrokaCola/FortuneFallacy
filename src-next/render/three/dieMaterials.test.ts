@@ -37,7 +37,7 @@ describe('MOD_MATERIALS', () => {
     }
   });
 
-  it('has exactly 13 entries (one per mod)', () => {
-    expect(Object.keys(MOD_MATERIALS).length).toBe(13);
+  it('has exactly 19 entries (one per mod)', () => {
+    expect(Object.keys(MOD_MATERIALS).length).toBe(19);
   });
 });

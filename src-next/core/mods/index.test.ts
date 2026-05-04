@@ -134,8 +134,8 @@ describe('order-aware mods', () => {
     }
   });
 
-  it('MODS has 13 entries total (10 prior + 3 new)', () => {
-    expect(MODS.length).toBe(13);
+  it('MODS has 19 entries total', () => {
+    expect(MODS.length).toBe(19);
   });
 
   it('MOD_IDS includes the 3 new ids', () => {

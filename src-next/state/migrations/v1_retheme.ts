@@ -140,5 +140,41 @@ export function migrateRetheme(saved: unknown): unknown {
     next.round = { ...round4, firstRollDone: false };
   }
 
+  // round.tithePrimedThisHand default (Tithe mod budget; round-scoped)
+  const round5 = next.round as Record<string, unknown> | undefined;
+  if (round5 && typeof round5.tithePrimedThisHand !== 'number') {
+    next.round = { ...round5, tithePrimedThisHand: 0 };
+  }
+
+  // round.recursiveSinkPrimedThisHand default
+  const round6 = next.round as Record<string, unknown> | undefined;
+  if (round6 && typeof round6.recursiveSinkPrimedThisHand !== 'boolean') {
+    next.round = { ...round6, recursiveSinkPrimedThisHand: false };
+  }
+
+  // run.tempoStreak default (Tempo catalyst; run-scoped)
+  const run8 = next.run as Record<string, unknown> | undefined;
+  if (run8 && typeof run8.tempoStreak !== 'number') {
+    next.run = { ...run8, tempoStreak: 0 };
+  }
+
+  // run.tempoLastTier default (-1 sentinel = no prior hand)
+  const run9 = next.run as Record<string, unknown> | undefined;
+  if (run9 && typeof run9.tempoLastTier !== 'number') {
+    next.run = { ...run9, tempoLastTier: -1 };
+  }
+
+  // run.lastComboId default (Quorum catalyst; run-scoped)
+  const run10 = next.run as Record<string, unknown> | undefined;
+  if (run10 && !('lastComboId' in run10)) {
+    next.run = { ...run10, lastComboId: null };
+  }
+
+  // run.comboStreak default
+  const run11 = next.run as Record<string, unknown> | undefined;
+  if (run11 && typeof run11.comboStreak !== 'number') {
+    next.run = { ...run11, comboStreak: 0 };
+  }
+
   return next;
 }

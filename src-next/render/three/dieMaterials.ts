@@ -108,4 +108,42 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0xe0c8ff, halo: 0xbba8ff,
     transmission: 0.18, rough: 0.30, eIntensity: 2.0,
   },
+  // 14. Tithe — Coin-press; warm gold accents on a deep merchant-burgundy body.
+  tithe: {
+    bodyTint: 0x6a2a3e, bodyDeep: 0x2a0e18,
+    edge: 0xf5c451, halo: 0xf5c451,
+    transmission: 0.10, rough: 0.40, eIntensity: 1.4,
+    metalness: 0.55, sheen: 0.35, sheenColor: 0xf5c451,
+  },
+  // 15. Resonance — Echo chamber; pearlescent purple, doubled inner halo.
+  resonance: {
+    bodyTint: 0x8a6ad4, bodyDeep: 0x2e1d6b,
+    edge: 0xbba8ff, halo: 0xbba8ff,
+    transmission: 0.32, rough: 0.22, ior: 1.55, eIntensity: 2.2,
+  },
+  // 16. Crescendo — Wave swell; jade body brightening to mint at edges.
+  crescendo: {
+    bodyTint: 0x2e8a6a, bodyDeep: 0x0e3a2a,
+    edge: 0x9bf0c8, halo: 0x5be8a4,
+    transmission: 0.28, rough: 0.30, eIntensity: 1.8,
+  },
+  // 17. Crown — Royal gold-leaf with regal saturation, only awake on 6s.
+  crown: {
+    bodyTint: 0xffd84a, bodyDeep: 0x6a4a08,
+    edge: 0xfff7e0, halo: 0xffd84a,
+    transmission: 0.08, rough: 0.30, ior: 1.55, eIntensity: 1.6,
+    metalness: 0.78, sheen: 0.50, sheenColor: 0xffd84a,
+  },
+  // 18. Brittle — Cracked obsidian; high-contrast crimson fissures.
+  brittle: {
+    bodyTint: 0x4a0e10, bodyDeep: 0x1a0405,
+    edge: 0xff7847, halo: 0xff7847,
+    transmission: 0.05, rough: 0.55, eIntensity: 2.0,
+  },
+  // 19. Wildcard — Prismatic; high IOR, near-mirror, color shifts on view.
+  wildcard: {
+    bodyTint: 0xe0c8ff, bodyDeep: 0x6a4a8a,
+    edge: 0xffffff, halo: 0xe0c8ff,
+    transmission: 0.30, rough: 0.10, ior: 1.75, metalness: 0.60,
+  },
 };
