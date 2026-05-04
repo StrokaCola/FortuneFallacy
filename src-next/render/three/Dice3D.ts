@@ -8,6 +8,9 @@ import {
   buildDie, getHaloTexture,
   type FaceMatMap,
 } from './buildDie';
+import { MOD_MATERIALS } from './dieMaterials';
+import { buildOrbitalSatellite } from './orbitalSatellite';
+import { buildRimOverlay } from './rimOverlay';
 import { firePulse } from './modFx/pulse';
 import { fireLoaded } from './modFx/loaded';
 import { firePipCharge } from './modFx/pipCharge';
@@ -65,6 +68,12 @@ type DieAnim = {
   faceFadeDurMs: number;
   upFace: number;                         // last known up-face from store
   scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
+  // Forge mod visuals applied to this die. `modSig` is a stable diff key over
+  // run.diceMods[i] used by syncDiceMods to skip rebuilds when ids haven't
+  // changed. orbital/rim are owned by this die and disposed on rebuild.
+  modSig: string;
+  orbital: ReturnType<typeof buildOrbitalSatellite> | null;
+  rim: ReturnType<typeof buildRimOverlay> | null;
 };
 
 const PIP_FADE_IN_MS = 520;
@@ -203,6 +212,9 @@ export class Dice3D {
     accent: string;
     faceValue: number;
   }>> = new Map();
+  // Stashed diceMods array if a rebuild lands while dice are mid-roll. Drained
+  // at the top of the render loop on the first idle frame.
+  private pendingDiceMods: string[][] | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -347,6 +359,9 @@ export class Dice3D {
       store.subscribe((s, prev) => {
         if (s.round.dice !== prev.round.dice || s.round.scoringOrder !== prev.round.scoringOrder) {
           this.syncDice(s.round.dice);
+        }
+        if (s.run.diceMods !== prev.run.diceMods) {
+          this.syncDiceMods(s.run.diceMods);
         }
       }),
       bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
@@ -616,11 +631,63 @@ export class Dice3D {
     this.renderer.dispose();
   }
 
+  // Build a single die's THREE node tree from its forged mod ids. Mirrors
+  // DieView.tsx (forge preview) so the in-game model matches: primary mod
+  // drives material override + geometric variant; secondary drives the orbital
+  // satellite (or the rim band when a third mod is attached); tertiary drives
+  // the satellite in the 3-mod case. Orbital/rim groups are children of the
+  // die group so position/scale/tumble cascade automatically.
+  private buildSingleDie(modIds: string[]): {
+    built: ReturnType<typeof buildDie>;
+    orbital: ReturnType<typeof buildOrbitalSatellite> | null;
+    rim: ReturnType<typeof buildRimOverlay> | null;
+    modSig: string;
+  } {
+    const primary = modIds[0] ? lookupMod(modIds[0]) : undefined;
+    const modKey = primary?.visual?.materialKey;
+    const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
+    const geometricVariant = primary?.visual?.geometricVariant;
+    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant);
+
+    const secondary = modIds[1] ? lookupMod(modIds[1]) : undefined;
+    const tertiary = modIds[2] ? lookupMod(modIds[2]) : undefined;
+
+    let orbital: ReturnType<typeof buildOrbitalSatellite> | null = null;
+    let rim: ReturnType<typeof buildRimOverlay> | null = null;
+
+    if (modIds.length === 2 && secondary?.visual?.accentColor) {
+      orbital = buildOrbitalSatellite({
+        accentColor: secondary.visual.accentColor,
+        dieSize: DIE_SIZE,
+      });
+      built.group.add(orbital.group);
+    } else if (modIds.length >= 3) {
+      if (secondary?.visual?.accentColor) {
+        rim = buildRimOverlay({
+          accentColor: secondary.visual.accentColor,
+          dieSize: DIE_SIZE,
+        });
+        built.group.add(rim.group);
+      }
+      if (tertiary?.visual?.accentColor) {
+        orbital = buildOrbitalSatellite({
+          accentColor: tertiary.visual.accentColor,
+          dieSize: DIE_SIZE,
+        });
+        built.group.add(orbital.group);
+      }
+    }
+
+    return { built, orbital, rim, modSig: modIds.join('|') };
+  }
+
   private buildDice() {
     const count = 5;
     const startX = -((count - 1) * DICE_GAP) / 2;
+    const allMods = store.getState().run.diceMods;
     for (let i = 0; i < count; i++) {
-      const built = buildDie(DIE_SIZE, 'celestial');
+      const modIds = allMods[i] ?? [];
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
       const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
       built.group.position.copy(home);
       this.scene.add(built.group);
@@ -651,7 +718,85 @@ export class Dice3D {
         faceFadeDurMs: PIP_FADE_IN_MS,
         upFace: 1,
         scorePopStart: 0,
+        modSig,
+        orbital,
+        rim,
       });
+    }
+  }
+
+  // Free GPU resources owned by a single die: traverse and dispose all
+  // geometries + materials, plus the orbital/rim helpers' own dispose
+  // hooks. The shared halo texture and shared environment map are NOT
+  // disposed (singletons cached at module scope).
+  private disposeDie(d: DieAnim): void {
+    d.orbital?.dispose();
+    d.rim?.dispose();
+    d.group.traverse((obj: THREE.Object3D) => {
+      const m = obj as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+      const matAny = (m as { material?: THREE.Material | THREE.Material[] }).material;
+      if (Array.isArray(matAny)) matAny.forEach((x: THREE.Material) => x.dispose());
+      else if (matAny) matAny.dispose();
+    });
+  }
+
+  // Rebuild die `i` using `newModIds`. Captures pose + animation state so
+  // in-flight lerps and locked-die layouts survive the swap. No-op if the
+  // mod ids match the existing die's modSig.
+  private rebuildDie(i: number, newModIds: string[]): void {
+    const old = this.dice[i];
+    if (!old) return;
+    const newSig = newModIds.join('|');
+    if (old.modSig === newSig) return;
+
+    const { built, orbital, rim, modSig } = this.buildSingleDie(newModIds);
+
+    // Carry pose + scale + quaternion onto the new group so the rebuild is
+    // visually seamless (other than the material/geometry swap itself).
+    built.group.position.copy(old.group.position);
+    built.group.quaternion.copy(old.group.quaternion);
+    built.group.scale.copy(old.group.scale);
+
+    this.scene.remove(old.group);
+    this.disposeDie(old);
+    this.scene.add(built.group);
+
+    const next: DieAnim = {
+      ...old,
+      group: built.group,
+      faceLensMats: built.faceLensMats,
+      faceHaloMats: built.faceHaloMats,
+      orbital,
+      rim,
+      modSig,
+    };
+    this.dice[i] = next;
+
+    // Reapply face fade so new materials adopt the correct opacity instead of
+    // starting at 0. Mid-roll/playback shows all pips; otherwise only up-face.
+    const targets = (next.rolling || next.playback != null)
+      ? this.faceTargetsAllOn()
+      : this.faceTargetsOnlyUp(next.upFace);
+    // Seed faceFrom to the new (zero) opacity so the fade ramps in cleanly.
+    for (let f = 1; f <= 6; f++) next.faceCur[f] = 0;
+    this.setFaceFade(next, targets, PIP_FADE_IN_MS);
+  }
+
+  // Diff each per-die mod list against the active dice and rebuild any that
+  // changed. Cheap: top-level reference-equality on diceMods is checked by
+  // the subscriber, then per-die modSig comparison short-circuits unchanged
+  // indices. If a rebuild lands during a roll/playback we defer until idle
+  // (forge is gated to between-rounds, but defense-in-depth is cheap).
+  private syncDiceMods(diceMods: string[][]): void {
+    const busy = this.dice.some((d) => d.rolling || d.playback != null);
+    if (busy) {
+      this.pendingDiceMods = diceMods;
+      return;
+    }
+    this.pendingDiceMods = null;
+    for (let i = 0; i < this.dice.length; i++) {
+      this.rebuildDie(i, diceMods[i] ?? []);
     }
   }
 
@@ -991,6 +1136,11 @@ export class Dice3D {
     const loop = () => {
       this.rafHandle = requestAnimationFrame(loop);
       const now = performance.now();
+      // Drain a deferred mod rebuild as soon as no die is mid-roll/playback.
+      if (this.pendingDiceMods != null
+        && !this.dice.some((d) => d.rolling || d.playback != null)) {
+        this.syncDiceMods(this.pendingDiceMods);
+      }
       const draggedIdx = this.isDragging && this.dragStart ? this.dragStart.dieIdx : -1;
       for (let dIdx = 0; dIdx < this.dice.length; dIdx++) {
         const d = this.dice[dIdx]!;
@@ -1098,6 +1248,15 @@ export class Dice3D {
             ));
             d.group.quaternion.copy(d.targetQuat).multiply(wob);
           }
+        }
+
+        // Drive the orbital satellite (forge mod visual). Phase-offset by
+        // holdBobPhase so 5 dice never sync. Rim is static and needs no tick.
+        if (d.orbital) {
+          const ORBIT_PERIOD_S = 8;
+          d.orbital.setAngle(
+            (now / 1000) * ((Math.PI * 2) / ORBIT_PERIOD_S) + d.holdBobPhase,
+          );
         }
 
         // Per-face pip fade driver — drives each face's lens + halo opacity
