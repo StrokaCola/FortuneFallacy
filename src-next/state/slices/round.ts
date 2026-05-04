@@ -27,7 +27,7 @@ export type RoundSlice = {
     chain: { mult: number };
     total: number;
     events: Array<{ type: string; payload: { id: string; phase: number; deltaChips: number; deltaMult: number } }>;
-    state: { round: { dice: Array<{ face: number }> } };
+    state: { round: { dice: Array<{ face: number }>; scoringOrder?: number[] } };
   } | null;
   pendingRoundEnd?: 'clear' | 'bust' | null;
   pendingScoreDelta?: number | null;

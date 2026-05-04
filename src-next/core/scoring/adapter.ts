@@ -7,11 +7,18 @@ type MinimalScoringCtx = {
   chain: { mult: number };
   total: number;
   events: Array<{ type: string; payload: { id: string; phase: number; deltaChips: number; deltaMult: number } }>;
-  state: { round: { dice: Array<{ face: number }> } };
+  state: { round: { dice: Array<{ face: number }>; scoringOrder?: number[] } };
 };
 
 export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
-  const faces = ctx.state.round.dice.map((d) => d.face);
+  // Held-only scoring: animate only the dice that actually scored, in
+  // scoringOrder (left-to-right). Falls back to all dice in natural order
+  // for back-compat when scoringOrder is absent (legacy ctxs / tests).
+  const allDice = ctx.state.round.dice;
+  const order = ctx.state.round.scoringOrder ?? allDice.map((_, i) => i);
+  const faces = order
+    .filter((idx) => idx >= 0 && idx < allDice.length)
+    .map((idx) => allDice[idx]!.face);
   const faceSum = faces.reduce((a, b) => a + b, 0);
   const comboBonus = Math.max(0, ctx.chips - faceSum);
   const comboLabel = (ctx.combo?.id ?? 'CHANCE').toUpperCase();

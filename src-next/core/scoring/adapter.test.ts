@@ -34,4 +34,47 @@ describe('adaptScoringContext', () => {
     const input = adaptScoringContext(fakeCtx);
     expect(input.mults).toEqual([{ label: 'mult', value: 1.5 }]);
   });
+
+  it('filters faces by scoringOrder (held-only)', () => {
+    // Dice [3, 5, 1, 6, 2]. scoringOrder [0, 4] → held faces [3, 2].
+    // chips = combo.chips + sumHeld = 0 + 5 = 5; combo bonus = chips - sumHeld = 0.
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 5,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 5,
+      state: { round: { dice: [{ face: 3 }, { face: 5 }, { face: 1 }, { face: 6 }, { face: 2 }], scoringOrder: [0, 4] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.faces).toEqual([3, 2]);
+    expect(input.comboBonus).toBe(0);
+  });
+
+  it('preserves scoringOrder ordering (drag-reorder respected)', () => {
+    // Dice [1, 2, 3, 4, 5]. scoringOrder [4, 1, 0] → held faces in order [5, 2, 1].
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 8,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 8,
+      state: { round: { dice: [{ face: 1 }, { face: 2 }, { face: 3 }, { face: 4 }, { face: 5 }], scoringOrder: [4, 1, 0] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.faces).toEqual([5, 2, 1]);
+  });
+
+  it('falls back to all dice when scoringOrder absent (back-compat)', () => {
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 15,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 15,
+      state: { round: { dice: [{ face: 1 }, { face: 2 }, { face: 3 }, { face: 4 }, { face: 5 }] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.faces).toEqual([1, 2, 3, 4, 5]);
+  });
 });
