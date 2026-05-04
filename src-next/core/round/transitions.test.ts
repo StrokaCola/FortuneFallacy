@@ -53,16 +53,16 @@ describe('clearBlind', () => {
 });
 
 describe('bustBlind', () => {
-  it('soft-bust branch resets compoundingStacks to 0', () => {
-    const s = makeState({ compoundingStacks: 5, target: 100, score: 80, catalysts: ['cold_hand'] });
+  it('resets compoundingStacks to 0', () => {
+    const s = makeState({ compoundingStacks: 7, target: 100, score: 10 });
     const result = bustBlind(s);
     expect(result.state.run.compoundingStacks).toBe(0);
   });
 
-  it('hard-bust branch resets compoundingStacks to 0', () => {
-    const s = makeState({ compoundingStacks: 7, target: 100, score: 10 });
+  it('routes to fail screen even when score is close to target', () => {
+    const s = makeState({ compoundingStacks: 5, target: 100, score: 80, catalysts: ['cold_hand'] });
     const result = bustBlind(s);
-    expect(result.state.run.compoundingStacks).toBe(0);
+    expect(result.state.ui.screen).toBe('fail');
   });
 });
 
