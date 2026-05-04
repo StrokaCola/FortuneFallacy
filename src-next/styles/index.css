@@ -125,14 +125,11 @@ html, body {
   100% { opacity: 0; transform: translate(-50%, -200%) scale(1); }
 }
 @keyframes ringExpand { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(4); opacity: 0; } }
-@keyframes floatUp {
-  0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
-  15%  { transform: translate(-50%, -10px) scale(1.1); opacity: 1; }
-  100% { transform: translate(-50%, -120px) scale(1); opacity: 0; }
-}
-@keyframes flyToCounter {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.5); opacity: 0; }
+@keyframes scoreDiePop {
+  0%   { transform: translate(-50%, -10px) scale(0.5); opacity: 0; }
+  18%  { transform: translate(-50%, -34px) scale(1.18); opacity: 1; }
+  35%  { transform: translate(-50%, -42px) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -72px) scale(0.95); opacity: 0; }
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
 
