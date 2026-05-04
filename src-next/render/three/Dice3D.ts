@@ -60,13 +60,6 @@ type DieAnim = {
   holdBobPhase: number;
   faceLensMats: FaceMatMap<THREE.MeshStandardMaterial>;
   faceHaloMats: FaceMatMap<THREE.SpriteMaterial>;
-  // Per-face fade state. Index 0 unused; faces are 1..6.
-  faceCur: number[];                      // length 7
-  faceTarget: number[];                   // length 7
-  faceFrom: number[];                     // length 7
-  faceFadeStart: number;                  // ms; 0 = idle
-  faceFadeDurMs: number;
-  upFace: number;                         // last known up-face from store
   scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
   // Forge mod visuals applied to this die. `modSig` is a stable diff key over
   // run.diceMods[i] used by syncDiceMods to skip rebuilds when ids haven't
@@ -76,9 +69,20 @@ type DieAnim = {
   rim: ReturnType<typeof buildRimOverlay> | null;
 };
 
-const PIP_FADE_IN_MS = 520;
-const PIP_FADE_OUT_MS = 650;
-const PIP_REVEAL_DELAY_MS = 120;
+// Per-face pip materials: lens caps at 0.78 to keep emissive bloom in range,
+// halo runs at full opacity. All six faces stay lit at all times.
+const PIP_LENS_OPACITY = 0.78;
+const PIP_HALO_OPACITY = 1.0;
+
+function setAllPipsOn(
+  lensMats: FaceMatMap<THREE.MeshStandardMaterial>,
+  haloMats: FaceMatMap<THREE.SpriteMaterial>,
+): void {
+  for (let f = 1; f <= 6; f++) {
+    lensMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = PIP_LENS_OPACITY;
+    haloMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = PIP_HALO_OPACITY;
+  }
+}
 
 // Rectangular frosted-glass tray texture: linear gradient body + dashed gold
 // border + violet inner border + four ornate corner flourishes + scattered
@@ -691,6 +695,7 @@ export class Dice3D {
       const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
       built.group.position.copy(home);
       this.scene.add(built.group);
+      setAllPipsOn(built.faceLensMats, built.faceHaloMats);
       this.dice.push({
         group: built.group,
         homePos: home,
@@ -711,12 +716,6 @@ export class Dice3D {
         holdBobPhase: Math.random() * Math.PI * 2,
         faceLensMats: built.faceLensMats,
         faceHaloMats: built.faceHaloMats,
-        faceCur: [0, 0, 0, 0, 0, 0, 0],
-        faceTarget: [0, 0, 0, 0, 0, 0, 0],
-        faceFrom: [0, 0, 0, 0, 0, 0, 0],
-        faceFadeStart: 0,
-        faceFadeDurMs: PIP_FADE_IN_MS,
-        upFace: 1,
         scorePopStart: 0,
         modSig,
         orbital,
@@ -761,8 +760,9 @@ export class Dice3D {
     this.scene.remove(old.group);
     this.disposeDie(old);
     this.scene.add(built.group);
+    setAllPipsOn(built.faceLensMats, built.faceHaloMats);
 
-    const next: DieAnim = {
+    this.dice[i] = {
       ...old,
       group: built.group,
       faceLensMats: built.faceLensMats,
@@ -771,16 +771,6 @@ export class Dice3D {
       rim,
       modSig,
     };
-    this.dice[i] = next;
-
-    // Reapply face fade so new materials adopt the correct opacity instead of
-    // starting at 0. Mid-roll/playback shows all pips; otherwise only up-face.
-    const targets = (next.rolling || next.playback != null)
-      ? this.faceTargetsAllOn()
-      : this.faceTargetsOnlyUp(next.upFace);
-    // Seed faceFrom to the new (zero) opacity so the fade ramps in cleanly.
-    for (let f = 1; f <= 6; f++) next.faceCur[f] = 0;
-    this.setFaceFade(next, targets, PIP_FADE_IN_MS);
   }
 
   // Diff each per-die mod list against the active dice and rebuild any that
@@ -798,28 +788,6 @@ export class Dice3D {
     for (let i = 0; i < this.dice.length; i++) {
       this.rebuildDie(i, diceMods[i] ?? []);
     }
-  }
-
-  /**
-   * Drive per-face pip opacity toward `targets[1..6]`. Three modes used:
-   *   - all 6 → 1: pips glow on every face during the roll.
-   *   - up=1, others=0: after settle, only the landed face stays lit.
-   *   - all 6 → 0: not currently used (pre-roll initial state is already 0).
-   */
-  private setFaceFade(d: DieAnim, targets: number[], durMs: number, delayMs = 0): void {
-    for (let f = 1; f <= 6; f++) {
-      d.faceFrom[f] = d.faceCur[f]!;
-      d.faceTarget[f] = targets[f]!;
-    }
-    d.faceFadeStart = performance.now() + delayMs;
-    d.faceFadeDurMs = durMs;
-  }
-
-  private faceTargetsAllOn(): number[] { return [0, 1, 1, 1, 1, 1, 1]; }
-  private faceTargetsOnlyUp(up: number): number[] {
-    const t = [0, 0, 0, 0, 0, 0, 0];
-    if (up >= 1 && up <= 6) t[up] = 1;
-    return t;
   }
 
   private holdSlotX(holdIdx: number, total: number): number {
@@ -850,16 +818,6 @@ export class Dice3D {
       const wasLocked = die.locked;
       const isLocked = !!d.locked;
       die.locked = isLocked;
-
-      // Track latest up-face from store; used by settle to dim non-up faces.
-      // If the face changed while the die is at rest (not rolling/playback),
-      // re-target the fade so the new up-face glows alone.
-      const prevUp = die.upFace;
-      const newUp = d.face;
-      die.upFace = newUp;
-      if (newUp !== prevUp && !die.rolling && !die.playback) {
-        this.setFaceFade(die, this.faceTargetsOnlyUp(newUp), PIP_FADE_OUT_MS);
-      }
 
       // Position target
       let newTargetPos: THREE.Vector3;
@@ -1088,8 +1046,6 @@ export class Dice3D {
     const now = performance.now();
     this.dice.forEach((d, i) => {
       if (d.locked) return;
-      // Pips glow on every face during the roll — set all 6 → 1.
-      this.setFaceFade(d, this.faceTargetsAllOn(), PIP_FADE_IN_MS);
       // Random tumble axis + rotational speed
       const ax = new THREE.Vector3(
         Math.random() * 2 - 1,
@@ -1122,8 +1078,6 @@ export class Dice3D {
       if (d.locked) return;
       const f = frames[i];
       if (!f || f.length === 0) return;
-      // Pips glow on every face during physics playback — set all 6 → 1.
-      this.setFaceFade(d, this.faceTargetsAllOn(), PIP_FADE_IN_MS);
       d.playback = { frames: f, startedAt: now, stepMs: STEP_MS };
       d.rolling = false;
       // Do NOT set targetQuat from FACE_ROT here — physics rest pose already
@@ -1172,8 +1126,6 @@ export class Dice3D {
             d.startScale = d.group.scale.x;
             d.t0 = now;
             d.duration = 1;
-            // Settle: dim all non-up faces, leave up-face glowing.
-            this.setFaceFade(d, this.faceTargetsOnlyUp(d.upFace), PIP_FADE_OUT_MS, PIP_REVEAL_DELAY_MS);
           }
           continue;
         }
@@ -1195,8 +1147,6 @@ export class Dice3D {
             // After tumble, sync orientation to target face on next syncDice tick
             // (faces will be snapped via store update from ROLL_SETTLED)
             d.startQuat.copy(d.group.quaternion);
-            // Settle: dim all non-up faces, leave up-face glowing.
-            this.setFaceFade(d, this.faceTargetsOnlyUp(d.upFace), PIP_FADE_OUT_MS, PIP_REVEAL_DELAY_MS);
           }
         } else {
           // Position + scale + face-quat smooth lerp
@@ -1259,33 +1209,6 @@ export class Dice3D {
           );
         }
 
-        // Per-face pip fade driver — drives each face's lens + halo opacity
-        // toward its independent target. Lens opacity is capped so emissive
-        // doesn't blow out the bloom.
-        if (d.faceFadeStart > 0) {
-          const dt = now - d.faceFadeStart;
-          if (dt >= 0) {
-            const t = Math.min(1, dt / d.faceFadeDurMs);
-            for (let f = 1; f <= 6; f++) {
-              const tgt = d.faceTarget[f]!;
-              const eased = tgt >= d.faceFrom[f]!
-                ? 1 - Math.pow(1 - t, 3)   // fade-in: ease-out cubic
-                : t;                        // fade-out: linear
-              const next = d.faceFrom[f]! + (tgt - d.faceFrom[f]!) * eased;
-              d.faceCur[f] = next;
-              d.faceLensMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = Math.min(0.78, next);
-              d.faceHaloMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = next;
-            }
-            if (t >= 1) {
-              d.faceFadeStart = 0;
-              for (let f = 1; f <= 6; f++) {
-                d.faceCur[f] = d.faceTarget[f]!;
-                d.faceLensMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = Math.min(0.78, d.faceTarget[f]!);
-                d.faceHaloMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = d.faceTarget[f]!;
-              }
-            }
-          }
-        }
       }
       this.updateHoldConstellation();
       this.renderer.render(this.scene, this.camera);
