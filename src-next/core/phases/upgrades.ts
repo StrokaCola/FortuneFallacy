@@ -1,7 +1,7 @@
 import { getByPhase } from '../upgrades/registry';
-import { Phase, type PhaseFn } from '../pipeline/types';
+import { Phase, type PhaseFn, type PipelineCtx } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
-import { lookupMod } from '../mods';
+import { applyDieModStep } from '../mods/applyDieModStep';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -23,6 +23,13 @@ export const upgrades: PhaseFn = (ctx) => {
 
   next = applyModScoring(next);
 
+  // Encore: re-fire the LAST scoring die's mods once more (chips/mult only).
+  // Implemented here (not as a registered Upgrade) because it has to re-run
+  // the per-die mod loop AFTER applyModScoring has already finished.
+  if (next.state.run.catalysts.includes('encore') && !catalystsBlocked) {
+    next = applyEncore(next);
+  }
+
   return next;
 };
 
@@ -33,47 +40,74 @@ const applyModScoring: PhaseFn = (ctx) => {
   const order = ctx.state.round.scoringOrder ?? fallbackOrder;
   // Filter to valid indices in case scoringOrder references stale dice.
   const scoringDice = order.filter((idx) => idx >= 0 && idx < faces.length);
+  const scoringFaces = scoringDice.map((i) => faces[i]!);
 
   let chips = ctx.chips;
   let mult = ctx.mult;
   const events = [...ctx.events];
+  let titheBudget = ctx.state.round.tithePrimedThisHand ?? 0;
 
   for (let pos = 0; pos < scoringDice.length; pos++) {
     const i = scoringDice[pos]!;
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
-    for (const id of mods) {
-      const def = lookupMod(id);
-      if (!def) continue;
-      let dChips = 0;
-      let dMult = 0;
-      if (def.scoreBonus) dChips += def.scoreBonus;
-      if (def.multBonus) dMult += def.multBonus;
-      if (def.snakeEyes && face === 1) dMult += def.snakeEyes;
-      if (def.highFaceMult && (face === 5 || face === 6)) dMult += def.highFaceMult;
-      if (def.chipPerPip) dChips += def.chipPerPip * face;
-      if (def.evenFaceMult && face % 2 === 0) dMult += def.evenFaceMult;
-      if (def.pairBonus) {
-        const matches = faces.filter((f) => f === face).length - 1;
-        if (matches > 0) dMult += def.pairBonus * matches;
-      }
-      // Order-aware fields (mod entries added in Task 3).
-      if (def.firstBonus && pos === 0) dChips += def.firstBonus;
-      if (def.lastBonus && pos === scoringDice.length - 1) dChips += def.lastBonus;
-      if (def.chainMult && pos > 0) dMult += def.chainMult * pos;
-      if (dChips !== 0 || dMult !== 0) {
-        chips += dChips;
-        mult += dMult;
+    const step = applyDieModStep(
+      { face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget },
+      mods,
+    );
+    titheBudget -= step.titheCost;
+    chips += step.dChips;
+    mult += step.dMult;
+    if (step.dMultMul !== 1) mult *= step.dMultMul;
+    for (const ev of step.events) {
+      if (ev.type === 'upgrade') {
         events.push({
           type: 'onUpgradeTriggered',
-          payload: { id: `mod:${id}@${i}`, phase: Phase.UPGRADES, deltaChips: dChips, deltaMult: dMult },
+          payload: { id: `mod:${ev.modId}@${ev.dieIdx}`, phase: Phase.UPGRADES, deltaChips: ev.dChips, deltaMult: ev.dMult },
         });
+      } else {
         events.push({
           type: 'onModFired',
-          payload: { dieIdx: i, modId: id, faceValue: face },
+          payload: { dieIdx: ev.dieIdx, modId: ev.modId, faceValue: ev.faceValue },
         });
       }
     }
   }
   return { ...ctx, chips, mult, events };
+};
+
+// Encore: re-fire the LAST scoring die's mods once more. Doesn't consume
+// extra tithe budget (tithe already counted once during applyModScoring).
+const applyEncore: PhaseFn = (ctx: PipelineCtx) => {
+  const faces = ctx.sim?.finalFaces ?? [];
+  const order = ctx.state.round.scoringOrder ?? faces.map((_, i) => i);
+  const scoringDice = order.filter((idx) => idx >= 0 && idx < faces.length);
+  if (scoringDice.length === 0) return ctx;
+  const lastPos = scoringDice.length - 1;
+  const lastIdx = scoringDice[lastPos]!;
+  const face = faces[lastIdx]!;
+  const mods = ctx.state.run.diceMods[lastIdx] ?? [];
+  const step = applyDieModStep(
+    {
+      face, dieIdx: lastIdx, pos: lastPos, totalScoring: scoringDice.length,
+      scoringFaces: scoringDice.map((i) => faces[i]!),
+      titheBudget: 0, // Encore never re-charges tithe.
+    },
+    mods,
+  );
+  if (step.dChips === 0 && step.dMult === 0 && step.dMultMul === 1) return ctx;
+  let mult = ctx.mult + step.dMult;
+  if (step.dMultMul !== 1) mult *= step.dMultMul;
+  return {
+    ...ctx,
+    chips: ctx.chips + step.dChips,
+    mult,
+    events: [
+      ...ctx.events,
+      {
+        type: 'onUpgradeTriggered',
+        payload: { id: 'encore', phase: Phase.UPGRADES, deltaChips: step.dChips, deltaMult: mult - ctx.mult },
+      },
+    ],
+  };
 };

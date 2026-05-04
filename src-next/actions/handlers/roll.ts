@@ -4,6 +4,9 @@ import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
 import { lookupMod } from '../../core/mods';
 import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
+import { recursiveSinkActive } from '../../core/upgrades/catalysts/recursiveSink';
+import { grantStipend } from '../../core/upgrades/catalysts/stipend';
+import { updateComboStreaks } from '../../core/round/comboStreak';
 import type { GameEventEmission } from '../../events/types';
 
 export const rollHandler: ActionHandler = (a, s) => {
@@ -81,12 +84,40 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
     }
     case 'SCORE_HAND': {
-      const primed = shardSinkActive(s);
-      const shardsAfter = primed ? s.run.shards - 1 : s.run.shards;
+      // Stipend grants its +1 shard BEFORE shard_sink/tithe prime so the new
+      // shard is available to spend this hand.
+      const stateAfterStipend = grantStipend(s);
+      const primed = shardSinkActive(stateAfterStipend);
+      const shardsAfterSink = primed ? stateAfterStipend.run.shards - 1 : stateAfterStipend.run.shards;
+      // Recursive Sink: needs shard_sink active AND ≥1 more shard available.
+      const recPrimed =
+        primed &&
+        recursiveSinkActive(stateAfterStipend) &&
+        shardsAfterSink >= 1;
+      const shardsAfterRecSink = recPrimed ? shardsAfterSink - 1 : shardsAfterSink;
+      // Tithe budget: 1 shard per scoring die that carries Tithe, capped at
+      // shards remaining after shard_sink + recursive_sink draws. Computed
+      // once before the pipeline so each Tithe instance can self-skip when
+      // budget hits 0.
+      const scoringIdxs = stateAfterStipend.round.scoringOrder ?? stateAfterStipend.round.dice.map((_, i) => i);
+      const titheInstances = scoringIdxs.reduce((n, idx) => {
+        const mods = stateAfterStipend.run.diceMods[idx] ?? [];
+        return n + mods.filter((id) => {
+          const def = lookupMod(id);
+          return !!(def?.titheChips || def?.titheMult);
+        }).length;
+      }, 0);
+      const titheBudget = Math.min(titheInstances, shardsAfterRecSink);
+      const shardsAfterTithe = shardsAfterRecSink - titheBudget;
       const workingState = {
-        ...s,
-        run: { ...s.run, shards: shardsAfter },
-        round: { ...s.round, shardSinkPrimedThisHand: primed },
+        ...stateAfterStipend,
+        run: { ...stateAfterStipend.run, shards: shardsAfterTithe },
+        round: {
+          ...stateAfterStipend.round,
+          shardSinkPrimedThisHand: primed,
+          recursiveSinkPrimedThisHand: recPrimed,
+          tithePrimedThisHand: titheBudget,
+        },
       };
       const baseCtx = runRollPipelineUpToSim(workingState);
       const fakeResult = {
@@ -115,10 +146,15 @@ export const rollHandler: ActionHandler = (a, s) => {
       });
       const newScore = workingState.round.score + final.total;
       const newHandsLeft = Math.max(0, workingState.round.handsLeft - 1);
+      const streakUpdates = updateComboStreaks(
+        workingState.run,
+        final.combo ? { id: final.combo.id, tier: final.combo.tier } : null,
+      );
       const baseState = {
         ...workingState,
         run: {
           ...workingState.run,
+          ...streakUpdates,
           shards: shardBonus > 0 ? workingState.run.shards + shardBonus : workingState.run.shards,
           handsPlayed: workingState.run.handsPlayed + 1,
         },
@@ -132,6 +168,8 @@ export const rollHandler: ActionHandler = (a, s) => {
           chainLen: final.chain?.len ?? workingState.round.chainLen,
           chainTier: final.chain?.tier ?? workingState.round.chainTier,
           shardSinkPrimedThisHand: false,
+          recursiveSinkPrimedThisHand: false,
+          tithePrimedThisHand: 0,
           lastScoringCtx: {
             combo: final.combo ?? null,
             chips: final.chips ?? 0,

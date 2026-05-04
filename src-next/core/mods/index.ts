@@ -17,6 +17,12 @@ export const MOD_IDS = [
   'vanguard',
   'capstone',
   'conduit',
+  'tithe',
+  'resonance',
+  'crescendo',
+  'crown',
+  'brittle',
+  'wildcard',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -46,6 +52,25 @@ export type ModDef = {
   firstBonus?: number;
   lastBonus?: number;
   chainMult?: number;
+  // Tithe: per-die cost-gated chips/mult. Cost is 1 shard per scoring die,
+  // drawn from `round.tithePrimedThisHand` budget set in SCORE_HAND.
+  titheChips?: number;
+  titheMult?: number;
+  // Resonance: marker mod. The OTHER mod on the same die fires twice
+  // (chips/mult only). See `applyDieModStep`.
+  resonate?: boolean;
+  // Crescendo: inverse of chainMult — +X mult per die scored AFTER this one.
+  chainMultPost?: number;
+  // Crown: multiplicative ×mult applied at end of die's scoring when face
+  // matches `crownFace` (default 6). Applied AFTER additive mods on the die.
+  crownMult?: number;
+  crownFace?: number;
+  // Brittle: mod is destroyed when the hand busts the blind. Handled in
+  // `bustBlind` (transitions.ts).
+  loseOnBust?: boolean;
+  // Wildcard: face is replaced (in postRollModifiers) with whatever value
+  // maximizes the resulting combo tier.
+  wildcard?: boolean;
   visual?: ModVisual;
 };
 
@@ -117,6 +142,42 @@ export const MODS: ModDef[] = [
     desc: '+1 mult per die scored before this one',
     chainMult: 1,
     visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'tithe', name: 'Tithe', icon: '⛁',
+    desc: '+5 chips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
+    titheChips: 5, titheMult: 2,
+    visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'pulse' },
+  },
+  {
+    id: 'resonance', name: 'Resonance', icon: '♺',
+    desc: 'The other mod on this die fires a second time (chips/mult only).',
+    resonate: true,
+    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'crescendo', name: 'Crescendo', icon: '⫷',
+    desc: '+1 mult per die scored after this one',
+    chainMultPost: 1,
+    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse' },
+  },
+  {
+    id: 'crown', name: 'Crown', icon: '♛',
+    desc: 'If face is 6: ×1.5 mult on this die (multiplicative)',
+    crownMult: 1.5, crownFace: 6,
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
+  },
+  {
+    id: 'brittle', name: 'Brittle', icon: '☄',
+    desc: '+5 mult per scoring die. Destroyed if the hand busts.',
+    multBonus: 5, loseOnBust: true,
+    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse' },
+  },
+  {
+    id: 'wildcard', name: 'Wildcard', icon: '✱',
+    desc: 'Counts as any face for combo detection (chooses best).',
+    wildcard: true,
+    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse' },
   },
 ];
 

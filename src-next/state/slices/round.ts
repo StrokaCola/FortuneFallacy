@@ -18,6 +18,14 @@ export type RoundSlice = {
   chainLen: number;
   chainTier: number;
   shardSinkPrimedThisHand: boolean;
+  // Recursive Sink: set by SCORE_HAND when both shard_sink and recursive_sink
+  // own + can afford the surcharge. Catalyst applies its ×1.25 mult only when
+  // this flag is true.
+  recursiveSinkPrimedThisHand: boolean;
+  // Tithe budget for this hand: the per-die shard cost is consumed from this
+  // counter inside `applyDieModStep`. Set to `min(run.shards, scoringDieCount)`
+  // by SCORE_HAND before running the pipeline.
+  tithePrimedThisHand: number;
   firstHandPlayed: boolean;
   scoringOrder: number[];
   lastScoringCtx?: {
@@ -51,6 +59,8 @@ export const initialRoundSlice = (): RoundSlice => ({
   chainLen: 0,
   chainTier: -1,
   shardSinkPrimedThisHand: false,
+  recursiveSinkPrimedThisHand: false,
+  tithePrimedThisHand: 0,
   firstHandPlayed: false,
   scoringOrder: [0, 1, 2, 3, 4],
 });

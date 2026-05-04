@@ -3,6 +3,15 @@ import type { GameEventEmission } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
 import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
+import { lookupMod } from '../mods';
+
+// Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
+// the blind (both hard-bust and soft-bust ≥75% paths).
+function dropBrittleMods(diceMods: string[][]): string[][] {
+  return diceMods.map((mods) =>
+    mods.filter((id) => !lookupMod(id)?.loseOnBust),
+  );
+}
 
 export function startBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const ante = s.run.ante;
@@ -79,7 +88,14 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
     return {
       state: {
         ...s,
-        run: { ...s.run, catalysts: droppedCatalysts, goalIdx: nextGoal, ante: nextAnte, compoundingStacks: 0 },
+        run: {
+          ...s.run,
+          catalysts: droppedCatalysts,
+          goalIdx: nextGoal,
+          ante: nextAnte,
+          compoundingStacks: 0,
+          diceMods: dropBrittleMods(s.run.diceMods),
+        },
         round: { ...s.round, active: false, chainLen: 0, chainTier: -1 },
         ui: { ...s.ui, screen: 'shop' },
       },
@@ -92,7 +108,7 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       ...s,
       ui: { ...s.ui, screen: 'fail' },
       round: { ...s.round, active: false },
-      run: { ...s.run, compoundingStacks: 0 },
+      run: { ...s.run, compoundingStacks: 0, diceMods: dropBrittleMods(s.run.diceMods) },
       meta: { ...s.meta, highScores },
     },
     events: [],
