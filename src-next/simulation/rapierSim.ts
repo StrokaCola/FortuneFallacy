@@ -1,5 +1,5 @@
 import type { SimulationRequest, SimulationResult, DieFrame } from '../events/types';
-import { faceCorrection, quatIdentity, quatMul, quatSlerp } from './faceFromPose';
+import { faceCorrection, quatMul } from './faceFromPose';
 import { mulberry32 } from '../core/rng';
 
 type RapierModule = typeof import('@dimforge/rapier3d');
@@ -101,13 +101,17 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     return { x: t.x, y: t.y, z: t.z };
   });
 
-  // Steer each die's last few frames toward its predetermined face. The
-  // physics tumble is preserved for the bulk of the roll; only the final
-  // ~200ms blend in a local-frame correction so the chosen face ends up on
-  // top. Visually this looks like a natural settling rotation.
-  const SETTLE_FRAMES = 12;
+  // Map each die's physics tumble onto its predetermined face by applying a
+  // local-frame correction quaternion to every captured frame. Because the
+  // correction is right-multiplied (body frame), the world-space angular
+  // velocity at every instant is unchanged — the die tumbles, bounces, and
+  // settles exactly like physics produced, but with the cube relabeled so
+  // the chosen face is the one that ends up on top. Since the correction
+  // between two face normals is always one of the 24 cube symmetries
+  // (a 90° or 180° rotation around an axis), the cube also stays flush
+  // with the floor at rest. No post-settle flip.
   const targets = req.predeterminedFaces ?? [];
-  bodies.forEach((b, i) => {
+  bodies.forEach((_b, i) => {
     const fr = frames[i];
     if (!fr || fr.length === 0) return;
     const target = targets[i];
@@ -118,25 +122,15 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
       target,
     );
     if (corr.x === 0 && corr.y === 0 && corr.z === 0 && corr.w === 1) return;
-    const startIdx = Math.max(0, fr.length - SETTLE_FRAMES);
-    const span = fr.length - 1 - startIdx;
-    if (span <= 0) {
-      const last = fr[fr.length - 1]!;
-      const q = quatMul({ x: last.qx, y: last.qy, z: last.qz, w: last.qw }, corr);
-      last.qx = q.x; last.qy = q.y; last.qz = q.z; last.qw = q.w;
-      return;
-    }
-    for (let k = 0; k <= span; k++) {
-      const t = k / span;
-      const partial = quatSlerp(quatIdentity(), corr, t);
-      const f = fr[startIdx + k]!;
-      const q = quatMul({ x: f.qx, y: f.qy, z: f.qz, w: f.qw }, partial);
+    for (let k = 0; k < fr.length; k++) {
+      const f = fr[k]!;
+      const q = quatMul({ x: f.qx, y: f.qy, z: f.qz, w: f.qw }, corr);
       f.qx = q.x; f.qy = q.y; f.qz = q.z; f.qw = q.w;
     }
   });
 
   // Final faces come from the predetermined sequence, not from where the
-  // physics happened to land. The frame-correction above makes sure the
+  // physics happened to land. The frame correction above makes sure the
   // visual rest pose matches.
   const finalFaces = bodies.map((_, i) => targets[i] ?? 1);
 
