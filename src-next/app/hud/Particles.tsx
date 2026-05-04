@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
-import { STAGE_W, STAGE_H, mapClientToStage } from '../../render/stage';
-import { animateOrbital } from './orbitalFly';
+import { STAGE_W, STAGE_H } from '../../render/stage';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
-type FlyNum = { id: number; fromX: number; fromY: number; toX: number; toY: number; text: string; color: string };
+type FlyNum = { id: number; x: number; y: number; text: string; color: string };
 
 const TIER_COLORS = ['#9577ff', '#7be3ff', '#dcd4ff', '#5be8a4', '#f5c451', '#ff7847', '#ff4d6d', '#ff8edc', '#ffe98a'];
 
@@ -43,21 +42,10 @@ export function Particles() {
       }
       if (beat.kind === 'die-tick') {
         const id = nextId++;
-        const counterEl = document.querySelector('[data-score-counter]') as HTMLElement | null;
-        const stageRoot = document.getElementById('stage-root');
-        let toX = STAGE_W / 2;
-        let toY = 80;
-        if (counterEl && stageRoot) {
-          const r = counterEl.getBoundingClientRect();
-          const sr = stageRoot.getBoundingClientRect();
-          const center = mapClientToStage(r.left + r.width / 2, r.top + r.height / 2, sr);
-          toX = center.x;
-          toY = center.y;
-        }
-        const fromX = STAGE_W * (0.2 + 0.15 * beat.dieIdx);
-        const fromY = STAGE_H * 0.65;
-        setFlies((f) => [...f, { id, fromX, fromY, toX, toY, text: `+${beat.chipDelta}`, color: '#7be3ff' }]);
-        setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 1200);
+        const x = STAGE_W * (0.2 + 0.15 * beat.dieIdx);
+        const y = STAGE_H * 0.65;
+        setFlies((f) => [...f, { id, x, y, text: `+${beat.chipDelta}`, color: '#7be3ff' }]);
+        setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 900);
       }
     });
     return () => { off1(); off3(); off4(); };
@@ -72,7 +60,7 @@ export function Particles() {
         <Shockwave key={s.id} x={s.x} y={s.y} scale={s.scale} />
       ))}
       {flies.map((f) => (
-        <FlyingNumber key={f.id} from={{ x: f.fromX, y: f.fromY }} to={{ x: f.toX, y: f.toY }} text={f.text} color={f.color} />
+        <PopFloatNumber key={f.id} x={f.x} y={f.y} text={f.text} color={f.color} />
       ))}
     </div>
   );
@@ -111,32 +99,17 @@ function Shockwave({ x, y, scale }: { x: number; y: number; scale: number }) {
   );
 }
 
-function FlyingNumber({ from, to, text, color }: { from: { x: number; y: number }; to: { x: number; y: number }; text: string; color: string }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    ref.current.style.transform = `translate(${from.x}px, ${from.y}px)`;
-    ref.current.style.opacity = '1';
-    const handle = animateOrbital(ref.current, {
-      startX: from.x,
-      startY: from.y,
-      endX: to.x,
-      endY: to.y,
-      durationMs: 1100,
-    });
-    return () => handle.dispose();
-  }, [from.x, from.y, to.x, to.y]);
-
+function PopFloatNumber({ x, y, text, color }: { x: number; y: number; text: string; color: string }) {
   return (
-    <div ref={ref} style={{
+    <div style={{
       position: 'absolute',
-      left: 0, top: 0,
+      left: x, top: y,
       color, fontFamily: '"Cinzel Decorative", serif',
-      fontSize: 24, fontWeight: 700,
+      fontSize: 26, fontWeight: 700,
       textShadow: `0 0 10px ${color}`,
-      transform: `translate(${from.x}px, ${from.y}px)`,
+      animation: 'scoreDiePop 850ms cubic-bezier(0.2, 1.2, 0.4, 1) forwards',
       willChange: 'transform, opacity',
+      pointerEvents: 'none',
     }}>{text}</div>
   );
 }
