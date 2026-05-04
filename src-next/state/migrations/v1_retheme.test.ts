@@ -67,6 +67,7 @@ describe('migrateRetheme', () => {
         diceMods: [['amplify']],
         handsPlayed: 0,
         compoundingStacks: 0,
+        rollCounter: 0,
       },
       round: { shardSinkPrimedThisHand: false, firstRollDone: false },
     };

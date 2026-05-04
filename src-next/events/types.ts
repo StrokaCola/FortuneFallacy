@@ -10,6 +10,11 @@ export type DieSnapshot = {
 export type SimulationRequest = {
   diceToRoll: number[];
   seed: number;
+  // Faces decided by the seeded RNG before physics runs. Length matches
+  // the dice in the round; locked dice carry their existing face so the
+  // simulation can be steered to land on the predetermined value while
+  // still tumbling naturally.
+  predeterminedFaces: number[];
 };
 
 export type DieFrame = { px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number };

@@ -1,5 +1,5 @@
 import type { SimulationRequest, SimulationResult, DieFrame } from '../events/types';
-import { faceFromQuaternion } from './faceFromPose';
+import { faceCorrection, quatIdentity, quatMul, quatSlerp } from './faceFromPose';
 import { mulberry32 } from '../core/rng';
 
 type RapierModule = typeof import('@dimforge/rapier3d');
@@ -36,7 +36,7 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   const r = await ensureRapier();
   if (!r) return null;
 
-  const rng = mulberry32(req.seed ^ Date.now());
+  const rng = mulberry32(req.seed >>> 0);
   const world: World = new r.World({ x: 0, y: -9.81, z: 0 });
 
   const floorDesc = r.ColliderDesc.cuboid(10, 0.1, 8).setTranslation(0, FLOOR_Y - 0.1, 0).setRestitution(0.45);
@@ -95,14 +95,50 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     if (settled.every(Boolean) && step > 30) break;
   }
 
-  const finalFaces: number[] = [];
   const restPositions = bodies.map((b, i) => {
     const t = b.translation();
-    const q = b.rotation();
-    finalFaces.push(faceFromQuaternion({ x: q.x, y: q.y, z: q.z, w: q.w }));
     if (settleMs[i] === 0) settleMs[i] = 4000;
     return { x: t.x, y: t.y, z: t.z };
   });
+
+  // Steer each die's last few frames toward its predetermined face. The
+  // physics tumble is preserved for the bulk of the roll; only the final
+  // ~200ms blend in a local-frame correction so the chosen face ends up on
+  // top. Visually this looks like a natural settling rotation.
+  const SETTLE_FRAMES = 12;
+  const targets = req.predeterminedFaces ?? [];
+  bodies.forEach((b, i) => {
+    const fr = frames[i];
+    if (!fr || fr.length === 0) return;
+    const target = targets[i];
+    if (target == null) return;
+    const restQ = fr[fr.length - 1]!;
+    const corr = faceCorrection(
+      { x: restQ.qx, y: restQ.qy, z: restQ.qz, w: restQ.qw },
+      target,
+    );
+    if (corr.x === 0 && corr.y === 0 && corr.z === 0 && corr.w === 1) return;
+    const startIdx = Math.max(0, fr.length - SETTLE_FRAMES);
+    const span = fr.length - 1 - startIdx;
+    if (span <= 0) {
+      const last = fr[fr.length - 1]!;
+      const q = quatMul({ x: last.qx, y: last.qy, z: last.qz, w: last.qw }, corr);
+      last.qx = q.x; last.qy = q.y; last.qz = q.z; last.qw = q.w;
+      return;
+    }
+    for (let k = 0; k <= span; k++) {
+      const t = k / span;
+      const partial = quatSlerp(quatIdentity(), corr, t);
+      const f = fr[startIdx + k]!;
+      const q = quatMul({ x: f.qx, y: f.qy, z: f.qz, w: f.qw }, partial);
+      f.qx = q.x; f.qy = q.y; f.qz = q.z; f.qw = q.w;
+    }
+  });
+
+  // Final faces come from the predetermined sequence, not from where the
+  // physics happened to land. The frame-correction above makes sure the
+  // visual rest pose matches.
+  const finalFaces = bodies.map((_, i) => targets[i] ?? 1);
 
   world.free();
   eventQueue.free();
