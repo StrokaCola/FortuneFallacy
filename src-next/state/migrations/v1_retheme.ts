@@ -69,16 +69,39 @@ export function migrateRetheme(saved: unknown): unknown {
 
   const round = next.round as Record<string, unknown> | undefined;
 
-  // round.diceRunes -> round.diceMods
-  if (round && Array.isArray(round.diceRunes) && !Array.isArray(round.diceMods)) {
-    const updated: Record<string, unknown> = {
-      ...round,
-      diceMods: (round.diceRunes as string[][]).map((arr) =>
-        arr.map((id) => MOD_ID_MAP[id] ?? id),
-      ),
-    };
-    delete updated.diceRunes;
-    next.round = updated;
+  // round.diceRunes -> run.diceMods (lifted to run-level for cross-blind persistence)
+  if (round && Array.isArray(round.diceRunes)) {
+    const lifted = (round.diceRunes as string[][]).map((arr) =>
+      arr.map((id) => MOD_ID_MAP[id] ?? id),
+    );
+    const updatedRound: Record<string, unknown> = { ...round };
+    delete updatedRound.diceRunes;
+    next.round = updatedRound;
+    const runX = next.run as Record<string, unknown> | undefined;
+    if (runX && !Array.isArray(runX.diceMods)) {
+      next.run = { ...runX, diceMods: lifted };
+    }
+  }
+
+  // round.diceMods -> run.diceMods (legacy: prior shape stored mods on round)
+  const round1 = next.round as Record<string, unknown> | undefined;
+  if (round1 && Array.isArray(round1.diceMods)) {
+    const lifted = (round1.diceMods as string[][]).map((arr) =>
+      arr.map((id) => MOD_ID_MAP[id] ?? id),
+    );
+    const updatedRound: Record<string, unknown> = { ...round1 };
+    delete updatedRound.diceMods;
+    next.round = updatedRound;
+    const runX = next.run as Record<string, unknown> | undefined;
+    if (runX && !Array.isArray(runX.diceMods)) {
+      next.run = { ...runX, diceMods: lifted };
+    }
+  }
+
+  // run.diceMods default — ensure RunSlice always has the field
+  const run4 = next.run as Record<string, unknown> | undefined;
+  if (run4 && !Array.isArray(run4.diceMods)) {
+    next.run = { ...run4, diceMods: Array.from({ length: 5 }, () => [] as string[]) };
   }
 
   // round.blindId — boss id remap (only if it matches a known old id)

@@ -10,7 +10,7 @@ import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
 } from '../../state/selectors';
 
-const selectDiceMods = (s: GameState) => s.round.diceMods;
+const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectDice = (s: GameState) => s.round.dice;
 const selectMaxMod = (s: GameState) => maxModSlots(s);
 

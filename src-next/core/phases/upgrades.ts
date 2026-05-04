@@ -28,7 +28,7 @@ export const upgrades: PhaseFn = (ctx) => {
 
 const applyModScoring: PhaseFn = (ctx) => {
   const faces = ctx.sim?.finalFaces ?? [];
-  const diceMods = ctx.state.round.diceMods;
+  const diceMods = ctx.state.run.diceMods;
   const fallbackOrder = faces.map((_, i) => i);
   const order = ctx.state.round.scoringOrder ?? fallbackOrder;
   // Filter to valid indices in case scoringOrder references stale dice.

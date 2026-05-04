@@ -17,6 +17,8 @@ function makeState(overrides: Partial<{ shards: number; catalysts: string[]; han
       consumables: [],
       handsPlayed: overrides.handsPlayed ?? 0,
       compoundingStacks: 0,
+      ownedMods: [],
+      diceMods: [[], [], [], [], []],
     },
     round: {
       active: true,
@@ -35,7 +37,6 @@ function makeState(overrides: Partial<{ shards: number; catalysts: string[]; han
       firstRollDone: false,
       chainLen: 0,
       chainTier: -1,
-      diceMods: [[], [], [], [], []],
       shardSinkPrimedThisHand: false,
     },
     meta: { playerName: 'test', highScores: [] },

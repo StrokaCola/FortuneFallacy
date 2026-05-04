@@ -84,7 +84,7 @@ describe('ATTACH_MOD with ownedMods inventory', () => {
     const s = baseState({ ownedMods: ['amplify', 'sharpened'] });
     const r = diceHandler({ type: 'ATTACH_MOD', dieIdx: 0, modId: 'amplify' }, s);
     expect(r.state.run.ownedMods).toEqual(['sharpened']);
-    expect(r.state.round.diceMods[0]).toEqual(['amplify']);
+    expect(r.state.run.diceMods[0]).toEqual(['amplify']);
   });
 
   it('rejects attach when player does not own the mod', () => {
@@ -103,10 +103,10 @@ describe('ATTACH_MOD with ownedMods inventory', () => {
 describe('DETACH_MOD returns to inventory', () => {
   it('returns the detached mod id to ownedMods', () => {
     const s = baseState({ ownedMods: [] });
-    // Simulate already-attached mod by hand-setting diceMods.
-    const sWithAttached = { ...s, round: { ...s.round, diceMods: [['amplify'], [], [], [], []] } };
+    // Simulate already-attached mod by hand-setting diceMods (now on run slice).
+    const sWithAttached = { ...s, run: { ...s.run, diceMods: [['amplify'], [], [], [], []] } };
     const r = diceHandler({ type: 'DETACH_MOD', dieIdx: 0, modIdx: 0 }, sWithAttached);
     expect(r.state.run.ownedMods).toEqual(['amplify']);
-    expect(r.state.round.diceMods[0]).toEqual([]);
+    expect(r.state.run.diceMods[0]).toEqual([]);
   });
 });

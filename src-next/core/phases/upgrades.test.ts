@@ -18,6 +18,7 @@ function makeCtx(overrides: {
     run: {
       catalysts: overrides.catalysts ?? [],
       compoundingStacks: overrides.compoundingStacks ?? 0,
+      diceMods: [],
     },
     round: {
       isBoss: overrides.isBoss ?? false,
@@ -25,7 +26,6 @@ function makeCtx(overrides: {
       handsLeft: overrides.handsLeft ?? 3,
       handsMax: overrides.handsMax ?? 3,
       firstHandPlayed: overrides.firstHandPlayed ?? false,
-      diceMods: [],
     },
   } as unknown as GameState;
   return {
@@ -109,10 +109,9 @@ describe('upgrades phase — Eris first-hand gate (firstHandPlayed)', () => {
 
 function makeModCtx(faces: number[], diceMods: string[][], scoringOrder: number[]): PipelineCtx {
   const state = {
-    run: { seed: 1, shards: 0, ante: 1, goalIdx: 0, catalysts: [], vouchers: [], consumables: [], handsPlayed: 0, compoundingStacks: 0 },
+    run: { seed: 1, shards: 0, ante: 1, goalIdx: 0, catalysts: [], vouchers: [], consumables: [], ownedMods: [], diceMods, handsPlayed: 0, compoundingStacks: 0 },
     round: {
       ...initialRoundSlice(),
-      diceMods,
       scoringOrder,
     },
     shop: { open: false, offers: [], rerollCost: 5 },

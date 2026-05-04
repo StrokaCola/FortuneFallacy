@@ -22,15 +22,35 @@ describe('migrateRetheme', () => {
     expect(m.run.consumables).toEqual(['pin_six', 'shard_drop']);
   });
 
-  it('renames round.diceRunes -> round.diceMods and remaps mod ids', () => {
+  it('lifts round.diceRunes -> run.diceMods and remaps mod ids', () => {
     const old = {
+      run: { catalysts: [] },
       round: {
         diceRunes: [['snake_cult', 'amplify'], ['blessed'], []],
       },
     };
     const m = migrateRetheme(old);
-    expect(m.round.diceMods).toEqual([['snake_eyes', 'amplify'], ['backstop'], []]);
+    expect(m.run.diceMods).toEqual([['snake_eyes', 'amplify'], ['backstop'], []]);
     expect(m.round.diceRunes).toBeUndefined();
+    expect(m.round.diceMods).toBeUndefined();
+  });
+
+  it('lifts legacy round.diceMods -> run.diceMods (and remaps ids)', () => {
+    const old = {
+      run: { catalysts: [] },
+      round: {
+        diceMods: [['snake_cult'], [], ['amplify']],
+      },
+    };
+    const m = migrateRetheme(old);
+    expect(m.run.diceMods).toEqual([['snake_eyes'], [], ['amplify']]);
+    expect(m.round.diceMods).toBeUndefined();
+  });
+
+  it('defaults run.diceMods to [[],[],[],[],[]] when absent', () => {
+    const old = { run: { catalysts: [] }, round: {} };
+    const m = migrateRetheme(old);
+    expect(m.run.diceMods).toEqual([[], [], [], [], []]);
   });
 
   it('remaps boss blindId', () => {
@@ -44,10 +64,11 @@ describe('migrateRetheme', () => {
         catalysts: ['stratifier'],
         vouchers: ['bench'],
         consumables: ['pin_six'],
+        diceMods: [['amplify']],
         handsPlayed: 0,
         compoundingStacks: 0,
       },
-      round: { diceMods: [['amplify']], shardSinkPrimedThisHand: false, firstRollDone: false },
+      round: { shardSinkPrimedThisHand: false, firstRollDone: false },
     };
     expect(migrateRetheme(fresh)).toEqual(fresh);
   });
@@ -61,7 +82,7 @@ describe('migrateRetheme', () => {
   it('defaults handsPlayed, compoundingStacks, shardSinkPrimedThisHand when missing', () => {
     const old = {
       run: { catalysts: [], vouchers: [], consumables: [] },
-      round: { diceMods: [[], [], [], [], []] },
+      round: {},
     };
     const m = migrateRetheme(old) as { run: { handsPlayed: number; compoundingStacks: number }; round: { shardSinkPrimedThisHand: boolean } };
     expect(m.run.handsPlayed).toBe(0);
@@ -71,8 +92,8 @@ describe('migrateRetheme', () => {
 
   it('preserves existing handsPlayed and compoundingStacks values', () => {
     const fresh = {
-      run: { catalysts: [], vouchers: [], consumables: [], handsPlayed: 12, compoundingStacks: 3 },
-      round: { diceMods: [], shardSinkPrimedThisHand: true },
+      run: { catalysts: [], vouchers: [], consumables: [], diceMods: [['amplify']], handsPlayed: 12, compoundingStacks: 3 },
+      round: { shardSinkPrimedThisHand: true },
     };
     const m = migrateRetheme(fresh) as { run: { handsPlayed: number; compoundingStacks: number }; round: { shardSinkPrimedThisHand: boolean } };
     expect(m.run.handsPlayed).toBe(12);

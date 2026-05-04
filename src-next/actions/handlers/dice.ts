@@ -33,25 +33,24 @@ export const diceHandler: ActionHandler = (a, s) => {
       return { state: { ...s, round: initialRoundSlice() }, events: [] };
     case 'ATTACH_MOD': {
       if (!lookupMod(a.modId)) return { state: s, events: [] };
-      const slots = s.round.diceMods[a.dieIdx];
+      const slots = s.run.diceMods[a.dieIdx];
       if (!slots || slots.length >= maxModSlots(s)) return { state: s, events: [] };
       // Mods are inventory items: must own one to attach. Consume on attach.
       const ownedIdx = s.run.ownedMods.indexOf(a.modId);
       if (ownedIdx < 0) return { state: s, events: [] };
       const ownedMods = s.run.ownedMods.filter((_, i) => i !== ownedIdx);
-      const diceMods = s.round.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
+      const diceMods = s.run.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods },
-          round: { ...s.round, diceMods },
+          run: { ...s.run, ownedMods, diceMods },
         },
         events: [],
       };
     }
     case 'DETACH_MOD': {
-      const detachedId = s.round.diceMods[a.dieIdx]?.[a.modIdx];
-      const diceMods = s.round.diceMods.map((r, i) =>
+      const detachedId = s.run.diceMods[a.dieIdx]?.[a.modIdx];
+      const diceMods = s.run.diceMods.map((r, i) =>
         i === a.dieIdx ? r.filter((_, j) => j !== a.modIdx) : r,
       );
       // Detach returns the mod to the inventory (free swaps within shop budget).
@@ -59,8 +58,7 @@ export const diceHandler: ActionHandler = (a, s) => {
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods },
-          round: { ...s.round, diceMods },
+          run: { ...s.run, ownedMods, diceMods },
         },
         events: [],
       };

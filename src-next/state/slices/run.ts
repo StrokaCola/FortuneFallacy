@@ -7,6 +7,9 @@ export type RunSlice = {
   vouchers: string[];
   consumables: string[];
   ownedMods: string[];
+  // Per-die mod attachments. Lives on the run (not the round) so Forge
+  // changes persist across blinds. Indexed by die id (0..4).
+  diceMods: string[][];
   handsPlayed: number;
   compoundingStacks: number;
 };
@@ -20,6 +23,7 @@ export const initialRunSlice = (): RunSlice => ({
   vouchers: [],
   consumables: [],
   ownedMods: [],
+  diceMods: Array.from({ length: 5 }, () => [] as string[]),
   handsPlayed: 0,
   compoundingStacks: 0,
 });
