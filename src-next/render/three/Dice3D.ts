@@ -24,9 +24,11 @@ const DICE_GAP = 1.7;
 const HOLD_Y = 0.0;
 const HOLD_Z = 5.2;            // hold strip just above the action bar
 const HOLD_SCALE = 1.1;        // bring locked dice closer to camera (bigger)
-const ROLL_TRAY_Z = 0.0;       // tray centred on rapier sim tray (TRAY_MIN..TRAY_MAX)
-const ROLL_TRAY_W = 14;        // visual frame stretches past playable area to fill side margins
-const ROLL_TRAY_H = 8;         // matches rapierSim TRAY_MIN/TRAY_MAX = ±4 in Z
+const ROLL_TRAY_Z = 0.0;       // tray centred on rapier sim tray
+const ROLL_TRAY_W = 14;        // visual frame width — matches rapierSim TRAY_X * 2 + small overhang
+const ROLL_TRAY_H = 8;         // visual frame height — matches rapierSim TRAY_Z * 2
+const PLAY_W = 13;             // playable X extent (rapierSim TRAY_X * 2)
+const PLAY_H = 8;              // playable Z extent (rapierSim TRAY_Z * 2)
 
 // Lock-snap rotations: orient face value N so its local outward normal lands
 // at world +Y (toward the top-down camera). Local face normals come from
@@ -832,8 +834,8 @@ export class Dice3D {
         // Unlocking: send the die back into the rolling tray to a random
         // empty spot so it can be re-rolled. Stay inside the sim tray walls.
         const margin = 1.0;
-        const rx = (Math.random() - 0.5) * (ROLL_TRAY_W - margin * 2);
-        const rz = ROLL_TRAY_Z + (Math.random() - 0.5) * (ROLL_TRAY_H - margin * 2);
+        const rx = (Math.random() - 0.5) * (PLAY_W - margin * 2);
+        const rz = ROLL_TRAY_Z + (Math.random() - 0.5) * (PLAY_H - margin * 2);
         newTargetPos = new THREE.Vector3(rx, 0, rz);
         newTargetScale = 1;
       } else {

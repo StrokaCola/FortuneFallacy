@@ -18,17 +18,25 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function rollOffers(ownedVouchers: string[]): ShopOffer[] {
+  const offers: ShopOffer[] = [];
+
+  const modIds = shuffle([...MOD_IDS]).slice(0, 2);
+  for (const id of modIds) offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE });
+
   const catalystIds = shuffle([...CATALYST_IDS]).slice(0, 2);
-  const consId = shuffle(CONSUMABLES.map((c) => c.id))[0];
-  const modId = shuffle([...MOD_IDS])[0];
-  const offers: ShopOffer[] = catalystIds.map((id) => ({ kind: 'catalyst' as const, id, price: 5 }));
-  if (consId) offers.push({ kind: 'consumable', id: consId, price: 3 });
-  if (modId) offers.push({ kind: 'mod', id: modId, price: MOD_OFFER_PRICE });
+  for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
+
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
-  if (availableVouchers.length > 0 && Math.random() < 0.5) {
+  const consumableIds = CONSUMABLES.map((c) => c.id);
+  const useVoucher = availableVouchers.length > 0 && (consumableIds.length === 0 || Math.random() < 0.5);
+  if (useVoucher) {
     const v = shuffle(availableVouchers)[0]!;
     offers.push({ kind: 'voucher', id: v.id, price: v.price });
+  } else if (consumableIds.length > 0) {
+    const consId = shuffle(consumableIds)[0]!;
+    offers.push({ kind: 'consumable', id: consId, price: 3 });
   }
+
   return offers;
 }
 

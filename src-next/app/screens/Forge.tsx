@@ -112,12 +112,19 @@ export function Forge() {
                 <div
                   key={i}
                   onClick={() => setSelectedDie(i)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDie(i); }}
                   style={{
                     cursor: 'pointer',
                     opacity: i === selectedDie ? 1 : 0.55,
                     transform: i === selectedDie ? 'translateY(-4px)' : 'none',
                     transition: 'all 200ms',
                     position: 'relative',
+                    padding: 6,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    pointerEvents: 'auto',
                   }}>
                   <DieView face={d.face} size={56} style="celestial" mods={dieMods} />
                   {extraCount > 0 && (
