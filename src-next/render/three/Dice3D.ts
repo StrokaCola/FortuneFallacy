@@ -63,6 +63,10 @@ type DieAnim = {
   faceLensMats: FaceMatMap<THREE.MeshStandardMaterial>;
   faceHaloMats: FaceMatMap<THREE.SpriteMaterial>;
   scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
+  // Constellation-driven base scale. Single-die specs like Argo bump this so
+  // the die fills the empty tray; many-die specs like Mensa shrink it so the
+  // strip still fits. Multiplied with the lerp/lock/pop scale at render time.
+  baseScale: number;
   // Forge mod visuals applied to this die. `modSig` is a stable diff key over
   // run.diceMods[i] used by syncDiceMods to skip rebuilds when ids haven't
   // changed. orbital/rim are owned by this die and disposed on rebuild.
@@ -70,6 +74,17 @@ type DieAnim = {
   orbital: ReturnType<typeof buildOrbitalSatellite> | null;
   rim: ReturnType<typeof buildRimOverlay> | null;
 };
+
+// Resolve a constellation-aware base scale from the number of dice. One die
+// (Argo's d100) gets the full visual real estate; seven dice (Mensa) shrink
+// to keep the row legible.
+function baseScaleForCount(count: number): number {
+  if (count <= 1) return 1.8;
+  if (count <= 3) return 1.25;
+  if (count <= 5) return 1.0;
+  if (count <= 7) return 0.85;
+  return 0.75;
+}
 
 // Per-face pip materials: lens caps at 0.78 to keep emissive bloom in range,
 // halo runs at full opacity. All six faces stay lit at all times.
@@ -514,7 +529,7 @@ export class Dice3D {
             const reduced = document.documentElement.classList.contains('reduce-motion');
             die.group.position.x = target.x;
             die.group.position.y = reduced ? HOLD_Y : HOLD_Y + 0.6; // +Y is toward the top-down camera at Y=14, so this raises the die above the strip plane
-            die.group.scale.setScalar(reduced ? HOLD_SCALE : HOLD_SCALE * 1.15);
+            die.group.scale.setScalar((reduced ? HOLD_SCALE : HOLD_SCALE * 1.15) * die.baseScale);
 
             // Ghost slot sprite at the candidate drop position.
             if (!reduced) {
@@ -554,7 +569,7 @@ export class Dice3D {
           }
           // Restore die transform — syncDice will lerp to the new slot from here.
           draggedDie.group.position.y = HOLD_Y;
-          draggedDie.group.scale.setScalar(HOLD_SCALE);
+          draggedDie.group.scale.setScalar(HOLD_SCALE * draggedDie.baseScale);
         }
         this.disposeGhostSlot();
         this.isDragging = false;
@@ -624,7 +639,7 @@ export class Dice3D {
     if (die) {
       die.group.position.x = this.dragOriginalSlotX;
       die.group.position.y = HOLD_Y;
-      die.group.scale.setScalar(HOLD_SCALE);
+      die.group.scale.setScalar(HOLD_SCALE * die.baseScale);
     }
     this.disposeGhostSlot();
     this.isDragging = false;
@@ -701,6 +716,7 @@ export class Dice3D {
     const allMods = store.getState().run.diceMods;
     const count = Math.max(1, allMods.length);
     const startX = -((count - 1) * DICE_GAP) / 2;
+    const baseScale = baseScaleForCount(count);
     for (let i = 0; i < count; i++) {
       const modIds = allMods[i] ?? [];
       const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
@@ -708,13 +724,14 @@ export class Dice3D {
       built.group.position.copy(home);
       this.scene.add(built.group);
       setAllPipsOn(built.faceLensMats, built.faceHaloMats);
+      built.group.scale.setScalar(baseScale);
       this.dice.push({
         group: built.group,
         homePos: home,
         startPos: home.clone(),
         targetPos: home.clone(),
-        startScale: 1,
-        targetScale: 1,
+        startScale: baseScale,
+        targetScale: baseScale,
         startQuat: new THREE.Quaternion(),
         targetQuat: new THREE.Quaternion(),
         t0: 0,
@@ -729,6 +746,7 @@ export class Dice3D {
         faceLensMats: built.faceLensMats,
         faceHaloMats: built.faceHaloMats,
         scorePopStart: 0,
+        baseScale,
         modSig,
         orbital,
         rim,
@@ -792,6 +810,20 @@ export class Dice3D {
   private ensureDiceCount(targetCount: number): void {
     const current = this.dice.length;
     if (current === targetCount) return;
+    // Refresh baseScale on every die when the count changes — switching from
+    // Lyra (5 dice, scale 1.0) to Argo (1 die, scale 1.8) needs to bump every
+    // existing die, not just newly-appended ones.
+    const baseScale = baseScaleForCount(targetCount);
+    // Retween every existing die toward the new world-space scale so a
+    // mid-session NEW_RUN (e.g. Lyra→Argo) animates the resize cleanly.
+    const now = performance.now();
+    for (const d of this.dice) {
+      d.baseScale = baseScale;
+      d.startScale = d.group.scale.x;
+      d.targetScale = baseScale;
+      d.t0 = now;
+      d.duration = 380;
+    }
     if (targetCount > current) {
       const allMods = store.getState().run.diceMods;
       const startX = -((targetCount - 1) * DICE_GAP) / 2;
@@ -800,6 +832,7 @@ export class Dice3D {
         const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
         const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
         built.group.position.copy(home);
+        built.group.scale.setScalar(baseScale);
         this.scene.add(built.group);
         setAllPipsOn(built.faceLensMats, built.faceHaloMats);
         this.dice.push({
@@ -807,8 +840,8 @@ export class Dice3D {
           homePos: home,
           startPos: home.clone(),
           targetPos: home.clone(),
-          startScale: 1,
-          targetScale: 1,
+          startScale: baseScale,
+          targetScale: baseScale,
           startQuat: new THREE.Quaternion(),
           targetQuat: new THREE.Quaternion(),
           t0: 0,
@@ -823,6 +856,7 @@ export class Dice3D {
           faceLensMats: built.faceLensMats,
           faceHaloMats: built.faceHaloMats,
           scorePopStart: 0,
+          baseScale,
           modSig,
           orbital,
           rim,
@@ -888,7 +922,8 @@ export class Dice3D {
       const isLocked = !!d.locked;
       die.locked = isLocked;
 
-      // Position target
+      // Position target. Scale targets are world-space and bake in `baseScale`
+      // so single-die specs (Argo) animate to a much larger end-pose.
       let newTargetPos: THREE.Vector3;
       let newTargetScale: number;
       if (isLocked) {
@@ -896,7 +931,7 @@ export class Dice3D {
         // according to scoringOrder (player drag-reorder respected).
         const holdIdx = holdOrder.indexOf(i);
         newTargetPos = new THREE.Vector3(this.holdSlotX(holdIdx, holdCount), HOLD_Y, HOLD_Z);
-        newTargetScale = HOLD_SCALE;
+        newTargetScale = HOLD_SCALE * die.baseScale;
       } else if (wasLocked) {
         // Unlocking: send the die back into the rolling tray to a random
         // empty spot so it can be re-rolled. Stay inside the sim tray walls.
@@ -904,11 +939,11 @@ export class Dice3D {
         const rx = (Math.random() - 0.5) * (PLAY_W - margin * 2);
         const rz = ROLL_TRAY_Z + (Math.random() - 0.5) * (PLAY_H - margin * 2);
         newTargetPos = new THREE.Vector3(rx, 0, rz);
-        newTargetScale = 1;
+        newTargetScale = die.baseScale;
       } else {
         // Settle-in-place: keep the physics-resolved position.
         newTargetPos = die.group.position.clone();
-        newTargetScale = 1;
+        newTargetScale = die.baseScale;
       }
 
       // Reposition all locked dice when count changes
@@ -1132,7 +1167,7 @@ export class Dice3D {
       d.startPos.copy(d.group.position);
       // Stay roughly at home X but drift slightly during roll for liveliness
       d.targetPos.set(d.homePos.x + (Math.random() * 0.4 - 0.2), 0, ROLL_TRAY_Z + (Math.random() * 0.4 - 0.2));
-      d.targetScale = 1;
+      d.targetScale = d.baseScale;
       d.startScale = d.group.scale.x;
       d.t0 = now + i * 30;                     // tiny stagger
       d.duration = 1100 + Math.random() * 250; // 1.1-1.35s tumble
@@ -1195,7 +1230,7 @@ export class Dice3D {
             d.targetQuat.copy(d.group.quaternion); // keep physics rest rotation, no canonical snap
             d.startPos.copy(d.group.position);
             d.targetPos.copy(d.group.position);   // settle in place — no snap to homePos
-            d.targetScale = 1;
+            d.targetScale = d.baseScale;
             d.startScale = d.group.scale.x;
             d.t0 = now;
             d.duration = 1;
