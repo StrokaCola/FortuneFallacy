@@ -43,11 +43,11 @@ export function ScoreBreakdown() {
         case 'cast-swell':
           clearFade();
           setChips(0);
-          setMult(1);
+          setMult(beat.initialMult ?? 1);
           setChipsPulse(0);
           setMultPulse(0);
           setTierPulse(0);
-          prevTierRef.current = 0;
+          prevTierRef.current = beat.initialMult !== undefined ? tierIndex(beat.initialMult) : 0;
           setVisible(true);
           break;
         case 'die-tick':
@@ -59,6 +59,21 @@ export function ScoreBreakdown() {
             setChips((c) => c + beat.chipDelta);
             setChipsPulse((p) => p + 1);
           }
+          break;
+        case 'upgrade-chip':
+          setChips((c) => c + beat.chipDelta);
+          setChipsPulse((p) => p + 1);
+          break;
+        case 'upgrade-mult':
+          setMult((m) => {
+            const next = m + beat.multDelta;
+            const prevT = tierIndex(m);
+            const nextT = tierIndex(next);
+            if (nextT > prevT) setTierPulse((p) => p + 1);
+            prevTierRef.current = nextT;
+            return next;
+          });
+          setMultPulse((p) => p + 1);
           break;
         case 'mult-slam':
           setMult((m) => {

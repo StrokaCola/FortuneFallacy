@@ -304,3 +304,148 @@ describe('buildScoreSequence — tier selection', () => {
     expect(ticks.map((b) => (b.kind === 'die-tick' ? b.dieIdx : -1))).toEqual([3, 4]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Upgrade-beat path (baseMult provided)
+// ---------------------------------------------------------------------------
+
+const upgradeInput = (overrides: Partial<SequenceInput> = {}): SequenceInput => ({
+  faces: [3, 3, 3],
+  comboLabel: 'THREE_KIND',
+  comboBonus: 30,       // base combo chips
+  baseMult: 5,          // combo evaluation mult
+  upgrades: [],
+  mults: [],            // no chain
+  finalTotal: 195,      // (9 + 30) × 5 = 195
+  ...overrides,
+});
+
+describe('buildScoreSequence — upgrade-beat path', () => {
+  it('cast-swell carries initialMult from baseMult', () => {
+    const seq = buildScoreSequence(upgradeInput(), baseCtx({ target: 1000 }));
+    const swell = seq.beats.find((b) => b.kind === 'cast-swell');
+    expect(swell?.kind).toBe('cast-swell');
+    if (swell?.kind === 'cast-swell') expect(swell.initialMult).toBe(5);
+  });
+
+  it('emits no mult-slam when upgrades path used and no chain mult', () => {
+    const seq = buildScoreSequence(upgradeInput(), baseCtx({ target: 1000 }));
+    expect(seq.beats.filter((b) => b.kind === 'mult-slam')).toHaveLength(0);
+  });
+
+  it('emits upgrade-chip beat for each upgrade with non-zero chipDelta', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        upgrades: [
+          { label: 'mod:scoreBonus@0', chipDelta: 10, multDelta: 0 },
+          { label: 'mod:multBonus@1', chipDelta: 0, multDelta: 3 },
+          { label: 'mod:scoreBonus@2', chipDelta: 5, multDelta: 0 },
+        ],
+        finalTotal: (9 + 30 + 10 + 5) * (5 + 3),
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const chipBeats = seq.beats.filter((b) => b.kind === 'upgrade-chip');
+    expect(chipBeats).toHaveLength(2);
+    expect(chipBeats.map((b) => (b.kind === 'upgrade-chip' ? b.chipDelta : -1))).toEqual([10, 5]);
+  });
+
+  it('emits upgrade-mult beat for each upgrade with non-zero multDelta', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        upgrades: [
+          { label: 'mod:scoreBonus@0', chipDelta: 10, multDelta: 0 },
+          { label: 'mod:multBonus@1', chipDelta: 0, multDelta: 3 },
+          { label: 'solar_flare', chipDelta: 0, multDelta: 7 },
+        ],
+        finalTotal: (9 + 30 + 10) * (5 + 3 + 7),
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const multBeats = seq.beats.filter((b) => b.kind === 'upgrade-mult');
+    expect(multBeats).toHaveLength(2);
+    expect(multBeats.map((b) => (b.kind === 'upgrade-mult' ? b.multDelta : -1))).toEqual([3, 7]);
+  });
+
+  it('emits chip beat before mult beat for the same event (chip-then-mult per event)', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        upgrades: [{ label: 'mod:combined@0', chipDelta: 10, multDelta: 2 }],
+        finalTotal: (9 + 30 + 10) * (5 + 2),
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const kinds = seq.beats.map((b) => b.kind);
+    const chipIdx = kinds.indexOf('upgrade-chip');
+    const multIdx = kinds.indexOf('upgrade-mult');
+    expect(chipIdx).toBeGreaterThan(-1);
+    expect(multIdx).toBeGreaterThan(-1);
+    expect(chipIdx).toBeLessThan(multIdx);
+  });
+
+  it('upgrade-mult beats accumulate currentMult from baseMult', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        baseMult: 5,
+        upgrades: [
+          { label: 'a', chipDelta: 0, multDelta: 3 },
+          { label: 'b', chipDelta: 0, multDelta: 2 },
+        ],
+        finalTotal: 39 * 10, // (9+30) × (5+3+2)
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const multBeats = seq.beats.filter((b) => b.kind === 'upgrade-mult');
+    expect(multBeats.map((b) => (b.kind === 'upgrade-mult' ? b.currentMult : -1))).toEqual([8, 10]);
+  });
+
+  it('chain mult-slam still fires when chain.mult != 1', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        mults: [{ label: 'chain', value: 2 }],
+        finalTotal: 195 * 2,
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const slams = seq.beats.filter((b) => b.kind === 'mult-slam');
+    expect(slams).toHaveLength(1);
+    if (slams[0]?.kind === 'mult-slam') expect(slams[0].label).toBe('chain');
+  });
+
+  it('cross-target fires based on runningChips × runningMult product', () => {
+    // baseMult=5, faces=[4,4,4]→runningChips=12 after all dice → product=60 < 100
+    // comboBonus=30 → chips=42, product=210 → crosses 100 at combo-bonus
+    const seq = buildScoreSequence(
+      upgradeInput({
+        faces: [4, 4, 4],
+        comboBonus: 30,
+        baseMult: 5,
+        upgrades: [],
+        finalTotal: 42 * 5,
+      }),
+      baseCtx({ target: 100 }),
+    );
+    const crossings = seq.beats.filter((b) => b.kind === 'cross-target');
+    expect(crossings).toHaveLength(1);
+    const idx = seq.beats.findIndex((b) => b.kind === 'cross-target');
+    expect(seq.beats[idx - 1]?.kind).toBe('combo-bonus');
+  });
+
+  it('holds standard structure: cast-swell → die-ticks → combo-bonus → upgrades → hold-breath → boom', () => {
+    const seq = buildScoreSequence(
+      upgradeInput({
+        upgrades: [{ label: 'x', chipDelta: 5, multDelta: 1 }],
+        finalTotal: (9 + 30 + 5) * (5 + 1),
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const kinds = seq.beats.map((b) => b.kind);
+    expect(kinds[0]).toBe('cast-swell');
+    expect(kinds.filter((k) => k === 'die-tick')).toHaveLength(3);
+    expect(kinds).toContain('combo-bonus');
+    expect(kinds).toContain('upgrade-chip');
+    expect(kinds).toContain('upgrade-mult');
+    expect(kinds).toContain('hold-breath');
+    expect(kinds[kinds.length - 1]).toBe('boom');
+  });
+});

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { adaptScoringContext } from './adapter';
 
 describe('adaptScoringContext', () => {
-  it('converts pipeline ctx to SequenceInput with itemized mults', () => {
+  it('converts pipeline ctx to SequenceInput with baseMult and no ctx.mult in mults', () => {
     const fakeCtx = {
       combo: { id: 'full_house', tier: 5 },
       chips: 50,
@@ -14,11 +14,14 @@ describe('adaptScoringContext', () => {
     const input = adaptScoringContext(fakeCtx);
     expect(input.faces).toEqual([6, 6, 6, 5, 5]);
     expect(input.comboLabel).toBe('FULL_HOUSE');
-    expect(input.comboBonus).toBe(50 - 28);     // chips minus face sum = combo bonus
-    expect(input.mults).toEqual([
-      { label: 'mult', value: 4 },
-      { label: 'chain', value: 2 },
-    ]);
+    // comboBonus = ctx.chips - faceSum - modChipsTotal (no events, modChipsTotal=0)
+    expect(input.comboBonus).toBe(50 - 28);
+    // baseMult from combo definition (full_house mult = 8)
+    expect(input.baseMult).toBe(8);
+    // upgrades empty — no events
+    expect(input.upgrades).toEqual([]);
+    // mults: only chain (ctx.mult moved to upgrade-beat path)
+    expect(input.mults).toEqual([{ label: 'chain', value: 2 }]);
     expect(input.finalTotal).toBe(400);
   });
 
@@ -32,7 +35,10 @@ describe('adaptScoringContext', () => {
       state: { round: { dice: [{ face: 4 }, { face: 4 }, { face: 1 }, { face: 1 }, { face: 2 }] } },
     } as any;
     const input = adaptScoringContext(fakeCtx);
-    expect(input.mults).toEqual([{ label: 'mult', value: 1.5 }]);
+    // no chain, no ctx.mult in mults → empty
+    expect(input.mults).toEqual([]);
+    // baseMult from one_pair definition (mult = 2)
+    expect(input.baseMult).toBe(2);
   });
 
   it('filters faces by scoringOrder (held-only)', () => {
@@ -118,5 +124,52 @@ describe('adaptScoringContext', () => {
     } as any;
     const input = adaptScoringContext(fakeCtx);
     expect(input.dieIndices).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('extracts upgrade events into upgrades array and adjusts comboBonus', () => {
+    // Die mod adds +10 chips, +3 mult. Catalyst adds 0 chips, +5 mult.
+    const fakeCtx = {
+      combo: { id: 'three_kind', tier: 3 },
+      chips: 55,   // faceSum=9 + combo.chips=30 + mod chips=10 + chance=6 => but simpler:
+      mult: 10,
+      chain: { mult: 1 },
+      total: 550,
+      events: [
+        { type: 'onUpgradeTriggered', payload: { id: 'mod:scoreBonus@0', phase: 5, deltaChips: 10, deltaMult: 0 } },
+        { type: 'onUpgradeTriggered', payload: { id: 'mod:multBonus@1', phase: 5, deltaChips: 0, deltaMult: 3 } },
+        { type: 'onUpgradeTriggered', payload: { id: 'solar_flare', phase: 5, deltaChips: 0, deltaMult: 5 } },
+        { type: 'onModFired', payload: { dieIdx: 0, modId: 'scoreBonus', faceValue: 3 } },
+      ],
+      state: { round: { dice: [{ face: 3 }, { face: 3 }, { face: 3 }, { face: 2 }, { face: 1 }], scoringOrder: [0, 1, 2] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    // faceSum = 3+3+3 = 9. modChipsTotal = 10. comboBonus = 55 - 9 - 10 = 36 (= combo.chips=30 + combo float)
+    expect(input.comboBonus).toBe(55 - 9 - 10);
+    // upgrades: only the onUpgradeTriggered events with non-zero deltas
+    expect(input.upgrades).toEqual([
+      { label: 'mod:scoreBonus@0', chipDelta: 10, multDelta: 0, tint: undefined },
+      { label: 'mod:multBonus@1', chipDelta: 0, multDelta: 3, tint: undefined },
+      { label: 'solar_flare', chipDelta: 0, multDelta: 5, tint: undefined },
+    ]);
+    // mults: chain=1 omitted → empty
+    expect(input.mults).toEqual([]);
+    // baseMult from three_kind definition (mult = 5)
+    expect(input.baseMult).toBe(5);
+  });
+
+  it('marks patience_counter events with magenta tint', () => {
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 10,
+      mult: 4,
+      chain: { mult: 1 },
+      total: 40,
+      events: [
+        { type: 'onUpgradeTriggered', payload: { id: 'patience_counter', phase: 5, deltaChips: 0, deltaMult: 3 } },
+      ],
+      state: { round: { dice: [{ face: 5 }, { face: 5 }], scoringOrder: [0, 1] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.upgrades?.[0]?.tint).toBe('magenta');
   });
 });
