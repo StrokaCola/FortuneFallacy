@@ -1,5 +1,6 @@
 import type { Phase } from '../core/pipeline/types';
 import type { Beat, ScoreSequence } from '../core/scoring/types';
+import type { DieShape } from '../data/dice';
 
 export type DieSnapshot = {
   id: number;
@@ -15,6 +16,10 @@ export type SimulationRequest = {
   // simulation can be steered to land on the predetermined value while
   // still tumbling naturally.
   predeterminedFaces: number[];
+  // Per-die shape (d4/d6/d8/d10/d12/d20). Drives the rapier collider and
+  // the per-shape face axes used by `faceCorrection`. Length matches
+  // `predeterminedFaces`. Older callers may omit; rapierSim falls back to d6.
+  diceShapes?: DieShape[];
 };
 
 export type DieFrame = { px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number };

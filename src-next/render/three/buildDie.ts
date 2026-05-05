@@ -2,6 +2,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { ModMaterialOverride } from './dieMaterials';
+import type { DieShape } from '../../data/dice';
+import { buildPolyhedronGeometry, SHAPE_DATA } from './polyhedra';
+import { getDigitTexture } from './digitTexture';
 
 export type StyleKey = 'celestial' | 'obsidian' | 'ember' | 'ivory' | 'glass';
 
@@ -47,7 +50,10 @@ export const FACE_DEFS = [
   { val: 4, axis: 'z' as const, sign: -1 },
 ];
 
-export type FaceMatMap<T> = { 1: T; 2: T; 3: T; 4: T; 5: T; 6: T };
+// Per-face material map indexed by face value (1..N). Use a permissive
+// numeric record so non-cube dice (d8, d12, d20…) can extend past 6 keys.
+// d6 callers populate keys 1..6; the cube paths still index by literal.
+export type FaceMatMap<T> = Record<number, T>;
 
 export type BuiltDie = {
   group: THREE.Group;
@@ -82,9 +88,11 @@ export function buildDie(
   styleKey: StyleKey,
   modOverride?: ModMaterialOverride,
   geometricVariant?: GeometricVariant,
+  shape: DieShape = 'd6',
 ): BuiltDie {
   const baseS = STYLES[styleKey];
   const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
+  if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey);
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${styleKey}`;
 
@@ -260,4 +268,139 @@ export function buildDie(
   });
 
   return { group, faceLensMats, faceHaloMats, pipGroup };
+}
+
+// Non-cube path: builds a flat-shaded polyhedron (d4/d8/d10/d12/d20) with a
+// digit label, lens disc, and halo sprite per face. Reuses the same
+// `BuiltDie` shape so callers (Dice3D, DieView) don't branch on shape.
+function buildPolyhedronDie(
+  size: number,
+  shape: Exclude<DieShape, 'd6'>,
+  S: StyleDef,
+  styleKey: StyleKey,
+): BuiltDie {
+  const group = new THREE.Group();
+  group.name = `FortuneFallacyDie_${shape}_${styleKey}`;
+
+  const { geometry: bodyGeo } = buildPolyhedronGeometry(shape, size, S.bodyTint, S.bodyDeep);
+  const bodyMat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    metalness: S.metalness ?? 0.0,
+    roughness: S.rough,
+    transmission: S.transmission * 0.65,    // a touch less translucent so faceted reads cleanly
+    thickness: S.thickness,
+    ior: S.ior,
+    attenuationColor: new THREE.Color(S.bodyDeep),
+    attenuationDistance: size * 1.4,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.73,
+    sheen: S.sheen ?? 0.28,
+    sheenColor: new THREE.Color(S.sheenColor ?? S.bodyTint),
+    sheenRoughness: 0.6,
+    transparent: true,
+    opacity: 1.0,
+    envMapIntensity: 1.1,
+    flatShading: true,
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.name = 'Body';
+  group.add(body);
+
+  const edgeGeo = new THREE.EdgesGeometry(bodyGeo, 1);
+  const edgeMat = new THREE.LineBasicMaterial({
+    color: S.edge,
+    transparent: true,
+    opacity: 0.45,
+    toneMapped: false,
+  });
+  const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+  edgeLines.scale.setScalar(1.002);
+  group.add(edgeLines);
+
+  const data = SHAPE_DATA[shape];
+  const faceCount = data.faceCenters.length;
+  const half = size / 2;
+
+  const faceLensMats: FaceMatMap<THREE.MeshStandardMaterial> = {} as FaceMatMap<THREE.MeshStandardMaterial>;
+  const faceHaloMats: FaceMatMap<THREE.SpriteMaterial> = {} as FaceMatMap<THREE.SpriteMaterial>;
+  const pipGroup = new THREE.Group();
+  pipGroup.name = 'pips';
+  group.add(pipGroup);
+
+  // Per-face label disc: digit texture (1..N) on a circular plane, oriented
+  // outward along the face normal. Faceted shapes look cleaner with a single
+  // numeral than with cube-style pip patterns.
+  const haloShown = S.eIntensity > 0;
+  const isD4 = shape === 'd4';
+  for (let f = 1; f <= faceCount; f++) {
+    const faceIdx = f - 1;
+    // d4 axes are stored INWARD so faceFromQuaternion picks the bottom face.
+    // For label placement we still want the OUTWARD normal of the face so the
+    // numeral sits on the visible surface; recover it by negating.
+    const c = data.faceCenters[faceIdx]!;
+    const outward = isD4 ? { x: -c.x, y: -c.y, z: -c.z } : c;
+    const normalVec = new THREE.Vector3(outward.x, outward.y, outward.z).normalize();
+
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: S.halo,
+      emissiveIntensity: Math.max(0.5, S.eIntensity * 0.9),
+      map: getDigitTexture(f, S.pip),
+      transparent: true,
+      opacity: 0,
+      toneMapped: false,
+      depthWrite: false,
+    });
+    faceLensMats[f] = lensMat;
+
+    const haloMat = new THREE.SpriteMaterial({
+      map: getHaloTexture(),
+      color: S.halo,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false,
+    });
+    faceHaloMats[f] = haloMat;
+
+    const faceGroup = new THREE.Group();
+    faceGroup.name = `Pip_face${f}`;
+
+    // Lens disc — sits flush on the polyhedron face, centered.
+    const lensR = labelRadius(shape) * size;
+    const lensGeo = new THREE.CircleGeometry(lensR, 28);
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.position.copy(normalVec).multiplyScalar(half * 0.92);
+    lens.lookAt(normalVec.clone().multiplyScalar(half * 2));
+    faceGroup.add(lens);
+
+    if (haloShown) {
+      const halo = new THREE.Sprite(haloMat);
+      const haloSize = lensR * 3.2;
+      halo.scale.set(haloSize, haloSize, 1);
+      halo.position.copy(normalVec).multiplyScalar(half * 0.95);
+      faceGroup.add(halo);
+    }
+
+    pipGroup.add(faceGroup);
+  }
+
+  return { group, faceLensMats, faceHaloMats, pipGroup };
+}
+
+// Inscribed-circle radius of a face on the unit-sphere polyhedron, used to
+// size the digit label so it sits inside the face boundary. Approximated;
+// good enough for a centered numeral with margin.
+function labelRadius(shape: Exclude<DieShape, 'd6'>): number {
+  switch (shape) {
+    case 'd4':  return 0.18;
+    case 'd8':  return 0.18;
+    case 'd10': return 0.16;
+    case 'd12': return 0.20;
+    case 'd20': return 0.14;
+  }
 }

@@ -10,6 +10,8 @@ import { registerView } from './sharedRenderer';
 import * as webglDetect from './webglDetect';
 import * as orbitalMod from './orbitalSatellite';
 import * as rimMod from './rimOverlay';
+import { getFaceCenters } from './polyhedra';
+import type { DieShape } from '../../data/dice';
 
 const FACE_ROT_EULER: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -20,10 +22,24 @@ const FACE_ROT_EULER: Record<number, [number, number, number]> = {
   6: [Math.PI, 0, 0],
 };
 
+const _UP = new THREE.Vector3(0, 1, 0);
+function applyFaceRotation(group: THREE.Group, shape: DieShape, face: number) {
+  if (shape === 'd6') {
+    const rot = FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!;
+    group.rotation.set(rot[0], rot[1], rot[2]);
+    return;
+  }
+  const centers = getFaceCenters(shape);
+  const c = centers[face - 1] ?? centers[0]!;
+  const axis = new THREE.Vector3(c.x, c.y, c.z).normalize();
+  group.quaternion.setFromUnitVectors(axis, _UP);
+}
+
 type Props = {
   face?: number;
   size?: number;
   style?: StyleKey;
+  shape?: DieShape;
   locked?: boolean;
   scoring?: boolean;
   mods?: DieMod[];
@@ -33,7 +49,7 @@ type Props = {
 };
 
 export function DieView(props: Props) {
-  const { size = 88, face = 1, style = 'celestial' } = props;
+  const { size = 88, face = 1, style = 'celestial', shape = 'd6' } = props;
   const ref = useRef<HTMLDivElement | null>(null);
   const tumbleHandleRef = useRef<number | null>(null);
 
@@ -53,14 +69,14 @@ export function DieView(props: Props) {
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const geometricVariant = matchedMod?.visual?.geometricVariant;
-    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant);
+    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape);
     // Snap to canonical face rotation so the requested face is up.
-    built.group.rotation.set(...(FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!));
+    applyFaceRotation(built.group, shape, face);
     // Fade up only the visible face's pip lens for legibility.
-    for (let f = 1; f <= 6; f++) {
-      const visible = f === face ? 0.78 : 0;
-      built.faceLensMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = visible;
-      built.faceHaloMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = f === face ? 1 : 0;
+    for (const k of Object.keys(built.faceLensMats)) {
+      const f = Number(k);
+      built.faceLensMats[f]!.opacity = f === face ? 0.78 : 0;
+      if (built.faceHaloMats[f]) built.faceHaloMats[f]!.opacity = f === face ? 1 : 0;
     }
     scene.add(built.group);
 
@@ -107,16 +123,18 @@ export function DieView(props: Props) {
       getRect: () => placeholder.getBoundingClientRect(),
     });
 
-    // Idle tumble: gentle wobble around the canonical pose.
-    const baseEuler = FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!;
+    // Idle tumble: gentle wobble around the canonical pose. Cache the base
+    // euler from the group's current quaternion so non-cube shapes wobble
+    // around their actual lock-snap pose, not the cube table.
+    const baseEuler = new THREE.Euler().setFromQuaternion(built.group.quaternion);
     const t0 = performance.now();
     const ORBIT_PERIOD_S = 8;
     const tick = () => {
       const dt = (performance.now() - t0) / 1000;
       built.group.rotation.set(
-        baseEuler[0] + Math.sin(dt * 0.45) * 0.07,
-        baseEuler[1] + Math.sin(dt * 0.60 + 1.0) * 0.05,
-        baseEuler[2] + Math.sin(dt * 0.50 + 2.1) * 0.07,
+        baseEuler.x + Math.sin(dt * 0.45) * 0.07,
+        baseEuler.y + Math.sin(dt * 0.60 + 1.0) * 0.05,
+        baseEuler.z + Math.sin(dt * 0.50 + 2.1) * 0.07,
       );
       if (orbital) {
         const angle = (dt / ORBIT_PERIOD_S) * Math.PI * 2;

@@ -7,6 +7,7 @@ import {
   quatFromTo,
   quatIdentity,
 } from './faceFromPose';
+import type { DieShape } from '../data/dice';
 
 describe('faceFromQuaternion', () => {
   it('identity quaternion shows face 1 (+Y)', () => {
@@ -43,4 +44,42 @@ describe('faceCorrection', () => {
     expect(corr.z).toBeCloseTo(0);
     expect(corr.w).toBeCloseTo(1);
   });
+});
+
+// Per-shape coverage: each polyhedron must round-trip through
+// faceFromQuaternion ∘ faceCorrection for every face value.
+describe('faceFromQuaternion / faceCorrection — non-cube shapes', () => {
+  const SHAPES: { shape: DieShape; faceCount: number }[] = [
+    { shape: 'd4',  faceCount: 4 },
+    { shape: 'd8',  faceCount: 8 },
+    { shape: 'd10', faceCount: 10 },
+    { shape: 'd12', faceCount: 12 },
+    { shape: 'd20', faceCount: 20 },
+  ];
+
+  for (const { shape, faceCount } of SHAPES) {
+    it(`${shape}: identity rotation has a definite face up`, () => {
+      const f = faceFromQuaternion({ x: 0, y: 0, z: 0, w: 1 }, shape);
+      expect(f).toBeGreaterThanOrEqual(1);
+      expect(f).toBeLessThanOrEqual(faceCount);
+    });
+
+    it(`${shape}: applying faceCorrection lands on the requested face`, () => {
+      // Sample quaternion: a non-trivial rest pose.
+      const qPhys = quatFromTo({ x: 0.3, y: 0.7, z: 0.5 }, { x: 0, y: 1, z: 0 });
+      for (let target = 1; target <= faceCount; target++) {
+        const corr = faceCorrection(qPhys, target, shape);
+        const qCorrected = quatMul(qPhys, corr);
+        expect(faceFromQuaternion(qCorrected, shape)).toBe(target);
+      }
+    });
+
+    it(`${shape}: face axes are unit length`, () => {
+      for (let f = 1; f <= faceCount; f++) {
+        const n = faceNormal(f, shape);
+        const m = Math.hypot(n.x, n.y, n.z);
+        expect(m).toBeCloseTo(1, 6);
+      }
+    });
+  }
 });
