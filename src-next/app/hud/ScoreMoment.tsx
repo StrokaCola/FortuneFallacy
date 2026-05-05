@@ -1,11 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { dispatch } from '../../actions/dispatch';
+import { stageScale } from '../../render/stage';
 import type { Beat } from '../../core/scoring/types';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
+type Star = { id: number; dx: number; dy: number; delay: number };
+
+type BoomState =
+  | { phase: 'hold'; total: number; gold: boolean }
+  | { phase: 'fly';  total: number; gold: boolean; stars: Star[] };
+
 let slamId = 1;
+
+const HOLD_GOLD_MS = 1500;
+const HOLD_BASE_MS = 1400;
+const FLY_MS = 800;
+const STAR_COUNT = 12;
 
 const CONSTELLATION_NAMES: Record<string, string> = {
   FIVE_KIND: 'Cygnus',
@@ -19,18 +31,53 @@ const CONSTELLATION_NAMES: Record<string, string> = {
   CHANCE: 'Wandering Star',
 };
 
+function isReducedMotion(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('reduce-motion');
+}
+
 export function ScoreMoment() {
   const [active, setActive] = useState(false);
   const [comboName, setComboName] = useState('');
   const [slams, setSlams] = useState<SlamOverlay[]>([]);
   const [stamp, setStamp] = useState<'target' | 'bail' | null>(null);
-  const [boom, setBoom] = useState<{ total: number; gold: boolean } | null>(null);
+  const [boom, setBoom] = useState<BoomState | null>(null);
+  const boomRef = useRef<HTMLDivElement>(null);
+  const timerIdsRef = useRef<number[]>([]);
 
   useEffect(() => {
     let crossed = false;
+
+    const clearAllTimers = () => {
+      for (const id of timerIdsRef.current) clearTimeout(id);
+      timerIdsRef.current = [];
+    };
+    const schedule = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        timerIdsRef.current = timerIdsRef.current.filter((t) => t !== id);
+        fn();
+      }, ms);
+      timerIdsRef.current.push(id);
+    };
+
+    const finishBoom = () => {
+      // Fire the catch pulse on the score counter, then end scoring.
+      const counter = document.querySelector<HTMLElement>('[data-score-counter]');
+      if (counter) {
+        counter.style.animation = 'scoreCounterCatch 220ms cubic-bezier(0.2, 1.6, 0.4, 1)';
+        schedule(() => {
+          if (counter) counter.style.animation = '';
+        }, 240);
+      }
+      setActive(false);
+      setBoom(null);
+      dispatch({ type: 'END_SCORING' });
+    };
+
     const off = bus.on('onScoreBeat', ({ beat }: { beat: Beat }) => {
       switch (beat.kind) {
         case 'cast-swell':
+          clearAllTimers();
           setActive(true);
           setComboName('');
           setSlams([]);
@@ -44,26 +91,57 @@ export function ScoreMoment() {
         case 'mult-slam': {
           const id = slamId++;
           setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed, tint: beat.tint }]);
-          setTimeout(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
+          schedule(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
           break;
         }
         case 'cross-target':
           crossed = true;
           setStamp('target');
-          setTimeout(() => setStamp((cur) => (cur === 'target' ? null : cur)), 700);
+          schedule(() => setStamp((cur) => (cur === 'target' ? null : cur)), 700);
           break;
-        case 'boom':
-          setBoom({ total: beat.finalTotal, gold: beat.crossedTarget });
-          // Round-clearing booms get a longer hold so the player savors the final number.
-          setTimeout(() => {
-            setActive(false);
-            setBoom(null);
-            dispatch({ type: 'END_SCORING' });
-          }, beat.crossedTarget ? 2600 : 1400);
+        case 'boom': {
+          const gold = beat.crossedTarget;
+          const reduced = isReducedMotion();
+          const useStars = gold && !reduced;
+          const hold = gold ? HOLD_GOLD_MS : HOLD_BASE_MS;
+
+          setBoom({ phase: 'hold', total: beat.finalTotal, gold });
+
+          schedule(() => {
+            if (!useStars) {
+              setActive(false);
+              setBoom(null);
+              dispatch({ type: 'END_SCORING' });
+              return;
+            }
+            // Measure source (boom number) and target (score counter).
+            const fromEl = boomRef.current;
+            const toEl = document.querySelector<HTMLElement>('[data-score-counter]');
+            if (!fromEl || !toEl) {
+              setActive(false);
+              setBoom(null);
+              dispatch({ type: 'END_SCORING' });
+              return;
+            }
+            const fr = fromEl.getBoundingClientRect();
+            const tr = toEl.getBoundingClientRect();
+            const scale = stageScale() || 1;
+            const dx = ((tr.left + tr.width / 2) - (fr.left + fr.width / 2)) / scale;
+            const dy = ((tr.top  + tr.height / 2) - (fr.top  + fr.height / 2)) / scale;
+            const stars: Star[] = Array.from({ length: STAR_COUNT }, (_, i) => ({
+              id: i,
+              dx: dx + (Math.random() - 0.5) * 60,
+              dy: dy + (Math.random() - 0.5) * 24,
+              delay: i * 30,
+            }));
+            setBoom({ phase: 'fly', total: beat.finalTotal, gold, stars });
+            schedule(finishBoom, FLY_MS);
+          }, hold);
           break;
+        }
         case 'bail':
           setStamp('bail');
-          setTimeout(() => {
+          schedule(() => {
             setActive(false);
             setStamp(null);
             dispatch({ type: 'END_SCORING' });
@@ -71,10 +149,19 @@ export function ScoreMoment() {
           break;
       }
     });
-    return () => off();
+    return () => {
+      off();
+      clearAllTimers();
+    };
   }, []);
 
   if (!active) return null;
+
+  const boomColor = boom?.gold ? '#f5c451' : '#fff';
+  const boomGlow = boom?.gold
+    ? '0 0 40px #f5c451, 0 0 80px rgba(245,196,81,0.5)'
+    : '0 0 40px #7be3ff, 0 0 80px rgba(123,227,255,0.5)';
+  const starColor = boom?.gold ? '#f5c451' : '#7be3ff';
 
   return (
     <div style={{
@@ -129,15 +216,48 @@ export function ScoreMoment() {
         }}>NOT ENOUGH</div>
       )}
       {boom && (
-        <div className="f-mono num" style={{
-          fontSize: 96, fontWeight: 700,
-          color: boom.gold ? '#f5c451' : '#fff',
-          textShadow: boom.gold
-            ? '0 0 40px #f5c451, 0 0 80px rgba(245,196,81,0.5)'
-            : '0 0 40px #7be3ff, 0 0 80px rgba(123,227,255,0.5)',
-          animation: 'boomPop 400ms cubic-bezier(0.2, 1.4, 0.5, 1)',
-        }}>
-          {boom.total.toLocaleString()}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            ref={boomRef}
+            className="f-mono num"
+            style={{
+              fontSize: 96, fontWeight: 700,
+              color: boomColor,
+              textShadow: boomGlow,
+              animation: boom.phase === 'fly'
+                ? 'boomImplode 200ms ease-in forwards'
+                : 'boomPop 400ms cubic-bezier(0.2, 1.4, 0.5, 1)',
+            }}
+          >
+            {boom.total.toLocaleString()}
+          </div>
+          {boom.phase === 'fly' && boom.stars.map((s) => (
+            <div
+              key={s.id}
+              className="score-star f-display"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                marginLeft: -14,
+                marginTop: -14,
+                width: 28,
+                height: 28,
+                lineHeight: '28px',
+                textAlign: 'center',
+                fontSize: 24,
+                color: starColor,
+                textShadow: `0 0 12px ${starColor}, 0 0 24px ${starColor}`,
+                pointerEvents: 'none',
+                willChange: 'transform, opacity',
+                ['--dx' as string]: `${s.dx}px`,
+                ['--dy' as string]: `${s.dy}px`,
+                animation: `starFly 720ms cubic-bezier(0.34, 1.06, 0.64, 1) ${s.delay}ms forwards`,
+              }}
+            >
+              ★
+            </div>
+          ))}
         </div>
       )}
     </div>

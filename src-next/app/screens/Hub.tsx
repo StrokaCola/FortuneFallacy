@@ -127,10 +127,17 @@ export function Hub() {
                     trial {String(i + 1).padStart(2, '0')}
                   </div>
                   <div className="f-display" style={{
-                    fontSize: 20, color: '#f3f0ff', marginTop: 6,
-                    whiteSpace: 'nowrap', maxWidth: '100%',
-                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    fontSize: compact ? 16 : 18,
+                    color: '#f3f0ff', marginTop: 6,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    lineHeight: 1.18,
                     textAlign: 'center',
+                    minHeight: '2.36em',
                   }}>
                     {b.def.name}
                   </div>
