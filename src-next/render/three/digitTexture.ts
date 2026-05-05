@@ -1,9 +1,10 @@
-// Cached digit textures used to label faces of non-cube dice (d4..d20).
+// Cached digit textures used to label faces of non-cube dice (d4..d20) and
+// d6 dice with non-canonical face arrays (Fibonacci, Eclipse, Ophiuchus).
 //
-// Renders the numeral (1..20, plus '★' for WILD-coded -1 and '·' for BLANK 0)
-// onto a small canvas in the supplied color. The same digit-color pair is
-// shared across all dice in a session so 8 dice rolling values 1..20 only
-// allocate as many textures as distinct values appear.
+// Renders the numeral (0..N, plus '★' for the WILD sentinel -1) onto a small
+// canvas in the supplied color. The same digit-color pair is shared across
+// all dice in a session so 8 dice rolling values 1..20 only allocate as
+// many textures as distinct values appear.
 
 import * as THREE from 'three';
 
@@ -48,7 +49,10 @@ function renderDigit(value: number, color: number): THREE.CanvasTexture {
 }
 
 function labelFor(value: number): string {
+  // -1 is the WILD sentinel from `core/phases/initSimulation.WILD_SENTINEL`.
   if (value === -1) return '★';
-  if (value === 0) return '·';
+  // Eclipse's faces are literal numeric 0/1 and the player should see "0",
+  // not the dot we previously rendered as a BLANK indicator. No constellation
+  // currently uses the BLANK sentinel as a face, so this collision is safe.
   return String(value);
 }
