@@ -74,29 +74,29 @@ export function FaceReadout() {
     const captainIdx = numeric.indexOf(captainValue);
     const captainMaxFace = maxNumericFace(constellation.dice[captainIdx]?.faces ?? []);
     const tone = toneForFace(captainValue, captainMaxFace);
-    // Compact captain shrinks slightly (96 → 80) but crew bumps up (36 → 44).
-    // The CSS-scale model multiplies these by ~0.49 on a phone in landscape;
-    // crew at 36px reads as ~18px on screen which is below the digit floor for
-    // glanceable feedback. Tighter `gap` keeps the row in frame.
+    // Compact mode bumps every readout dimension since user feedback is the
+    // row felt cramped against the dice on a landscape phone. Captain matches
+    // desktop now (96), crew goes 36 → 60, gap 10 → 32. Position drops from
+    // 38% → 30% so the numerals sit clear of the dice underneath.
     return (
       <div style={{
-        position: 'absolute', left: '50%', top: '38%',
+        position: 'absolute', left: '50%', top: compact ? '30%' : '38%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', pointerEvents: 'none', zIndex: 4,
-        display: 'flex', alignItems: 'center', gap: compact ? 10 : 18,
+        display: 'flex', alignItems: 'center', gap: compact ? 32 : 18,
       }}>
         {faces.map((f, i) => {
           if (i === captainIdx) {
             return (
               <div key={i} style={{ textAlign: 'center' }}>
                 <div className="f-mono uc" style={{
-                  fontSize: 10, letterSpacing: '0.4em',
+                  fontSize: compact ? 13 : 10, letterSpacing: '0.4em',
                   color: tone.glow, opacity: 0.85,
                 }}>
                   {tone.label || '◇ captain ◇'}
                 </div>
                 <div className="f-display num" style={{
-                  fontSize: compact ? 80 : 96, lineHeight: 1, color: tone.fg,
+                  fontSize: compact ? 112 : 96, lineHeight: 1, color: tone.fg,
                   textShadow: `0 0 24px ${tone.glow}, 0 0 56px ${tone.glow}66`,
                   marginTop: 2,
                 }}>
@@ -109,13 +109,13 @@ export function FaceReadout() {
           return (
             <div key={i} style={{ textAlign: 'center', opacity: isLocked ? 1 : 0.7 }}>
               <div className="f-mono uc" style={{
-                fontSize: 9, letterSpacing: '0.3em',
+                fontSize: compact ? 12 : 9, letterSpacing: '0.3em',
                 color: '#bba8ff', opacity: 0.6,
               }}>
                 crew
               </div>
               <div className="f-display num" style={{
-                fontSize: compact ? 44 : 36, lineHeight: 1,
+                fontSize: compact ? 60 : 36, lineHeight: 1,
                 color: '#dcd4ff',
                 marginTop: 2,
               }}>
