@@ -26,6 +26,11 @@ html, body {
   color: #f3f0ff;
   font-family: 'Exo 2', system-ui, sans-serif;
   overflow: hidden;
+  /* Without this, touch devices treat finger movement on the play surface as
+     a pan gesture, fire pointercancel after a few px, and kill the hold-strip
+     drag before it crosses its threshold. .tap descendants override with
+     touch-action: manipulation for fast button taps. */
+  touch-action: none;
 }
 
 #bg-next { display: none; }
