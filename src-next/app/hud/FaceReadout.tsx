@@ -1,6 +1,7 @@
 import { useStore, type GameState } from '../../state/store';
 import { lookupConstellation, type Constellation } from '../../data/constellations';
 import { maxNumericFace } from '../../data/dice';
+import { useIsCompactStage } from '../hooks/useIsCompactStage';
 
 const selectFaces = (s: GameState) => s.round.dice.map((d) => d.face);
 const selectLocked = (s: GameState) => s.round.dice.map((d) => d.locked);
@@ -50,6 +51,7 @@ export function FaceReadout() {
   const locked = useStore(selectLocked);
   const firstRollDone = useStore(selectFirstRollDone);
   const scoringMode = useStore(selectScoringMode);
+  const compact = useIsCompactStage();
 
   const constellation = lookupConstellation(constellationId);
   if (!needsReadout(constellation)) return null;
@@ -65,12 +67,16 @@ export function FaceReadout() {
     const captainIdx = numeric.indexOf(captainValue);
     const captainMaxFace = maxNumericFace(constellation.dice[captainIdx]?.faces ?? []);
     const tone = toneForFace(captainValue, captainMaxFace);
+    // Compact captain shrinks slightly (96 → 80) but crew bumps up (36 → 44).
+    // The CSS-scale model multiplies these by ~0.49 on a phone in landscape;
+    // crew at 36px reads as ~18px on screen which is below the digit floor for
+    // glanceable feedback. Tighter `gap` keeps the row in frame.
     return (
       <div style={{
         position: 'absolute', left: '50%', top: '38%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', pointerEvents: 'none', zIndex: 4,
-        display: 'flex', alignItems: 'center', gap: 18,
+        display: 'flex', alignItems: 'center', gap: compact ? 10 : 18,
       }}>
         {faces.map((f, i) => {
           if (i === captainIdx) {
@@ -83,7 +89,7 @@ export function FaceReadout() {
                   {tone.label || '◇ captain ◇'}
                 </div>
                 <div className="f-display num" style={{
-                  fontSize: 96, lineHeight: 1, color: tone.fg,
+                  fontSize: compact ? 80 : 96, lineHeight: 1, color: tone.fg,
                   textShadow: `0 0 24px ${tone.glow}, 0 0 56px ${tone.glow}66`,
                   marginTop: 2,
                 }}>
@@ -102,7 +108,7 @@ export function FaceReadout() {
                 crew
               </div>
               <div className="f-display num" style={{
-                fontSize: 36, lineHeight: 1,
+                fontSize: compact ? 44 : 36, lineHeight: 1,
                 color: '#dcd4ff',
                 marginTop: 2,
               }}>
@@ -132,8 +138,8 @@ export function FaceReadout() {
         return (
           <div key={i} className="f-mono num"
             style={{
-              minWidth: 24, textAlign: 'center',
-              fontSize: 14,
+              minWidth: compact ? 28 : 24, textAlign: 'center',
+              fontSize: compact ? 18 : 14,
               color: isWild ? '#f5c451' : isLocked ? '#7be3ff' : '#dcd4ff',
               textShadow: isWild ? '0 0 6px #f5c451' : 'none',
               opacity: isLocked ? 1 : 0.65,
