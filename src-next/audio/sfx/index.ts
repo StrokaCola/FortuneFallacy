@@ -53,16 +53,10 @@ export async function sfxInit(): Promise<void> {
   return initPromise;
 }
 
-declare global {
-  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
-}
-
-if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
-  (import.meta as ImportMeta).hot!.dispose(() => {
-    sfxSettingsUnsub?.();
-    sfxSettingsUnsub = null;
-  });
-}
+import.meta.hot?.dispose(() => {
+  sfxSettingsUnsub?.();
+  sfxSettingsUnsub = null;
+});
 
 export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
   if (!bank) return;

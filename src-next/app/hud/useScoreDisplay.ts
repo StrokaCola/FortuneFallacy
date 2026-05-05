@@ -15,8 +15,6 @@ export function useScoreDisplay(): number {
         setOverlay(null);
       } else if (beat.kind === 'boom') {
         setOverlay(beat.finalTotal + baseScore);
-      } else if (beat.kind === 'bail') {
-        setOverlay(beat.runningTotal + baseScore);
       }
     });
     return () => offBeat();

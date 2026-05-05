@@ -3,6 +3,7 @@ import './compoundingBias';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(overrides: Partial<{ mult: number; runCompoundingStacks: number }> = {}): PipelineCtx {
   const state = {
@@ -14,7 +15,7 @@ function makeCtx(overrides: Partial<{ mult: number; runCompoundingStacks: number
     mult: overrides.mult ?? 10,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
   };
 }
 

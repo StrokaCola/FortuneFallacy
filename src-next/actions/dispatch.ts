@@ -14,6 +14,7 @@ import '../core/upgrades/catalysts';
 const ROUTING: Record<Action['type'], ActionHandler> = {
   PING: metaHandler,
   SET_SCREEN: metaHandler,
+  SET_PLAYER_NAME: metaHandler,
   TOGGLE_PAUSE: metaHandler,
   ROLL_REQUESTED: rollHandler,
   REROLL_REQUESTED: rollHandler,

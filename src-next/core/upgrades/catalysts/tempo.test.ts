@@ -3,10 +3,11 @@ import './tempo';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(streak: number, mult = 4): PipelineCtx {
   const state = { run: { tempoStreak: streak } } as unknown as GameState;
-  return { state, chips: 0, mult, total: 0, events: [], rng: () => 0 };
+  return { state, chips: 0, mult, total: 0, events: [], rng: mulberry32(0) };
 }
 
 describe('tempo catalyst', () => {

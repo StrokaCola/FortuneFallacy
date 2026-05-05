@@ -3,10 +3,11 @@ import './patienceCounter';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(handsPlayed: number, mult = 5): PipelineCtx {
   const state = { run: { handsPlayed } } as unknown as GameState;
-  return { state, chips: 0, mult, total: 0, events: [], rng: () => 0 };
+  return { state, chips: 0, mult, total: 0, events: [], rng: mulberry32(0) };
 }
 
 describe('patience_counter catalyst', () => {

@@ -28,38 +28,37 @@ export const rollHandler: ActionHandler = (a, s) => {
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);
-      return {
-        state: workingState,
-        events: [
-          {
-            type: 'onRollStart',
-            payload: { dice, lockedMask: dice.map((d) => d.locked) },
-          },
-          ...(ctx.simRequest
-            ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
-            : []),
-        ],
-      };
+      const events: GameEventEmission[] = [
+        {
+          type: 'onRollStart',
+          payload: { dice, lockedMask: dice.map((d) => d.locked) },
+        },
+        ...(ctx.simRequest
+          ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
+          : []),
+      ];
+      return { state: workingState, events };
     }
     case 'REROLL_REQUESTED': {
       if (s.round.rerollsLeft <= 0) return { state: s, events: [] };
       if (hasDebuff(s, 'no_rerolls')) return { state: s, events: [] };
       const advanced = { ...s, run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 } };
       const ctx = runRollPipelineUpToSim(advanced);
+      const events: GameEventEmission[] = [
+        {
+          type: 'onRollStart',
+          payload: { dice: advanced.round.dice, lockedMask: advanced.round.dice.map((d) => d.locked) },
+        },
+        ...(ctx.simRequest
+          ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
+          : []),
+      ];
       return {
         state: {
           ...advanced,
           round: { ...advanced.round, handInProgress: true, rerollsLeft: advanced.round.rerollsLeft - 1 },
         },
-        events: [
-          {
-            type: 'onRollStart',
-            payload: { dice: advanced.round.dice, lockedMask: advanced.round.dice.map((d) => d.locked) },
-          },
-          ...(ctx.simRequest
-            ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
-            : []),
-        ],
+        events,
       };
     }
     case 'ROLL_SETTLED': {
@@ -130,7 +129,7 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
       const final = runRollPipelineAfterSim(baseCtx, fakeResult);
       let shardBonus = 0;
-      const modFiredEvents: GameEventEmission[keyof GameEventEmission][] = [];
+      const modFiredEvents: GameEventEmission[] = [];
       const finalFaces = fakeResult.finalFaces;
       workingState.run.diceMods.forEach((mods, dieIdx) => {
         for (const id of mods) {

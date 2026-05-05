@@ -38,7 +38,7 @@ function isTypingTarget(el: Element | null): boolean {
 export function DevConsole() {
   const [open, setOpen] = useState(false);
   const initialTab = getFlags().devConsoleTab;
-  const initial = tabs.find((t) => t.id === initialTab)?.id ?? tabs[0].id;
+  const initial = tabs.find((t) => t.id === initialTab)?.id ?? tabs[0]?.id ?? '';
   const [activeId, setActiveId] = useState<string>(initial);
 
   useEffect(() => {
@@ -69,6 +69,7 @@ export function DevConsole() {
   }
 
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  if (!active) return null;
 
   return (
     <div className="absolute top-2 right-2 w-[420px] max-h-[80vh] flex flex-col

@@ -15,7 +15,7 @@ describe('migrateRetheme', () => {
         consumables: ['the_moon', 'shard_strike'],
       },
     };
-    const m = migrateRetheme(old);
+    const m = migrateRetheme(old) as any;
     expect(m.run.catalysts).toEqual(['stratifier', 'six_bias', 'chaos_theory']);
     expect(m.run.oracles).toBeUndefined();
     expect(m.run.vouchers).toEqual(['bench']);
@@ -29,7 +29,7 @@ describe('migrateRetheme', () => {
         diceRunes: [['snake_cult', 'amplify'], ['blessed'], []],
       },
     };
-    const m = migrateRetheme(old);
+    const m = migrateRetheme(old) as any;
     expect(m.run.diceMods).toEqual([['snake_eyes', 'amplify'], ['backstop'], []]);
     expect(m.round.diceRunes).toBeUndefined();
     expect(m.round.diceMods).toBeUndefined();
@@ -42,19 +42,19 @@ describe('migrateRetheme', () => {
         diceMods: [['snake_cult'], [], ['amplify']],
       },
     };
-    const m = migrateRetheme(old);
+    const m = migrateRetheme(old) as any;
     expect(m.run.diceMods).toEqual([['snake_eyes'], [], ['amplify']]);
     expect(m.round.diceMods).toBeUndefined();
   });
 
   it('defaults run.diceMods to [[],[],[],[],[]] when absent', () => {
     const old = { run: { catalysts: [] }, round: {} };
-    const m = migrateRetheme(old);
+    const m = migrateRetheme(old) as any;
     expect(m.run.diceMods).toEqual([[], [], [], [], []]);
   });
 
   it('remaps boss blindId', () => {
-    const m = migrateRetheme({ round: { blindId: 'the_devil' } });
+    const m = migrateRetheme({ round: { blindId: 'the_devil' } }) as any;
     expect(m.round.blindId).toBe('phobos');
   });
 
@@ -85,7 +85,7 @@ describe('migrateRetheme', () => {
 
   it('preserves unknown ids verbatim', () => {
     const old = { run: { oracles: ['unknown_oracle'], vouchers: [], consumables: [] } };
-    const m = migrateRetheme(old);
+    const m = migrateRetheme(old) as any;
     expect(m.run.catalysts).toEqual(['unknown_oracle']);
   });
 

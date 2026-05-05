@@ -3,6 +3,7 @@ import './conductor';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(diceMods: string[][], scoringOrder?: number[], chips = 100): PipelineCtx {
   const faces = diceMods.map((_, i) => (i + 1));
@@ -17,7 +18,7 @@ function makeCtx(diceMods: string[][], scoringOrder?: number[], chips = 100): Pi
     mult: 1,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
   };
 }
 

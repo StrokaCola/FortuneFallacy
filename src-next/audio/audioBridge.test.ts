@@ -48,7 +48,7 @@ import { startAudioBridge, audioEngine } from './audioBridge';
 import { bus } from '../events/bus';
 import { sfxPlay } from './sfx';
 
-const mockAudioEngine = audioEngine as {
+const mockAudioEngine = audioEngine as unknown as {
   bumpComboFromTier: ReturnType<typeof vi.fn>;
   bumpHeat: ReturnType<typeof vi.fn>;
   bumpHeatFromScore: ReturnType<typeof vi.fn>;

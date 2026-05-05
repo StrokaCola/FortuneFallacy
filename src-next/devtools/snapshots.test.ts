@@ -24,8 +24,8 @@ describe('snapshots', () => {
     saveSnapshot('a', fakeState);
     const all = listSnapshots();
     expect(all).toHaveLength(1);
-    expect(all[0].name).toBe('a');
-    expect(all[0].state).toEqual(fakeState);
+    expect(all[0]!.name).toBe('a');
+    expect(all[0]!.state).toEqual(fakeState);
   });
 
   it('getSnapshot returns deep-equal state', () => {

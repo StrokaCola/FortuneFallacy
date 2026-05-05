@@ -139,13 +139,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', visibilityHandler);
 }
 
-declare global {
-  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
-}
-
-if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
-  (import.meta as ImportMeta).hot!.dispose(() => {
-    if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
-    screenMusic.dispose();
-  });
-}
+import.meta.hot?.dispose(() => {
+  if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
+  screenMusic.dispose();
+});

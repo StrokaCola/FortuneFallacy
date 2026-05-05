@@ -3,6 +3,7 @@ import './quorum';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(comboId: string, lastComboId: string | null, comboStreak = 1, chips = 100, mult = 4): PipelineCtx {
   const state = {
@@ -15,7 +16,7 @@ function makeCtx(comboId: string, lastComboId: string | null, comboStreak = 1, c
     total: 0,
     events: [],
     combo: { id: comboId, tier: 1, baseChips: 0, baseMult: 1, scoringFaces: [] },
-    rng: () => 0,
+    rng: mulberry32(0),
   };
 }
 

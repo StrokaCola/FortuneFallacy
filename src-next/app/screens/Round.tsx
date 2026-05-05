@@ -15,7 +15,7 @@ import { useScoreDisplay } from '../hud/useScoreDisplay';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
   selectTarget, selectShards, selectAnte,
-  selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectBlindId,
+  selectCatalysts, selectMaxCatalystSlots, selectVouchers,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -30,11 +30,11 @@ export function Round() {
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
-  const blindId  = useStore(selectBlindId);
+  const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
   const accent = isBoss ? '#e2334a' : '#7be3ff';
 
-  const blindName = BLIND_DEFS.find((b) => b.index === blindId)?.name ?? 'Trial';
+  const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
