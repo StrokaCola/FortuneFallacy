@@ -6,9 +6,12 @@ import { maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
+import { getDiceSpec } from '../../core/run/diceContext';
 import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
 } from '../../state/selectors';
+
+const selectDiceSpec = (s: GameState) => getDiceSpec(s);
 
 const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectDice = (s: GameState) => s.round.dice;
@@ -40,6 +43,8 @@ export function Forge() {
   const accent = '#7be3ff';
   const selectedFace = dice[selectedDie]?.face ?? 1;
   const selectedMods = allDiceMods[selectedDie] ?? [];
+  const diceSpec = useStore(selectDiceSpec);
+  const selectedShape = diceSpec[selectedDie]?.shape ?? 'd6';
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
@@ -91,7 +96,7 @@ export function Forge() {
                 })}
               </g>
             </svg>
-            <DieView face={selectedFace} size={140} style="celestial" mods={selectedMods} />
+            <DieView face={selectedFace} size={140} style="celestial" shape={selectedShape} mods={selectedMods} />
             <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
               <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
                 die {selectedDie + 1} · {slots.length}/{maxSlots} mods
@@ -126,7 +131,7 @@ export function Forge() {
                     WebkitTapHighlightColor: 'transparent',
                     pointerEvents: 'auto',
                   }}>
-                  <DieView face={d.face} size={56} style="celestial" mods={dieMods} />
+                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,

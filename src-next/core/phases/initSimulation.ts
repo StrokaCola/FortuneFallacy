@@ -25,8 +25,12 @@ export const initSimulation: PhaseFn = (ctx) => {
     if (face === 'WILD') return WILD_SENTINEL;
     return 0; // BLANK
   });
+  // Per-die shape from the constellation's dice spec. Falls back to 'd6'
+  // for any unspecified entry so legacy callers / tests stay valid.
+  const diceShapes = dice.map((_, i) => spec[i]?.shape ?? 'd6');
+
   return {
     ...ctx,
-    simRequest: { diceToRoll, seed: ctx.rng.seed, predeterminedFaces },
+    simRequest: { diceToRoll, seed: ctx.rng.seed, predeterminedFaces, diceShapes },
   };
 };

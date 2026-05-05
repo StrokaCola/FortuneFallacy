@@ -7,6 +7,13 @@
 
 export type DieFace = number | 'WILD' | 'BLANK';
 
+// Physical shape of the die. Determines the renderer mesh, the rapier
+// collision hull, and the per-face axis table used to read the rolled value
+// from a settled quaternion. Face count must match `faces.length` (enforced
+// at module init by `assertShapeMatchesFaces` if you wire one in; for now
+// the dN-Plain helpers below set them consistently).
+export type DieShape = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
+
 export type DieBehavior =
   | 'plain'
   | 'exploding'   // rolling max face triggers a bonus re-roll added on top
@@ -16,6 +23,7 @@ export type DieBehavior =
 
 export type DieSpec = {
   faces: DieFace[];
+  shape?: DieShape;       // omitted = 'd6' for backwards compatibility
   behavior?: DieBehavior;
   link?: number;
   display?: { glyph?: string; tint?: string; label?: string };
@@ -32,14 +40,19 @@ function rangeFaces(n: number): number[] {
   return out;
 }
 
-export const d6Plain   = (): DieSpec => ({ faces: rangeFaces(6),  display: { label: 'd6'   } });
-export const d4Plain   = (): DieSpec => ({ faces: rangeFaces(4),  display: { label: 'd4'   } });
-export const d8Plain   = (): DieSpec => ({ faces: rangeFaces(8),  display: { label: 'd8'   } });
-export const d10Plain  = (): DieSpec => ({ faces: rangeFaces(10), display: { label: 'd10'  } });
-export const d12Plain  = (): DieSpec => ({ faces: rangeFaces(12), display: { label: 'd12'  } });
-export const d20Plain  = (): DieSpec => ({ faces: rangeFaces(20), display: { label: 'd20'  } });
-export const d100Plain = (): DieSpec => ({ faces: rangeFaces(100), display: { label: 'd100' } });
+export const d6Plain   = (): DieSpec => ({ faces: rangeFaces(6),  shape: 'd6',  display: { label: 'd6'   } });
+export const d4Plain   = (): DieSpec => ({ faces: rangeFaces(4),  shape: 'd4',  display: { label: 'd4'   } });
+export const d8Plain   = (): DieSpec => ({ faces: rangeFaces(8),  shape: 'd8',  display: { label: 'd8'   } });
+export const d10Plain  = (): DieSpec => ({ faces: rangeFaces(10), shape: 'd10', display: { label: 'd10'  } });
+export const d12Plain  = (): DieSpec => ({ faces: rangeFaces(12), shape: 'd12', display: { label: 'd12'  } });
+export const d20Plain  = (): DieSpec => ({ faces: rangeFaces(20), shape: 'd20', display: { label: 'd20'  } });
+// d100 has no real polyhedron — falls back to the d20 shape (icosahedron) at
+// the renderer level until a percentile-pair representation is needed.
+export const d100Plain = (): DieSpec => ({ faces: rangeFaces(100), shape: 'd20', display: { label: 'd100' } });
 
+// Custom face arrays default to the d6 shape. Callers that want a non-cube
+// shape with custom faces (e.g. a d20 with WILD on face 20) must set `shape`
+// explicitly.
 export const dN = (faces: DieFace[], display?: DieSpec['display']): DieSpec => ({ faces, display });
 
 // Treat 'WILD' and 'BLANK' as 0-valued for any sum/face-arithmetic step. The

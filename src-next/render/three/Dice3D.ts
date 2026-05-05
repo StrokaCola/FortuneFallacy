@@ -9,6 +9,9 @@ import {
   type FaceMatMap,
 } from './buildDie';
 import { MOD_MATERIALS } from './dieMaterials';
+import { getFaceCenters } from './polyhedra';
+import { getDiceSpec } from '../../core/run/diceContext';
+import type { DieShape } from '../../data/dice';
 import { buildOrbitalSatellite } from './orbitalSatellite';
 import { buildRimOverlay } from './rimOverlay';
 import { firePulse } from './modFx/pulse';
@@ -30,9 +33,11 @@ const ROLL_TRAY_H = 8;         // visual frame height — matches rapierSim TRAY
 const PLAY_W = 13;             // playable X extent (rapierSim TRAY_X * 2)
 const PLAY_H = 8;              // playable Z extent (rapierSim TRAY_Z * 2)
 
-// Lock-snap rotations: orient face value N so its local outward normal lands
-// at world +Y (toward the top-down camera). Local face normals come from
-// FACE_DEFS (matches faceFromPose convention): 1=+Y, 6=-Y, 2=+X, 5=-X, 3=+Z, 4=-Z.
+// Lock-snap rotations: orient face value N so its face axis lands at
+// world +Y (toward the top-down camera). For d6 we keep the canonical
+// Euler table for backwards compatibility with the existing tests / look.
+// For other shapes the snap quaternion is derived from the polyhedron's
+// face center via Three's `setFromUnitVectors(axis, +Y)`.
 const FACE_ROT: Record<number, [number, number, number]> = {
   1: [0, 0, 0],                  // +Y identity
   2: [0, 0,  Math.PI / 2],       // +X → +Y
@@ -41,6 +46,19 @@ const FACE_ROT: Record<number, [number, number, number]> = {
   5: [0, 0, -Math.PI / 2],       // -X → +Y
   6: [Math.PI, 0, 0],            // -Y → +Y
 };
+
+const _UP = new THREE.Vector3(0, 1, 0);
+const _AXIS = new THREE.Vector3();
+function lockSnapQuat(shape: DieShape, face: number): THREE.Quaternion {
+  if (shape === 'd6') {
+    const rot = FACE_ROT[face] ?? FACE_ROT[1]!;
+    return new THREE.Quaternion().setFromEuler(new THREE.Euler(rot[0], rot[1], rot[2]));
+  }
+  const centers = getFaceCenters(shape);
+  const c = centers[face - 1] ?? centers[0]!;
+  _AXIS.set(c.x, c.y, c.z).normalize();
+  return new THREE.Quaternion().setFromUnitVectors(_AXIS, _UP);
+}
 
 type DieAnim = {
   group: THREE.Group;
@@ -63,6 +81,9 @@ type DieAnim = {
   faceLensMats: FaceMatMap<THREE.MeshStandardMaterial>;
   faceHaloMats: FaceMatMap<THREE.SpriteMaterial>;
   scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
+  // Physical shape (d4/d6/d8/d10/d12/d20). Drives the lock-snap rotation
+  // table and tells the lens/halo loop how many faces this die has.
+  shape: DieShape;
   // Constellation-driven base scale. Single-die specs like Argo bump this so
   // the die fills the empty tray; many-die specs like Mensa shrink it so the
   // strip still fits. Multiplied with the lerp/lock/pop scale at render time.
@@ -95,9 +116,10 @@ function setAllPipsOn(
   lensMats: FaceMatMap<THREE.MeshStandardMaterial>,
   haloMats: FaceMatMap<THREE.SpriteMaterial>,
 ): void {
-  for (let f = 1; f <= 6; f++) {
-    lensMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = PIP_LENS_OPACITY;
-    haloMats[f as 1 | 2 | 3 | 4 | 5 | 6].opacity = PIP_HALO_OPACITY;
+  for (const k of Object.keys(lensMats)) {
+    const f = Number(k);
+    if (lensMats[f]) lensMats[f]!.opacity = PIP_LENS_OPACITY;
+    if (haloMats[f]) haloMats[f]!.opacity = PIP_HALO_OPACITY;
   }
 }
 
@@ -385,6 +407,11 @@ export class Dice3D {
         if (desiredCount !== this.dice.length) {
           this.ensureDiceCount(desiredCount);
         }
+        // Constellation switch (Lyra→Argo, etc.) can change shapes on the
+        // surviving dice — rebuild any whose shape no longer matches.
+        if (s.run.constellationId !== prev.run.constellationId) {
+          this.syncDiceShapes();
+        }
         if (s.round.dice !== prev.round.dice || s.round.scoringOrder !== prev.round.scoringOrder) {
           this.syncDice(s.round.dice);
         }
@@ -668,7 +695,7 @@ export class Dice3D {
   // satellite (or the rim band when a third mod is attached); tertiary drives
   // the satellite in the 3-mod case. Orbital/rim groups are children of the
   // die group so position/scale/tumble cascade automatically.
-  private buildSingleDie(modIds: string[]): {
+  private buildSingleDie(modIds: string[], shape: DieShape = 'd6'): {
     built: ReturnType<typeof buildDie>;
     orbital: ReturnType<typeof buildOrbitalSatellite> | null;
     rim: ReturnType<typeof buildRimOverlay> | null;
@@ -678,7 +705,7 @@ export class Dice3D {
     const modKey = primary?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const geometricVariant = primary?.visual?.geometricVariant;
-    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant);
+    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant, shape);
 
     const secondary = modIds[1] ? lookupMod(modIds[1]) : undefined;
     const tertiary = modIds[2] ? lookupMod(modIds[2]) : undefined;
@@ -716,13 +743,16 @@ export class Dice3D {
     // Constellation-driven: dice count tracks the active dice spec via
     // `state.run.diceMods.length` which `applyConstellation` sizes for us.
     // Lyra=5, Mensa=7, Argo=1, Polyhedra=5 mixed.
-    const allMods = store.getState().run.diceMods;
+    const state = store.getState();
+    const allMods = state.run.diceMods;
+    const spec = getDiceSpec(state);
     const count = Math.max(1, allMods.length);
     const startX = -((count - 1) * DICE_GAP) / 2;
     const baseScale = baseScaleForCount(count);
     for (let i = 0; i < count; i++) {
       const modIds = allMods[i] ?? [];
-      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
+      const shape = spec[i]?.shape ?? 'd6';
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape);
       const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
       built.group.position.copy(home);
       this.scene.add(built.group);
@@ -749,6 +779,7 @@ export class Dice3D {
         faceLensMats: built.faceLensMats,
         faceHaloMats: built.faceHaloMats,
         scorePopStart: 0,
+        shape,
         baseScale,
         modSig,
         orbital,
@@ -782,7 +813,7 @@ export class Dice3D {
     const newSig = newModIds.join('|');
     if (old.modSig === newSig) return;
 
-    const { built, orbital, rim, modSig } = this.buildSingleDie(newModIds);
+    const { built, orbital, rim, modSig } = this.buildSingleDie(newModIds, old.shape);
 
     // Carry pose + scale + quaternion onto the new group so the rebuild is
     // visually seamless (other than the material/geometry swap itself).
@@ -828,11 +859,14 @@ export class Dice3D {
       d.duration = 380;
     }
     if (targetCount > current) {
-      const allMods = store.getState().run.diceMods;
+      const state = store.getState();
+      const allMods = state.run.diceMods;
+      const spec = getDiceSpec(state);
       const startX = -((targetCount - 1) * DICE_GAP) / 2;
       for (let i = current; i < targetCount; i++) {
         const modIds = allMods[i] ?? [];
-        const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
+        const shape = spec[i]?.shape ?? 'd6';
+        const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape);
         const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
         built.group.position.copy(home);
         built.group.scale.setScalar(baseScale);
@@ -859,6 +893,7 @@ export class Dice3D {
           faceLensMats: built.faceLensMats,
           faceHaloMats: built.faceHaloMats,
           scorePopStart: 0,
+          shape,
           baseScale,
           modSig,
           orbital,
@@ -876,6 +911,39 @@ export class Dice3D {
         this.disposeDie(d);
       }
       this.dice.length = targetCount;
+    }
+  }
+
+  // Rebuild any die whose shape no longer matches the active dice spec —
+  // happens at NEW_RUN when the constellation changes (e.g. Lyra→Argo flips
+  // d6 cubes to d20 icosahedra). Mirrors syncDiceMods but keys off shape.
+  private syncDiceShapes(): void {
+    const state = store.getState();
+    const spec = getDiceSpec(state);
+    const allMods = state.run.diceMods;
+    for (let i = 0; i < this.dice.length; i++) {
+      const old = this.dice[i]!;
+      const wantedShape = spec[i]?.shape ?? 'd6';
+      if (old.shape === wantedShape) continue;
+      const modIds = allMods[i] ?? [];
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, wantedShape);
+      built.group.position.copy(old.group.position);
+      built.group.quaternion.copy(old.group.quaternion);
+      built.group.scale.copy(old.group.scale);
+      this.scene.remove(old.group);
+      this.disposeDie(old);
+      this.scene.add(built.group);
+      setAllPipsOn(built.faceLensMats, built.faceHaloMats);
+      this.dice[i] = {
+        ...old,
+        group: built.group,
+        faceLensMats: built.faceLensMats,
+        faceHaloMats: built.faceHaloMats,
+        orbital,
+        rim,
+        modSig,
+        shape: wantedShape,
+      };
     }
   }
 
@@ -960,17 +1028,12 @@ export class Dice3D {
         die.targetScale = newTargetScale;
       }
 
-      // Face rotation target: only force canonical FACE_ROT when locked
-      // (so dice sit cleanly face-up on the hold shelf). Active dice keep
+      // Face rotation target: only force a canonical pose when locked (so
+      // dice sit cleanly face-up on the hold shelf). Active dice keep
       // whatever rotation physics produced — that orientation already shows
       // the correct face per faceFromQuaternion.
       if (!die.rolling && isLocked) {
-        // FACE_ROT only knows about d6 faces (1..6). For non-d6 dice (d12,
-        // d100, Fibonacci, WILD sentinel) fall back to face 1 — a future
-        // pass should add per-die geometry so the visible face matches.
-        const rotEuler = FACE_ROT[d.face] ?? FACE_ROT[1]!;
-        const newRot = new THREE.Quaternion();
-        newRot.setFromEuler(new THREE.Euler(...rotEuler));
+        const newRot = lockSnapQuat(die.shape, d.face);
         if (!die.targetQuat.equals(newRot) || lockChanged) {
           die.startQuat.copy(die.group.quaternion);
           die.targetQuat.copy(newRot);

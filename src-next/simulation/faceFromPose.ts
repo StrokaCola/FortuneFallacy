@@ -1,3 +1,6 @@
+import type { DieShape } from '../data/dice';
+import { getFaceCenters } from '../render/three/polyhedra';
+
 export type Vec3 = { x: number; y: number; z: number };
 export type Quat = { x: number; y: number; z: number; w: number };
 
@@ -15,30 +18,47 @@ function rotateVec(q: Quat, v: Vec3): Vec3 {
   };
 }
 
-const FACE_AXES: { face: number; axis: Vec3 }[] = [
-  { face: 1, axis: { x: 0, y:  1, z: 0 } },
-  { face: 6, axis: { x: 0, y: -1, z: 0 } },
-  { face: 2, axis: { x: 1, y: 0,  z: 0 } },
-  { face: 5, axis: { x: -1, y: 0, z: 0 } },
-  { face: 3, axis: { x: 0, y: 0,  z: 1 } },
-  { face: 4, axis: { x: 0, y: 0, z: -1 } },
-];
+// Per-shape face axes are sourced from `polyhedra.ts` (which is the single
+// truth for vertex/face data shared with the renderer). For d6 we keep an
+// explicit table so the cube path doesn't depend on the renderer module.
+//
+// Each axis is the "face up" vector — when face N is rolled, this axis
+// points at world +Y after the die settles. For d4 the axes point inward
+// (toward the resting face) so the same `largest +Y dot` lookup works.
+const FACE_AXES_BY_SHAPE: Record<DieShape, { face: number; axis: Vec3 }[]> = {
+  d4:  buildAxes('d4'),
+  d6:  [
+    { face: 1, axis: { x: 0, y:  1, z: 0 } },
+    { face: 6, axis: { x: 0, y: -1, z: 0 } },
+    { face: 2, axis: { x: 1, y: 0,  z: 0 } },
+    { face: 5, axis: { x: -1, y: 0, z: 0 } },
+    { face: 3, axis: { x: 0, y: 0,  z: 1 } },
+    { face: 4, axis: { x: 0, y: 0, z: -1 } },
+  ],
+  d8:  buildAxes('d8'),
+  d10: buildAxes('d10'),
+  d12: buildAxes('d12'),
+  d20: buildAxes('d20'),
+};
 
-const FACE_NORMAL: Record<number, Vec3> = Object.fromEntries(
-  FACE_AXES.map(({ face, axis }) => [face, axis]),
-) as Record<number, Vec3>;
-
-export function faceNormal(face: number): Vec3 {
-  return FACE_NORMAL[face] ?? FACE_NORMAL[1]!;
+function buildAxes(shape: DieShape) {
+  const centers = getFaceCenters(shape);
+  return centers.map((c, i) => ({ face: i + 1, axis: { x: c.x, y: c.y, z: c.z } }));
 }
 
-export function faceFromQuaternion(q: Quat): number {
-  const up = { x: 0, y: 1, z: 0 };
-  let bestFace = 1;
+export function faceNormal(face: number, shape: DieShape = 'd6'): Vec3 {
+  const list = FACE_AXES_BY_SHAPE[shape];
+  for (const { face: f, axis } of list) if (f === face) return axis;
+  return list[0]!.axis;
+}
+
+export function faceFromQuaternion(q: Quat, shape: DieShape = 'd6'): number {
+  const list = FACE_AXES_BY_SHAPE[shape];
+  let bestFace = list[0]!.face;
   let bestDot = -Infinity;
-  for (const { face, axis } of FACE_AXES) {
+  for (const { face, axis } of list) {
     const rotated = rotateVec(q, axis);
-    const dot = rotated.x * up.x + rotated.y * up.y + rotated.z * up.z;
+    const dot = rotated.y;        // up = (0, 1, 0); only Y component matters
     if (dot > bestDot) {
       bestDot = dot;
       bestFace = face;
@@ -118,10 +138,10 @@ export function quatSlerp(a: Quat, b: Quat, t: number): Quat {
 // the physics happened to land on. The correction maps the target face's
 // local normal onto the physics-up face's local normal, so that
 // (qPhys * qCorr).rotate(targetNormal) == qPhys.rotate(physNormal) == +Y.
-export function faceCorrection(qPhysRest: Quat, targetFace: number): Quat {
-  const physFace = faceFromQuaternion(qPhysRest);
+export function faceCorrection(qPhysRest: Quat, targetFace: number, shape: DieShape = 'd6'): Quat {
+  const physFace = faceFromQuaternion(qPhysRest, shape);
   if (physFace === targetFace) return { ...IDENTITY };
-  return quatFromTo(faceNormal(targetFace), faceNormal(physFace));
+  return quatFromTo(faceNormal(targetFace, shape), faceNormal(physFace, shape));
 }
 
 export function quatIdentity(): Quat {

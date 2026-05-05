@@ -1,5 +1,7 @@
 import type { SimulationRequest, SimulationResult, DieFrame } from '../events/types';
+import type { DieShape } from '../data/dice';
 import { faceCorrection, quatMul } from './faceFromPose';
+import { SHAPE_DATA } from '../render/three/polyhedra';
 import { mulberry32 } from '../core/rng';
 
 type RapierModule = typeof import('@dimforge/rapier3d');
@@ -32,6 +34,23 @@ const TRAY_X = 6.5;
 const TRAY_Z = 4;
 const FLOOR_Y = 0;
 
+// Per-shape rapier collider. Cube uses cuboid (faster, well-tested); other
+// shapes build a convex hull from the polyhedron vertex cloud scaled to
+// match the old cube extent. If `convexHull` returns null (degenerate input)
+// we fall back to a cuboid of equivalent size — the visible mesh still
+// renders as the polyhedron, just with cube-fairness physics.
+function colliderForShape(r: RapierModule, shape: DieShape, half: number) {
+  if (shape === 'd6') {
+    return r.ColliderDesc.cuboid(half, half, half).setRestitution(0.35).setDensity(1.5);
+  }
+  const data = SHAPE_DATA[shape];
+  const cloud = new Float32Array(data.vertices.length);
+  for (let i = 0; i < data.vertices.length; i++) cloud[i] = data.vertices[i]! * half;
+  const hull = r.ColliderDesc.convexHull(cloud);
+  if (hull) return hull.setRestitution(0.35).setDensity(1.5);
+  return r.ColliderDesc.cuboid(half, half, half).setRestitution(0.35).setDensity(1.5);
+}
+
 export async function runRapierSim(req: SimulationRequest, prevFaces: number[]): Promise<SimulationResult | null> {
   const r = await ensureRapier();
   if (!r) return null;
@@ -52,6 +71,11 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   // Constellation-driven: dice count tracks the active spec (1 for Argo,
   // 5 for Lyra, 7 for Mensa, etc). Default to 1 if everything's empty.
   const diceCount = Math.max(prevFaces.length, 1);
+  const shapes: DieShape[] = req.diceShapes ?? [];
+  // Physics scale: the cube collider was 0.4 half-extent → 0.8-side cube.
+  // For non-cube shapes the polyhedron lives on a unit sphere; scaling its
+  // vertex cloud by HALF (matches old half-extent) keeps similar tray feel.
+  const HALF = 0.4;
   for (let i = 0; i < diceCount; i++) {
     const x = (i - (diceCount - 1) / 2) * 1.6;
     const z = (rng.next() - 0.5) * 1.5;
@@ -60,8 +84,9 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
       .setLinvel((rng.next() - 0.5) * 16, -6, (rng.next() - 0.5) * 16)
       .setAngvel({ x: rng.next() * 26 - 13, y: rng.next() * 26 - 13, z: rng.next() * 26 - 13 });
     const body = world.createRigidBody(bodyDesc);
-    const cube = r.ColliderDesc.cuboid(0.4, 0.4, 0.4).setRestitution(0.35).setDensity(1.5);
-    world.createCollider(cube, body);
+    const shape = shapes[i] ?? 'd6';
+    const collider = colliderForShape(r, shape, HALF);
+    world.createCollider(collider, body);
     bodies.push(body);
   }
 
@@ -118,16 +143,20 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     if (!fr || fr.length === 0) return;
     const target = targets[i];
     if (target == null) return;
-    // Face correction only knows about d6 faces (1..6). For non-d6 dice
-    // (d12, d100, Fibonacci, wildcard sentinel) we skip the visual orient
-    // pass — the cube tumbles naturally and the gameplay face value still
-    // comes from `finalFaces` below. A future pass could add per-die
-    // geometry to make the visual match.
-    if (target < 1 || target > 6 || !Number.isInteger(target)) return;
+    // Skip wildcard / blank sentinels — they have no physical face axis.
+    if (!Number.isInteger(target) || target < 1) return;
+    const shape = shapes[i] ?? 'd6';
+    const faceCount = shape === 'd6' ? 6 : SHAPE_DATA[shape].faceCenters.length;
+    // Constellation faces beyond the polyhedron's face count (e.g. d20 spec
+    // has values 1..20 but a hypothetical custom 25-face die would not). The
+    // gameplay value still comes from `finalFaces`; just skip the visual
+    // orient pass for that die.
+    if (target > faceCount) return;
     const restQ = fr[fr.length - 1]!;
     const corr = faceCorrection(
       { x: restQ.qx, y: restQ.qy, z: restQ.qz, w: restQ.qw },
       target,
+      shape,
     );
     if (corr.x === 0 && corr.y === 0 && corr.z === 0 && corr.w === 1) return;
     for (let k = 0; k < fr.length; k++) {
