@@ -65,15 +65,18 @@ export const diceHandler: ActionHandler = (a, s) => {
     }
     case 'REORDER_HOLD': {
       const locked = lockedIdxs(s.round.dice);
-      const valid =
-        a.newOrder.length === locked.length &&
-        new Set(a.newOrder).size === a.newOrder.length &&
-        a.newOrder.every((idx) => locked.includes(idx));
-      if (!valid) {
+      let reason: 'length-mismatch' | 'duplicate-index' | 'unlocked-index' | null = null;
+      if (a.newOrder.length !== locked.length) reason = 'length-mismatch';
+      else if (new Set(a.newOrder).size !== a.newOrder.length) reason = 'duplicate-index';
+      else if (!a.newOrder.every((idx) => locked.includes(idx))) reason = 'unlocked-index';
+      if (reason) {
         if (typeof console !== 'undefined' && console.warn) {
-          console.warn('[REORDER_HOLD] invalid newOrder', a.newOrder, 'locked=', locked);
+          console.warn('[REORDER_HOLD] invalid newOrder', a.newOrder, 'locked=', locked, 'reason=', reason);
         }
-        return { state: s, events: [] };
+        return {
+          state: s,
+          events: [{ type: 'onReorderRejected', payload: { reason, newOrder: a.newOrder, locked } }],
+        };
       }
       return {
         state: { ...s, round: { ...s.round, scoringOrder: a.newOrder } },

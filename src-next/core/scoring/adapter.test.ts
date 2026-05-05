@@ -77,4 +77,46 @@ describe('adaptScoringContext', () => {
     const input = adaptScoringContext(fakeCtx);
     expect(input.faces).toEqual([1, 2, 3, 4, 5]);
   });
+
+  it('emits dieIndices parallel to faces in scoringOrder', () => {
+    // Held dice 3 and 4 (last two), in that order.
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 8,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 8,
+      state: { round: { dice: [{ face: 1 }, { face: 2 }, { face: 3 }, { face: 6 }, { face: 2 }], scoringOrder: [3, 4] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.faces).toEqual([6, 2]);
+    expect(input.dieIndices).toEqual([3, 4]);
+  });
+
+  it('dieIndices reflect drag-mutated scoringOrder', () => {
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 8,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 8,
+      state: { round: { dice: [{ face: 1 }, { face: 2 }, { face: 3 }, { face: 4 }, { face: 5 }], scoringOrder: [4, 1, 0] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.faces).toEqual([5, 2, 1]);
+    expect(input.dieIndices).toEqual([4, 1, 0]);
+  });
+
+  it('dieIndices fall back to natural order when scoringOrder absent', () => {
+    const fakeCtx = {
+      combo: { id: 'chance', tier: 0 },
+      chips: 15,
+      mult: 1,
+      chain: { mult: 1 },
+      total: 15,
+      state: { round: { dice: [{ face: 1 }, { face: 2 }, { face: 3 }, { face: 4 }, { face: 5 }] } },
+    } as any;
+    const input = adaptScoringContext(fakeCtx);
+    expect(input.dieIndices).toEqual([0, 1, 2, 3, 4]);
+  });
 });

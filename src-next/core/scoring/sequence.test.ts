@@ -265,4 +265,42 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.beats.some((b) => b.kind === 'combo-bonus')).toBe(false);
     expect(seq.beats.some((b) => b.kind === 'hold-breath')).toBe(false);
   });
+
+  it('die-tick beats use dieIndices from input (not the held-array slot)', () => {
+    // Held dice indices [3, 4] with faces [6, 2]. Beats must target the
+    // physical dice (3 and 4), not the held-array slots (0 and 1).
+    const seq = buildScoreSequence(
+      baseInput({ faces: [6, 2], dieIndices: [3, 4], comboBonus: 0, mults: [], finalTotal: 8 }),
+      baseCtx({ target: 100 }),
+    );
+    const ticks = seq.beats.filter((b) => b.kind === 'die-tick');
+    expect(ticks.map((b) => (b.kind === 'die-tick' ? b.dieIdx : -1))).toEqual([3, 4]);
+  });
+
+  it('die-tick beats fall back to slot index when dieIndices absent (legacy callers)', () => {
+    const seq = buildScoreSequence(
+      baseInput({ faces: [1, 2, 3], dieIndices: undefined, comboBonus: 0, mults: [], finalTotal: 6 }),
+      baseCtx({ target: 100 }),
+    );
+    const ticks = seq.beats.filter((b) => b.kind === 'die-tick');
+    expect(ticks.map((b) => (b.kind === 'die-tick' ? b.dieIdx : -1))).toEqual([0, 1, 2]);
+  });
+
+  it('reduced-motion die-ticks also use dieIndices', () => {
+    const seq = buildScoreSequence(
+      baseInput({ faces: [6, 2], dieIndices: [3, 4], comboBonus: 0, mults: [], finalTotal: 8 }),
+      baseCtx({ target: 100, reducedMotion: true }),
+    );
+    const ticks = seq.beats.filter((b) => b.kind === 'die-tick');
+    expect(ticks.map((b) => (b.kind === 'die-tick' ? b.dieIdx : -1))).toEqual([3, 4]);
+  });
+
+  it('bail die-ticks also use dieIndices', () => {
+    const seq = buildScoreSequence(
+      baseInput({ faces: [6, 2], dieIndices: [3, 4], comboBonus: 0, mults: [], finalTotal: 8 }),
+      baseCtx({ target: 100, bail: true }),
+    );
+    const ticks = seq.beats.filter((b) => b.kind === 'die-tick');
+    expect(ticks.map((b) => (b.kind === 'die-tick' ? b.dieIdx : -1))).toEqual([3, 4]);
+  });
 });

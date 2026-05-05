@@ -16,9 +16,8 @@ export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
   // for back-compat when scoringOrder is absent (legacy ctxs / tests).
   const allDice = ctx.state.round.dice;
   const order = ctx.state.round.scoringOrder ?? allDice.map((_, i) => i);
-  const faces = order
-    .filter((idx) => idx >= 0 && idx < allDice.length)
-    .map((idx) => allDice[idx]!.face);
+  const dieIndices = order.filter((idx) => idx >= 0 && idx < allDice.length);
+  const faces = dieIndices.map((idx) => allDice[idx]!.face);
   const faceSum = faces.reduce((a, b) => a + b, 0);
   const comboBonus = Math.max(0, ctx.chips - faceSum);
   const comboLabel = (ctx.combo?.id ?? 'CHANCE').toUpperCase();
@@ -36,6 +35,7 @@ export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
   if (ctx.chain.mult !== 1) mults.push({ label: 'chain', value: ctx.chain.mult });
   return {
     faces,
+    dieIndices,
     comboLabel,
     comboBonus,
     mults,
