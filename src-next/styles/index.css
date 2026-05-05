@@ -320,6 +320,42 @@ html, body {
   100% { opacity: 0; transform: translateY(-30px); }
 }
 
+/* Score breakdown juice — chip ticks + mult slams. */
+@keyframes chipsTickPop {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(123,227,255,0); }
+  35%  { transform: scale(1.22); box-shadow: 0 0 28px rgba(123,227,255,0.55); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(123,227,255,0); }
+}
+@keyframes multSlamPunch {
+  0%   { transform: scale(1) rotate(0); }
+  20%  { transform: scale(1.42) rotate(-2.5deg); }
+  55%  { transform: scale(0.92) rotate(1.5deg); }
+  80%  { transform: scale(1.08) rotate(0); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes multTierFlash {
+  0%, 100% { background: transparent; }
+  50%      { background: var(--tier-flash, rgba(255,120,71,0.18)); }
+}
+
+/* Final-score implosion + stars flying into the score meter. */
+@keyframes boomImplode {
+  0%   { transform: scale(1); opacity: 1; filter: blur(0); }
+  100% { transform: scale(0.35); opacity: 0; filter: blur(2px); }
+}
+@keyframes starFly {
+  0%   { transform: translate(0,0) scale(0.4) rotate(0); opacity: 0; }
+  12%  { transform: translate(calc(var(--dx) * 0.05), calc(var(--dy) * 0.05 - 18px)) scale(1.15) rotate(40deg); opacity: 1; }
+  85%  { transform: translate(calc(var(--dx) * 0.95), calc(var(--dy) * 0.95 - 4px)) scale(0.85) rotate(280deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.25) rotate(360deg); opacity: 0; }
+}
+@keyframes scoreCounterCatch {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.reduce-motion .score-star { display: none; }
+
 /* Button juice — press scale + accent shockwave on release. */
 .btn-primary {
   transition: transform 180ms ease-out;
