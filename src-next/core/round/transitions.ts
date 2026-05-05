@@ -80,6 +80,33 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   const nextAnte = Math.floor(nextGoal / 3) + 1;
   const won = nextGoal >= 12;
   const highScores = won ? pushHighScore(s, s.round.score) : s.meta.highScores;
+  const events: GameEventEmission[] = [
+    {
+      type: 'onBlindCleared',
+      payload: {
+        blindId: s.round.blindId ?? 'unknown',
+        ante: s.run.ante,
+        reward: {
+          base: baseAmount,
+          voucher: voucherBonus,
+          hands: handsBonus,
+          interest,
+          total: reward,
+        },
+      },
+    },
+  ];
+  if (won) {
+    events.push({
+      type: 'onRunEnded',
+      payload: {
+        score: s.round.score,
+        won: true,
+        ante: s.run.ante,
+        constellation: s.run.constellationId,
+      },
+    });
+  }
   return {
     state: {
       ...s,
@@ -96,22 +123,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       ui: { ...s.ui, screen: won ? 'win' : 'shop' },
       meta: won ? { ...s.meta, highScores } : s.meta,
     },
-    events: [
-      {
-        type: 'onBlindCleared',
-        payload: {
-          blindId: s.round.blindId ?? 'unknown',
-          ante: s.run.ante,
-          reward: {
-            base: baseAmount,
-            voucher: voucherBonus,
-            hands: handsBonus,
-            interest,
-            total: reward,
-          },
-        },
-      },
-    ],
+    events,
   };
 }
 
@@ -125,7 +137,17 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       run: { ...s.run, compoundingStacks: 0, diceMods: dropBrittleMods(s.run.diceMods) },
       meta: { ...s.meta, highScores },
     },
-    events: [],
+    events: [
+      {
+        type: 'onRunEnded',
+        payload: {
+          score: s.round.score,
+          won: false,
+          ante: s.run.ante,
+          constellation: s.run.constellationId,
+        },
+      },
+    ],
   };
 }
 

@@ -77,9 +77,12 @@ describe('BUST_BLIND', () => {
     expect(r.events).toBeDefined();
   });
 
-  it('emits no events', () => {
+  it('emits onRunEnded with won=false', () => {
     const r = roundHandler({ type: 'BUST_BLIND' }, baseState());
-    expect(r.events).toHaveLength(0);
+    expect(r.events).toHaveLength(1);
+    expect(r.events[0]!.type).toBe('onRunEnded');
+    const payload = (r.events[0] as { type: 'onRunEnded'; payload: { won: boolean } }).payload;
+    expect(payload.won).toBe(false);
   });
 });
 

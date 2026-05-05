@@ -63,7 +63,7 @@ describe('initial state shape', () => {
   it('meta slice has expected defaults', () => {
     const meta = getState().meta;
     expect(meta.playerName).toBe('');
-    expect(meta.unlocks).toEqual([]);
+    expect(meta.unlocks).toContain('lyra');
     expect(meta.highScores).toEqual([]);
   });
 

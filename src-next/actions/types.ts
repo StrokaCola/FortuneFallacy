@@ -3,6 +3,7 @@ import type { SimulationResult } from '../events/types';
 export type Action =
   | { type: 'PING'; msg: string }
   | { type: 'SET_SCREEN'; screen: import('../state/slices/ui').Screen }
+  | { type: 'SET_PLAYER_NAME'; name: string }
   | { type: 'ROLL_REQUESTED' }
   | { type: 'REROLL_REQUESTED' }
   | { type: 'ROLL_SETTLED'; result: SimulationResult }

@@ -18,6 +18,7 @@ import { Win }   from './screens/Win';
 import { Fail }  from './screens/Fail';
 import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
+import { NameEntry } from './screens/NameEntry';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -43,11 +44,11 @@ export function App() {
       screenMusic.stop();
       return;
     }
-    if (screen === 'title' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
-      // win/scores reuse hub track; constellation_select reuses title track.
+    if (screen === 'title' || screen === 'nameentry' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
+      // win/scores reuse hub track; constellation_select and nameentry reuse title track.
       const target: ScreenId =
         (screen === 'win' || screen === 'scores') ? 'hub'
-        : screen === 'constellation_select' ? 'title'
+        : (screen === 'constellation_select' || screen === 'nameentry') ? 'title'
         : screen;
       screenMusic.start(target);
     }
@@ -94,6 +95,7 @@ export function App() {
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>
             {screen === 'title'  && <Title />}
+            {screen === 'nameentry' && <NameEntry />}
             {screen === 'constellation_select' && <ConstellationSelect />}
             {screen === 'hub'    && <Hub />}
             {screen === 'round'  && <Round />}
