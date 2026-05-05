@@ -3,8 +3,13 @@ import { lookupConstellation, type Constellation } from '../../data/constellatio
 import { maxNumericFace } from '../../data/dice';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
 
-const selectFaces = (s: GameState) => s.round.dice.map((d) => d.face);
-const selectLocked = (s: GameState) => s.round.dice.map((d) => d.locked);
+// `useStore` is a thin wrapper over `useSyncExternalStore` and must return a
+// stable reference for the same underlying state. Selectors that build a new
+// array via `.map(...)` violate that contract and trigger React error #185
+// (Maximum update depth) — see commit history for the prod regression. Subscribe
+// to the dice array itself (a stable reference between updates) and derive the
+// face/locked arrays during render instead.
+const selectDice = (s: GameState) => s.round.dice;
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectFirstRollDone = (s: GameState) => s.round.firstRollDone;
 const selectScoringMode = (s: GameState) => lookupConstellation(s.run.constellationId).modifiers?.scoringMode ?? 'combo';
@@ -47,8 +52,7 @@ function toneForFace(face: number, maxFace: number): QuartileTone {
 
 export function FaceReadout() {
   const constellationId = useStore(selectConstellationId);
-  const faces = useStore(selectFaces);
-  const locked = useStore(selectLocked);
+  const dice = useStore(selectDice);
   const firstRollDone = useStore(selectFirstRollDone);
   const scoringMode = useStore(selectScoringMode);
   const compact = useIsCompactStage();
@@ -56,6 +60,9 @@ export function FaceReadout() {
   const constellation = lookupConstellation(constellationId);
   if (!needsReadout(constellation)) return null;
   if (!firstRollDone) return null;
+
+  const faces = dice.map((d) => d.face);
+  const locked = dice.map((d) => d.locked);
 
   // Captain-crew (Argo): highlight the highest die as the captain — the one
   // that rides the catalyst multiplier — with quartile coloring + glow, and
