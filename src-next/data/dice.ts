@@ -37,6 +37,7 @@ export const d4Plain   = (): DieSpec => ({ faces: rangeFaces(4),  display: { lab
 export const d8Plain   = (): DieSpec => ({ faces: rangeFaces(8),  display: { label: 'd8'   } });
 export const d10Plain  = (): DieSpec => ({ faces: rangeFaces(10), display: { label: 'd10'  } });
 export const d12Plain  = (): DieSpec => ({ faces: rangeFaces(12), display: { label: 'd12'  } });
+export const d20Plain  = (): DieSpec => ({ faces: rangeFaces(20), display: { label: 'd20'  } });
 export const d100Plain = (): DieSpec => ({ faces: rangeFaces(100), display: { label: 'd100' } });
 
 export const dN = (faces: DieFace[], display?: DieSpec['display']): DieSpec => ({ faces, display });

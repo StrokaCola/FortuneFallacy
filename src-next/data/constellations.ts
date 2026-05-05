@@ -8,10 +8,13 @@
 
 import type { DieFace, DiceSpec } from './dice';
 import {
-  d4Plain, d6Plain, d8Plain, d10Plain, d12Plain, d100Plain, dN,
+  d4Plain, d6Plain, d8Plain, d10Plain, d12Plain, d20Plain, dN,
 } from './dice';
 
-export type ScoringMode = 'combo' | 'face_x_catalysts';
+// 'captain_crew' (Argo): score = max(faces) × (1 + perCat × catalysts) + sum(others).
+// The highest die ("captain") rides the catalyst multiplier; the rest ("crew")
+// add flat chips. No combo lookup.
+export type ScoringMode = 'combo' | 'captain_crew';
 
 export type ConstellationModifiers = {
   startingShards?: number;
@@ -89,21 +92,22 @@ export const CONSTELLATIONS: Constellation[] = [
   {
     id: 'argo',
     name: 'Argo, the Vessel',
-    flavor: 'A single d100. No combos. Just multipliers.',
+    flavor: 'Three d20: a captain and her crew.',
     rules: [
-      'One d100 die',
-      'Combos disabled — score = face × (1 + 0.5 × catalysts)',
+      'Three d20 dice',
+      'Combos disabled — score = captain × (1 + 0.5 × catalysts) + crew',
+      'Captain = highest face this hand; crew = the others',
       'Forge & mods disabled, +2 catalyst slots',
     ],
-    dice: [d100Plain()],
+    dice: [d20Plain(), d20Plain(), d20Plain()],
     modifiers: {
-      scoringMode: 'face_x_catalysts',
+      scoringMode: 'captain_crew',
       faceMultiplierPerCatalyst: 0.5,
       forgeDisabled: true,
       modsDisabled: true,
       catalystSlotBonus: 2,
     },
-    glyph: [{ x: 50, y: 45 }],
+    glyph: [{ x: 30, y: 38 }, { x: 50, y: 60 }, { x: 70, y: 38 }],
   },
   {
     id: 'fibonacci',

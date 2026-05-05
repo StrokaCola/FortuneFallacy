@@ -3,9 +3,18 @@ import { evaluation } from './evaluation';
 import type { PipelineCtx } from '../pipeline/types';
 import type { GameState } from '../../state/store';
 
-function makeCtx(faces: number[], scoringOrder: number[] | undefined): PipelineCtx {
+function makeCtx(
+  faces: number[],
+  scoringOrder: number[] | undefined,
+  opts: { constellationId?: string; catalysts?: string[] } = {},
+): PipelineCtx {
   const state = {
-    run: { seed: 1, shards: 0, ante: 1, goalIdx: 0, catalysts: [], vouchers: [], consumables: [], handsPlayed: 0, compoundingStacks: 0 },
+    run: {
+      seed: 1, shards: 0, ante: 1, goalIdx: 0,
+      constellationId: opts.constellationId ?? 'lyra',
+      catalysts: opts.catalysts ?? [],
+      vouchers: [], consumables: [], handsPlayed: 0, compoundingStacks: 0,
+    },
     round: { scoringOrder, diceMods: [] },
   } as unknown as GameState;
   return {
@@ -79,5 +88,40 @@ describe('evaluation phase — held-only base scoring', () => {
     const ctx = makeCtx([1, 2, 3, 4, 5], [0, 99, 2]);
     const out = evaluation(ctx);
     expect(out.combo?.scoringFaces).toEqual([1, 3]);
+  });
+});
+
+describe('evaluation phase — captain-crew (Argo)', () => {
+  it('captain rides catalyst mult, crew adds flat chips', () => {
+    // Argo, three d20s rolled [12, 7, 3]. captain = 12, crew = 7+3 = 10.
+    // catalysts: [a, b] → catMult = 1 + 0.5*2 = 2.
+    // chips = 12*2 + 10 = 34. mult stays 1 so chain math still scales it.
+    const ctx = makeCtx([12, 7, 3], [0, 1, 2], {
+      constellationId: 'argo',
+      catalysts: ['x', 'y'],
+    });
+    const out = evaluation(ctx);
+    expect(out.combo?.id).toBe('argo_captain');
+    expect(out.combo?.tier).toBe(0);
+    expect(out.chips).toBe(34);
+    expect(out.mult).toBe(1);
+    expect(out.combo?.scoringFaces).toEqual([12, 7, 3]);
+  });
+
+  it('zero catalysts → captain mult is 1, score = sum of faces', () => {
+    // chips = captain*1 + crew = 12 + 10 = 22.
+    const ctx = makeCtx([12, 7, 3], [0, 1, 2], { constellationId: 'argo' });
+    const out = evaluation(ctx);
+    expect(out.chips).toBe(22);
+  });
+
+  it('single die: captain = the die, crew = 0', () => {
+    // Only one die scored: chips = 20*2 + 0 = 40 with two catalysts.
+    const ctx = makeCtx([20, 5, 1], [0], {
+      constellationId: 'argo',
+      catalysts: ['x', 'y'],
+    });
+    const out = evaluation(ctx);
+    expect(out.chips).toBe(40);
   });
 });

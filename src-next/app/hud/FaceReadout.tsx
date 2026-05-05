@@ -6,6 +6,7 @@ const selectFaces = (s: GameState) => s.round.dice.map((d) => d.face);
 const selectLocked = (s: GameState) => s.round.dice.map((d) => d.locked);
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectFirstRollDone = (s: GameState) => s.round.firstRollDone;
+const selectScoringMode = (s: GameState) => lookupConstellation(s.run.constellationId).modifiers?.scoringMode ?? 'combo';
 
 // WILD sentinel value emitted by the simulation for wildcard faces.
 const WILD_SENTINEL = -1;
@@ -48,43 +49,68 @@ export function FaceReadout() {
   const faces = useStore(selectFaces);
   const locked = useStore(selectLocked);
   const firstRollDone = useStore(selectFirstRollDone);
+  const scoringMode = useStore(selectScoringMode);
 
   const constellation = lookupConstellation(constellationId);
   if (!needsReadout(constellation)) return null;
   if (!firstRollDone) return null;
 
-  // Single-die constellations (Argo's d100) get a hero readout: the rolled
-  // number IS the score, so the visual treatment matches its weight. Multi-die
-  // specs keep the original pill so the row stays readable.
-  if (faces.length === 1) {
-    const face = faces[0]!;
-    const maxFace = maxNumericFace(constellation.dice[0]!.faces);
-    const tone = toneForFace(face, maxFace);
+  // Captain-crew (Argo): highlight the highest die as the captain — the one
+  // that rides the catalyst multiplier — with quartile coloring + glow, and
+  // render the others smaller alongside as flat-chip "crew".
+  if (scoringMode === 'captain_crew') {
+    const numeric = faces.map((f) => (f === WILD_SENTINEL ? 0 : f));
+    const captainValue = numeric.length > 0 ? Math.max(...numeric) : 0;
+    // First-occurrence index so ties don't ambiguously pick the wrong die.
+    const captainIdx = numeric.indexOf(captainValue);
+    const captainMaxFace = maxNumericFace(constellation.dice[captainIdx]?.faces ?? []);
+    const tone = toneForFace(captainValue, captainMaxFace);
     return (
       <div style={{
         position: 'absolute', left: '50%', top: '38%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', pointerEvents: 'none', zIndex: 4,
+        display: 'flex', alignItems: 'center', gap: 18,
       }}>
-        <div className="f-mono uc" style={{
-          fontSize: 10, letterSpacing: '0.4em',
-          color: tone.glow, opacity: 0.7,
-        }}>
-          {tone.label || '◇ vessel ◇'}
-        </div>
-        <div className="f-display num" style={{
-          fontSize: 128, lineHeight: 1, color: tone.fg,
-          textShadow: `0 0 28px ${tone.glow}, 0 0 60px ${tone.glow}66`,
-          marginTop: 4,
-        }}>
-          {describeFace(face)}
-        </div>
-        <div className="f-mono" style={{
-          fontSize: 11, letterSpacing: '0.2em',
-          color: '#bba8ff', opacity: 0.6, marginTop: 4,
-        }}>
-          / {maxFace}
-        </div>
+        {faces.map((f, i) => {
+          if (i === captainIdx) {
+            return (
+              <div key={i} style={{ textAlign: 'center' }}>
+                <div className="f-mono uc" style={{
+                  fontSize: 10, letterSpacing: '0.4em',
+                  color: tone.glow, opacity: 0.85,
+                }}>
+                  {tone.label || '◇ captain ◇'}
+                </div>
+                <div className="f-display num" style={{
+                  fontSize: 96, lineHeight: 1, color: tone.fg,
+                  textShadow: `0 0 24px ${tone.glow}, 0 0 56px ${tone.glow}66`,
+                  marginTop: 2,
+                }}>
+                  {describeFace(f)}
+                </div>
+              </div>
+            );
+          }
+          const isLocked = locked[i];
+          return (
+            <div key={i} style={{ textAlign: 'center', opacity: isLocked ? 1 : 0.7 }}>
+              <div className="f-mono uc" style={{
+                fontSize: 9, letterSpacing: '0.3em',
+                color: '#bba8ff', opacity: 0.6,
+              }}>
+                crew
+              </div>
+              <div className="f-display num" style={{
+                fontSize: 36, lineHeight: 1,
+                color: '#dcd4ff',
+                marginTop: 2,
+              }}>
+                {describeFace(f)}
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   }

@@ -56,17 +56,29 @@ export const evaluation: PhaseFn = (ctx) => {
     return raw;
   });
 
-  if (scoringMode === 'face_x_catalysts') {
-    // Argo: no combo lookup. Score = sum(face values) × (1 + perCatalyst × catalysts).
-    const sum = heldFaces.reduce<number>((s, f) => s + (typeof f === 'number' ? f : 0), 0);
+  if (scoringMode === 'captain_crew') {
+    // Argo: no combo lookup. The highest face this hand rides the catalyst
+    // multiplier; the remaining faces add as flat chips alongside it. We bake
+    // the whole expression into `chips` so chain mult and downstream catalyst
+    // multipliers still apply via the standard chips × mult × chainMult flow.
+    const numericFaces = heldFaces.map((f) => (typeof f === 'number' ? f : 0));
+    const captain = numericFaces.length > 0 ? Math.max(...numericFaces) : 0;
+    const crew = numericFaces.reduce((s, f) => s + f, 0) - captain;
     const perCat = getFaceMultiplierPerCatalyst(ctx.state);
     const catCount = ctx.state.run.catalysts.length;
-    const mult = 1 + perCat * catCount;
+    const captainMult = 1 + perCat * catCount;
+    const chips = captain * captainMult + crew;
     return {
       ...ctx,
-      combo: { id: 'argo_face', tier: 0, baseChips: sum, baseMult: mult, scoringFaces: heldFaces.map((f) => typeof f === 'number' ? f : 0) },
-      chips: sum,
-      mult,
+      combo: {
+        id: 'argo_captain',
+        tier: 0,
+        baseChips: chips,
+        baseMult: 1,
+        scoringFaces: numericFaces,
+      },
+      chips,
+      mult: 1,
     };
   }
 

@@ -60,10 +60,11 @@ describe('applyConstellation', () => {
     }
   });
 
-  it('Argo collapses to a single die', () => {
+  it('Argo uses three d20 dice (captain + crew)', () => {
     const argo = lookupConstellation('argo');
     const run = applyConstellation(initialRunSlice(), argo);
-    expect(run.diceMods.length).toBe(1);
+    expect(run.diceMods.length).toBe(3);
+    expect(argo.dice.every((d) => d.faces.length === 20)).toBe(true);
   });
 
   it('Mensa expands to 7 dice', () => {
@@ -83,8 +84,8 @@ describe('applyConstellation', () => {
     expect(sizes.sort((a, b) => a - b)).toEqual([4, 6, 8, 10, 12]);
   });
 
-  it('Argo declares face_x_catalysts scoring', () => {
-    expect(lookupConstellation('argo').modifiers?.scoringMode).toBe('face_x_catalysts');
+  it('Argo declares captain_crew scoring', () => {
+    expect(lookupConstellation('argo').modifiers?.scoringMode).toBe('captain_crew');
   });
 
   it('Ophiuchus declares wildcard faces', () => {
