@@ -12,6 +12,7 @@ import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
 import { lookupConstellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
 import { isForgeDisabled } from '../../core/run/diceContext';
+import { useIsCompactStage } from '../hooks/useIsCompactStage';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s);
@@ -36,6 +37,7 @@ export function Hub() {
   const constellationId = useStore(selectConstellationId);
   const constellation = lookupConstellation(constellationId);
   const forgeDisabled = useStore(selectForgeDisabled);
+  const compact = useIsCompactStage();
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -81,7 +83,10 @@ export function Hub() {
           Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
         </div>
         <div className="f-mono uc" style={{
-          marginTop: 10, fontSize: 9, letterSpacing: '0.28em', color: '#f5c451',
+          marginTop: 10,
+          fontSize: compact ? 12 : 9,
+          letterSpacing: compact ? '0.18em' : '0.28em',
+          color: '#f5c451',
         }}>
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
