@@ -17,7 +17,7 @@ describe('seeds', () => {
 
   it('preserves note field', () => {
     saveSeed({ name: 'a', seed: 1, note: 'crit bug repro' });
-    expect(listSeeds()[0].note).toBe('crit bug repro');
+    expect(listSeeds()[0]!.note).toBe('crit bug repro');
   });
 
   it('overwrites entries with duplicate names', () => {
@@ -25,7 +25,7 @@ describe('seeds', () => {
     saveSeed({ name: 'a', seed: 2 });
     const all = listSeeds();
     expect(all).toHaveLength(1);
-    expect(all[0].seed).toBe(2);
+    expect(all[0]!.seed).toBe(2);
   });
 
   it('keeps multiple entries with distinct names', () => {
@@ -40,7 +40,7 @@ describe('seeds', () => {
     deleteSeed('a');
     const all = listSeeds();
     expect(all).toHaveLength(1);
-    expect(all[0].name).toBe('b');
+    expect(all[0]!.name).toBe('b');
   });
 
   it('tolerates malformed JSON in storage', () => {
@@ -57,6 +57,6 @@ describe('seeds', () => {
     localStorage.setItem('dev:seeds', JSON.stringify([{ name: 'ok', seed: 1 }, { foo: 'bar' }]));
     const all = listSeeds();
     expect(all).toHaveLength(1);
-    expect(all[0].name).toBe('ok');
+    expect(all[0]!.name).toBe('ok');
   });
 });

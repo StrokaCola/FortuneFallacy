@@ -28,12 +28,14 @@ type Layers = {
   fail: Howl;
 };
 
+type ActualLayers = { base: number; combo: number; peak: number; fail: number };
+
 const BASE_PATH = '/FortuneFallacy/audio';
 
 class AudioEngineImpl {
   private layers: Layers | null = null;
   private state: State;
-  private actual = { base: 0, combo: 0, peak: 0, fail: 0 };
+  private actual: ActualLayers = { base: 0, combo: 0, peak: 0, fail: 0 };
   private audioSettingsUnsub: (() => void) | null = null;
   private rafHandle: number | null = null;
   private lastTick = 0;
@@ -200,7 +202,7 @@ class AudioEngineImpl {
     this.state.mode = 'peak';
   }
 
-  getState(): Readonly<State & { actual: typeof this.actual; master: number }> {
+  getState(): Readonly<State & { actual: ActualLayers; master: number }> {
     return { ...this.state, actual: { ...this.actual }, master: audioSettings.getMaster() };
   }
 
@@ -339,12 +341,6 @@ export function ensureAudioAfterGesture(): void {
   for (const e of events) document.addEventListener(e, handler);
 }
 
-declare global {
-  interface ImportMeta { hot?: { dispose: (cb: () => void) => void } }
-}
-
-if (typeof import.meta !== 'undefined' && (import.meta as ImportMeta).hot) {
-  (import.meta as ImportMeta).hot!.dispose(() => {
-    audioEngine.dispose();
-  });
-}
+import.meta.hot?.dispose(() => {
+  audioEngine.dispose();
+});

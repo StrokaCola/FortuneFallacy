@@ -4,6 +4,7 @@ import '../upgrades/catalysts/compoundingBias';
 import { initialRoundSlice } from '../../state/slices/round';
 import type { PipelineCtx } from '../pipeline/types';
 import type { GameState } from '../../state/store';
+import { mulberry32 } from '../rng';
 
 function makeCtx(overrides: {
   blindId?: string;
@@ -34,7 +35,7 @@ function makeCtx(overrides: {
     mult: 4,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
     sim: {
       finalFaces: [],
       restPositions: [],
@@ -124,7 +125,7 @@ function makeModCtx(faces: number[], diceMods: string[][], scoringOrder: number[
     mult: 1,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
     sim: {
       finalFaces: faces,
       restPositions: [],

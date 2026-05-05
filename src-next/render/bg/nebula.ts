@@ -69,8 +69,8 @@ void main() {
 import type { Screen } from '../../state/slices/ui';
 
 const SCREEN_MODES: Record<Screen, number> = {
-  title: 0, nameentry: 0, scores: 0, win: 1, round: 1,
-  hub: 2, shop: 2, forge: 2, pause: 0,
+  title: 0, nameentry: 0, constellation_select: 0, scores: 0, win: 1, fail: 0,
+  round: 1, hub: 2, shop: 2, forge: 2, pause: 0,
 };
 
 let gl: WebGLRenderingContext | null = null;

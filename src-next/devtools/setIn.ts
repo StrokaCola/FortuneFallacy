@@ -6,6 +6,7 @@ export function setIn<T>(obj: T, path: string, value: unknown): T {
 
 function walk(node: unknown, segments: string[], value: unknown, fullPath: string): unknown {
   const [head, ...rest] = segments;
+  if (head === undefined) throw new Error(`setIn: path "${fullPath}" — empty segment`);
   const isLast = rest.length === 0;
 
   if (Array.isArray(node)) {

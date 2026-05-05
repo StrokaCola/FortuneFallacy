@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { evaluation } from './evaluation';
 import type { PipelineCtx } from '../pipeline/types';
 import type { GameState } from '../../state/store';
+import { mulberry32 } from '../rng';
 
 function makeCtx(
   faces: number[],
@@ -23,7 +24,7 @@ function makeCtx(
     mult: 1,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
     sim: {
       finalFaces: faces,
       restPositions: [],

@@ -3,6 +3,7 @@ import './solarFlare';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(faces: number[], mult = 4): PipelineCtx {
   const state = {
@@ -16,7 +17,7 @@ function makeCtx(faces: number[], mult = 4): PipelineCtx {
     mult,
     total: 0,
     events: [],
-    rng: () => 0,
+    rng: mulberry32(0),
   };
 }
 

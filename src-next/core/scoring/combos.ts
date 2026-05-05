@@ -6,6 +6,8 @@
 export type ComboCtx = {
   comboCountBonus: number;   // raise n-of-a-kind requirement (Mensa = +1)
   straightLenBonus: number;  // raise/lower straight length requirement (Mensa = +1, Triumvirate = -2)
+  diceCount?: number;
+  faceUniverse?: number[];
 };
 
 const DEFAULT_CTX: ComboCtx = { comboCountBonus: 0, straightLenBonus: 0 };

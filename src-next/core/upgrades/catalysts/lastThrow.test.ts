@@ -3,10 +3,11 @@ import './lastThrow';
 import { getAll } from '../registry';
 import type { PipelineCtx } from '../../pipeline/types';
 import type { GameState } from '../../../state/store';
+import { mulberry32 } from '../../rng';
 
 function makeCtx(handsLeft: number, chips = 50): PipelineCtx {
   const state = { round: { handsLeft } } as unknown as GameState;
-  return { state, chips, mult: 1, total: 0, events: [], rng: () => 0 };
+  return { state, chips, mult: 1, total: 0, events: [], rng: mulberry32(0) };
 }
 
 describe('last_throw catalyst', () => {

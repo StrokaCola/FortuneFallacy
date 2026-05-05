@@ -17,7 +17,7 @@ function persist(bag: Bag): void {
 
 export function listSnapshots(): { name: string; state: GameState }[] {
   const bag = load();
-  return Object.keys(bag).sort().map((name) => ({ name, state: bag[name] }));
+  return Object.keys(bag).sort().map((name) => ({ name, state: bag[name]! }));
 }
 
 export function saveSnapshot(name: string, state: GameState): void {
