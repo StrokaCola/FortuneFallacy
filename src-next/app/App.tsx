@@ -19,6 +19,7 @@ import { Fail }  from './screens/Fail';
 import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
+import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
 import { ScreenTransition } from './visual/ScreenTransition';
 import { audioEngine, ensureAudioAfterGesture } from '../audio/AudioEngine';
@@ -86,29 +87,31 @@ export function App() {
     'voidlit';
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <CosmosBackground theme={theme} density={1} nebula drift tension={tension} />
+    <DiagnosticOverlay>
+      <div className="relative w-full h-full overflow-hidden">
+        <CosmosBackground theme={theme} density={1} nebula drift tension={tension} />
 
-      <div className="absolute inset-0 pointer-events-none">
-        <ScreenTransition screenKey={screen}>
-          {screen === 'title'  && <Title />}
-          {screen === 'constellation_select' && <ConstellationSelect />}
-          {screen === 'hub'    && <Hub />}
-          {screen === 'round'  && <Round />}
-          {screen === 'shop'   && <Shop />}
-          {screen === 'forge'  && <Forge />}
-          {screen === 'win'    && <Win />}
-          {screen === 'fail'   && <Fail />}
-          {screen === 'scores' && <Scores />}
-        </ScreenTransition>
-        <BossReveal />
-        <ArrivalToast />
-        <Particles />
+        <div className="absolute inset-0 pointer-events-none">
+          <ScreenTransition screenKey={screen}>
+            {screen === 'title'  && <Title />}
+            {screen === 'constellation_select' && <ConstellationSelect />}
+            {screen === 'hub'    && <Hub />}
+            {screen === 'round'  && <Round />}
+            {screen === 'shop'   && <Shop />}
+            {screen === 'forge'  && <Forge />}
+            {screen === 'win'    && <Win />}
+            {screen === 'fail'   && <Fail />}
+            {screen === 'scores' && <Scores />}
+          </ScreenTransition>
+          <BossReveal />
+          <ArrivalToast />
+          <Particles />
+        </div>
+
+        <OrientationGate />
+        <PauseMenu />
+        {import.meta.env.DEV && <DevConsole />}
       </div>
-
-      <OrientationGate />
-      <PauseMenu />
-      {import.meta.env.DEV && <DevConsole />}
-    </div>
+    </DiagnosticOverlay>
   );
 }
