@@ -94,4 +94,27 @@ describe('REORDER_HOLD', () => {
     // No-op preserves initial scoringOrder (since we mutated dice without going through TOGGLE_LOCK).
     expect(r.state.round.scoringOrder).toEqual([0, 1, 2, 3, 4]);
   });
+
+  it('emits onReorderRejected with reason on validation failure', () => {
+    const s = baseState();
+    const lengthMismatch = diceHandler({ type: 'REORDER_HOLD', newOrder: [0, 1] }, s);
+    expect(lengthMismatch.events).toEqual([
+      { type: 'onReorderRejected', payload: { reason: 'length-mismatch', newOrder: [0, 1], locked: [0, 1, 2, 3, 4] } },
+    ]);
+
+    const duplicate = diceHandler({ type: 'REORDER_HOLD', newOrder: [0, 0, 1, 2, 3] }, s);
+    expect(duplicate.events[0]?.type).toBe('onReorderRejected');
+    expect((duplicate.events[0] as { payload: { reason: string } }).payload.reason).toBe('duplicate-index');
+
+    const sUnlocked = { ...s, round: { ...s.round, dice: s.round.dice.map((d, i) => i === 2 ? { ...d, locked: false } : d) } };
+    const unlocked = diceHandler({ type: 'REORDER_HOLD', newOrder: [0, 1, 2, 3] }, sUnlocked);
+    expect(unlocked.events[0]?.type).toBe('onReorderRejected');
+    expect((unlocked.events[0] as { payload: { reason: string } }).payload.reason).toBe('unlocked-index');
+  });
+
+  it('emits no events on successful reorder', () => {
+    const s = baseState();
+    const r = diceHandler({ type: 'REORDER_HOLD', newOrder: [4, 0, 2, 1, 3] }, s);
+    expect(r.events).toEqual([]);
+  });
 });

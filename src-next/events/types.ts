@@ -84,6 +84,7 @@ export type GameEventMap = {
   onOfferBought:       { kind: ShopOffer['kind']; id: string; price: number };
   onScoreBeat:         { beat: Beat };
   onScoreSequenceBuilt: { sequence: ScoreSequence };
+  onReorderRejected:   { reason: 'length-mismatch' | 'duplicate-index' | 'unlocked-index'; newOrder: number[]; locked: number[] };
 };
 
 export type GameEventEmission = {

@@ -19,6 +19,7 @@ import { fireLoaded } from './modFx/loaded';
 import { firePipCharge } from './modFx/pipCharge';
 import { fireBackstop } from './modFx/backstop';
 import { computeDropSlot } from './dragSlot';
+import { getDigitTexture } from './digitTexture';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
@@ -231,6 +232,10 @@ export class Dice3D {
   private holdGradTex: THREE.Texture | null = null;
   private prevHoldCount = -1;
   private holdLinksFadeStart = 0;     // ms; 0 = idle
+  // Ordinal badges ("1", "2", ...) above each held slot. Scene-attached so they
+  // ride a fixed slot position regardless of which die is currently lerping in;
+  // count and visibility are synced in syncDice. Pool reused across rounds.
+  private holdOrdinals: THREE.Sprite[] = [];
   private rafHandle: number | null = null;
   private unsubscribers: (() => void)[] = [];
   private raycaster = new THREE.Raycaster();
@@ -549,6 +554,12 @@ export class Dice3D {
         this.isDragging = true;
         this.dragOriginalSlotX = die.group.position.x;
         this.canvas.style.cursor = 'grabbing';
+        // Pickup cue: one-shot rim halo at the die's current position so the
+        // gesture reads as "picked up" instead of just "dragging across X".
+        const reduced = document.documentElement.classList.contains('reduce-motion');
+        if (!reduced) {
+          firePulse(this.scene, die.group.position.clone(), '#7be3ff', DIE_SIZE);
+        }
       }
       if (this.isDragging) {
         const rect = this.canvas.getBoundingClientRect();
@@ -561,8 +572,10 @@ export class Dice3D {
           if (die) {
             const reduced = document.documentElement.classList.contains('reduce-motion');
             die.group.position.x = target.x;
-            die.group.position.y = reduced ? HOLD_Y : HOLD_Y + 0.6; // +Y is toward the top-down camera at Y=14, so this raises the die above the strip plane
-            die.group.scale.setScalar((reduced ? HOLD_SCALE : HOLD_SCALE * 1.15) * die.baseScale);
+            // Lift the die well clear of the strip so it visibly hovers over
+            // its neighbors. +Y is toward the top-down camera at Y=14.
+            die.group.position.y = reduced ? HOLD_Y : HOLD_Y + 1.1;
+            die.group.scale.setScalar((reduced ? HOLD_SCALE : HOLD_SCALE * 1.28) * die.baseScale);
 
             // Ghost slot sprite at the candidate drop position.
             if (!reduced) {
@@ -689,6 +702,12 @@ export class Dice3D {
     if (this.onKeyDown) document.removeEventListener('keydown', this.onKeyDown);
     if (this.onPointerLeave) this.canvas.removeEventListener('pointerleave', this.onPointerLeave);
     this.disposeGhostSlot();
+    for (const s of this.holdOrdinals) {
+      this.scene.remove(s);
+      const mat = s.material as THREE.SpriteMaterial;
+      mat.dispose();
+    }
+    this.holdOrdinals.length = 0;
     this.renderer.dispose();
   }
 
@@ -1056,13 +1075,47 @@ export class Dice3D {
 
       if (positionChanged || lockChanged) {
         die.t0 = performance.now();
-        die.duration = 380;
+        // Pure reorder (still locked, slid to a new slot) settles snappier than
+        // a lock/unlock swap. Lock toggles keep the original 380ms feel.
+        die.duration = lockChanged ? 380 : 220;
       }
     });
 
     if (holdCount !== this.prevHoldCount) {
       this.rebuildHoldVisuals(holdCount);
       this.prevHoldCount = holdCount;
+    }
+
+    this.syncHoldOrdinals(holdCount);
+  }
+
+  // Maintain a pool of "1", "2", ... sprites above each held slot so the
+  // player can see drag-reorder land in the scoring order. Hidden when the
+  // hold strip is empty.
+  private syncHoldOrdinals(holdCount: number): void {
+    while (this.holdOrdinals.length < holdCount) {
+      const mat = new THREE.SpriteMaterial({
+        map: getDigitTexture(this.holdOrdinals.length + 1, 0x7be3ff),
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(DIE_SIZE * 0.55, DIE_SIZE * 0.55, 1);
+      sprite.visible = false;
+      this.scene.add(sprite);
+      this.holdOrdinals.push(sprite);
+    }
+    for (let i = 0; i < this.holdOrdinals.length; i++) {
+      const sprite = this.holdOrdinals[i]!;
+      if (i < holdCount) {
+        sprite.visible = true;
+        // Sit just "above" the die on screen — top-down camera maps -Z to up.
+        sprite.position.set(this.holdSlotX(i, holdCount), HOLD_Y + 0.2, HOLD_Z - DIE_SIZE * 1.05);
+      } else {
+        sprite.visible = false;
+      }
     }
   }
 

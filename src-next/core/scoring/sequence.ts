@@ -86,7 +86,7 @@ export function buildScoreSequence(
       beats.push({
         kind: 'die-tick',
         t,
-        dieIdx: i,
+        dieIdx: input.dieIndices?.[i] ?? i,
         face: input.faces[i]!,
         chipDelta: input.faces[i]!,
         runningTotal: bailRunning,
@@ -110,7 +110,7 @@ export function buildScoreSequence(
       beats.push({
         kind: 'die-tick',
         t,
-        dieIdx: i,
+        dieIdx: input.dieIndices?.[i] ?? i,
         face: input.faces[i]!,
         chipDelta: input.faces[i]!,
         runningTotal: running,
@@ -150,7 +150,7 @@ export function buildScoreSequence(
     beats.push({
       kind: 'die-tick',
       t,
-      dieIdx: i,
+      dieIdx: input.dieIndices?.[i] ?? i,
       face: input.faces[i]!,
       chipDelta: input.faces[i]!,
       runningTotal: running,

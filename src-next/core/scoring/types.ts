@@ -18,6 +18,10 @@ export type ScoreSequence = {
 
 export type SequenceInput = {
   faces: number[];
+  // Original die index (into round.dice) for each entry in `faces`. Lets
+  // beat consumers (3D pop, particle floats) target the physical die that
+  // actually scored instead of the held-array slot.
+  dieIndices?: number[];
   comboLabel: string;
   comboBonus: number;
   mults: { label: string; value: number; tint?: 'gold' | 'magenta' }[];
