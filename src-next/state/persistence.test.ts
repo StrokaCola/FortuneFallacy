@@ -1,0 +1,146 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { safeReadJSON, safeWriteJSON } from './storage';
+import { loadSaved, applySavedToInitial } from './persistence';
+import type { GameState } from './store';
+import { initialRunSlice } from './slices/run';
+import { initialRoundSlice } from './slices/round';
+import { initialShopSlice } from './slices/shop';
+import { initialMetaSlice } from './slices/meta';
+import { initialUiSlice } from './slices/ui';
+
+const KEY = 'ff_next_save';
+
+function makeInitialState(): GameState {
+  return {
+    run: initialRunSlice(),
+    round: initialRoundSlice(),
+    shop: initialShopSlice(),
+    meta: initialMetaSlice(),
+    ui: initialUiSlice(),
+    pingCount: 0,
+  } as unknown as GameState;
+}
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+afterEach(() => {
+  localStorage.clear();
+});
+
+describe('safeReadJSON / safeWriteJSON', () => {
+  it('returns undefined for missing key', () => {
+    expect(safeReadJSON('nonexistent')).toBeUndefined();
+  });
+
+  it('round-trips a JSON-serialisable value', () => {
+    safeWriteJSON('test_key', { a: 1, b: 'hello' });
+    expect(safeReadJSON('test_key')).toEqual({ a: 1, b: 'hello' });
+  });
+
+  it('returns undefined for corrupt JSON', () => {
+    localStorage.setItem('bad_key', '{not valid json}');
+    expect(safeReadJSON('bad_key')).toBeUndefined();
+  });
+
+  it('returns undefined for empty string', () => {
+    localStorage.setItem('empty_key', '');
+    expect(safeReadJSON('empty_key')).toBeUndefined();
+  });
+});
+
+describe('loadSaved', () => {
+  it('returns null when nothing is stored', () => {
+    expect(loadSaved()).toBeNull();
+  });
+
+  it('returns null for corrupt stored data', () => {
+    localStorage.setItem(KEY, '{corrupt');
+    expect(loadSaved()).toBeNull();
+  });
+
+  it('returns saved state when valid data exists', () => {
+    const snapshot = {
+      run: { ...initialRunSlice(), shards: 42, catalysts: ['x'] },
+      meta: { playerName: 'Alice', unlocks: [], highScores: [] },
+      round: initialRoundSlice(),
+      ui: { screen: 'hub', paused: false, tooltip: null, transition: 'idle' },
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const loaded = loadSaved();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.run.shards).toBe(42);
+    expect(loaded!.meta.playerName).toBe('Alice');
+  });
+});
+
+describe('applySavedToInitial', () => {
+  it('returns input state unchanged when nothing is saved', () => {
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.pingCount).toBe(0);
+    expect(result.run.shards).toBe(0);
+  });
+
+  it('merges run and meta from saved state', () => {
+    const snapshot = {
+      run: { ...initialRunSlice(), shards: 99, catalysts: ['x', 'y'] },
+      meta: { playerName: 'Bob', unlocks: [], highScores: [] },
+      round: { ...initialRoundSlice(), active: false },
+      ui: { screen: 'hub', paused: false, tooltip: null, transition: 'idle' },
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.run.shards).toBe(99);
+    expect(result.run.catalysts).toEqual(['x', 'y']);
+    expect(result.meta.playerName).toBe('Bob');
+  });
+
+  it('does NOT restore an active round (handInProgress reset to false)', () => {
+    const snapshot = {
+      run: initialRunSlice(),
+      meta: initialMetaSlice(),
+      round: { ...initialRoundSlice(), active: true, score: 150 },
+      ui: initialUiSlice(),
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    // Active round is restored but handInProgress is forced false
+    expect(result.round.handInProgress).toBe(false);
+    expect(result.round.score).toBe(150);
+  });
+
+  it('does not restore inactive round data (score stays 0)', () => {
+    const snapshot = {
+      run: initialRunSlice(),
+      meta: initialMetaSlice(),
+      round: { ...initialRoundSlice(), active: false, score: 999 },
+      ui: initialUiSlice(),
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.round.score).toBe(0);
+  });
+
+  it('restores ui.screen from saved state', () => {
+    const snapshot = {
+      run: initialRunSlice(),
+      meta: initialMetaSlice(),
+      round: initialRoundSlice(),
+      ui: { screen: 'hub', paused: false, tooltip: null, transition: 'idle' },
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.ui.screen).toBe('hub');
+  });
+});
