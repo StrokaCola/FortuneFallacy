@@ -27,15 +27,17 @@ export function BossSigil({
     const paths = svgRef.current.querySelectorAll<SVGPathElement>(
       '.boss-sigil__orbit-main path',
     );
-    paths.forEach((p) => {
+    paths.forEach((p, i) => {
       // jsdom and other non-rendering environments lack getTotalLength
       if (typeof p.getTotalLength !== 'function') return;
       const len = p.getTotalLength();
-      // Initial: fully invisible (offset == dasharray length)
+      // Per-path stagger so the strokes draw in sequence rather than all at
+      // once. Combined with the radial wipe in BossReveal this reads as the
+      // boss being assembled out of the void.
+      const delay = 100 + i * 90;
       p.style.strokeDasharray = `${len}`;
       p.style.strokeDashoffset = `${len}`;
-      p.style.transition = 'stroke-dashoffset 600ms cubic-bezier(.4,0,.2,1) 100ms';
-      // Force layout flush so transition picks up the change
+      p.style.transition = `stroke-dashoffset 540ms cubic-bezier(.4,0,.2,1) ${delay}ms`;
       void p.getBoundingClientRect();
       requestAnimationFrame(() => {
         p.style.strokeDashoffset = '0';

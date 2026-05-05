@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { sfxPlay } from '../../audio/sfx';
 
 type Phase = 'idle' | 'exiting' | 'entering';
 
@@ -24,6 +25,7 @@ export function ScreenTransition({
     const half = reduced ? SNAP_MS : SAVORED_MS / 2;
 
     setPhase('exiting');
+    sfxPlay('transitionWipe');
     const tExit = window.setTimeout(() => {
       lastKey.current = screenKey;
       setRenderedKey(screenKey);
@@ -51,6 +53,10 @@ export function ScreenTransition({
 
   const opacity = phase === 'exiting' ? 0 : 1;
   const scale = phase === 'exiting' ? 1.04 : phase === 'entering' ? 0.98 : 1;
+  // Opacity transition is intentionally faster than the full savored duration
+  // so the content is fully invisible at the swap mid-point (half the savored
+  // duration) — without that, children pop into view at ~50% opacity.
+  // Transform keeps the full savored duration for the smooth scale.
 
   return (
     <div
@@ -61,13 +67,33 @@ export function ScreenTransition({
         inset: 0,
         opacity,
         transform: `scale(${scale})`,
-        transition: `opacity var(--savored, 600ms) var(--ease-savor, ease), transform var(--savored, 600ms) var(--ease-savor, ease)`,
+        transition: `opacity 280ms var(--ease-savor, ease), transform var(--savored, 600ms) var(--ease-savor, ease)`,
         pointerEvents: phase === 'idle' ? 'auto' : 'none',
       }}
     >
+      <TransitionVeil phase={phase} />
       <ConstellationWipe phase={phase} />
       {renderedChildren}
     </div>
+  );
+}
+
+// Full-bleed dim layer that peaks at the swap mid-point to fully obscure the
+// content swap. Sits above content (z-index high) but below toasts/modals.
+function TransitionVeil({ phase }: { phase: Phase }) {
+  if (phase === 'idle') return null;
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, rgba(15,9,37,0.72) 0%, rgba(7,5,26,0.95) 70%)',
+        opacity: phase === 'exiting' ? 1 : 0,
+        transition: 'opacity 240ms var(--ease-savor, ease)',
+        zIndex: 50,
+      }}
+    />
   );
 }
 

@@ -2,6 +2,7 @@ import { dispatch } from '../../actions/dispatch';
 import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
+import { sfxPlay } from '../../audio/sfx';
 
 export function ConstellationSelect() {
   const compact = useIsCompactStage();
@@ -51,7 +52,11 @@ function Card({ c, compact }: { c: Constellation; compact: boolean }) {
   return (
     <button
       className="panel mat-interactive"
-      onClick={() => dispatch({ type: 'NEW_RUN', constellationId: c.id })}
+      onMouseEnter={() => sfxPlay('nodePulse')}
+      onClick={() => {
+        sfxPlay('cardFlip');
+        dispatch({ type: 'NEW_RUN', constellationId: c.id });
+      }}
       style={{
         textAlign: 'left',
         padding: compact ? 12 : 16,

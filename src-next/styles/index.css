@@ -28,7 +28,22 @@ html, body {
   overflow: hidden;
 }
 
-#bg-next { display: none; }
+#bg-next {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+/* Activated by main.tsx after the nebula shader successfully initialises. */
+html.nebula-on #bg-next { display: block; }
+/* When the live nebula is mounted, drop the static gradient backdrop so the
+   shader shows through. CosmosBackground's starfield + tension overlay still
+   layer on top for parallax + boss-mode tinting. */
+html.nebula-on .cosmos-bg-root { background: transparent !important; }
+html.nebula-on .cosmos-bg-nebula { display: none; }
 
 #stage-root {
   position: fixed;
@@ -138,6 +153,63 @@ html, body {
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
 
+/* TopBar number flashes on increase. Score pulses to gold; shards brighten.
+   Both are gated to non-reduce-motion below. */
+.score-readout, .shard-readout {
+  display: inline-block;
+  transform-origin: left center;
+  transition: text-shadow 200ms var(--ease-snap, ease-out);
+}
+@keyframes score-flash {
+  0%   { transform: scale(1); color: #f3f0ff; text-shadow: 0 0 0 transparent; }
+  35%  { transform: scale(1.06); color: #f5c451; text-shadow: 0 0 18px rgba(245, 196, 81, 0.55); }
+  100% { transform: scale(1); color: #f3f0ff; text-shadow: 0 0 0 transparent; }
+}
+@keyframes shard-flash {
+  0%   { transform: scale(1); text-shadow: 0 0 0 transparent; }
+  35%  { transform: scale(1.08); text-shadow: 0 0 14px rgba(245, 196, 81, 0.7); }
+  100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
+}
+html:not(.reduce-motion) .score-flash { animation: score-flash 280ms var(--ease-snap, ease-out); }
+html:not(.reduce-motion) .shard-flash { animation: shard-flash 320ms var(--ease-snap, ease-out); }
+
+/* Big-beat full-screen response: a brief tinted flash + a vignette pulse from
+   the edges. Color/intensity/duration come in via CSS custom props set on the
+   parent wrapper. Both layers are gated to non-reduce-motion so they collapse
+   to nothing when the user opts out. */
+.screen-flash-overlay { contain: strict; }
+.screen-flash-layer,
+.vignette-pulse-layer {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.screen-flash-layer {
+  background: var(--flash-color, #ffffff);
+  opacity: 0;
+}
+.vignette-pulse-layer {
+  background: radial-gradient(ellipse at center,
+    transparent 32%,
+    color-mix(in srgb, var(--vignette-color, #ff7847) 35%, transparent) 78%,
+    color-mix(in srgb, var(--vignette-color, #ff7847) 70%, transparent) 100%);
+  opacity: 0;
+}
+@keyframes screen-flash-pulse {
+  0%   { opacity: 0; }
+  18%  { opacity: var(--flash-intensity, 0.4); }
+  100% { opacity: 0; }
+}
+@keyframes vignette-pulse {
+  0%   { opacity: 0; transform: scale(1.04); }
+  22%  { opacity: 0.85; transform: scale(1.00); }
+  100% { opacity: 0; transform: scale(1.02); }
+}
+html:not(.reduce-motion) .screen-flash-layer {
+  animation: screen-flash-pulse var(--flash-duration, 320ms) var(--ease-snap, ease-out);
+}
+html:not(.reduce-motion) .vignette-pulse-layer {
+  animation: vignette-pulse var(--flash-duration, 320ms) var(--ease-snap, ease-out);
+}
+
 /* Reduced-motion: collapses all savored animations to short cross-fade.
    Applied via .reduce-motion class on <html> (set by useMotion hook in Task 7),
    plus prefers-reduced-motion as a fallback. */
@@ -150,6 +222,55 @@ html, body {
   transition-delay: 0ms !important;
 }
 .reduce-motion .die3d-wrap.idle .die3d { animation: none; }
+/* Cosmos starfield drift: full stop under reduce-motion. The default
+   .reduce-motion * rule above only collapses the duration, which would
+   otherwise oscillate the parallax visibly fast. */
+.reduce-motion .starfield-layer { animation: none !important; }
+
+/* Toast entrances — `toast-pop` is a scale+opacity overshoot for centered
+   toasts (preserves existing translate(-50%,-50%)); `toast-rise` adds a slide
+   for top-anchored toasts. Both use a slight overshoot easing for a tactile
+   landing. Reduce-motion collapses them via the global rule above. */
+@keyframes toast-pop {
+  0%   { opacity: 0; filter: blur(4px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; filter: blur(0); }
+}
+@keyframes toast-rise {
+  0%   { opacity: 0; transform: translate(50%, -8px); }
+  60%  { opacity: 1; transform: translate(50%, 2px); }
+  100% { opacity: 1; transform: translate(50%, 0); }
+}
+
+/* Boss reveal cinematic — radial wipe in, slight pull-in for the card, brief
+   crimson flash. Sigil paths stagger via JS in BossSigil. Reduce-motion: the
+   global rule above collapses each animation to ~80ms which still reads as a
+   subtle pop without motion. */
+@keyframes boss-reveal-wipe {
+  0%   { opacity: 0; clip-path: circle(0% at 50% 50%); }
+  100% { opacity: 1; clip-path: circle(150% at 50% 50%); }
+}
+@keyframes boss-reveal-pull {
+  0%   { transform: scale(1.06); }
+  100% { transform: scale(1.00); }
+}
+@keyframes boss-reveal-flash {
+  0%   { opacity: 0; }
+  18%  { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+.boss-reveal-flash {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    rgba(226, 51, 74, 0.55) 0%,
+    rgba(226, 51, 74, 0.15) 40%,
+    transparent 70%);
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+html:not(.reduce-motion) .boss-reveal-flash {
+  animation: boss-reveal-flash 760ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
 
 @media (prefers-reduced-motion: reduce) {
   html:not(.allow-motion) *,
@@ -286,14 +407,35 @@ html, body {
   100% { opacity: 0; transform: translateY(-30px); }
 }
 
-/* Button juice — press scale + accent shockwave on release. */
+/* Button juice — hover lift, 2-stage press, accent shockwave + brass flash on release. */
 .btn-primary {
-  transition: transform 180ms ease-out;
+  transition: transform 180ms ease-out, filter 160ms ease-out, box-shadow 200ms ease-out;
+  will-change: transform, filter;
+}
+html:not(.reduce-motion) .btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow:
+    0 0 0 1px rgba(255, 200, 160, 0.7),
+    0 8px 22px rgba(255, 120, 71, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 .btn-primary:active {
   transform: scale(0.96);
   transition: transform 60ms ease-out;
 }
+@keyframes btn-bounce {
+  0%   { transform: scale(0.96); }
+  45%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+@keyframes btn-flash {
+  0%   { filter: brightness(1); box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
+  35%  { filter: brightness(1.25) saturate(1.15); box-shadow: 0 0 0 2px rgba(245,196,81,.85), 0 8px 28px rgba(245,196,81,.55), inset 0 1px 0 rgba(255,255,255,.55); }
+  100% { filter: brightness(1); box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
+}
+html:not(.reduce-motion) .btn-bounce { animation: btn-bounce 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+html:not(.reduce-motion) .btn-flash  { animation: btn-flash 220ms ease-out; }
 .btn-shockwave {
   position: fixed;
   pointer-events: none;

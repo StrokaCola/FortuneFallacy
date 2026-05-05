@@ -47,6 +47,7 @@ function Starfield({ density = 1, theme = 'voidlit', drift = true, tension = 0 }
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       {layers.map((layer, li) => (
         <svg key={li}
+          className="starfield-layer"
           width="100%" height="100%"
           viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"
           style={{
@@ -68,7 +69,7 @@ function Nebula({ theme = 'voidlit', intensity = 1 }: { theme?: ThemeKey; intens
   const t = THEMES[theme];
   if (intensity <= 0) return null;
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: intensity }}>
+    <div className="cosmos-bg-nebula" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: intensity }}>
       <div style={{ position: 'absolute', left: '-10%', top: '-15%', width: '70%', height: '70%',
         background: `radial-gradient(circle, ${t.nebulaA} 0%, transparent 65%)`, filter: 'blur(20px)' }} />
       <div style={{ position: 'absolute', right: '-15%', top: '20%', width: '70%', height: '80%',
@@ -92,7 +93,7 @@ export function CosmosBackground({
   const crimsonOpacity = tensionClamped < 0.3 ? 0 : (tensionClamped - 0.3) * (0.25 / 0.7);
 
   return (
-    <div style={{
+    <div className="cosmos-bg-root" style={{
       position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
       background: `radial-gradient(ellipse at 50% 35%, ${t.bgNear} 0%, ${t.bgMid} 45%, ${t.bgFar} 100%)`,
     }}>

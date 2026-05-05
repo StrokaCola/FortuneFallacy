@@ -10,6 +10,11 @@ const TIER_COLORS = ['#9577ff', '#7be3ff', '#dcd4ff', '#5be8a4', '#f5c451', '#ff
 
 let nextId = 1;
 
+function reducedMotion(): boolean {
+  return typeof document !== 'undefined'
+    && document.documentElement.classList.contains('reduce-motion');
+}
+
 export function Particles() {
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [shocks, setShocks] = useState<Shock[]>([]);
@@ -18,6 +23,7 @@ export function Particles() {
 
   useEffect(() => {
     const off1 = bus.on('onComboDetected', ({ tier }) => {
+      if (reducedMotion()) return;
       const x = STAGE_W / 2;
       const y = STAGE_H / 2 - 80;
       const color = TIER_COLORS[Math.min(tier, TIER_COLORS.length - 1)] ?? '#9577ff';
@@ -26,6 +32,7 @@ export function Particles() {
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 900);
     });
     const off3 = bus.on('onUpgradeTriggered', () => {
+      if (reducedMotion()) return;
       const x = STAGE_W * 0.2 + Math.random() * STAGE_W * 0.6;
       const y = STAGE_H * 0.4 + Math.random() * 80;
       const id = nextId++;
@@ -33,6 +40,7 @@ export function Particles() {
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 700);
     });
     const off4 = bus.on('onScoreBeat', ({ beat }) => {
+      if (reducedMotion()) return;
       if (beat.kind === 'mult-slam') {
         const id = nextId++;
         const x = STAGE_W / 2;

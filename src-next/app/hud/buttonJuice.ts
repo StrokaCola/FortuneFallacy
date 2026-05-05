@@ -1,6 +1,8 @@
 import * as sfxModule from '../../audio/sfx';
 
 const SHOCKWAVE_DURATION_MS = 400;
+const BOUNCE_DURATION_MS = 200;
+const FLASH_DURATION_MS = 240;
 
 function isPrimaryButton(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
@@ -44,6 +46,15 @@ export function installButtonJuice(): () => void {
     if (!btn) return;
     if (reducedMotion()) return;
     spawnShockwave(btn);
+    // 2-stage release: brief bounce overshoot + brass color flash. The
+    // classes are removed after their animation duration so a rapid second
+    // click can re-trigger them cleanly.
+    btn.classList.remove('btn-bounce', 'btn-flash');
+    // Force a reflow so the animation restarts when the class is re-added.
+    void btn.offsetWidth;
+    btn.classList.add('btn-bounce', 'btn-flash');
+    window.setTimeout(() => btn.classList.remove('btn-bounce'), BOUNCE_DURATION_MS);
+    window.setTimeout(() => btn.classList.remove('btn-flash'), FLASH_DURATION_MS);
   };
   const onMouseOver = (ev: MouseEvent): void => {
     if (!isPrimaryButton(ev.target)) return;

@@ -72,7 +72,7 @@ export function ClearShardsToast() {
         borderRadius: 12,
         padding: '14px 22px',
         minWidth: 220,
-        animation: 'fadein 0.3s ease-out',
+        animation: 'toast-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
       <div className="f-mono uc" style={{

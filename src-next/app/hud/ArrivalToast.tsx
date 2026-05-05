@@ -24,7 +24,7 @@ export function ArrivalToast() {
         position: 'absolute', top: 18, right: '50%', transform: 'translate(50%, 0)',
         padding: '8px 16px', borderRadius: 10, zIndex: 40,
         cursor: 'pointer', pointerEvents: 'auto',
-        animation: 'fadein 400ms ease-out',
+        animation: 'toast-rise 360ms cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#7be3ff' }}>
         ✦ arrived from <span style={{ color: '#f5c451' }}>{from}</span>

@@ -13,9 +13,12 @@ export function BossReveal() {
   useEffect(() => {
     return bus.on('onBossRevealed', ({ blindId, ante }) => {
       setReveal({ id: blindId, ts: Date.now(), ante });
+      // sigilDraw on each stroke stagger; castSwell when the strokes finish
+      // (last path delay 100ms + 540ms ≈ 640ms — round up).
       sfxPlay('sigilDraw');
       setTimeout(() => sfxPlay('sigilDraw'), 350);
       setTimeout(() => sfxPlay('sigilDraw'), 700);
+      setTimeout(() => sfxPlay('castSwell'), 950);
       setTimeout(() => setReveal(null), 3200);
     });
   }, []);
@@ -26,15 +29,16 @@ export function BossReveal() {
   const anomalyIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
 
   return (
-    <div style={{
+    <div className="boss-reveal-root" style={{
       position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
       pointerEvents: 'none', zIndex: 30,
       background: 'rgba(7,5,26,0.65)',
-      animation: 'fadein 0.4s ease-out',
+      animation: 'boss-reveal-wipe 520ms cubic-bezier(0.22, 0.9, 0.32, 1) both',
     }}>
-      <div style={{
+      <div className="boss-reveal-flash" />
+      <div className="boss-reveal-card" style={{
         width: 440, height: 600, position: 'relative',
-        animation: 'float-y 4s ease-in-out infinite',
+        animation: 'float-y 4s ease-in-out infinite, boss-reveal-pull 720ms cubic-bezier(0.22, 0.9, 0.32, 1) both',
       }}>
         <div className="panel-strong" style={{
           width: '100%', height: '100%', padding: 28,

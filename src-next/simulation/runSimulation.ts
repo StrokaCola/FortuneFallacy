@@ -23,10 +23,19 @@ async function runSim(req: SimulationRequest): Promise<SimulationResult> {
   const lockedMask = state.round.dice.map((d) => d.locked);
 
   const rapierResult = await runRapierSim(req, prevFaces);
-  if (rapierResult) {
-    return mergeWithLocks(rapierResult, prevFaces, lockedMask);
-  }
-  return runSeededSim(req, prevFaces, lockedMask);
+  const merged = rapierResult
+    ? mergeWithLocks(rapierResult, prevFaces, lockedMask)
+    : await runSeededSim(req, prevFaces, lockedMask);
+  return { ...merged, cameraShake: deriveCameraShake(merged) };
+}
+
+// Map physics intensity to a world-unit camera offset amplitude. Tuned for
+// the orthographic camera at ortho=7.5 — caps near 0.55 so shake reads as
+// "impact" without breaking dice readability.
+function deriveCameraShake(r: SimulationResult): number {
+  const v = Math.max(0, (r.peakVelocity - 3)) / 12; // 0 at v=3, 1 at v=15
+  const c = Math.min(1, r.collisionCount / 40);
+  return Math.min(0.55, v * 0.42 + c * 0.13);
 }
 
 function mergeWithLocks(

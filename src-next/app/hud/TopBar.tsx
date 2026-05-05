@@ -1,5 +1,28 @@
+import { useEffect, useRef, useState } from 'react';
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
+
+// Toggles a CSS class for `ms` whenever `value` increases. Used to flash the
+// score/shards readouts when they tick up. Decreases (e.g. shard sink) skip
+// the flash so we don't celebrate losses.
+function useIncreaseFlash(value: number, ms = 280): boolean {
+  const [flashing, setFlashing] = useState(false);
+  const prev = useRef(value);
+  const timer = useRef<number | null>(null);
+  useEffect(() => {
+    if (value > prev.current) {
+      setFlashing(true);
+      if (timer.current != null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setFlashing(false), ms);
+    }
+    prev.current = value;
+    return () => {
+      if (timer.current != null) window.clearTimeout(timer.current);
+    };
+  }, [value, ms]);
+  return flashing;
+}
 
 export function TopBar({
   ante = 1,
@@ -19,6 +42,10 @@ export function TopBar({
   voucherCount?: number;
   accent?: string;
 }) {
+  const tweenedScore = useTweenedNumber(score);
+  const tweenedShards = useTweenedNumber(shards);
+  const scoreFlash = useIncreaseFlash(score);
+  const shardFlash = useIncreaseFlash(shards);
   return (
     <div style={{
       position: 'absolute', top: 18, left: 18, right: 18,
@@ -30,8 +57,11 @@ export function TopBar({
           <Astrolabe size={92} score={score} target={target} accent={accent} />
           <div>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
-            <div className="f-display num" style={{ fontSize: 38, lineHeight: 1, color: '#f3f0ff', fontWeight: 700 }}>
-              {score.toLocaleString()}
+            <div
+              className={`f-display num score-readout${scoreFlash ? ' score-flash' : ''}`}
+              style={{ fontSize: 38, lineHeight: 1, color: '#f3f0ff', fontWeight: 700 }}
+            >
+              {Math.round(tweenedScore).toLocaleString()}
             </div>
             <div className="f-mono num" style={{ fontSize: 12, color: accent, marginTop: 2 }}>
               / {target ? target.toLocaleString() : '—'}
@@ -54,7 +84,12 @@ export function TopBar({
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <Sigil kind="star" size={20} color="#f5c451" />
-          <div className="f-display num" style={{ fontSize: 32, color: '#f5c451', fontWeight: 700 }}>{shards}</div>
+          <div
+            className={`f-display num shard-readout${shardFlash ? ' shard-flash' : ''}`}
+            style={{ fontSize: 32, color: '#f5c451', fontWeight: 700 }}
+          >
+            {Math.round(tweenedShards)}
+          </div>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>

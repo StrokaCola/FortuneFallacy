@@ -12,9 +12,38 @@ import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
+import { initNebula, setNebulaScreen, flashNebula } from './render/bg/nebula';
 import './styles/index.css';
 
 installStage();
+
+// Procedural WebGL nebula backdrop. Skipped under reduce-motion (which prefers
+// the cheap static CosmosBackground gradient) or if WebGL init fails.
+const prefersReducedMotion =
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const bgCanvas = document.getElementById('bg-next');
+if (bgCanvas instanceof HTMLCanvasElement && !prefersReducedMotion) {
+  try {
+    if (initNebula(bgCanvas)) {
+      document.documentElement.classList.add('nebula-on');
+      setNebulaScreen(store.getState().ui.screen);
+      store.subscribe((s, prev) => {
+        if (s.ui.screen !== prev.ui.screen) setNebulaScreen(s.ui.screen);
+      });
+      bus.on('onScoreBeat', ({ beat }) => {
+        // Only flash on the punctuating beats — die-tick is too frequent.
+        if (beat.kind === 'mult-slam') flashNebula(0.45);
+        else if (beat.kind === 'cross-target') flashNebula(0.7);
+        else if (beat.kind === 'boom') flashNebula(beat.crossedTarget ? 0.95 : 0.55);
+      });
+      bus.on('onBlindCleared', () => flashNebula(0.7));
+      bus.on('onBossRevealed', () => flashNebula(1.0));
+    }
+  } catch (e) {
+    console.warn('[nebula] init failed; falling back to CosmosBackground:', e);
+  }
+}
 
 const threeCanvas = document.getElementById('three-next');
 if (threeCanvas instanceof HTMLCanvasElement) {

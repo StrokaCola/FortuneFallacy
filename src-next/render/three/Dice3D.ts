@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
 import { dispatch } from '../../actions/dispatch';
@@ -218,6 +221,8 @@ function makeRadialGradientTexture(): THREE.Texture {
 
 export class Dice3D {
   private renderer: THREE.WebGLRenderer;
+  private composer: EffectComposer | null = null;
+  private bloomPass: UnrealBloomPass | null = null;
   private scene: THREE.Scene;
   private camera: THREE.OrthographicCamera;
   private dice: DieAnim[] = [];
@@ -266,6 +271,10 @@ export class Dice3D {
   // Stashed diceMods array if a rebuild lands while dice are mid-roll. Drained
   // at the top of the render loop on the first idle frame.
   private pendingDiceMods: string[][] | null = null;
+  // Camera shake state — driven by SimulationResult.cameraShake on roll-settle.
+  // Decays per-frame in the render loop. Skipped under reduce-motion.
+  private cameraHome = new THREE.Vector3(0, 14, 0.001);
+  private shakeAmp = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -287,7 +296,7 @@ export class Dice3D {
     // Top-down. up=(0,0,-1) maps screen-Y onto world -Z so the rolling tray
     // (Z=+1) reads in the upper half of canvas and the hold strip
     // (Z=HOLD_Z) reads in the lower half.
-    this.camera.position.set(0, 14, 0.001);
+    this.camera.position.copy(this.cameraHome);
     this.camera.up.set(0, 0, -1);    // screen +Y → world -Z (rolling tray at -Z = upper)
     this.camera.lookAt(0, 0, 0);
 
@@ -427,7 +436,17 @@ export class Dice3D {
           this.syncDiceMods(s.run.diceMods);
         }
       }),
-      bus.on('onSimulationEnd', ({ result }) => this.startPlayback(result.frames, result.finalFaces)),
+      bus.on('onSimulationEnd', ({ result }) => {
+        this.startPlayback(result.frames, result.finalFaces);
+        // Camera shake on dice landing — amplitude is in world units, decays
+        // per-frame in the render loop. Skip under reduce-motion.
+        if (!document.documentElement.classList.contains('reduce-motion')) {
+          const incoming = result.cameraShake ?? 0;
+          // Take the larger of any in-flight shake and the new one so back-to-back
+          // rolls don't dampen each other.
+          if (incoming > this.shakeAmp) this.shakeAmp = incoming;
+        }
+      }),
       bus.on('onScoreBeat', ({ beat }) => {
         if (beat.kind === 'cast-swell') {
           this.scoringActive = true;
@@ -476,6 +495,25 @@ export class Dice3D {
         this.pendingPulses.set(dieIdx, list);
       }),
     );
+    // Bloom post-processing — strength/threshold tuned so only emissive halos,
+    // lens pips, and orbital satellites bloom (parchment panels stay clean).
+    // Materials in dieMaterials.ts already set `toneMapped: false` on emissives,
+    // so this layer reads them as the bright source.
+    try {
+      const sz = new THREE.Vector2();
+      this.renderer.getSize(sz);
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.setPixelRatio(this.renderer.getPixelRatio());
+      this.composer.setSize(sz.x, sz.y);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloomPass = new UnrealBloomPass(sz, 0.45, 0.6, 0.85);
+      this.composer.addPass(this.bloomPass);
+    } catch (e) {
+      console.warn('[Dice3D] bloom init failed; falling back to direct render:', e);
+      this.composer = null;
+      this.bloomPass = null;
+    }
+
     this.syncDice(store.getState().round.dice);
     this.attachClick();
     this.start();
@@ -1452,7 +1490,26 @@ export class Dice3D {
 
       }
       this.updateHoldConstellation();
-      this.renderer.render(this.scene, this.camera);
+      // Apply camera shake offset; decay each frame. Reset to home when
+      // amplitude is negligible so the camera doesn't drift.
+      if (this.shakeAmp > 0.0005) {
+        const ox = (Math.random() - 0.5) * this.shakeAmp;
+        const oz = (Math.random() - 0.5) * this.shakeAmp;
+        this.camera.position.set(this.cameraHome.x + ox, this.cameraHome.y, this.cameraHome.z + oz);
+        this.camera.lookAt(0, 0, 0);
+        this.shakeAmp *= 0.82;
+      } else if (this.shakeAmp !== 0) {
+        this.shakeAmp = 0;
+        this.camera.position.copy(this.cameraHome);
+        this.camera.lookAt(0, 0, 0);
+      }
+      // Reduce-motion bypasses the composer — direct render is cheaper and
+      // bloom is a non-essential visual layer.
+      if (this.composer && !document.documentElement.classList.contains('reduce-motion')) {
+        this.composer.render();
+      } else {
+        this.renderer.render(this.scene, this.camera);
+      }
     };
     this.rafHandle = requestAnimationFrame(loop);
   }

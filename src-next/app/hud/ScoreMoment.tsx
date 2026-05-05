@@ -4,8 +4,10 @@ import { dispatch } from '../../actions/dispatch';
 import type { Beat } from '../../core/scoring/types';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
+type FlashEvent = { id: number; flashColor: string; vignetteColor: string; intensity: number; duration: number };
 
 let slamId = 1;
+let flashId = 1;
 
 const CONSTELLATION_NAMES: Record<string, string> = {
   FIVE_KIND: 'Cygnus',
@@ -25,6 +27,13 @@ export function ScoreMoment() {
   const [slams, setSlams] = useState<SlamOverlay[]>([]);
   const [stamp, setStamp] = useState<'target' | 'bail' | null>(null);
   const [boom, setBoom] = useState<{ total: number; gold: boolean } | null>(null);
+  const [flashes, setFlashes] = useState<FlashEvent[]>([]);
+
+  const queueFlash = (flashColor: string, vignetteColor: string, intensity: number, duration: number) => {
+    const id = flashId++;
+    setFlashes((f) => [...f, { id, flashColor, vignetteColor, intensity, duration }]);
+    setTimeout(() => setFlashes((f) => f.filter((x) => x.id !== id)), duration + 50);
+  };
 
   useEffect(() => {
     let crossed = false;
@@ -45,15 +54,26 @@ export function ScoreMoment() {
           const id = slamId++;
           setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed, tint: beat.tint }]);
           setTimeout(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
+          // Vignette pulse scales with multiplier — bigger slams hit harder.
+          const vColor = beat.tint === 'magenta' ? '#cc88ff' : (crossed ? '#f5c451' : '#ff7847');
+          const intensity = Math.min(0.6, 0.22 + beat.multiplier * 0.04);
+          queueFlash('#ffffff', vColor, intensity, 320);
           break;
         }
         case 'cross-target':
           crossed = true;
           setStamp('target');
           setTimeout(() => setStamp((cur) => (cur === 'target' ? null : cur)), 700);
+          queueFlash('#fff8d8', '#f5c451', 0.7, 480);
           break;
         case 'boom':
           setBoom({ total: beat.finalTotal, gold: beat.crossedTarget });
+          queueFlash(
+            beat.crossedTarget ? '#fff8d8' : '#ffffff',
+            beat.crossedTarget ? '#f5c451' : '#7be3ff',
+            beat.crossedTarget ? 0.85 : 0.5,
+            beat.crossedTarget ? 600 : 360,
+          );
           // Round-clearing booms get a longer hold so the player savors the final number.
           setTimeout(() => {
             setActive(false);
@@ -63,6 +83,7 @@ export function ScoreMoment() {
           break;
         case 'bail':
           setStamp('bail');
+          queueFlash('#ffd8d8', '#e2334a', 0.6, 480);
           setTimeout(() => {
             setActive(false);
             setStamp(null);
@@ -74,9 +95,28 @@ export function ScoreMoment() {
     return () => off();
   }, []);
 
-  if (!active) return null;
+  if (!active && flashes.length === 0) return null;
 
   return (
+    <>
+      {flashes.map((f) => (
+        <div
+          key={f.id}
+          className="screen-flash-overlay"
+          style={{
+            position: 'fixed', inset: 0, pointerEvents: 'none',
+            zIndex: 999, mixBlendMode: 'screen',
+            ['--flash-color' as string]: f.flashColor,
+            ['--flash-intensity' as string]: String(f.intensity),
+            ['--flash-duration' as string]: `${f.duration}ms`,
+            ['--vignette-color' as string]: f.vignetteColor,
+          }}
+        >
+          <div className="screen-flash-layer" />
+          <div className="vignette-pulse-layer" />
+        </div>
+      ))}
+      {active && (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 8,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -141,5 +181,7 @@ export function ScoreMoment() {
         </div>
       )}
     </div>
+      )}
+    </>
   );
 }
