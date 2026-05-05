@@ -47,9 +47,15 @@ html, body {
   top: 0;
   width: 1280px;
   height: 800px;
-  z-index: 3;
+  /* Sits BELOW the React HUD (#next-root z=2). Some Android/Adreno drivers
+     composite WebGL with `alpha:true` as opaque black, which would otherwise
+     mask the entire HUD. Keeping the canvas below the HUD makes that failure
+     mode harmless — dice still render in the empty middle of the stage where
+     the HUD has no opaque surface. */
+  z-index: 1;
   pointer-events: none;
   display: none;
+  background: transparent;
 }
 #three-next.active { display: block; }
 
