@@ -244,6 +244,7 @@ export class Dice3D {
   private onPointerDown: ((ev: PointerEvent) => void) | null = null;
   private onPointerMove: ((ev: PointerEvent) => void) | null = null;
   private onPointerUp: ((ev: PointerEvent) => void) | null = null;
+  private onPointerCancel: ((ev: PointerEvent) => void) | null = null;
   private onKeyDown: ((ev: KeyboardEvent) => void) | null = null;
   private onPointerLeave: (() => void) | null = null;
   // Drag-reorder state (locked-die hold strip).
@@ -516,6 +517,13 @@ export class Dice3D {
         screenY: ev.clientY,
         time: performance.now(),
       };
+      // Capture the pointer so move/up keep flowing even if the finger leaves
+      // the original hit element. Guarded — target may not be an Element on
+      // every browser, and capture can throw if the pointer is already gone.
+      const target = ev.target as Element | null;
+      if (target && typeof target.setPointerCapture === 'function') {
+        try { target.setPointerCapture(ev.pointerId); } catch { /* ignore */ }
+      }
     };
 
     this.onPointerMove = (ev: PointerEvent) => {
@@ -627,6 +635,16 @@ export class Dice3D {
       this.dragStart = null;
     };
 
+    this.onPointerCancel = (_ev: PointerEvent) => {
+      // Browser/OS preempted the pointer (e.g. system gesture). Clear drag
+      // state so we don't leave the die mid-air on next pointerdown.
+      if (this.isDragging) {
+        this.cancelDrag();
+      } else {
+        this.dragStart = null;
+      }
+    };
+
     this.onKeyDown = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape' && this.isDragging) this.cancelDrag();
     };
@@ -638,6 +656,7 @@ export class Dice3D {
     document.addEventListener('pointerdown', this.onPointerDown);
     document.addEventListener('pointermove', this.onPointerMove);
     document.addEventListener('pointerup', this.onPointerUp);
+    document.addEventListener('pointercancel', this.onPointerCancel);
     document.addEventListener('keydown', this.onKeyDown);
     this.canvas.addEventListener('pointerleave', this.onPointerLeave);
   }
@@ -699,6 +718,7 @@ export class Dice3D {
     if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
     if (this.onPointerMove) document.removeEventListener('pointermove', this.onPointerMove);
     if (this.onPointerUp) document.removeEventListener('pointerup', this.onPointerUp);
+    if (this.onPointerCancel) document.removeEventListener('pointercancel', this.onPointerCancel);
     if (this.onKeyDown) document.removeEventListener('keydown', this.onKeyDown);
     if (this.onPointerLeave) this.canvas.removeEventListener('pointerleave', this.onPointerLeave);
     this.disposeGhostSlot();
