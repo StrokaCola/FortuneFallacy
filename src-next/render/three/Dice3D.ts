@@ -85,6 +85,12 @@ type DieAnim = {
   // Physical shape (d4/d6/d8/d10/d12/d20). Drives the lock-snap rotation
   // table and tells the lens/halo loop how many faces this die has.
   shape: DieShape;
+  // Face value array as built (e.g. [1..6] for plain d6, [0,0,0,1,1,1] for
+  // Eclipse). Compared against the spec on constellation switch so a swap
+  // that keeps the shape but changes faces still triggers a rebuild — see
+  // `syncDiceSpecs`. Undefined for dice built without an explicit spec
+  // (treated as canonical 1..N).
+  faceValues?: readonly DieFace[];
   // Constellation-driven base scale. Single-die specs like Argo bump this so
   // the die fills the empty tray; many-die specs like Mensa shrink it so the
   // strip still fits. Multiplied with the lerp/lock/pop scale at render time.
@@ -125,6 +131,20 @@ function setAllPipsOn(
     if (lensMats[f]) lensMats[f]!.opacity = PIP_LENS_OPACITY;
     if (haloMats[f]) haloMats[f]!.opacity = PIP_HALO_OPACITY;
   }
+}
+
+// Element-wise equality for face arrays. Used by `syncDiceSpecs` to detect
+// when a constellation switch keeps the shape (e.g. Lyra→Eclipse: both d6)
+// but swaps the face values, which still requires a renderer rebuild so the
+// new values get the digit-texture path instead of the pip pattern.
+export function facesEqual(
+  a: readonly DieFace[] | undefined,
+  b: readonly DieFace[] | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 // Rectangular frosted-glass tray texture: linear gradient body + dashed gold
@@ -416,10 +436,12 @@ export class Dice3D {
         if (desiredCount !== this.dice.length) {
           this.ensureDiceCount(desiredCount);
         }
-        // Constellation switch (Lyra→Argo, etc.) can change shapes on the
-        // surviving dice — rebuild any whose shape no longer matches.
+        // Constellation switch (Lyra→Argo, etc.) can change shapes or face
+        // values on the surviving dice — rebuild any whose spec no longer
+        // matches. Covers both shape swaps (d6→d20) and same-shape face
+        // swaps (Lyra [1..6] → Eclipse [0,0,0,1,1,1]).
         if (s.run.constellationId !== prev.run.constellationId) {
-          this.syncDiceShapes();
+          this.syncDiceSpecs();
         }
         if (s.round.dice !== prev.round.dice || s.round.scoringOrder !== prev.round.scoringOrder) {
           this.syncDice(s.round.dice);
@@ -823,6 +845,7 @@ export class Dice3D {
         faceHaloMats: built.faceHaloMats,
         scorePopStart: 0,
         shape,
+        faceValues,
         baseScale,
         modSig,
         orbital,
@@ -876,6 +899,7 @@ export class Dice3D {
       group: built.group,
       faceLensMats: built.faceLensMats,
       faceHaloMats: built.faceHaloMats,
+      faceValues,
       orbital,
       rim,
       modSig,
@@ -940,6 +964,7 @@ export class Dice3D {
           faceHaloMats: built.faceHaloMats,
           scorePopStart: 0,
           shape,
+          faceValues,
           baseScale,
           modSig,
           orbital,
@@ -960,20 +985,23 @@ export class Dice3D {
     }
   }
 
-  // Rebuild any die whose shape no longer matches the active dice spec —
-  // happens at NEW_RUN when the constellation changes (e.g. Lyra→Argo flips
-  // d6 cubes to d20 icosahedra). Mirrors syncDiceMods but keys off shape.
-  private syncDiceShapes(): void {
+  // Rebuild any die whose shape OR face values no longer match the active
+  // dice spec — happens at NEW_RUN when the constellation changes. Covers
+  // both shape swaps (Lyra d6 → Argo d20 icosahedra) and same-shape face
+  // swaps (Lyra d6 [1..6] → Eclipse d6 [0,0,0,1,1,1]); the latter would
+  // otherwise leave the renderer on the pip-pattern path and never pick up
+  // the digit textures. Mirrors syncDiceMods but keys off the spec.
+  private syncDiceSpecs(): void {
     const state = store.getState();
     const spec = getDiceSpec(state);
     const allMods = state.run.diceMods;
     for (let i = 0; i < this.dice.length; i++) {
       const old = this.dice[i]!;
       const wantedShape = spec[i]?.shape ?? 'd6';
-      if (old.shape === wantedShape) continue;
+      const wantedFaces = spec[i]?.faces;
+      if (old.shape === wantedShape && facesEqual(old.faceValues, wantedFaces)) continue;
       const modIds = allMods[i] ?? [];
-      const faceValues = spec[i]?.faces;
-      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, wantedShape, faceValues);
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, wantedShape, wantedFaces);
       built.group.position.copy(old.group.position);
       built.group.quaternion.copy(old.group.quaternion);
       built.group.scale.copy(old.group.scale);
@@ -990,6 +1018,7 @@ export class Dice3D {
         rim,
         modSig,
         shape: wantedShape,
+        faceValues: wantedFaces,
       };
     }
   }
