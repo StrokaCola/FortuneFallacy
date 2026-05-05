@@ -13,6 +13,7 @@ const selectDice = (s: GameState) => s.round.dice;
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectFirstRollDone = (s: GameState) => s.round.firstRollDone;
 const selectScoringMode = (s: GameState) => lookupConstellation(s.run.constellationId).modifiers?.scoringMode ?? 'combo';
+const selectScoringOrder = (s: GameState) => s.round.scoringOrder;
 
 // WILD sentinel value emitted by the simulation for wildcard faces.
 const WILD_SENTINEL = -1;
@@ -55,6 +56,7 @@ export function FaceReadout() {
   const dice = useStore(selectDice);
   const firstRollDone = useStore(selectFirstRollDone);
   const scoringMode = useStore(selectScoringMode);
+  const scoringOrder = useStore(selectScoringOrder);
   const compact = useIsCompactStage();
 
   const constellation = lookupConstellation(constellationId);
@@ -64,14 +66,21 @@ export function FaceReadout() {
   const faces = dice.map((d) => d.face);
   const locked = dice.map((d) => d.locked);
 
-  // Captain-crew (Argo): highlight the highest die as the captain — the one
-  // that rides the catalyst multiplier — with quartile coloring + glow, and
-  // render the others smaller alongside as flat-chip "crew".
+  // Captain-crew (Argo): highlight the highest HELD die as the captain — the
+  // one that rides the catalyst multiplier — with quartile coloring + glow,
+  // and render the other held dice smaller alongside as flat-chip "crew".
+  // Mirrors the held-only contract in `core/phases/evaluation.ts:43-66` so
+  // the on-screen captain matches what the engine actually scores. Unheld
+  // dice render in a muted style so the player sees they don't contribute.
   if (scoringMode === 'captain_crew') {
     const numeric = faces.map((f) => (f === WILD_SENTINEL ? 0 : f));
-    const captainValue = numeric.length > 0 ? Math.max(...numeric) : 0;
-    // First-occurrence index so ties don't ambiguously pick the wrong die.
-    const captainIdx = numeric.indexOf(captainValue);
+    const heldIdxs = scoringOrder.filter((idx) => idx >= 0 && idx < faces.length);
+    // First-occurrence (lowest die index) wins ties so the captain badge
+    // doesn't jitter when two held dice show the same face.
+    const captainIdx = heldIdxs.length > 0
+      ? heldIdxs.reduce((best, i) => (numeric[i]! > numeric[best]! ? i : best), heldIdxs[0]!)
+      : -1;
+    const captainValue = captainIdx >= 0 ? numeric[captainIdx]! : 0;
     const captainMaxFace = maxNumericFace(constellation.dice[captainIdx]?.faces ?? []);
     const tone = toneForFace(captainValue, captainMaxFace);
     // Compact mode bumps every readout dimension since user feedback is the
@@ -105,18 +114,39 @@ export function FaceReadout() {
               </div>
             );
           }
-          const isLocked = locked[i];
+          const isHeld = heldIdxs.includes(i);
+          if (isHeld) {
+            return (
+              <div key={i} style={{ textAlign: 'center' }}>
+                <div className="f-mono uc" style={{
+                  fontSize: compact ? 12 : 9, letterSpacing: '0.3em',
+                  color: '#bba8ff', opacity: 0.6,
+                }}>
+                  crew
+                </div>
+                <div className="f-display num" style={{
+                  fontSize: compact ? 60 : 36, lineHeight: 1,
+                  color: '#dcd4ff',
+                  marginTop: 2,
+                }}>
+                  {describeFace(f)}
+                </div>
+              </div>
+            );
+          }
+          // Unheld: visible but clearly inert. No 'crew' label so the player
+          // doesn't think this die contributes to the captain×mult + crew sum.
           return (
-            <div key={i} style={{ textAlign: 'center', opacity: isLocked ? 1 : 0.7 }}>
+            <div key={i} style={{ textAlign: 'center', opacity: 0.35 }}>
               <div className="f-mono uc" style={{
                 fontSize: compact ? 12 : 9, letterSpacing: '0.3em',
-                color: '#bba8ff', opacity: 0.6,
+                color: '#7a6fa6', opacity: 0.7,
               }}>
-                crew
+                unheld
               </div>
               <div className="f-display num" style={{
                 fontSize: compact ? 60 : 36, lineHeight: 1,
-                color: '#dcd4ff',
+                color: '#7a6fa6',
                 marginTop: 2,
               }}>
                 {describeFace(f)}
