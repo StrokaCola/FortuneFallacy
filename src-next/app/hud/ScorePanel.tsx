@@ -10,7 +10,8 @@ export function ScorePanel() {
   const chainLen = useStore(selectChainLen);
   const flashRef = useRef<HTMLDivElement>(null);
 
-  useEvent('onScoreCalculated', () => {
+  useEvent('onScoreBeat', ({ beat }) => {
+    if (beat.kind !== 'boom') return;
     const el = flashRef.current;
     if (!el) return;
     el.classList.remove('animate-pulse');
