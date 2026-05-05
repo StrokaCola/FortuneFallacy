@@ -507,7 +507,10 @@ export class Dice3D {
       const dx = ev.clientX - this.dragStart.screenX;
       const dy = ev.clientY - this.dragStart.screenY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (!this.isDragging && dist > 6) {
+      // Touch fingers wobble several pixels before any intentional drag, so
+      // raise the click-vs-drag threshold on coarse-pointer devices.
+      const dragThreshold = ev.pointerType === 'touch' ? 12 : 6;
+      if (!this.isDragging && dist > dragThreshold) {
         const die = this.dice[this.dragStart.dieIdx];
         if (!die || !die.locked) {
           this.dragStart = null;
