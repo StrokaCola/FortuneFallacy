@@ -58,6 +58,7 @@ const applyModScoring: PhaseFn = (ctx) => {
     titheBudget -= step.titheCost;
     chips += step.dChips;
     mult += step.dMult;
+    const multAfterAdditive = mult;
     if (step.dMultMul !== 1) mult *= step.dMultMul;
     for (const ev of step.events) {
       if (ev.type === 'upgrade') {
@@ -71,6 +72,14 @@ const applyModScoring: PhaseFn = (ctx) => {
           payload: { dieIdx: ev.dieIdx, modId: ev.modId, faceValue: ev.faceValue },
         });
       }
+    }
+    // Crown mods apply multiplicatively but emit no additive deltaMult. Emit a
+    // synthetic event so the animation can reconstruct the full mult progression.
+    if (step.dMultMul !== 1) {
+      events.push({
+        type: 'onUpgradeTriggered',
+        payload: { id: `mod:crownMul@${i}`, phase: Phase.UPGRADES, deltaChips: 0, deltaMult: mult - multAfterAdditive },
+      });
     }
   }
   return { ...ctx, chips, mult, events };

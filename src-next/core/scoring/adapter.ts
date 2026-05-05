@@ -1,3 +1,4 @@
+import { COMBOS } from './combos';
 import type { SequenceInput } from './types';
 
 type MinimalScoringCtx = {
@@ -19,25 +20,39 @@ export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
   const dieIndices = order.filter((idx) => idx >= 0 && idx < allDice.length);
   const faces = dieIndices.map((idx) => allDice[idx]!.face);
   const faceSum = faces.reduce((a, b) => a + b, 0);
-  const comboBonus = Math.max(0, ctx.chips - faceSum);
   const comboLabel = (ctx.combo?.id ?? 'CHANCE').toUpperCase();
-  const patienceTriggered = (ctx.events ?? []).some(
-    (e) => e.type === 'onUpgradeTriggered' && e.payload.id === 'patience_counter',
-  );
+
+  // Base mult from combo evaluation (before any upgrade events).
+  const comboDef = COMBOS.find((c) => c.id === ctx.combo?.id);
+  const baseMult = comboDef?.mult ?? 1;
+
+  // Extract per-event upgrade data from pipeline events.
+  const upgradeEvents = (ctx.events ?? []).filter((e) => e.type === 'onUpgradeTriggered');
+
+  const upgrades = upgradeEvents
+    .filter((e) => e.payload.deltaChips !== 0 || e.payload.deltaMult !== 0)
+    .map((e) => ({
+      label: e.payload.id,
+      chipDelta: e.payload.deltaChips,
+      multDelta: e.payload.deltaMult,
+      tint: e.payload.id === 'patience_counter' ? ('magenta' as const) : undefined,
+    }));
+
+  // comboBonus = pure combo chip bonus only (mod chip deltas moved to upgrade beats).
+  const modChipsTotal = upgradeEvents.reduce((s, e) => s + e.payload.deltaChips, 0);
+  const comboBonus = Math.max(0, ctx.chips - faceSum - modChipsTotal);
+
+  // mults: only chain (ctx.mult is reconstructed via baseMult + upgrade-mult beats).
   const mults: SequenceInput['mults'] = [];
-  if (ctx.mult !== 1) {
-    mults.push({
-      label: 'mult',
-      value: ctx.mult,
-      tint: patienceTriggered ? 'magenta' : undefined,
-    });
-  }
   if (ctx.chain.mult !== 1) mults.push({ label: 'chain', value: ctx.chain.mult });
+
   return {
     faces,
     dieIndices,
     comboLabel,
     comboBonus,
+    baseMult,
+    upgrades,
     mults,
     finalTotal: ctx.total,
   };
