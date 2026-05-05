@@ -1,9 +1,10 @@
 import type { GameState } from '../../state/store';
-import type { GameEventEmission } from '../../events/types';
+import type { GameEventEmission, DieSnapshot } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
 import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
 import { lookupMod } from '../mods';
+import { getDiceSpec } from '../run/diceContext';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind.
@@ -24,6 +25,15 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     : def.name.toLowerCase().replace(/\s+/g, '_');
   const baseHandsMax = 3;
   const handsMax = baseHandsMax + extraHandsPerRound(s);
+  // Build the dice array sized to whatever the active constellation declares.
+  // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
+  const spec = getDiceSpec(s);
+  const dice: DieSnapshot[] = spec.map((d, id) => ({
+    id,
+    face: typeof d.faces[0] === 'number' ? d.faces[0] : 1,
+    locked: true,
+  }));
+  const scoringOrder = spec.map((_, i) => i);
   return {
     state: {
       ...s,
@@ -37,6 +47,8 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         target,
         handsMax,
         handsLeft: handsMax,
+        dice,
+        scoringOrder,
       },
     },
     events: isBoss

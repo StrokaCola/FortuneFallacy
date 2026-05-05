@@ -1,12 +1,17 @@
 import { dispatch } from '../../actions/dispatch';
-import { useStore } from '../../state/store';
+import { useStore, type GameState } from '../../state/store';
 import { selectScore, selectTarget, selectAnte, selectPlayerName } from '../../state/selectors';
+import { lookupConstellation } from '../../data/constellations';
+
+const selectConstellationId = (s: GameState) => s.run.constellationId;
 
 export function Fail() {
   const score  = useStore(selectScore);
   const target = useStore(selectTarget);
   const ante   = useStore(selectAnte);
   const name   = useStore(selectPlayerName);
+  const constellationId = useStore(selectConstellationId);
+  const constellation = lookupConstellation(constellationId);
 
   return (
     <div style={{
@@ -32,6 +37,13 @@ export function Fail() {
         }}>
           run ended {name ? `· ${name}` : ''} · ante {ante}
         </div>
+        <div className="f-mono uc" style={{
+          fontSize: 9, color: '#f5c451', letterSpacing: '0.3em',
+          opacity: 0,
+          animation: 'fadein 800ms ease-out 1500ms both',
+        }}>
+          ✦ {constellation.name}
+        </div>
 
         <div className="mat-obsidian" style={{
           padding: '14px 26px', borderRadius: 12, marginTop: 10,
@@ -55,7 +67,7 @@ export function Fail() {
           animation: 'fadein 800ms ease-out 2100ms both',
         }}>
           <button
-            onClick={() => dispatch({ type: 'NEW_RUN' })}
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
             className="btn btn-primary mat-interactive">
             ↻ Try Again
           </button>

@@ -6,6 +6,7 @@ import { CatalystStrip } from '../hud/CatalystStrip';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
+import { FaceReadout } from '../hud/FaceReadout';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { AstralHint } from '../hud/AstralHint';
@@ -55,6 +56,7 @@ export function Round() {
       <ConsumableTray />
 
       <ComboBanner accent={accent} />
+      <FaceReadout />
       <ScoreBreakdown />
       <ScoreMoment />
       <AstralHint />

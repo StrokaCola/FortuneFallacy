@@ -3,12 +3,16 @@ export type RunSlice = {
   shards: number;
   ante: number;
   goalIdx: number;
+  // Run-style choice made on the constellation select screen. Default 'lyra'
+  // is the legacy 5×d6 game. See data/constellations.ts.
+  constellationId: string;
   catalysts: string[];
   vouchers: string[];
   consumables: string[];
   ownedMods: string[];
   // Per-die mod attachments. Lives on the run (not the round) so Forge
-  // changes persist across blinds. Indexed by die id (0..4).
+  // changes persist across blinds. Length matches the constellation's dice
+  // count (5 for Lyra, 7 for Mensa, 1 for Argo, etc).
   diceMods: string[][];
   handsPlayed: number;
   compoundingStacks: number;
@@ -34,6 +38,7 @@ export const initialRunSlice = (): RunSlice => ({
   shards: 0,
   ante: 1,
   goalIdx: 0,
+  constellationId: 'lyra',
   catalysts: [],
   vouchers: [],
   consumables: [],

@@ -1,13 +1,15 @@
 import type { GameState } from '../../state/store';
 import { VOUCHERS } from '../../data/vouchers';
 import { hasDebuff } from '../round/debuffs';
+import { getCatalystSlotBonus } from '../run/diceContext';
 
 export function ownsVoucher(s: GameState, id: string): boolean {
   return s.run.vouchers.includes(id);
 }
 
 export function maxCatalystSlots(s: GameState): number {
-  return ownsVoucher(s, 'bench') ? 7 : 6;
+  const base = ownsVoucher(s, 'bench') ? 7 : 6;
+  return base + getCatalystSlotBonus(s);
 }
 
 export function maxModSlots(s: GameState): number {

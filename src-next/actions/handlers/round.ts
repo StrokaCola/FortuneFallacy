@@ -3,6 +3,8 @@ import { startBlind, clearBlind, bustBlind, skipBlind } from '../../core/round/t
 import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
+import { applyConstellation } from '../../core/run/applyConstellation';
+import { lookupConstellation } from '../../data/constellations';
 
 export const roundHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -14,17 +16,19 @@ export const roundHandler: ActionHandler = (a, s) => {
       return bustBlind(s);
     case 'SKIP_BLIND':
       return skipBlind(s);
-    case 'NEW_RUN':
+    case 'NEW_RUN': {
+      const constellation = lookupConstellation(a.constellationId);
       return {
         state: {
           ...s,
-          run: initialRunSlice(),
+          run: applyConstellation(initialRunSlice(), constellation),
           round: initialRoundSlice(),
           shop: initialShopSlice(),
           ui: { ...s.ui, screen: 'hub' },
         },
         events: [],
       };
+    }
     default:
       return { state: s, events: [] };
   }

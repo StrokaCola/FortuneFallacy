@@ -9,6 +9,12 @@ import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
 } from '../../state/selectors';
 import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
+import { lookupConstellation } from '../../data/constellations';
+import { describeDiceSpec } from '../../data/dice';
+import { isForgeDisabled } from '../../core/run/diceContext';
+
+const selectConstellationId = (s: GameState) => s.run.constellationId;
+const selectForgeDisabled = (s: GameState) => isForgeDisabled(s);
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -27,6 +33,9 @@ export function Hub() {
   const rerollsLeft = useStore(selectRerollsLeft);
   const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
+  const constellationId = useStore(selectConstellationId);
+  const constellation = lookupConstellation(constellationId);
+  const forgeDisabled = useStore(selectForgeDisabled);
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -70,6 +79,11 @@ export function Hub() {
         </div>
         <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: 6, maxWidth: 460, marginInline: 'auto' }}>
           Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
+        </div>
+        <div className="f-mono uc" style={{
+          marginTop: 10, fontSize: 9, letterSpacing: '0.28em', color: '#f5c451',
+        }}>
+          ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
       </div>
 
@@ -160,11 +174,13 @@ export function Hub() {
         position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 12, zIndex: 5,
       }}>
-        <button
-          className="btn btn-ghost mat-interactive"
-          onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
-          ⚒ Forge
-        </button>
+        {!forgeDisabled && (
+          <button
+            className="btn btn-ghost mat-interactive"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
+            ⚒ Forge
+          </button>
+        )}
         {!blinds[blindIdx]?.def.isBoss && (
           <button
             className="btn btn-ghost mat-interactive"

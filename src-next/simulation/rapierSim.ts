@@ -49,7 +49,9 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   ]) world.createCollider(w);
 
   const bodies: RigidBody[] = [];
-  const diceCount = Math.max(prevFaces.length, 5);
+  // Constellation-driven: dice count tracks the active spec (1 for Argo,
+  // 5 for Lyra, 7 for Mensa, etc). Default to 1 if everything's empty.
+  const diceCount = Math.max(prevFaces.length, 1);
   for (let i = 0; i < diceCount; i++) {
     const x = (i - (diceCount - 1) / 2) * 1.6;
     const z = (rng.next() - 0.5) * 1.5;
@@ -116,6 +118,12 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     if (!fr || fr.length === 0) return;
     const target = targets[i];
     if (target == null) return;
+    // Face correction only knows about d6 faces (1..6). For non-d6 dice
+    // (d12, d100, Fibonacci, wildcard sentinel) we skip the visual orient
+    // pass — the cube tumbles naturally and the gameplay face value still
+    // comes from `finalFaces` below. A future pass could add per-die
+    // geometry to make the visual match.
+    if (target < 1 || target > 6 || !Number.isInteger(target)) return;
     const restQ = fr[fr.length - 1]!;
     const corr = faceCorrection(
       { x: restQ.qx, y: restQ.qy, z: restQ.qz, w: restQ.qw },

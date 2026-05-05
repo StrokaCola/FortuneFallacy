@@ -4,7 +4,7 @@ import type { RunSlice } from '../../state/slices/run';
 
 function run(over: Partial<RunSlice> = {}): RunSlice {
   return {
-    seed: 0, shards: 0, ante: 1, goalIdx: 0,
+    seed: 0, shards: 0, ante: 1, goalIdx: 0, constellationId: 'lyra',
     catalysts: [], vouchers: [], consumables: [], ownedMods: [],
     diceMods: [[], [], [], [], []],
     handsPlayed: 0, compoundingStacks: 0, rollCounter: 0,

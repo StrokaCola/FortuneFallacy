@@ -10,6 +10,7 @@ import { useStore, store } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
+import { ConstellationSelect } from './screens/ConstellationSelect';
 import { Hub }   from './screens/Hub';
 import { Round } from './screens/Round';
 import { Shop }  from './screens/Shop';
@@ -41,9 +42,12 @@ export function App() {
       screenMusic.stop();
       return;
     }
-    if (screen === 'title' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
-      // win/scores reuse hub track to avoid silence on those rare screens.
-      const target: ScreenId = (screen === 'win' || screen === 'scores') ? 'hub' : screen;
+    if (screen === 'title' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
+      // win/scores reuse hub track; constellation_select reuses title track.
+      const target: ScreenId =
+        (screen === 'win' || screen === 'scores') ? 'hub'
+        : screen === 'constellation_select' ? 'title'
+        : screen;
       screenMusic.start(target);
     }
   }, [screen]);
@@ -88,6 +92,7 @@ export function App() {
       <div className="absolute inset-0 pointer-events-none">
         <ScreenTransition screenKey={screen}>
           {screen === 'title'  && <Title />}
+          {screen === 'constellation_select' && <ConstellationSelect />}
           {screen === 'hub'    && <Hub />}
           {screen === 'round'  && <Round />}
           {screen === 'shop'   && <Shop />}
