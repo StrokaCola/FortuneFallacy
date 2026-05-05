@@ -62,7 +62,7 @@ export function Title() {
           <button
             className="btn btn-primary mat-interactive"
             style={{ width: 240 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}>
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'nameentry' })}>
             Begin Ascension
           </button>
           {hasRun && (

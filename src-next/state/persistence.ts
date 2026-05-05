@@ -1,6 +1,7 @@
 import { store, type GameState } from './store';
 import { safeReadJSON, safeWriteJSON } from './storage';
 import { migrateRetheme } from './migrations/v1_retheme';
+import { SEEDED_UNLOCKS } from './slices/meta';
 
 const KEY = 'ff_next_save';
 
@@ -27,10 +28,16 @@ export function startPersistence(): () => void {
 export function applySavedToInitial(s: GameState): GameState {
   const saved = loadSaved();
   if (!saved) return s;
+  const mergedMeta = { ...s.meta, ...saved.meta };
+  // Saves predating the seeded-unlocks change can carry an empty or partial
+  // unlocks array; union with the current seed so legacy players don't see
+  // every constellation locked after upgrading.
+  const savedUnlocks = saved.meta?.unlocks ?? [];
+  mergedMeta.unlocks = Array.from(new Set([...SEEDED_UNLOCKS, ...savedUnlocks]));
   return {
     ...s,
     run:   { ...s.run,   ...saved.run   },
-    meta:  { ...s.meta,  ...saved.meta  },
+    meta:  mergedMeta,
     round: saved.round?.active ? { ...s.round, ...saved.round, handInProgress: false } : s.round,
     ui:    { ...s.ui, screen: saved.ui?.screen ?? s.ui.screen },
   };

@@ -9,6 +9,8 @@ export const metaHandler: ActionHandler = (a, s) => {
       };
     case 'SET_SCREEN':
       return { state: { ...s, ui: { ...s.ui, screen: a.screen } }, events: [] };
+    case 'SET_PLAYER_NAME':
+      return { state: { ...s, meta: { ...s.meta, playerName: a.name } }, events: [] };
     case 'TOGGLE_PAUSE':
       return { state: { ...s, ui: { ...s.ui, paused: !s.ui.paused } }, events: [] };
     default:

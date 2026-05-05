@@ -60,6 +60,24 @@ describe('SET_SCREEN', () => {
   });
 });
 
+describe('SET_PLAYER_NAME', () => {
+  it('stores the name on meta', () => {
+    const r = metaHandler({ type: 'SET_PLAYER_NAME', name: 'Aria' }, baseState());
+    expect(r.state.meta.playerName).toBe('Aria');
+  });
+
+  it('emits no events', () => {
+    const r = metaHandler({ type: 'SET_PLAYER_NAME', name: 'X' }, baseState());
+    expect(r.events).toHaveLength(0);
+  });
+
+  it('overwrites a previously-stored name', () => {
+    let s = metaHandler({ type: 'SET_PLAYER_NAME', name: 'first' }, baseState()).state;
+    s = metaHandler({ type: 'SET_PLAYER_NAME', name: 'second' }, s).state;
+    expect(s.meta.playerName).toBe('second');
+  });
+});
+
 describe('TOGGLE_PAUSE', () => {
   it('toggles paused from false to true', () => {
     const before = baseState();

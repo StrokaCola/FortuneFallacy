@@ -79,6 +79,7 @@ export type GameEventMap = {
     };
   };
   onBossRevealed:      { blindId: BlindId; ante: number };
+  onRunEnded:          { score: number; won: boolean; ante: number; constellation: string };
   onShopOpened:        { offers: ShopOffer[] };
   onLockToggled:       { dieIdx: number; locked: boolean };
   onOfferBought:       { kind: ShopOffer['kind']; id: string; price: number };

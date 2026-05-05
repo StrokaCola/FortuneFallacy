@@ -24,6 +24,9 @@ export const selectCatalysts  = (s: GameState) => s.run.catalysts;
 export const selectMaxCatalystSlots = (s: GameState) => maxCatalystSlots(s);
 export const selectVouchers   = (s: GameState) => s.run.vouchers;
 export const selectPlayerName = (s: GameState) => s.meta.playerName;
+export const selectUnlocks    = (s: GameState) => s.meta.unlocks;
+export const selectIsConstellationUnlocked = (id: string) => (s: GameState) =>
+  s.meta.unlocks.includes(id);
 
 export const selectTensionFromState = (s: GameState): number => {
   const inputs: TensionInputs = {
