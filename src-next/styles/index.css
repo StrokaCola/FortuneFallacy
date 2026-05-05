@@ -47,12 +47,11 @@ html, body {
   top: 0;
   width: 1280px;
   height: 800px;
-  /* Sits BELOW the React HUD (#next-root z=2). Some Android/Adreno drivers
-     composite WebGL with `alpha:true` as opaque black, which would otherwise
-     mask the entire HUD. Keeping the canvas below the HUD makes that failure
-     mode harmless — dice still render in the empty middle of the stage where
-     the HUD has no opaque surface. */
-  z-index: 1;
+  /* Sits ABOVE the React HUD layer (#next-root z=2). The renderer is created
+     with `alpha: true` so unrendered pixels are transparent and the HUD shows
+     through. CosmosBackground inside #next-root paints an opaque gradient,
+     so putting the canvas underneath would hide the dice entirely. */
+  z-index: 3;
   pointer-events: none;
   display: none;
   background: transparent;
