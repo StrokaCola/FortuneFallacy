@@ -363,6 +363,13 @@ export class Dice3D {
 
     this.unsubscribers.push(
       store.subscribe((s, prev) => {
+        // Constellation can change the dice count at NEW_RUN time. Detect
+        // either via diceMods length (canonical) or dice array length and
+        // grow/shrink the 3D scene accordingly before any other sync runs.
+        const desiredCount = Math.max(1, s.run.diceMods.length);
+        if (desiredCount !== this.dice.length) {
+          this.ensureDiceCount(desiredCount);
+        }
         if (s.round.dice !== prev.round.dice || s.round.scoringOrder !== prev.round.scoringOrder) {
           this.syncDice(s.round.dice);
         }
@@ -688,9 +695,12 @@ export class Dice3D {
   }
 
   private buildDice() {
-    const count = 5;
-    const startX = -((count - 1) * DICE_GAP) / 2;
+    // Constellation-driven: dice count tracks the active dice spec via
+    // `state.run.diceMods.length` which `applyConstellation` sizes for us.
+    // Lyra=5, Mensa=7, Argo=1, Polyhedra=5 mixed.
     const allMods = store.getState().run.diceMods;
+    const count = Math.max(1, allMods.length);
+    const startX = -((count - 1) * DICE_GAP) / 2;
     for (let i = 0; i < count; i++) {
       const modIds = allMods[i] ?? [];
       const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
@@ -773,6 +783,63 @@ export class Dice3D {
       rim,
       modSig,
     };
+  }
+
+  // Grow or shrink the dice scene to match a new constellation's dice count
+  // (e.g. switching from Lyra=5 to Mensa=7 or Argo=1 at NEW_RUN). Dice are
+  // appended at the rolling-tray home position; excess dice are disposed.
+  // The next syncDice() pass will lay them out into hold/roll slots.
+  private ensureDiceCount(targetCount: number): void {
+    const current = this.dice.length;
+    if (current === targetCount) return;
+    if (targetCount > current) {
+      const allMods = store.getState().run.diceMods;
+      const startX = -((targetCount - 1) * DICE_GAP) / 2;
+      for (let i = current; i < targetCount; i++) {
+        const modIds = allMods[i] ?? [];
+        const { built, orbital, rim, modSig } = this.buildSingleDie(modIds);
+        const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
+        built.group.position.copy(home);
+        this.scene.add(built.group);
+        setAllPipsOn(built.faceLensMats, built.faceHaloMats);
+        this.dice.push({
+          group: built.group,
+          homePos: home,
+          startPos: home.clone(),
+          targetPos: home.clone(),
+          startScale: 1,
+          targetScale: 1,
+          startQuat: new THREE.Quaternion(),
+          targetQuat: new THREE.Quaternion(),
+          t0: 0,
+          duration: 350,
+          rolling: false,
+          rollAxis: new THREE.Vector3(1, 0, 0),
+          rollSpeed: 0,
+          bouncePeak: 0,
+          locked: false,
+          playback: null,
+          holdBobPhase: Math.random() * Math.PI * 2,
+          faceLensMats: built.faceLensMats,
+          faceHaloMats: built.faceHaloMats,
+          scorePopStart: 0,
+          modSig,
+          orbital,
+          rim,
+        });
+      }
+    } else {
+      // Shrink: dispose tail dice. Avoid removing dice mid-playback by
+      // letting them tumble idle first (caller already debounces against
+      // round.dice ref-equality, so this only happens at NEW_RUN time).
+      for (let i = current - 1; i >= targetCount; i--) {
+        const d = this.dice[i];
+        if (!d) continue;
+        this.scene.remove(d.group);
+        this.disposeDie(d);
+      }
+      this.dice.length = targetCount;
+    }
   }
 
   // Diff each per-die mod list against the active dice and rebuild any that
@@ -860,8 +927,12 @@ export class Dice3D {
       // whatever rotation physics produced — that orientation already shows
       // the correct face per faceFromQuaternion.
       if (!die.rolling && isLocked) {
+        // FACE_ROT only knows about d6 faces (1..6). For non-d6 dice (d12,
+        // d100, Fibonacci, WILD sentinel) fall back to face 1 — a future
+        // pass should add per-die geometry so the visible face matches.
+        const rotEuler = FACE_ROT[d.face] ?? FACE_ROT[1]!;
         const newRot = new THREE.Quaternion();
-        newRot.setFromEuler(new THREE.Euler(...FACE_ROT[d.face]!));
+        newRot.setFromEuler(new THREE.Euler(...rotEuler));
         if (!die.targetQuat.equals(newRot) || lockChanged) {
           die.startQuat.copy(die.group.quaternion);
           die.targetQuat.copy(newRot);

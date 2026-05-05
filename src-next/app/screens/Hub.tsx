@@ -9,6 +9,10 @@ import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
 } from '../../state/selectors';
 import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
+import { lookupConstellation } from '../../data/constellations';
+import { describeDiceSpec } from '../../data/dice';
+
+const selectConstellationId = (s: GameState) => s.run.constellationId;
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -27,6 +31,8 @@ export function Hub() {
   const rerollsLeft = useStore(selectRerollsLeft);
   const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
+  const constellationId = useStore(selectConstellationId);
+  const constellation = lookupConstellation(constellationId);
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -70,6 +76,11 @@ export function Hub() {
         </div>
         <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: 6, maxWidth: 460, marginInline: 'auto' }}>
           Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
+        </div>
+        <div className="f-mono uc" style={{
+          marginTop: 10, fontSize: 9, letterSpacing: '0.28em', color: '#f5c451',
+        }}>
+          ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
       </div>
 

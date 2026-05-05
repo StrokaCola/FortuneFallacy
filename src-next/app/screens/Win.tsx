@@ -1,12 +1,17 @@
 import { dispatch } from '../../actions/dispatch';
-import { useStore } from '../../state/store';
+import { useStore, type GameState } from '../../state/store';
 import { selectScore, selectShards, selectPlayerName } from '../../state/selectors';
 import { PortalGate } from '../portal/PortalGate';
+import { lookupConstellation } from '../../data/constellations';
+
+const selectConstellationId = (s: GameState) => s.run.constellationId;
 
 export function Win() {
   const score  = useStore(selectScore);
   const shards = useStore(selectShards);
   const name   = useStore(selectPlayerName);
+  const constellationId = useStore(selectConstellationId);
+  const constellation = lookupConstellation(constellationId);
 
   return (
     <div style={{
@@ -42,6 +47,9 @@ export function Win() {
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
           all four antes cleared {name ? `· ${name}` : ''}
         </div>
+        <div className="f-mono uc" style={{ fontSize: 9, color: '#f5c451', letterSpacing: '0.3em' }}>
+          ✦ {constellation.name}
+        </div>
 
         <div className="mat-obsidian" style={{ padding: '14px 26px', borderRadius: 12, marginTop: 14, display: 'flex', gap: 36 }}>
           <div style={{ textAlign: 'center' }}>
@@ -56,7 +64,7 @@ export function Win() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 14 }}>
           <button
-            onClick={() => dispatch({ type: 'NEW_RUN' })}
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
             className="btn btn-primary mat-interactive">
             ✦ New Run
           </button>

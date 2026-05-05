@@ -20,7 +20,7 @@ export type Action =
   | { type: 'START_BLIND' }
   | { type: 'CLEAR_BLIND' }
   | { type: 'BUST_BLIND' }
-  | { type: 'NEW_RUN' }
+  | { type: 'NEW_RUN'; constellationId?: string }
   | { type: 'GRANT_CONSUMABLE'; id: string }
   | { type: 'DISCARD_CONSUMABLE'; index: number }
   | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }

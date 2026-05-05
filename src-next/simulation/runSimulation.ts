@@ -48,8 +48,11 @@ function runSeededSim(
   return new Promise((resolve) => {
     const rng = mulberry32(req.seed >>> 0);
     const state = store.getState();
-    const cap = hasDebuff(state, 'hand_size_cap_4') ? 4 : 5;
-    const diceCount = Math.min(cap, Math.max(prevFaces.length, 5));
+    // Dice count tracks the round's actual dice array (constellation-driven),
+    // capped by the hand-size debuff for boss blinds that constrain the hand.
+    const baseCount = Math.max(prevFaces.length, state.round.dice.length, 1);
+    const cap = hasDebuff(state, 'hand_size_cap_4') ? 4 : baseCount;
+    const diceCount = Math.min(cap, baseCount);
 
     // Faces come from the predetermined sequence built in initSimulation;
     // the pipeline RNG already accounted for locks, but we still respect
