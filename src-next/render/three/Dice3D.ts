@@ -11,7 +11,7 @@ import {
 import { MOD_MATERIALS } from './dieMaterials';
 import { getFaceCenters } from './polyhedra';
 import { getDiceSpec } from '../../core/run/diceContext';
-import type { DieShape } from '../../data/dice';
+import { spatialIdxForValue, type DieShape, type DieFace } from '../../data/dice';
 import { buildOrbitalSatellite } from './orbitalSatellite';
 import { buildRimOverlay } from './rimOverlay';
 import { firePulse } from './modFx/pulse';
@@ -698,7 +698,7 @@ export class Dice3D {
   // satellite (or the rim band when a third mod is attached); tertiary drives
   // the satellite in the 3-mod case. Orbital/rim groups are children of the
   // die group so position/scale/tumble cascade automatically.
-  private buildSingleDie(modIds: string[], shape: DieShape = 'd6'): {
+  private buildSingleDie(modIds: string[], shape: DieShape = 'd6', faceValues?: readonly DieFace[]): {
     built: ReturnType<typeof buildDie>;
     orbital: ReturnType<typeof buildOrbitalSatellite> | null;
     rim: ReturnType<typeof buildRimOverlay> | null;
@@ -708,7 +708,7 @@ export class Dice3D {
     const modKey = primary?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const geometricVariant = primary?.visual?.geometricVariant;
-    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant, shape);
+    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant, shape, faceValues);
 
     const secondary = modIds[1] ? lookupMod(modIds[1]) : undefined;
     const tertiary = modIds[2] ? lookupMod(modIds[2]) : undefined;
@@ -755,7 +755,8 @@ export class Dice3D {
     for (let i = 0; i < count; i++) {
       const modIds = allMods[i] ?? [];
       const shape = spec[i]?.shape ?? 'd6';
-      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape);
+      const faceValues = spec[i]?.faces;
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape, faceValues);
       const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
       built.group.position.copy(home);
       this.scene.add(built.group);
@@ -816,7 +817,9 @@ export class Dice3D {
     const newSig = newModIds.join('|');
     if (old.modSig === newSig) return;
 
-    const { built, orbital, rim, modSig } = this.buildSingleDie(newModIds, old.shape);
+    const spec = getDiceSpec(store.getState());
+    const faceValues = spec[i]?.faces;
+    const { built, orbital, rim, modSig } = this.buildSingleDie(newModIds, old.shape, faceValues);
 
     // Carry pose + scale + quaternion onto the new group so the rebuild is
     // visually seamless (other than the material/geometry swap itself).
@@ -869,7 +872,8 @@ export class Dice3D {
       for (let i = current; i < targetCount; i++) {
         const modIds = allMods[i] ?? [];
         const shape = spec[i]?.shape ?? 'd6';
-        const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape);
+        const faceValues = spec[i]?.faces;
+        const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, shape, faceValues);
         const home = new THREE.Vector3(startX + i * DICE_GAP, 0, ROLL_TRAY_Z);
         built.group.position.copy(home);
         built.group.scale.setScalar(baseScale);
@@ -929,7 +933,8 @@ export class Dice3D {
       const wantedShape = spec[i]?.shape ?? 'd6';
       if (old.shape === wantedShape) continue;
       const modIds = allMods[i] ?? [];
-      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, wantedShape);
+      const faceValues = spec[i]?.faces;
+      const { built, orbital, rim, modSig } = this.buildSingleDie(modIds, wantedShape, faceValues);
       built.group.position.copy(old.group.position);
       built.group.quaternion.copy(old.group.quaternion);
       built.group.scale.copy(old.group.scale);
@@ -975,6 +980,7 @@ export class Dice3D {
   }
 
   private syncDice(diceState: { face: number; locked?: boolean }[]) {
+    const spec = getDiceSpec(store.getState());
     // Hold-strip layout follows scoringOrder so player-driven reorder is
     // visible. Falls back to natural order if scoringOrder is empty / stale
     // (e.g. before first roll or after RESET_ROUND).
@@ -1036,7 +1042,12 @@ export class Dice3D {
       // whatever rotation physics produced — that orientation already shows
       // the correct face per faceFromQuaternion.
       if (!die.rolling && isLocked) {
-        const newRot = lockSnapQuat(die.shape, d.face);
+        // d.face is the rolled VALUE. For non-canonical d6 specs (Fibonacci,
+        // Eclipse, Ophiuchus) and any die where value !== spatial index, look
+        // up which spatial face holds this value before snapping.
+        const dieFaces = spec[i]?.faces;
+        const spatialIdx = dieFaces ? spatialIdxForValue(dieFaces, d.face) : d.face;
+        const newRot = lockSnapQuat(die.shape, spatialIdx);
         if (!die.targetQuat.equals(newRot) || lockChanged) {
           die.startQuat.copy(die.group.quaternion);
           die.targetQuat.copy(newRot);

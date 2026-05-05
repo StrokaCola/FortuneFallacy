@@ -11,11 +11,16 @@ export type DieSnapshot = {
 export type SimulationRequest = {
   diceToRoll: number[];
   seed: number;
-  // Faces decided by the seeded RNG before physics runs. Length matches
-  // the dice in the round; locked dice carry their existing face so the
-  // simulation can be steered to land on the predetermined value while
-  // still tumbling naturally.
+  // Per-die rolled value (game state). For Lyra/Mensa this also matches the
+  // spatial face index, but for Fibonacci ([1,1,2,3,5,8]), Eclipse
+  // ([0,0,0,1,1,1]), or Ophiuchus ([1..5,WILD]) the value diverges from the
+  // spatial index — use `predeterminedFaceIdx` for orientation in that case.
   predeterminedFaces: number[];
+  // 1-based spatial face index for orientation (which physical face of the
+  // polyhedron should land up). Defaults to `predeterminedFaces` when absent —
+  // sufficient for d6 with `faces: [1..6]` and any dN with `faces: [1..N]`,
+  // where value === spatial index.
+  predeterminedFaceIdx?: number[];
   // Per-die shape (d4/d6/d8/d10/d12/d20). Drives the rapier collider and
   // the per-shape face axes used by `faceCorrection`. Length matches
   // `predeterminedFaces`. Older callers may omit; rapierSim falls back to d6.
