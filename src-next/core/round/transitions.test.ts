@@ -4,7 +4,7 @@ import { hasDebuff } from './debuffs';
 import { maxModSlots } from '../vouchers';
 import type { GameState } from '../../state/store';
 
-function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: number; compoundingStacks: number; score: number; target: number; isBoss: boolean; catalysts: string[]; vouchers: string[]; consumables: string[]; handsPlayed: number; diceMods: string[][]; }> = {}): GameState {
+function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: number; compoundingStacks: number; score: number; target: number; isBoss: boolean; catalysts: string[]; vouchers: string[]; consumables: string[]; handsPlayed: number; handsLeft: number; diceMods: string[][]; }> = {}): GameState {
   return {
     run: {
       seed: 1,
@@ -26,7 +26,7 @@ function makeState(overrides: Partial<{ shards: number; goalIdx: number; ante: n
       isBoss: overrides.isBoss ?? false,
       target: overrides.target ?? 100,
       score: overrides.score ?? 100,
-      handsLeft: 3,
+      handsLeft: overrides.handsLeft ?? 3,
       handsMax: 3,
       rerollsLeft: 2,
       dice: [],
@@ -49,6 +49,71 @@ describe('clearBlind', () => {
     const s = makeState({ compoundingStacks: 2, score: 200, target: 100 });
     const result = clearBlind(s);
     expect(result.state.run.compoundingStacks).toBe(3);
+  });
+
+  it('awards flat 5 base for non-boss with no remaining hands and no held shards', () => {
+    const s = makeState({ shards: 0, handsLeft: 0, isBoss: false, score: 200, target: 100 });
+    const result = clearBlind(s);
+    expect(result.state.run.shards).toBe(5);
+    expect((result.events[0]!.payload as any).reward).toEqual({
+      base: 5, voucher: 0, hands: 0, interest: 0, total: 5,
+    });
+  });
+
+  it('awards flat 8 base for boss with no remaining hands and no held shards', () => {
+    const s = makeState({ shards: 0, handsLeft: 0, isBoss: true, score: 2200, target: 1000 });
+    const result = clearBlind(s);
+    expect(result.state.run.shards).toBe(8);
+    expect((result.events[0]!.payload as any).reward.base).toBe(8);
+  });
+
+  it('shard_streak voucher adds +1 voucher bonus on top of base', () => {
+    const s = makeState({ shards: 0, handsLeft: 0, vouchers: ['shard_streak'] });
+    const result = clearBlind(s);
+    // base 5 + voucher 1 + hands 0 + interest 0
+    expect(result.state.run.shards).toBe(6);
+    expect((result.events[0]!.payload as any).reward.voucher).toBe(1);
+  });
+
+  it('hands bonus equals handsLeft × 1', () => {
+    const s = makeState({ shards: 0, handsLeft: 2 });
+    const result = clearBlind(s);
+    // base 5 + hands 2 + interest 0
+    expect(result.state.run.shards).toBe(7);
+    expect((result.events[0]!.payload as any).reward.hands).toBe(2);
+  });
+
+  it('interest is floor(held / 5), capped at 3', () => {
+    // 12 held → interest 2; total = 5 base + 0 hands + 2 interest = 7 added
+    const s12 = makeState({ shards: 12, handsLeft: 0 });
+    expect((clearBlind(s12).events[0]!.payload as any).reward.interest).toBe(2);
+
+    // 15 held → interest 3; cap reached.
+    const s15 = makeState({ shards: 15, handsLeft: 0 });
+    expect((clearBlind(s15).events[0]!.payload as any).reward.interest).toBe(3);
+
+    // 100 held → still 3; cap holds.
+    const s100 = makeState({ shards: 100, handsLeft: 0 });
+    expect((clearBlind(s100).events[0]!.payload as any).reward.interest).toBe(3);
+  });
+
+  it('full reward: boss + 2 hands + 25 held + voucher = 8+1+2+3 = 14', () => {
+    const s = makeState({
+      shards: 25, handsLeft: 2, isBoss: true,
+      vouchers: ['shard_streak'],
+    });
+    const result = clearBlind(s);
+    expect(result.state.run.shards).toBe(25 + 14);
+    const reward = (result.events[0]!.payload as any).reward;
+    expect(reward).toEqual({ base: 8, voucher: 1, hands: 2, interest: 3, total: 14 });
+  });
+
+  it('does not pay interest on a negative held balance', () => {
+    // Defensive — should never happen in practice but we don't want a divisor
+    // surprise to mint shards.
+    const s = makeState({ shards: -3, handsLeft: 0 });
+    const reward = (clearBlind(s).events[0]!.payload as any).reward;
+    expect(reward.interest).toBe(0);
   });
 });
 

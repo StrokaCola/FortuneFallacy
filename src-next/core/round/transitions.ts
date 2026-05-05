@@ -58,13 +58,24 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
 }
 
 export function clearBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
-  const baseReward = (s.round.isBoss ? 8 : 5) + blindClearShardBonus(s);
-  const overflow = s.round.score - s.round.target;
-  let overchargeBonus = 0;
-  if (s.round.target > 0 && overflow >= Math.floor(s.round.target * 0.5)) {
-    overchargeBonus = Math.min(20, Math.floor(overflow / Math.max(50, s.round.target / 10)));
-  }
-  const reward = baseReward + overchargeBonus;
+  // Per the shard economy rebalance: flat base + bonus per remaining hand +
+  // interest on held shards. Replaces the old overcharge mechanic which let a
+  // single high-roll fund half a shop. The three constants live here so the
+  // tuning curve is in one place. Values picked so a typical player nets
+  // roughly the legacy total over an 8-ante run while the high-roll ceiling
+  // drops materially — see `data/balance.shards.sim.test.ts`.
+  const SHARDS_PER_REMAINING_HAND = 1;
+  const SHARDS_INTEREST_DIVISOR = 5;
+  const SHARDS_INTEREST_CAP = 3;
+
+  const baseAmount = s.round.isBoss ? 8 : 5;
+  const voucherBonus = blindClearShardBonus(s);
+  const handsBonus = Math.max(0, s.round.handsLeft) * SHARDS_PER_REMAINING_HAND;
+  const interest = Math.min(
+    SHARDS_INTEREST_CAP,
+    Math.floor(Math.max(0, s.run.shards) / SHARDS_INTEREST_DIVISOR),
+  );
+  const reward = baseAmount + voucherBonus + handsBonus + interest;
   const nextGoal = s.run.goalIdx + 1;
   const nextAnte = Math.floor(nextGoal / 3) + 1;
   const won = nextGoal >= 12;
@@ -88,7 +99,17 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     events: [
       {
         type: 'onBlindCleared',
-        payload: { blindId: s.round.blindId ?? 'unknown', ante: s.run.ante },
+        payload: {
+          blindId: s.round.blindId ?? 'unknown',
+          ante: s.run.ante,
+          reward: {
+            base: baseAmount,
+            voucher: voucherBonus,
+            hands: handsBonus,
+            interest,
+            total: reward,
+          },
+        },
       },
     ],
   };

@@ -67,7 +67,17 @@ export type GameEventMap = {
   onUpgradeTriggered:  { id: UpgradeId; phase: Phase; deltaChips: number; deltaMult: number };
   onModFired:          { dieIdx: number; modId: string; faceValue: number };
   onComboDetected:     { combo: ComboId; tier: number };
-  onBlindCleared:      { blindId: BlindId; ante: number };
+  onBlindCleared:      {
+    blindId: BlindId;
+    ante: number;
+    reward: {
+      base: number;     // flat per-blind reward (5 / 8)
+      voucher: number;  // shard_streak voucher bonus (0 or 1 today)
+      hands: number;    // unused-hands bonus (handsLeft × 1)
+      interest: number; // floor(held/5), cap 5
+      total: number;    // sum of the above — what was added to s.run.shards
+    };
+  };
   onBossRevealed:      { blindId: BlindId; ante: number };
   onShopOpened:        { offers: ShopOffer[] };
   onLockToggled:       { dieIdx: number; locked: boolean };
