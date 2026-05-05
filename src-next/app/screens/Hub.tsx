@@ -11,8 +11,10 @@ import {
 import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
 import { lookupConstellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
+import { isForgeDisabled } from '../../core/run/diceContext';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
+const selectForgeDisabled = (s: GameState) => isForgeDisabled(s);
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -33,6 +35,7 @@ export function Hub() {
   const target   = useStore(selectTarget);
   const constellationId = useStore(selectConstellationId);
   const constellation = lookupConstellation(constellationId);
+  const forgeDisabled = useStore(selectForgeDisabled);
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -171,11 +174,13 @@ export function Hub() {
         position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 12, zIndex: 5,
       }}>
-        <button
-          className="btn btn-ghost mat-interactive"
-          onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
-          ⚒ Forge
-        </button>
+        {!forgeDisabled && (
+          <button
+            className="btn btn-ghost mat-interactive"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
+            ⚒ Forge
+          </button>
+        )}
         {!blinds[blindIdx]?.def.isBoss && (
           <button
             className="btn btn-ghost mat-interactive"

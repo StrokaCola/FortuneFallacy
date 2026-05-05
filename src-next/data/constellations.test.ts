@@ -2,6 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { CONSTELLATIONS, lookupConstellation, DEFAULT_CONSTELLATION_ID } from './constellations';
 import { applyConstellation } from '../core/run/applyConstellation';
 import { initialRunSlice } from '../state/slices/run';
+import { initialRoundSlice } from '../state/slices/round';
+import { initialShopSlice } from '../state/slices/shop';
+import { initialMetaSlice } from '../state/slices/meta';
+import { initialUiSlice } from '../state/slices/ui';
+import { maxCatalystSlots } from '../core/vouchers';
+import type { GameState } from '../state/store';
+
+function stateWith(constellationId: string): GameState {
+  return {
+    run: applyConstellation(initialRunSlice(), lookupConstellation(constellationId)),
+    round: initialRoundSlice(),
+    shop: initialShopSlice(),
+    meta: initialMetaSlice(),
+    ui: initialUiSlice(),
+    pingCount: 0,
+  } as unknown as GameState;
+}
 
 describe('constellation registry', () => {
   it('exposes a non-empty list', () => {
@@ -85,5 +102,21 @@ describe('applyConstellation', () => {
   it('Fibonacci uses [1,1,2,3,5,8] faces', () => {
     const f = lookupConstellation('fibonacci');
     for (const d of f.dice) expect(d.faces).toEqual([1, 1, 2, 3, 5, 8]);
+  });
+});
+
+describe('constellation modifier wiring', () => {
+  it("Argo's catalystSlotBonus reaches maxCatalystSlots()", () => {
+    const lyra = stateWith('lyra');
+    const argo = stateWith('argo');
+    expect(maxCatalystSlots(argo) - maxCatalystSlots(lyra)).toBe(2);
+  });
+
+  it('non-Argo constellations leave the slot cap at the legacy default', () => {
+    for (const c of CONSTELLATIONS) {
+      if (c.id === 'argo') continue;
+      const s = stateWith(c.id);
+      expect(maxCatalystSlots(s)).toBe(6);
+    }
   });
 });

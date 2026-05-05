@@ -1,8 +1,10 @@
 import type { ActionHandler } from './types';
+import type { GameState } from '../../state/store';
 import { CATALYST_IDS } from '../../core/upgrades/catalysts';
 import { CONSUMABLES } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
+import { areModsDisabled } from '../../core/run/diceContext';
 import type { ShopOffer } from '../../events/types';
 
 const BASE_REROLL_COST = 3;
@@ -17,13 +19,20 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function rollOffers(ownedVouchers: string[]): ShopOffer[] {
+function rollOffers(s: GameState): ShopOffer[] {
   const offers: ShopOffer[] = [];
+  const ownedVouchers = s.run.vouchers;
+  const modsOff = areModsDisabled(s);
 
-  const modIds = shuffle([...MOD_IDS]).slice(0, 2);
-  for (const id of modIds) offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE });
+  if (!modsOff) {
+    const modIds = shuffle([...MOD_IDS]).slice(0, 2);
+    for (const id of modIds) offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE });
+  }
 
-  const catalystIds = shuffle([...CATALYST_IDS]).slice(0, 2);
+  // Constellations like Argo replace mod slots with extra catalyst breadth, so
+  // surface a third catalyst when mods are off to keep the offer count steady.
+  const catalystCount = modsOff ? 3 : 2;
+  const catalystIds = shuffle([...CATALYST_IDS]).slice(0, catalystCount);
   for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
@@ -43,7 +52,7 @@ function rollOffers(ownedVouchers: string[]): ShopOffer[] {
 export const shopHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'OPEN_SHOP': {
-      const offers = rollOffers(s.run.vouchers);
+      const offers = rollOffers(s);
       return {
         state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: freeShopReroll(s) ? 0 : BASE_REROLL_COST }, ui: { ...s.ui, screen: 'shop' } },
         events: [{ type: 'onShopOpened', payload: { offers } }],
@@ -58,7 +67,7 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (!s.shop.open) return { state: s, events: [] };
       const cost = s.shop.rerollCost;
       if (s.run.shards < cost) return { state: s, events: [] };
-      const offers = rollOffers(s.run.vouchers);
+      const offers = rollOffers(s);
       const nextCost = freeShopReroll(s) ? 0 : cost + 1;
       return {
         state: {
