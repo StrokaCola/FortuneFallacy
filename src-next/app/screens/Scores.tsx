@@ -81,7 +81,7 @@ export function Scores() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {isUnlocked ? shortName(c.name) : '???'}
+                {isUnlocked ? shortName(c.name) : '⌧ ???'}
               </button>
             );
           })}
