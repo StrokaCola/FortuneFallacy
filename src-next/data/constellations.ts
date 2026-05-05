@@ -95,14 +95,14 @@ export const CONSTELLATIONS: Constellation[] = [
     flavor: 'Three d20: a captain and her crew.',
     rules: [
       'Three d20 dice',
-      'Combos disabled — score = captain × (1 + 0.5 × catalysts) + crew',
+      'Combos disabled — score = captain × (1 + 0.75 × catalysts) + crew',
       'Captain = highest face this hand; crew = the others',
       'Forge & mods disabled, +2 catalyst slots',
     ],
     dice: [d20Plain(), d20Plain(), d20Plain()],
     modifiers: {
       scoringMode: 'captain_crew',
-      faceMultiplierPerCatalyst: 0.5,
+      faceMultiplierPerCatalyst: 0.75,
       forgeDisabled: true,
       modsDisabled: true,
       catalystSlotBonus: 2,
@@ -130,11 +130,11 @@ export const CONSTELLATIONS: Constellation[] = [
     flavor: 'Half blanks, half ones. Mods carry the run.',
     rules: [
       'Five dice with faces [0,0,0,1,1,1]',
-      'Combos easy to land but base chips & mult ×0.25',
-      'You will need mods.',
+      'Combos easy to land but base chips & mult ×0.5',
+      'Still leans on mods to clear later antes.',
     ],
     dice: Array.from({ length: 5 }, () => dN([...ECLIPSE_FACES], { label: '0/1' })),
-    modifiers: { baseChipsMult: 0.25, baseMultMult: 0.25 },
+    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5 },
     glyph: [
       { x: 18, y: 50 }, { x: 36, y: 50 }, { x: 54, y: 50 },
       { x: 72, y: 50 }, { x: 90, y: 50 },
@@ -162,10 +162,11 @@ export const CONSTELLATIONS: Constellation[] = [
     rules: [
       'Five dice with faces [1,2,3,4,5,WILD]',
       'WILD becomes whatever value maximises your combo at score time',
+      'Base chips & mult ×0.5 (WILD-driven combos hit hard already)',
       'Chain cap reduced to 4',
     ],
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
-    modifiers: { chainCap: 4 },
+    modifiers: { chainCap: 4, baseChipsMult: 0.5, baseMultMult: 0.5 },
     glyph: [
       { x: 20, y: 55 }, { x: 38, y: 35 }, { x: 50, y: 60 },
       { x: 65, y: 35 }, { x: 85, y: 55 },
