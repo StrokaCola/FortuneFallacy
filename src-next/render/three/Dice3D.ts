@@ -107,10 +107,13 @@ function baseScaleForCount(count: number): number {
   return 0.75;
 }
 
-// Per-face pip materials: lens caps at 0.78 to keep emissive bloom in range,
-// halo runs at full opacity. All six faces stay lit at all times.
+// Per-face pip materials: lens caps at 0.78 to keep emissive bloom in range.
+// Halo opacity stays modest because polyhedra (d8/d12/d20) stack 8–20 face
+// halos additively — at 1.0 each that summed glow swallowed the whole die.
+// 0.55 keeps the lit-from-within feel without the fog. d6 dice show 6 halos
+// max so they look fine at this opacity too.
 const PIP_LENS_OPACITY = 0.78;
-const PIP_HALO_OPACITY = 1.0;
+const PIP_HALO_OPACITY = 0.55;
 
 function setAllPipsOn(
   lensMats: FaceMatMap<THREE.MeshStandardMaterial>,

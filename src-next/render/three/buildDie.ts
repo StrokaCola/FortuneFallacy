@@ -380,7 +380,10 @@ function buildPolyhedronDie(
 
     if (haloShown) {
       const halo = new THREE.Sprite(haloMat);
-      const haloSize = lensR * 3.2;
+      // Tighter than the cube path (4×) because polyhedra stack many halos,
+      // and on a d20 a 3.2× sprite per face produced a glowing fog. 2.2×
+      // keeps each face lit but stops the halos from fully overlapping.
+      const haloSize = lensR * 2.2;
       halo.scale.set(haloSize, haloSize, 1);
       halo.position.copy(normalVec).multiplyScalar(half * 0.95);
       faceGroup.add(halo);
