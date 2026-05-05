@@ -138,19 +138,22 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   // (a 90° or 180° rotation around an axis), the cube also stays flush
   // with the floor at rest. No post-settle flip.
   const targets = req.predeterminedFaces ?? [];
+  // Spatial face indices for orientation. When omitted (older callers /
+  // tests) we fall back to interpreting `predeterminedFaces` as the spatial
+  // index — fine for d6 with faces [1..6] and dN with faces [1..N], where
+  // value === spatial index. Constellations with non-standard face arrays
+  // (Fibonacci, Eclipse, Ophiuchus) populate this explicitly so the cube
+  // lands on the correct spatial face for the rolled value.
+  const faceIdxTargets = req.predeterminedFaceIdx ?? targets;
   bodies.forEach((_b, i) => {
     const fr = frames[i];
     if (!fr || fr.length === 0) return;
-    const target = targets[i];
+    const target = faceIdxTargets[i];
     if (target == null) return;
     // Skip wildcard / blank sentinels — they have no physical face axis.
     if (!Number.isInteger(target) || target < 1) return;
     const shape = shapes[i] ?? 'd6';
     const faceCount = shape === 'd6' ? 6 : SHAPE_DATA[shape].faceCenters.length;
-    // Constellation faces beyond the polyhedron's face count (e.g. d20 spec
-    // has values 1..20 but a hypothetical custom 25-face die would not). The
-    // gameplay value still comes from `finalFaces`; just skip the visual
-    // orient pass for that die.
     if (target > faceCount) return;
     const restQ = fr[fr.length - 1]!;
     const corr = faceCorrection(

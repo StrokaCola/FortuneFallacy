@@ -2,9 +2,28 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { ModMaterialOverride } from './dieMaterials';
-import type { DieShape } from '../../data/dice';
+import type { DieShape, DieFace } from '../../data/dice';
 import { buildPolyhedronGeometry, SHAPE_DATA } from './polyhedra';
 import { getDigitTexture } from './digitTexture';
+
+const STANDARD_D6_FACES: readonly DieFace[] = [1, 2, 3, 4, 5, 6];
+
+// True iff the dice spec is "plain d6" — six unique numeric faces 1..6 in
+// canonical order. Anything else (Fibonacci's [1,1,2,3,5,8], Eclipse's
+// [0,0,0,1,1,1], Ophiuchus's [1..5,WILD]) needs digit textures so the value
+// painted on each spatial face matches the rolled value the HUD shows.
+function isStandardD6(faces: readonly DieFace[]): boolean {
+  if (faces.length !== 6) return false;
+  for (let i = 0; i < 6; i++) if (faces[i] !== STANDARD_D6_FACES[i]) return false;
+  return true;
+}
+
+function describeFace(f: DieFace): string {
+  if (f === 'WILD') return '★';
+  if (f === 'BLANK') return '';
+  if (f === 0) return '0';
+  return String(f);
+}
 
 export type StyleKey = 'celestial' | 'obsidian' | 'ember' | 'ivory' | 'glass';
 
@@ -89,10 +108,16 @@ export function buildDie(
   modOverride?: ModMaterialOverride,
   geometricVariant?: GeometricVariant,
   shape: DieShape = 'd6',
+  faceValues?: readonly DieFace[],
 ): BuiltDie {
   const baseS = STYLES[styleKey];
   const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
-  if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey);
+  if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey, faceValues);
+  // d6 with non-canonical faces (Fibonacci/Eclipse/Ophiuchus) renders digits
+  // per spatial face so what the player sees matches the rolled value.
+  if (faceValues && !isStandardD6(faceValues)) {
+    return buildD6WithDigits(size, S, geometricVariant, faceValues);
+  }
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${styleKey}`;
 
@@ -270,6 +295,162 @@ export function buildDie(
   return { group, faceLensMats, faceHaloMats, pipGroup };
 }
 
+// d6 with non-canonical face values (Fibonacci/Eclipse/Ophiuchus). Same body
+// + edges as the standard cube path, but each face carries a single digit
+// lens whose texture matches the rolled VALUE for that spatial face — not
+// the pip pattern of the spatial index. Pairs with initSimulation rolling a
+// spatial idx + value pair so physics lands the correct face up.
+function buildD6WithDigits(
+  size: number,
+  S: StyleDef,
+  geometricVariant: GeometricVariant | undefined,
+  faceValues: readonly DieFace[],
+): BuiltDie {
+  const group = new THREE.Group();
+  group.name = `FortuneFallacyDie_d6digits`;
+
+  const chamfer = size * (geometricVariant === 'plated' ? 0.26 : 0.18);
+  const bodyGeo = new RoundedBoxGeometry(size, size, size, 8, chamfer);
+  (bodyGeo as any).parameters.radius = chamfer;
+
+  const tint = new THREE.Color(S.bodyTint);
+  const deep = new THREE.Color(S.bodyDeep);
+  const colors: number[] = [];
+  const pos = bodyGeo.attributes.position!;
+  const tmp = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    tmp.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+    const corner = (Math.abs(tmp.x) + Math.abs(tmp.y) + Math.abs(tmp.z)) / (size * 1.5);
+    const t = Math.pow(Math.min(1, corner), 2.0);
+    const c = tint.clone().lerp(deep, t * 0.6);
+    colors.push(c.r, c.g, c.b);
+  }
+  bodyGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  if (geometricVariant === 'asymmetric') {
+    const threshold = size * 0.45;
+    const maxBow = size * 0.03;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y > threshold) {
+        const t = Math.min(1, (y - threshold) / (size / 2 - threshold));
+        pos.setY(i, y - maxBow * t);
+      }
+    }
+    pos.needsUpdate = true;
+  }
+
+  const bodyMat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    metalness: S.metalness ?? 0.0,
+    roughness: S.rough,
+    transmission: S.transmission,
+    thickness: S.thickness,
+    ior: S.ior,
+    attenuationColor: new THREE.Color(S.bodyDeep),
+    attenuationDistance: size * 1.4,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.73,
+    sheen: S.sheen ?? 0.28,
+    sheenColor: new THREE.Color(S.sheenColor ?? S.bodyTint),
+    sheenRoughness: 0.6,
+    transparent: true,
+    opacity: 1.0,
+    envMapIntensity: 1.1,
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.name = 'Body';
+  group.add(body);
+
+  const edgeGeo = new THREE.EdgesGeometry(bodyGeo, 25);
+  const edgeMat = new THREE.LineBasicMaterial({
+    color: S.edge,
+    transparent: true,
+    opacity: 0.45,
+    toneMapped: false,
+  });
+  const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+  edgeLines.scale.setScalar(1.002);
+  group.add(edgeLines);
+
+  const faceLensMats = {} as FaceMatMap<THREE.MeshStandardMaterial>;
+  const faceHaloMats = {} as FaceMatMap<THREE.SpriteMaterial>;
+  const pipGroup = new THREE.Group();
+  pipGroup.name = 'pips';
+  group.add(pipGroup);
+
+  const half = size / 2;
+  const haloShown = S.eIntensity > 0;
+
+  // FACE_DEFS: spatial face N (val) maps to dieSpec.faces[N-1]. Render the
+  // digit for that value as a single emissive lens on the face.
+  FACE_DEFS.forEach(({ val, axis, sign }) => {
+    const dieFace = faceValues[val - 1] ?? val;
+    const numericValue = dieFace === 'WILD' ? -1 : dieFace === 'BLANK' ? 0 : dieFace;
+
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: S.halo,
+      emissiveIntensity: Math.max(0.5, S.eIntensity * 0.9),
+      map: getDigitTexture(numericValue, S.pip),
+      transparent: true,
+      opacity: 0,
+      toneMapped: false,
+      depthWrite: false,
+    });
+    faceLensMats[val as 1 | 2 | 3 | 4 | 5 | 6] = lensMat;
+
+    const haloMat = new THREE.SpriteMaterial({
+      map: getHaloTexture(),
+      color: S.halo,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false,
+    });
+    faceHaloMats[val as 1 | 2 | 3 | 4 | 5 | 6] = haloMat;
+
+    const faceGroup = new THREE.Group();
+    faceGroup.name = `Pip_face${val}`;
+
+    // One large lens disc per face — sized to read clearly through CSS
+    // scale-down on phone (≈0.49×). Slightly smaller than half the face so
+    // the chamfered edge still shows.
+    const lensR = size * 0.30;
+    const lensGeo = new THREE.CircleGeometry(lensR, 32);
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.position.z = size * 0.0015;
+    faceGroup.add(lens);
+
+    if (haloShown) {
+      const halo = new THREE.Sprite(haloMat);
+      const haloSize = lensR * 2.2;
+      halo.scale.set(haloSize, haloSize, 1);
+      halo.position.z = size * 0.01;
+      faceGroup.add(halo);
+    }
+
+    if (axis === 'z') {
+      faceGroup.position.set(0, 0, sign * half);
+      faceGroup.rotation.y = sign > 0 ? 0 : Math.PI;
+    } else if (axis === 'x') {
+      faceGroup.position.set(sign * half, 0, 0);
+      faceGroup.rotation.y = sign * Math.PI / 2;
+    } else {
+      faceGroup.position.set(0, sign * half, 0);
+      faceGroup.rotation.x = -sign * Math.PI / 2;
+    }
+
+    pipGroup.add(faceGroup);
+  });
+
+  return { group, faceLensMats, faceHaloMats, pipGroup };
+}
+
 // Non-cube path: builds a flat-shaded polyhedron (d4/d8/d10/d12/d20) with a
 // digit label, lens disc, and halo sprite per face. Reuses the same
 // `BuiltDie` shape so callers (Dice3D, DieView) don't branch on shape.
@@ -278,6 +459,8 @@ function buildPolyhedronDie(
   shape: Exclude<DieShape, 'd6'>,
   S: StyleDef,
   styleKey: StyleKey,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _faceValues?: readonly DieFace[],
 ): BuiltDie {
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${shape}_${styleKey}`;

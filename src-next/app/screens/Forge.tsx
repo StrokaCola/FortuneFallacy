@@ -96,7 +96,7 @@ export function Forge() {
                 })}
               </g>
             </svg>
-            <DieView face={selectedFace} size={140} style="celestial" shape={selectedShape} mods={selectedMods} />
+            <DieView face={selectedFace} size={140} style="celestial" shape={selectedShape} faceValues={diceSpec[selectedDie]?.faces} mods={selectedMods} />
             <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
               <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
                 die {selectedDie + 1} · {slots.length}/{maxSlots} mods
@@ -131,7 +131,7 @@ export function Forge() {
                     WebkitTapHighlightColor: 'transparent',
                     pointerEvents: 'auto',
                   }}>
-                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} mods={dieMods} />
+                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,

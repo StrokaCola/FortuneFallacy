@@ -11,7 +11,7 @@ import * as webglDetect from './webglDetect';
 import * as orbitalMod from './orbitalSatellite';
 import * as rimMod from './rimOverlay';
 import { getFaceCenters } from './polyhedra';
-import type { DieShape } from '../../data/dice';
+import { spatialIdxForValue, type DieShape, type DieFace } from '../../data/dice';
 
 const FACE_ROT_EULER: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -23,23 +23,25 @@ const FACE_ROT_EULER: Record<number, [number, number, number]> = {
 };
 
 const _UP = new THREE.Vector3(0, 1, 0);
-function applyFaceRotation(group: THREE.Group, shape: DieShape, face: number) {
+function applyFaceRotation(group: THREE.Group, shape: DieShape, spatialIdx: number) {
   if (shape === 'd6') {
-    const rot = FACE_ROT_EULER[face] ?? FACE_ROT_EULER[1]!;
+    const rot = FACE_ROT_EULER[spatialIdx] ?? FACE_ROT_EULER[1]!;
     group.rotation.set(rot[0], rot[1], rot[2]);
     return;
   }
   const centers = getFaceCenters(shape);
-  const c = centers[face - 1] ?? centers[0]!;
+  const c = centers[spatialIdx - 1] ?? centers[0]!;
   const axis = new THREE.Vector3(c.x, c.y, c.z).normalize();
   group.quaternion.setFromUnitVectors(axis, _UP);
 }
+
 
 type Props = {
   face?: number;
   size?: number;
   style?: StyleKey;
   shape?: DieShape;
+  faceValues?: readonly DieFace[];
   locked?: boolean;
   scoring?: boolean;
   mods?: DieMod[];
@@ -49,7 +51,7 @@ type Props = {
 };
 
 export function DieView(props: Props) {
-  const { size = 88, face = 1, style = 'celestial', shape = 'd6' } = props;
+  const { size = 88, face = 1, style = 'celestial', shape = 'd6', faceValues } = props;
   const ref = useRef<HTMLDivElement | null>(null);
   const tumbleHandleRef = useRef<number | null>(null);
 
@@ -69,14 +71,19 @@ export function DieView(props: Props) {
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const geometricVariant = matchedMod?.visual?.geometricVariant;
-    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape);
-    // Snap to canonical face rotation so the requested face is up.
-    applyFaceRotation(built.group, shape, face);
-    // Fade up only the visible face's pip lens for legibility.
+    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape, faceValues);
+    // Snap to canonical face rotation so the requested face is up. For
+    // non-canonical face arrays (Fibonacci/Eclipse/Ophiuchus) the stored
+    // `face` is the VALUE — translate to spatial index by finding which
+    // face slot holds that value.
+    const spatialIdx = faceValues ? spatialIdxForValue(faceValues, face) : face;
+    applyFaceRotation(built.group, shape, spatialIdx);
+    // Fade up only the visible face's lens for legibility. Lens materials
+    // are keyed by spatial index, not value.
     for (const k of Object.keys(built.faceLensMats)) {
       const f = Number(k);
-      built.faceLensMats[f]!.opacity = f === face ? 0.78 : 0;
-      if (built.faceHaloMats[f]) built.faceHaloMats[f]!.opacity = f === face ? 1 : 0;
+      built.faceLensMats[f]!.opacity = f === spatialIdx ? 0.78 : 0;
+      if (built.faceHaloMats[f]) built.faceHaloMats[f]!.opacity = f === spatialIdx ? 1 : 0;
     }
     scene.add(built.group);
 

@@ -63,6 +63,27 @@ export function faceValue(f: DieFace): number {
   return 0;
 }
 
+// WILD sentinel value emitted by the simulation for wildcard faces; mirrors
+// `core/phases/initSimulation.WILD_SENTINEL`. Re-declared here to avoid an
+// upward import from the data layer.
+const WILD_SENTINEL = -1;
+
+// Resolve a rolled VALUE back to the 1-based SPATIAL face index that holds
+// it on the die. For canonical dN dice (faces [1..N]) value === spatial
+// index; for Fibonacci ([1,1,2,3,5,8]), Eclipse ([0,0,0,1,1,1]), or
+// Ophiuchus ([1..5,WILD]) the value diverges and we look it up. With
+// duplicate values (e.g. Fibonacci's two 1s) we return the first match —
+// either spatial face works because the visual is identical.
+export function spatialIdxForValue(faces: readonly DieFace[], value: number): number {
+  for (let i = 0; i < faces.length; i++) {
+    const f = faces[i];
+    if (typeof f === 'number' && f === value) return i + 1;
+    if (f === 'WILD' && value === WILD_SENTINEL) return i + 1;
+    if (f === 'BLANK' && value === 0) return i + 1;
+  }
+  return Math.max(1, value);
+}
+
 export function maxNumericFace(faces: readonly DieFace[]): number {
   let max = 0;
   for (const f of faces) if (typeof f === 'number' && f > max) max = f;
