@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { lookupCatalyst } from '../../data/catalysts';
 import { bus } from '../../events/bus';
+import { SellButton } from './SellButton';
 
 const selectCatalysts = (s: GameState) => s.run.catalysts;
 const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
@@ -81,7 +82,8 @@ export function CatalystStrip() {
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms ease-out`
           : undefined;
         return (
-          <div key={i} className="has-tip" style={{ position: 'relative' }}>
+          <div key={i} className="has-tip has-sell" style={{ position: 'relative' }}>
+            <SellButton kind="catalyst" id={id} index={i} variant="badge" />
             <div style={{
               width: 64, height: 88, borderRadius: 8,
               background: `linear-gradient(180deg, ${c.color}25, rgba(15,9,37,0.85))`,
@@ -122,7 +124,11 @@ export function CatalystStrip() {
                 </div>
               )}
             </div>
-            <div className="tip">{c.desc}</div>
+            <div className="tip">
+              <span className="tip-title">{c.name}</span>
+              {c.desc}
+              {c.flavor && <span className="tip-flavor">{c.flavor}</span>}
+            </div>
           </div>
         );
       })}

@@ -106,12 +106,41 @@ html, body {
 .has-tip { position: relative; }
 .has-tip .tip {
   position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
-  background: rgba(7,5,26,.95); color: #dcd4ff; font-size: 11px; padding: 6px 10px;
-  border: 1px solid rgba(149,119,255,.4); border-radius: 6px; white-space: nowrap;
+  background: rgba(7,5,26,.95); color: #dcd4ff; font-size: 11px; padding: 8px 12px;
+  border: 1px solid rgba(149,119,255,.4); border-radius: 6px;
+  white-space: normal; max-width: 240px; width: max-content; text-align: center; line-height: 1.4;
   opacity: 0; transition: opacity 150ms; pointer-events: none; z-index: 50;
   font-family: 'Exo 2', sans-serif;
 }
+.has-tip .tip.tip-above { top: auto; bottom: calc(100% + 6px); }
+.has-tip .tip-title {
+  display: block; font-family: 'Cinzel', serif; color: #f3f0ff;
+  font-size: 12px; margin-bottom: 4px; letter-spacing: 0.05em;
+}
+.has-tip .tip-flavor {
+  display: block; margin-top: 6px; font-style: italic; color: #bba8ff; font-size: 10px;
+}
 @media (hover: hover) { .has-tip:hover .tip { opacity: 1; } }
+
+/* Sell button: hover-revealed badge on HUD upgrade tiles. The parent must
+   carry .has-sell so we don't reveal sell affordances on every has-tip node. */
+.has-sell .sell-btn {
+  position: absolute; top: -8px; right: -8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: #f5c451;
+  background: rgba(15,9,37,0.95); border: 1px solid rgba(245,196,81,0.6);
+  border-radius: 4px; padding: 2px 6px; cursor: pointer;
+  opacity: 0; transition: opacity 120ms, transform 120ms;
+  transform: translateY(-2px); z-index: 6;
+}
+.has-sell .sell-btn:hover { background: rgba(245,196,81,0.18); }
+.has-sell .sell-btn:disabled {
+  cursor: not-allowed; color: #6a6080;
+  border-color: rgba(149,119,255,0.3);
+}
+@media (hover: hover) { .has-sell:hover .sell-btn { opacity: 1; transform: translateY(0); } }
+/* Touch: always show (no hover). */
+@media (hover: none) { .has-sell .sell-btn { opacity: 1; transform: translateY(0); } }
 
 /* Keyframes */
 @keyframes twinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }

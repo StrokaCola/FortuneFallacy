@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
 import { lookupConsumable } from '../../core/consumables';
+import { SellButton } from './SellButton';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -40,7 +41,8 @@ export function ConsumableTray() {
           if (!def) return null;
           const color = def.type === 'calibration' ? '#bba8ff' : '#7be3ff';
           return (
-            <div key={`${id}-${i}`} className="has-tip" style={{ position: 'relative' }}>
+            <div key={`${id}-${i}`} className="has-tip has-sell" style={{ position: 'relative' }}>
+              <SellButton kind="consumable" id={id} index={i} variant="badge" />
               <button
                 onClick={() => onUse(i)}
                 className="tap"
@@ -69,7 +71,11 @@ export function ConsumableTray() {
                   {def.name}
                 </div>
               </button>
-              <div className="tip">{def.description}</div>
+              <div className="tip">
+                <span className="tip-title">{def.name}</span>
+                {def.description}
+                {def.requiresTarget && <span style={{ display: 'block', marginTop: 4, color: '#7be3ff' }}>Click, then pick a die.</span>}
+              </div>
             </div>
           );
         })}

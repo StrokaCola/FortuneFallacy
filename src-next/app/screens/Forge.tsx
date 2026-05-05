@@ -6,6 +6,7 @@ import { maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
+import { SellButton } from '../hud/SellButton';
 import { getDiceSpec } from '../../core/run/diceContext';
 import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
@@ -120,6 +121,7 @@ export function Forge() {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDie(i); }}
+                  className="has-tip"
                   style={{
                     cursor: 'pointer',
                     opacity: i === selectedDie ? 1 : 0.55,
@@ -142,6 +144,12 @@ export function Forge() {
                       filter: `drop-shadow(0 0 4px ${badgeColor})`,
                     }}>+{extraCount}</div>
                   )}
+                  <span className="tip tip-above">
+                    <span className="tip-title">Die {i + 1}</span>
+                    {dieMods.length === 0
+                      ? 'No mods attached.'
+                      : `Mods: ${dieMods.map((m) => m.name).join(', ')}`}
+                  </span>
                 </div>
               );
             })}
@@ -203,6 +211,7 @@ export function Forge() {
                     if (!r) return null;
                     const c = r.visual?.accentColor ?? '#7be3ff';
                     const canAttach = slots.length < maxSlots;
+                    const firstIndex = ownedMods.indexOf(id);
                     return (
                       <div
                         key={id}
@@ -211,7 +220,7 @@ export function Forge() {
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
                         }}
-                        className="forge-mod-row"
+                        className="forge-mod-row has-tip"
                         style={{
                           cursor: canAttach ? 'pointer' : 'not-allowed',
                           opacity: canAttach ? 1 : 0.4,
@@ -238,6 +247,7 @@ export function Forge() {
                             {r.desc}
                           </div>
                         </div>
+                        <SellButton kind="mod" id={id} index={firstIndex} />
                         {count > 1 && (
                           <div className="f-mono num" style={{
                             position: 'absolute', top: 4, right: 4,
@@ -247,6 +257,13 @@ export function Forge() {
                             borderRadius: 8, padding: '1px 6px',
                           }}>×{count}</div>
                         )}
+                        <span className="tip">
+                          <span className="tip-title">{r.name}</span>
+                          {r.desc}
+                          <span style={{ display: 'block', marginTop: 4, color: '#7be3ff', fontSize: 10 }}>
+                            {canAttach ? 'Click to attach to the selected die.' : 'Selected die has no free mod slots.'}
+                          </span>
+                        </span>
                       </div>
                     );
                   });

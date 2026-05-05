@@ -48,6 +48,7 @@ export function Round() {
         score={score}
         catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
+        vouchers={vouchers}
         accent={accent}
       />
       <PauseButton />

@@ -5,6 +5,7 @@ import { selectCatalysts } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import type { GameState } from '../../state/store';
+import { SellButton } from './SellButton';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -52,7 +53,8 @@ export function LoadoutDock() {
             const cat = lookupCatalyst(id);
             if (!cat) return null;
             return (
-              <div key={`o-${i}`} className="has-tip" style={{ position: 'relative' }}>
+              <div key={`o-${i}`} className="has-tip has-sell" style={{ position: 'relative' }}>
+                <SellButton kind="catalyst" id={id} index={i} variant="badge" />
                 <span style={{
                   display: 'inline-grid', placeItems: 'center',
                   width: 32, height: 32, borderRadius: 6,
@@ -79,7 +81,10 @@ export function LoadoutDock() {
                     padding: '0 3px', borderRadius: 3,
                   }}>{handsPlayed % 5}/5</span>
                 )}
-                <span className="tip">{cat.name} — {cat.desc}</span>
+                <span className="tip">
+                  <span className="tip-title">{cat.name}</span>
+                  {cat.desc}
+                </span>
               </div>
             );
           })}
@@ -88,20 +93,25 @@ export function LoadoutDock() {
             if (!def) return null;
             const accent = def.type === 'calibration' ? '#cc88ff' : '#f5c451';
             return (
-              <button
-                key={`c-${i}`}
-                onClick={() => onUseConsumable(i)}
-                className="has-tip"
-                style={{
-                  position: 'relative', display: 'inline-grid', placeItems: 'center',
-                  width: 32, height: 32, borderRadius: 6,
-                  background: `${accent}25`,
-                  border: `1px solid ${accent}80`,
-                  fontSize: 18, color: accent, cursor: 'pointer',
-                }}>
-                {def.icon}
-                <span className="tip">{def.name} — {def.description}</span>
-              </button>
+              <div key={`c-${i}`} className="has-sell" style={{ position: 'relative' }}>
+                <SellButton kind="consumable" id={id} index={i} variant="badge" />
+                <button
+                  onClick={() => onUseConsumable(i)}
+                  className="has-tip"
+                  style={{
+                    position: 'relative', display: 'inline-grid', placeItems: 'center',
+                    width: 32, height: 32, borderRadius: 6,
+                    background: `${accent}25`,
+                    border: `1px solid ${accent}80`,
+                    fontSize: 18, color: accent, cursor: 'pointer',
+                  }}>
+                  {def.icon}
+                  <span className="tip">
+                    <span className="tip-title">{def.name}</span>
+                    {def.description}
+                  </span>
+                </button>
+              </div>
             );
           })}
         </div>

@@ -65,6 +65,7 @@ export function Hub() {
         score={score}
         catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
+        vouchers={vouchers}
         accent={accent}
       />
       <PauseButton />
@@ -107,7 +108,7 @@ export function Hub() {
           return (
             <div
               key={i}
-              className="panel-strong"
+              className="panel-strong has-tip"
               style={{
                 width: CARD_W, height: 320, padding: 20, position: 'relative',
                 border: cur ? `2px solid ${accent}` : (isBoss ? '1px solid rgba(226,51,74,0.5)' : '1px solid rgba(149,119,255,0.3)'),
@@ -170,6 +171,16 @@ export function Hub() {
                   ✓ cleared
                 </div>
               )}
+              <span className="tip tip-above">
+                <span className="tip-title">{b.def.name} {isBoss ? '· Boss' : ''}</span>
+                Target: {b.target.toLocaleString()} ({b.mult.toFixed(1)}× ante).{' '}
+                {cleared
+                  ? 'Already cleared.'
+                  : locked
+                    ? 'Locked — clear earlier trials first.'
+                    : `Reward ◆ ${b.reward}.`}
+                {isBoss && <span style={{ display: 'block', marginTop: 4, color: '#ff8e9c' }}>Boss blinds apply a special debuff this trial.</span>}
+              </span>
             </div>
           );
         })}
@@ -181,22 +192,34 @@ export function Hub() {
       }}>
         {!forgeDisabled && (
           <button
-            className="btn btn-ghost mat-interactive"
+            className="btn btn-ghost mat-interactive has-tip"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
             ⚒ Forge
+            <span className="tip tip-above">
+              <span className="tip-title">Star Forge</span>
+              Etch owned mods onto your dice. Mods stay attached across trials and can be detached anytime to swap.
+            </span>
           </button>
         )}
         {!blinds[blindIdx]?.def.isBoss && (
           <button
-            className="btn btn-ghost mat-interactive"
+            className="btn btn-ghost mat-interactive has-tip"
             onClick={() => dispatch({ type: 'SKIP_BLIND' })}>
             ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
+            <span className="tip tip-above">
+              <span className="tip-title">Skip Trial</span>
+              Forfeit this non-boss trial in exchange for shards. The next trial becomes current. Boss trials cannot be skipped.
+            </span>
           </button>
         )}
         <button
-          className="btn btn-ghost mat-interactive"
+          className="btn btn-ghost mat-interactive has-tip"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
           ← Title
+          <span className="tip tip-above">
+            <span className="tip-title">Return to Title</span>
+            Abandon this run and go back to the title screen. Progress this run is lost.
+          </span>
         </button>
       </div>
 
