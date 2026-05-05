@@ -6,8 +6,28 @@ import { initialRunSlice } from '../../state/slices/run';
 import type { GameState } from '../../state/store';
 import type { ShopOffer } from '../../events/types';
 
-const baseState = (overrides?: Partial<{ shards: number; ownedMods: string[]; offers: ShopOffer[]; rerollCost: number; open: boolean }>): GameState => ({
-  run: { ...initialRunSlice(), shards: overrides?.shards ?? 100, ownedMods: overrides?.ownedMods ?? [] },
+type Overrides = Partial<{
+  shards: number;
+  ownedMods: string[];
+  catalysts: string[];
+  vouchers: string[];
+  consumables: string[];
+  diceMods: string[][];
+  offers: ShopOffer[];
+  rerollCost: number;
+  open: boolean;
+}>;
+
+const baseState = (overrides?: Overrides): GameState => ({
+  run: {
+    ...initialRunSlice(),
+    shards: overrides?.shards ?? 100,
+    ownedMods: overrides?.ownedMods ?? [],
+    catalysts: overrides?.catalysts ?? [],
+    vouchers: overrides?.vouchers ?? [],
+    consumables: overrides?.consumables ?? [],
+    ...(overrides?.diceMods ? { diceMods: overrides.diceMods } : {}),
+  },
   round: { ...initialRoundSlice() },
   shop: {
     open: overrides?.open ?? true,
@@ -108,5 +128,94 @@ describe('DETACH_MOD returns to inventory', () => {
     const r = diceHandler({ type: 'DETACH_MOD', dieIdx: 0, modIdx: 0 }, sWithAttached);
     expect(r.state.run.ownedMods).toEqual(['amplify']);
     expect(r.state.run.diceMods[0]).toEqual([]);
+  });
+});
+
+describe('SELL_UPGRADE kind=catalyst', () => {
+  it('refunds 2 shards and removes the catalyst at index', () => {
+    const s = baseState({ shards: 0, catalysts: ['stratifier', 'chaos_theory'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 1 }, s);
+    expect(r.state.run.shards).toBe(2);
+    expect(r.state.run.catalysts).toEqual(['stratifier']);
+    expect(r.events).toEqual([{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id: 'chaos_theory', refund: 2 } }]);
+  });
+
+  it('no-ops when index is out of range', () => {
+    const s = baseState({ shards: 0, catalysts: ['stratifier'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 5 }, s);
+    expect(r.state).toBe(s);
+  });
+});
+
+describe('SELL_UPGRADE kind=mod', () => {
+  it('refunds 2 shards and removes from ownedMods only', () => {
+    const s = baseState({ shards: 1, ownedMods: ['amplify', 'sharpened'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'mod', index: 0 }, s);
+    expect(r.state.run.shards).toBe(3);
+    expect(r.state.run.ownedMods).toEqual(['sharpened']);
+  });
+
+  it('does not affect attached diceMods', () => {
+    const s = baseState({ ownedMods: ['amplify'], diceMods: [['sharpened'], [], [], [], []] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'mod', index: 0 }, s);
+    expect(r.state.run.ownedMods).toEqual([]);
+    expect(r.state.run.diceMods[0]).toEqual(['sharpened']);
+  });
+});
+
+describe('SELL_UPGRADE kind=consumable', () => {
+  it('refunds 1 shard and removes the consumable at index', () => {
+    const s = baseState({ shards: 0, consumables: ['shard_drop', 'pin_six'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'consumable', index: 0 }, s);
+    expect(r.state.run.shards).toBe(1);
+    expect(r.state.run.consumables).toEqual(['pin_six']);
+  });
+});
+
+describe('SELL_UPGRADE kind=voucher', () => {
+  it('refunds floor(price/2) for free_refresh (price 8 → refund 4)', () => {
+    const s = baseState({ shards: 0, vouchers: ['free_refresh'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state.run.shards).toBe(4);
+    expect(r.state.run.vouchers).toEqual([]);
+  });
+
+  it('refunds floor(price/2) for shard_streak (price 6 → refund 3)', () => {
+    const s = baseState({ shards: 0, vouchers: ['shard_streak'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state.run.shards).toBe(3);
+  });
+
+  it('blocks selling bench when catalysts would exceed the post-sell cap', () => {
+    const cats = ['stratifier', 'chaos_theory', 'six_bias', 'twin_sample', 'cold_hand', 'entropy_index', 'compounding_bias'];
+    const s = baseState({ shards: 0, vouchers: ['bench'], catalysts: cats });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state).toBe(s);
+  });
+
+  it('allows selling bench when catalysts fit the post-sell cap', () => {
+    const s = baseState({ shards: 0, vouchers: ['bench'], catalysts: ['stratifier'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state.run.vouchers).toEqual([]);
+    expect(r.state.run.shards).toBe(4);
+  });
+
+  it('blocks selling forged_links when any die has 3 attached mods', () => {
+    const s = baseState({
+      vouchers: ['forged_links'],
+      diceMods: [['amplify', 'sharpened', 'sharpened'], [], [], [], []],
+      ownedMods: [],
+    });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state).toBe(s);
+  });
+
+  it('blocks selling capacity when consumables would exceed cap', () => {
+    const s = baseState({
+      vouchers: ['capacity'],
+      consumables: ['shard_drop', 'shard_drop', 'shard_drop', 'shard_drop', 'shard_drop'],
+    });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'voucher', index: 0 }, s);
+    expect(r.state).toBe(s);
   });
 });

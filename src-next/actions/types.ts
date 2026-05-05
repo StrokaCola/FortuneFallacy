@@ -10,6 +10,7 @@ export type Action =
   | { type: 'OPEN_SHOP' }
   | { type: 'CLOSE_SHOP' }
   | { type: 'BUY_OFFER'; offerIdx: number }
+  | { type: 'SELL_UPGRADE'; kind: 'catalyst' | 'voucher' | 'consumable' | 'mod'; index: number }
   | { type: 'REROLL_SHOP' }
   | { type: 'USE_CONSUMABLE'; index: number; targets?: number[] }
   | { type: 'TOGGLE_PAUSE' }

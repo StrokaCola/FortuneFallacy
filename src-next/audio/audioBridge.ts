@@ -55,6 +55,7 @@ export function startAudioBridge(): () => void {
     }),
     bus.on('onLockToggled', () => sfxModule.sfxPlay('lockTap')),
     bus.on('onOfferBought', () => sfxModule.sfxPlay('buy')),
+    bus.on('onUpgradeSold', () => sfxModule.sfxPlay('buy')),
     bus.on('onModFired', ({ modId }) => {
       const def = lookupMod(modId);
       const trigger = def?.visual?.triggerFx;

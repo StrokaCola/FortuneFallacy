@@ -1,24 +1,27 @@
 import { useEffect } from 'react';
 import { dispatch } from '../../actions/dispatch';
-import { useStore } from '../../state/store';
+import { useStore, type GameState } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
+import { SellButton } from '../hud/SellButton';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
-  selectScore, selectTarget, selectHandsLeft, selectRerollsLeft,
+  selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import { lookupVoucher } from '../../data/vouchers';
 import { lookupMod } from '../../core/mods';
+import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
+import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
 
-type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string };
+type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string };
 
 function offerMeta(kind: string, id: string): Meta {
   if (kind === 'catalyst') {
     const c = lookupCatalyst(id);
-    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst' };
+    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst', flavor: c?.flavor };
   }
   if (kind === 'consumable') {
     const c = lookupConsumable(id);
@@ -47,6 +50,9 @@ function offerMeta(kind: string, id: string): Meta {
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
 }
 
+const selectDiceMods = (s: GameState) => s.run.diceMods;
+const selectConsumables = (s: GameState) => s.run.consumables;
+
 const accent = '#7be3ff';
 
 export function Shop() {
@@ -57,14 +63,30 @@ export function Shop() {
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
+  const consumables = useStore(selectConsumables);
+  const ownedMods = useStore(selectOwnedMods);
+  const diceMods = useStore(selectDiceMods);
   const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
 
+  // Voucher invariants used to disable selling cap-granting vouchers when
+  // doing so would strand items above the post-sell cap.
+  const fakeStateNoBench = useStore((s) => maxCatalystSlots(s) - 1);
+  const fakeStateNoCapacity = useStore((s) => maxConsumableSlots(s) - 1);
+  const fakeStateNoForgedLinks = useStore((s) => maxModSlots(s) - 1);
+
   useEffect(() => {
     if (offers.length === 0) dispatch({ type: 'OPEN_SHOP' });
   }, [offers.length]);
+
+  const voucherSellBlock = (id: string): string | null => {
+    if (id === 'bench' && catalysts.length > fakeStateNoBench) return 'Sell a catalyst first — your collection would exceed the slot cap.';
+    if (id === 'capacity' && consumables.length > fakeStateNoCapacity) return 'Use a consumable first — your tray would exceed the slot cap.';
+    if (id === 'forged_links' && diceMods.some((slots) => slots.length > fakeStateNoForgedLinks)) return 'Detach a mod in the Forge first — at least one die exceeds the post-sell mod cap.';
+    return null;
+  };
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
@@ -78,6 +100,7 @@ export function Shop() {
         score={score}
         catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
         voucherCount={vouchers.length}
+        vouchers={vouchers}
         accent={accent}
       />
       <PauseButton />
@@ -105,10 +128,11 @@ export function Shop() {
           const m = offerMeta(o.kind, o.id);
           const c = m.color;
           const affordable = shards >= o.price;
+          const refundIfBought = sellRefund(o.kind, o.id);
           return (
             <div
               key={`${o.id}-${i}`}
-              className="panel-strong"
+              className="panel-strong has-tip"
               onMouseEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
               style={{
@@ -152,17 +176,33 @@ export function Shop() {
                   {affordable ? 'buy' : 'low'}
                 </span>
               </div>
+              <span className="tip">
+                <span className="tip-title">{m.name}</span>
+                {m.desc}
+                {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
+                <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
+                  Buy ◆ {o.price} · sell back ◆ {refundIfBought}
+                </span>
+              </span>
             </div>
           );
         })}
       </div>
+
+      <CollectionPanel
+        catalysts={catalysts}
+        vouchers={vouchers}
+        consumables={consumables}
+        ownedMods={ownedMods}
+        voucherSellBlock={voucherSellBlock}
+      />
 
       <div style={{
         position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
         display: 'flex', gap: 12, zIndex: 5, alignItems: 'center',
       }}>
         <button
-          className="btn mat-interactive"
+          className="btn mat-interactive has-tip"
           onClick={() => {
             if (shards >= rerollCost) {
               dispatch({ type: 'REROLL_SHOP' });
@@ -176,14 +216,158 @@ export function Shop() {
           }}
         >
           ↻ Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
+          <span className="tip tip-above">Replace all current offers with a new set. Cost rises by 1 each reroll this visit.</span>
         </button>
         <button
-          className="btn btn-primary mat-interactive"
+          className="btn btn-primary mat-interactive has-tip"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
         >
           Next Trial →
+          <span className="tip tip-above">Leave the Bazaar and return to the Tribunal of Stars.</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+type CollectionRowProps = {
+  kindLabel: string;
+  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; disabled?: boolean; disabledReason?: string }[];
+  emptyHint: string;
+  kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
+};
+
+function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps) {
+  return (
+    <div style={{ minWidth: 220, maxWidth: 280 }}>
+      <div className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', marginBottom: 6,
+        display: 'flex', justifyContent: 'space-between',
+      }}>
+        <span>◈ {kindLabel}</span>
+        <span style={{ color: '#f5c451' }}>{items.length}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="f-mono" style={{ fontSize: 10, color: 'rgba(187,168,255,0.5)', fontStyle: 'italic' }}>
+          {emptyHint}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {items.map((it) => (
+            <div
+              key={`${it.id}-${it.index}`}
+              className="has-tip"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 8px', borderRadius: 6,
+                background: 'rgba(15,9,37,0.5)',
+                border: `1px solid ${it.color}40`,
+              }}
+            >
+              <span style={{
+                width: 26, height: 26, borderRadius: 4,
+                background: `${it.color}25`, border: `1px solid ${it.color}80`,
+                display: 'grid', placeItems: 'center', color: it.color, fontSize: 14,
+              }}>{it.icon}</span>
+              <span className="f-mono" style={{ fontSize: 11, color: '#f3f0ff', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {it.name}
+              </span>
+              <SellButton kind={kind} id={it.id} index={it.index} disabled={it.disabled} disabledReason={it.disabledReason} />
+              <span className="tip">
+                <span className="tip-title">{it.name}</span>
+                {it.desc}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectionPanel({
+  catalysts, vouchers, consumables, ownedMods, voucherSellBlock,
+}: {
+  catalysts: string[];
+  vouchers: string[];
+  consumables: string[];
+  ownedMods: string[];
+  voucherSellBlock: (id: string) => string | null;
+}) {
+  const catRows = catalysts.map((id, index) => {
+    const c = lookupCatalyst(id);
+    return {
+      id, index,
+      name: c?.name ?? id,
+      desc: c?.desc ?? '',
+      icon: c?.icon ?? '✦',
+      color: c?.color ?? '#7be3ff',
+    };
+  });
+  const voucherRows = vouchers.map((id, index) => {
+    const v = lookupVoucher(id);
+    const block = voucherSellBlock(id);
+    return {
+      id, index,
+      name: v?.name ?? id,
+      desc: v?.description ?? '',
+      icon: '◆',
+      color: '#f5c451',
+      disabled: !!block,
+      disabledReason: block ?? undefined,
+    };
+  });
+  const consRows = consumables.map((id, index) => {
+    const c = lookupConsumable(id);
+    return {
+      id, index,
+      name: c?.name ?? id,
+      desc: c?.description ?? '',
+      icon: c?.icon ?? '◇',
+      color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
+    };
+  });
+  const modRows = ownedMods.map((id, index) => {
+    const m = lookupMod(id);
+    return {
+      id, index,
+      name: m?.name ?? id,
+      desc: m?.desc ?? '',
+      icon: m?.icon ?? '⫶',
+      color: m?.visual?.accentColor ?? '#bba8ff',
+    };
+  });
+
+  const isEmpty = catalysts.length + vouchers.length + consumables.length + ownedMods.length === 0;
+
+  return (
+    <div className="panel" style={{
+      position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
+      width: 'min(1100px, calc(100vw - 60px))', maxHeight: 'min(220px, calc(100vh - 600px))',
+      padding: '12px 18px', zIndex: 4, overflowY: 'auto',
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 10, letterSpacing: '0.32em', color: '#bba8ff', marginBottom: 10,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span>◇ your collection ◇</span>
+        <span className="has-tip" style={{ position: 'relative', fontSize: 9, color: '#f5c451', cursor: 'help' }}>
+          ?
+          <span className="tip tip-above">Sell any owned upgrade for half its buy price (rounded down). Selling a slot-granting voucher is blocked when it would strand items above the post-sell cap.</span>
+        </span>
+      </div>
+      {isEmpty ? (
+        <div style={{ fontSize: 11, color: 'rgba(187,168,255,0.6)', textAlign: 'center', padding: 8, fontStyle: 'italic' }}>
+          You don't own any upgrades yet. Buy from the offers above to start a collection.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'space-around' }}>
+          <CollectionRow kindLabel="catalysts" kind="catalyst" items={catRows} emptyHint="no catalysts" />
+          <CollectionRow kindLabel="vouchers"  kind="voucher"  items={voucherRows} emptyHint="no vouchers" />
+          <CollectionRow kindLabel="consumables" kind="consumable" items={consRows} emptyHint="no consumables" />
+          <CollectionRow kindLabel="mods (inventory)" kind="mod" items={modRows} emptyHint="no mods (attached mods sit in the Forge)" />
+        </div>
+      )}
     </div>
   );
 }

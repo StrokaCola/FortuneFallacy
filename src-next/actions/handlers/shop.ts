@@ -2,9 +2,10 @@ import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
 import { CATALYST_IDS } from '../../core/upgrades/catalysts';
 import { CONSUMABLES } from '../../core/consumables';
-import { VOUCHERS, freeShopReroll, maxConsumableSlots } from '../../core/vouchers';
+import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
+import { sellRefund } from '../../core/shop/sellRefund';
 import type { ShopOffer } from '../../events/types';
 
 const BASE_REROLL_COST = 3;
@@ -96,6 +97,54 @@ export const shopHandler: ActionHandler = (a, s) => {
         },
         events: [{ type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } }],
       };
+    }
+    case 'SELL_UPGRADE': {
+      const removeAt = <T,>(arr: T[], idx: number): T[] => arr.filter((_, i) => i !== idx);
+      if (a.kind === 'catalyst') {
+        const id = s.run.catalysts[a.index];
+        if (!id) return { state: s, events: [] };
+        const refund = sellRefund('catalyst', id);
+        return {
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, catalysts: removeAt(s.run.catalysts, a.index) } },
+          events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
+        };
+      }
+      if (a.kind === 'consumable') {
+        const id = s.run.consumables[a.index];
+        if (!id) return { state: s, events: [] };
+        const refund = sellRefund('consumable', id);
+        return {
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, consumables: removeAt(s.run.consumables, a.index) } },
+          events: [{ type: 'onUpgradeSold', payload: { kind: 'consumable', id, refund } }],
+        };
+      }
+      if (a.kind === 'mod') {
+        // Only sellable from the owned-mods inventory; attached mods must be
+        // detached in the Forge first so we don't mutate diceMods here.
+        const id = s.run.ownedMods[a.index];
+        if (!id) return { state: s, events: [] };
+        const refund = sellRefund('mod', id);
+        return {
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, ownedMods: removeAt(s.run.ownedMods, a.index) } },
+          events: [{ type: 'onUpgradeSold', payload: { kind: 'mod', id, refund } }],
+        };
+      }
+      if (a.kind === 'voucher') {
+        const id = s.run.vouchers[a.index];
+        if (!id) return { state: s, events: [] };
+        // Selling a voucher that grants a slot must not strand items above
+        // the resulting cap. The caps are computed from current vouchers, so
+        // a sell would shrink them by 1 in that direction.
+        if (id === 'bench' && s.run.catalysts.length > maxCatalystSlots(s) - 1) return { state: s, events: [] };
+        if (id === 'capacity' && s.run.consumables.length > maxConsumableSlots(s) - 1) return { state: s, events: [] };
+        if (id === 'forged_links' && s.run.diceMods.some((slots) => slots.length > maxModSlots(s) - 1)) return { state: s, events: [] };
+        const refund = sellRefund('voucher', id);
+        return {
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, vouchers: removeAt(s.run.vouchers, a.index) } },
+          events: [{ type: 'onUpgradeSold', payload: { kind: 'voucher', id, refund } }],
+        };
+      }
+      return { state: s, events: [] };
     }
     default:
       return { state: s, events: [] };
