@@ -34,7 +34,7 @@ const baseState = (overrides?: Overrides): GameState => ({
     offers: overrides?.offers ?? [],
     rerollCost: overrides?.rerollCost ?? 3,
   },
-  meta: { playerName: '', highScores: [] },
+  meta: { playerName: '', highScores: [], unlocks: [] },
   ui: { screen: 'shop', paused: false, tooltip: null, transition: 'idle' },
 } as unknown as GameState);
 
@@ -388,5 +388,45 @@ describe('Galaxy packs — picking', () => {
     };
     const r = shopHandler({ type: 'CLOSE_SHOP' }, sWithPack);
     expect(r.state.shop.pendingPack).toBeNull();
+  });
+});
+
+describe('Legendary unlock progression', () => {
+  it('buying a 4th catalyst unlocks all_band in meta.unlocks', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5 }];
+    const s = baseState({
+      shards: 10,
+      catalysts: ['stratifier', 'chaos_theory', 'six_bias'],
+      offers,
+    });
+    expect(s.meta.unlocks).not.toContain('legendary_all_band');
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalysts.length).toBe(4);
+    expect(r.state.meta.unlocks).toContain('legendary_all_band');
+  });
+
+  it('buying a 3rd catalyst does not unlock all_band', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'six_bias', price: 5 }];
+    const s = baseState({
+      shards: 10,
+      catalysts: ['stratifier', 'chaos_theory'],
+      offers,
+    });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalysts.length).toBe(3);
+    expect(r.state.meta.unlocks).not.toContain('legendary_all_band');
+  });
+
+  it('5th+ purchase does not duplicate the unlock entry', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5 }];
+    const s = baseState({
+      shards: 10,
+      catalysts: ['stratifier', 'chaos_theory', 'six_bias', 'twin_sample'],
+      offers,
+    });
+    // Pre-seed the unlock from a prior run/state.
+    const seeded: GameState = { ...s, meta: { ...s.meta, unlocks: ['legendary_all_band'] } } as GameState;
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, seeded);
+    expect(r.state.meta.unlocks.filter((u) => u === 'legendary_all_band').length).toBe(1);
   });
 });

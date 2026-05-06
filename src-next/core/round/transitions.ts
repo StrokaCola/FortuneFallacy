@@ -5,6 +5,7 @@ import { initialRoundSlice } from '../../state/slices/round';
 import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
 import { lookupMod } from '../mods';
 import { getDiceSpec } from '../run/diceContext';
+import { lookupPack, rollPackContents } from '../consumables/galaxies';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind.
@@ -166,6 +167,10 @@ const SKIP_TAGS = [
   { id: 'shard',   label: '+5 shards' },
   { id: 'reroll',  label: '+1 reroll next round' },
   { id: 'hand',    label: '+1 hand next round' },
+  // Skip-blind sometimes drops a free Celestial Pack into the next shop
+  // visit. Implemented by pre-staging shop.pendingPack here; the shop UI
+  // already renders the overlay whenever pendingPack is set.
+  { id: 'pack',    label: 'Free Celestial Pack' },
 ];
 
 export function skipBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
@@ -178,14 +183,42 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
     ...s,
     run: { ...s.run, shards: s.run.shards + reward, goalIdx: s.run.goalIdx + 1 },
   };
+  const events: GameEventEmission[] = [];
   if (tag.id === 'shard') {
     nextState = { ...nextState, run: { ...nextState.run, shards: nextState.run.shards + 5 } };
   } else if (tag.id === 'reroll') {
     nextState = { ...nextState, round: { ...nextState.round, rerollsLeft: s.round.rerollsLeft + 1 } };
   } else if (tag.id === 'hand') {
     nextState = { ...nextState, round: { ...nextState.round, handsLeft: s.round.handsLeft + 1 } };
+  } else if (tag.id === 'pack') {
+    const def = lookupPack('celestial')!;
+    const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
+    const newUnlocks = new Set(nextState.meta.unlocks);
+    for (const gid of galaxyIds) {
+      if (!newUnlocks.has(gid)) {
+        newUnlocks.add(gid);
+        events.push({ type: 'onGalaxyDiscovered', payload: { galaxyId: gid } });
+      }
+    }
+    nextState = {
+      ...nextState,
+      meta: { ...nextState.meta, unlocks: [...newUnlocks] },
+      shop: {
+        ...nextState.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds,
+          picksLeft: def.pickCount,
+          pickedSoFar: [],
+        },
+      },
+    };
+    events.push({
+      type: 'onPackOpened',
+      payload: { kind: 'celestial', galaxyIds, picksAllowed: def.pickCount },
+    });
   }
   const nextAnte = Math.floor(nextState.run.goalIdx / 3) + 1;
   nextState = { ...nextState, run: { ...nextState.run, ante: nextAnte } };
-  return { state: nextState, events: [] };
+  return { state: nextState, events };
 }

@@ -18,6 +18,16 @@ import './solarFlare';
 import './tempo';
 import './conductor';
 import './quorum';
+// Phase 3 additions
+import './pairDynamo';
+import './tripletEngine';
+import './magnitude';
+import './primePact';
+import './evenKeeled';
+import './oddVoice';
+import './usurer';
+import './levelsLevy';
+import './allBand';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -26,5 +36,9 @@ export const CATALYST_IDS = [
   'catalyst_bench', 'shard_sink',
   'stipend', 'recursive_sink', 'encore', 'phase_shift',
   'iron_six', 'solar_flare', 'tempo', 'conductor', 'quorum',
+  // Phase 3
+  'pair_dynamo', 'triplet_engine', 'magnitude',
+  'prime_pact', 'even_keeled', 'odd_voice',
+  'usurer', 'levels_levy', 'all_band',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

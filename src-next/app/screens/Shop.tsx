@@ -7,7 +7,7 @@ import { SellButton } from '../hud/SellButton';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
-  selectComboLevels, selectPendingPack,
+  selectComboLevels,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
@@ -16,7 +16,8 @@ import { lookupMod } from '../../core/mods';
 import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
-import { PackOverlay } from './PackOverlay';
+// PackOverlay is mounted at the App level so it shows whether the player
+// is in the shop or not (skip-blind pack rewards open the picker mid-screen).
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string };
@@ -86,7 +87,6 @@ export function Shop() {
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
   const comboLevels = useStore(selectComboLevels);
-  const pendingPack = useStore(selectPendingPack);
 
   // Voucher invariants used to disable selling cap-granting vouchers when
   // doing so would strand items above the post-sell cap.
@@ -215,8 +215,6 @@ export function Shop() {
         ownedMods={ownedMods}
         voucherSellBlock={voucherSellBlock}
       />
-
-      {pendingPack && <PackOverlay />}
 
       <div style={{
         position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',

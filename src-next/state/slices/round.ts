@@ -27,6 +27,10 @@ export type RoundSlice = {
   // by SCORE_HAND before running the pipeline.
   tithePrimedThisHand: number;
   firstHandPlayed: boolean;
+  // All-Band catalyst (legendary) — set true the first time it fires this
+  // round; the catalyst skips itself thereafter. Resets on round start
+  // because `initialRoundSlice()` is spread when a new blind begins.
+  allBandUsedThisRound: boolean;
   scoringOrder: number[];
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
@@ -62,5 +66,6 @@ export const initialRoundSlice = (): RoundSlice => ({
   recursiveSinkPrimedThisHand: false,
   tithePrimedThisHand: 0,
   firstHandPlayed: false,
+  allBandUsedThisRound: false,
   scoringOrder: [0, 1, 2, 3, 4],
 });

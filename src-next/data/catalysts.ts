@@ -5,7 +5,7 @@ export type CatalystMeta = {
   color: string;
   desc: string;
   flavor?: string;
-  rarity: 'common' | 'uncommon' | 'rare';
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
 };
 
 export const CATALYST_META: CatalystMeta[] = [
@@ -63,6 +63,47 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'quorum', name: 'Quorum', icon: '⫶', color: '#cc88ff',
     desc: 'Same combo as last hand: chips ×1.5. 3rd in a row: also mult ×1.5.',
     flavor: 'Repeat until the verdict holds.', rarity: 'uncommon' },
+
+  // Phase 3 additions — combo-tribal coverage. Pairs up with the Galaxy
+  // system: a Whirlpool / triplet_engine / levels_levy spike now has a
+  // complete deck-building lane.
+  { id: 'pair_dynamo', name: 'Pair Dynamo', icon: '⚊', color: '#7be3ff',
+    desc: 'One Pair → +5 Mult.',
+    flavor: 'The simplest match still spins the wheel.', rarity: 'common' },
+  { id: 'triplet_engine', name: 'Triplet Engine', icon: '⚙', color: '#cc88ff',
+    desc: 'Three of a Kind → Mult ×1.75.',
+    flavor: 'Three sealed prongs, one current.', rarity: 'uncommon' },
+  { id: 'magnitude', name: 'Magnitude', icon: '✺', color: '#ffd84a',
+    desc: 'Large Straight → Chips ×2 and Mult ×1.5.',
+    flavor: 'A clean line through the dark, scaled.', rarity: 'rare' },
+
+  // Face-tribal commons. Cheap pickups that reward die-bias playstyles.
+  { id: 'prime_pact', name: 'Prime Pact', icon: 'ℙ', color: '#5be8a4',
+    desc: 'Each scoring 2, 3, or 5 → +2 Chips.',
+    flavor: 'The indivisible pay first.', rarity: 'common' },
+  { id: 'even_keeled', name: 'Even Keeled', icon: '◎', color: '#88ddff',
+    desc: 'All scoring dice even → Chips ×1.5.',
+    flavor: 'Symmetry rewards the patient.', rarity: 'common' },
+  { id: 'odd_voice', name: 'Odd Voice', icon: '◌', color: '#cc88ff',
+    desc: 'All scoring dice odd → Mult ×1.5.',
+    flavor: 'Off-beats carry farther in thin air.', rarity: 'common' },
+
+  // Economy rare — Stipend / Shard Sink decks finally have a payoff scaler.
+  { id: 'usurer', name: 'Usurer', icon: '⛁', color: '#f5c451',
+    desc: 'Each shard above 10 → +1 Mult (uncapped).',
+    flavor: 'The vault grows louder.', rarity: 'rare' },
+
+  // Galaxy-aware rare — pays you for committing to galaxies. Should be
+  // cheap to slot mid-run alongside any Galaxy strategy.
+  { id: 'levels_levy', name: "Level's Levy", icon: '✸', color: '#cc88ff',
+    desc: 'Each combo level on the played hand → +1 Mult.',
+    flavor: 'The galaxies remember.', rarity: 'rare' },
+
+  // Legendary showcase — once-per-round tier-up. Unlocks after the player
+  // has held 4 catalysts simultaneously in any run (meta-progression).
+  { id: 'all_band', name: 'All-Band', icon: '⌬', color: '#ff7847',
+    desc: 'Once per round: this hand scores as if it were the next tier higher.',
+    flavor: 'Frequency leaks. The judge upgrades the verdict.', rarity: 'legendary' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {
