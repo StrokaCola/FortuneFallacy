@@ -13,7 +13,7 @@ import { lookupConstellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
 import { isForgeDisabled } from '../../core/run/diceContext';
 import { stakeContext } from '../../core/run/stakeContext';
-import { useIsCompactStage } from '../hooks/useIsCompactStage';
+import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
@@ -39,6 +39,7 @@ export function Hub() {
   const constellation = lookupConstellation(constellationId);
   const forgeDisabled = useStore(selectForgeDisabled);
   const compact = useIsCompactStage();
+  const tight = useIsTightStage();
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -73,12 +74,15 @@ export function Hub() {
 
       {/* Tier 2: flex column instead of absolute pixel offsets, so the
           trial cards stay on-screen at any viewport size (including
-          short landscape phones where top:360 would push them under). */}
+          short landscape phones where top:360 would push them under).
+          paddingTop clamps with viewport height so on a ~440px-tall
+          phone landscape the cards still appear above the fold. */}
       <div style={{
         minHeight: '100%',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 20,
-        paddingTop: 170, paddingBottom: 110, paddingInline: 20,
+        gap: tight ? 12 : 20,
+        paddingTop: 'clamp(96px, 22vh, 170px)',
+        paddingBottom: 28, paddingInline: 20,
         textAlign: 'center',
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
@@ -104,7 +108,7 @@ export function Hub() {
           display: 'flex', gap: CARD_GAP, flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: '100%',
         }}>
-        {blinds.map((b, i) => {
+          {blinds.map((b, i) => {
           const isBoss = b.def.isBoss;
           const cur = b.current;
           const cleared = b.cleared;
@@ -115,7 +119,11 @@ export function Hub() {
               key={i}
               className="panel-strong has-tip"
               style={{
-                width: CARD_W, height: 320, padding: 20, position: 'relative',
+                width: CARD_W,
+                // Card height clamps with viewport so on short landscape
+                // phones the three trial cards plus action bar all fit.
+                height: 'clamp(240px, 50vh, 320px)',
+                padding: 20, position: 'relative',
                 border: cur ? `2px solid ${accent}` : (isBoss ? '1px solid rgba(226,51,74,0.5)' : '1px solid rgba(149,119,255,0.3)'),
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
                 opacity: cleared ? 0.55 : locked ? 0.78 : 1,
@@ -195,56 +203,63 @@ export function Hub() {
               </span>
             </div>
           );
-        })}
+          })}
         </div>
-      </div>
 
-      <div style={{
-        position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5, flexWrap: 'wrap', justifyContent: 'center',
-        maxWidth: 'calc(100% - 40px)',
-      }}>
-        {!forgeDisabled && (
+        {/* Action bar lives in the flex flow now, not pinned to the
+            viewport bottom. Inside an `overflow-y: auto` parent,
+            absolute `bottom: N` resolves to the scroll content bottom,
+            which floated this row into the middle of the screen on
+            short landscape phones. Inline placement keeps it under the
+            cards at every viewport size. */}
+        <div style={{
+          display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
+          maxWidth: 'calc(100% - 40px)', marginTop: 4,
+        }}>
+          {!forgeDisabled && (
+            <button
+              className="btn btn-ghost mat-interactive has-tip tap"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
+              ⚒ Forge
+              <span className="tip tip-above">
+                <span className="tip-title">Star Forge</span>
+                Etch owned mods onto your dice. Mods stay attached across trials and can be detached anytime to swap.
+              </span>
+            </button>
+          )}
+          {!blinds[blindIdx]?.def.isBoss && (
+            <button
+              className="btn btn-ghost mat-interactive has-tip tap"
+              onClick={() => dispatch({ type: 'SKIP_BLIND' })}>
+              ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
+              <span className="tip tip-above">
+                <span className="tip-title">Skip Trial</span>
+                Forfeit this non-boss trial in exchange for shards. The next trial becomes current. Boss trials cannot be skipped.
+              </span>
+            </button>
+          )}
           <button
-            className="btn btn-ghost mat-interactive has-tip"
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
-            ⚒ Forge
+            className="btn btn-ghost mat-interactive has-tip tap"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
+            ← Title
             <span className="tip tip-above">
-              <span className="tip-title">Star Forge</span>
-              Etch owned mods onto your dice. Mods stay attached across trials and can be detached anytime to swap.
+              <span className="tip-title">Return to Title</span>
+              Abandon this run and go back to the title screen. Progress this run is lost.
             </span>
           </button>
-        )}
-        {!blinds[blindIdx]?.def.isBoss && (
-          <button
-            className="btn btn-ghost mat-interactive has-tip"
-            onClick={() => dispatch({ type: 'SKIP_BLIND' })}>
-            ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
-            <span className="tip tip-above">
-              <span className="tip-title">Skip Trial</span>
-              Forfeit this non-boss trial in exchange for shards. The next trial becomes current. Boss trials cannot be skipped.
-            </span>
-          </button>
-        )}
-        <button
-          className="btn btn-ghost mat-interactive has-tip"
-          onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
-          ← Title
-          <span className="tip tip-above">
-            <span className="tip-title">Return to Title</span>
-            Abandon this run and go back to the title screen. Progress this run is lost.
-          </span>
-        </button>
-      </div>
+        </div>
 
-      <div style={{
-        position: 'absolute', right: 24, bottom: 24, display: 'flex', gap: 18, zIndex: 5,
-        alignItems: 'flex-end', pointerEvents: 'auto',
-      }}>
-        <PortalGate size={96} label="Travel" />
-        {(typeof window !== 'undefined' && window.Portal?.readPortalParams().ref) && (
-          <PortalGate size={72} label="Return" refUrl={window.Portal.readPortalParams().ref!} />
-        )}
+        {/* Travel portals also flow inline. Size shrinks on tight
+            viewports so the gates don't hog the cramped landing. */}
+        <div style={{
+          display: 'flex', gap: 18, justifyContent: 'center',
+          alignItems: 'flex-end', flexWrap: 'wrap',
+        }}>
+          <PortalGate size={tight ? 56 : 96} label="Travel" />
+          {(typeof window !== 'undefined' && window.Portal?.readPortalParams().ref) && (
+            <PortalGate size={tight ? 48 : 72} label="Return" refUrl={window.Portal.readPortalParams().ref!} />
+          )}
+        </div>
       </div>
     </div>
   );
