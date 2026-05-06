@@ -146,4 +146,75 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0xffffff, halo: 0xe0c8ff,
     transmission: 0.30, rough: 0.10, ior: 1.75, metalness: 0.60,
   },
+  // ─── Phase 5b — Combo / round / ante / galaxy aware mods ──────────────
+  // These reuse base material vocab — body deep + edge accent — until the
+  // bespoke material work for them lands. Picked by feel.
+  // 20. Anchor — Heavy steel band; subdued cyan glow.
+  anchor: {
+    bodyTint: 0x2a4a6a, bodyDeep: 0x0a1a30,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.12, rough: 0.45, eIntensity: 1.2,
+  },
+  // 21. Keystone — Apex gold; sister to crown, brighter halo.
+  keystone: {
+    bodyTint: 0xfff0a0, bodyDeep: 0x6a4a08,
+    edge: 0xffd84a, halo: 0xfff7e0,
+    transmission: 0.10, rough: 0.28, ior: 1.55, eIntensity: 1.7,
+    metalness: 0.70, sheen: 0.60, sheenColor: 0xffd84a,
+  },
+  // 22. Astrolabe — Constellation copper; warm violet edge.
+  astrolabe: {
+    bodyTint: 0x6a3a8a, bodyDeep: 0x1a0a30,
+    edge: 0xcc88ff, halo: 0xe0c8ff,
+    transmission: 0.22, rough: 0.30, eIntensity: 1.6,
+  },
+  // 23. Pressure — Industrial brass; tense orange sheen.
+  pressure: {
+    bodyTint: 0xc04a2a, bodyDeep: 0x300a05,
+    edge: 0xff7847, halo: 0xff7847,
+    transmission: 0.10, rough: 0.50, eIntensity: 1.5,
+  },
+  // 24. Risk — High-volt yellow with deep arcs.
+  risk: {
+    bodyTint: 0xffd84a, bodyDeep: 0x4a3a08,
+    edge: 0xfff7e0, halo: 0xffd84a,
+    transmission: 0.12, rough: 0.30, eIntensity: 2.0,
+  },
+  // 25. Singularity — Void-black with violet event-horizon halo.
+  singularity: {
+    bodyTint: 0x05030a, bodyDeep: 0x000000,
+    edge: 0xcc88ff, halo: 0xcc88ff,
+    transmission: 0.04, rough: 0.20, ior: 2.10, eIntensity: 2.2,
+  },
+  // 26. Refinery — Polished bullion gold, sister to gilded.
+  refinery: {
+    bodyTint: 0xf5c451, bodyDeep: 0x6a4a08,
+    edge: 0xfff7e0, halo: 0xf5c451,
+    transmission: 0.08, rough: 0.40, ior: 1.55, eIntensity: 1.0,
+    metalness: 0.80, sheen: 0.45, sheenColor: 0xf5c451,
+  },
+  // 27. Polarize — Half-moon violet split: bright crown, dark base.
+  polarize: {
+    bodyTint: 0x6a4a8a, bodyDeep: 0x1a0a30,
+    edge: 0xbba8ff, halo: 0xe0c8ff,
+    transmission: 0.18, rough: 0.30, eIntensity: 1.6,
+  },
+  // 28. Telescope — Smoky lens; high IOR with cyan rim glow.
+  telescope: {
+    bodyTint: 0x2a2a4a, bodyDeep: 0x07051a,
+    edge: 0xcc88ff, halo: 0xa4d4ff,
+    transmission: 0.30, rough: 0.18, ior: 1.85, eIntensity: 1.5,
+  },
+  // 29. Engraved — Etched basalt; matte, low halo, deeply textured.
+  engraved: {
+    bodyTint: 0x4a4a4a, bodyDeep: 0x0a0a0a,
+    edge: 0xa4d4ff, halo: 0xa4d4ff,
+    transmission: 0.04, rough: 0.70, eIntensity: 0.7,
+  },
+  // 30. Echo — Translucent quartz with cyan ripple, doubled rim glow.
+  echo: {
+    bodyTint: 0x2a4a8a, bodyDeep: 0x0a1a30,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.42, rough: 0.18, ior: 1.65, eIntensity: 1.7,
+  },
 };

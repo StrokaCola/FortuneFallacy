@@ -4,15 +4,16 @@ import type { GameEventEmission } from '../../events/types';
 // generated from a per-combo bonus map. Importing here registers them in
 // the global CONSUMABLES list below.
 import { GALAXIES } from './galaxies';
+import { SPECTRALS } from './spectrals';
 
 export type ConsumableDef = {
   id: string;
-  type: 'calibration' | 'resource' | 'galaxy';
+  type: 'calibration' | 'resource' | 'galaxy' | 'spectral';
   name: string;
   icon: string;
   description: string;
   requiresTarget: boolean;
-  targetType?: 'die' | 'catalyst';
+  targetType?: 'die' | 'catalyst' | 'combo';
   // Galaxy-only metadata. `comboId` names the combo this galaxy levels (or
   // 'all' for universals like Quasar). `levels` is the +levels granted on
   // use (default 1). Both fields are unused for non-galaxy consumables.
@@ -101,6 +102,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     }),
   },
   ...GALAXIES,
+  ...SPECTRALS,
 ];
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {

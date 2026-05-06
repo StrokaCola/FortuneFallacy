@@ -23,6 +23,18 @@ export const MOD_IDS = [
   'crown',
   'brittle',
   'wildcard',
+  // Phase 5b — combo / round / ante / galaxy aware mods.
+  'anchor',
+  'keystone',
+  'astrolabe',
+  'pressure',
+  'risk',
+  'singularity',
+  'refinery',
+  'polarize',
+  'telescope',
+  'engraved',
+  'echo',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -74,6 +86,42 @@ export type ModDef = {
   // Wildcard: face is replaced (in postRollModifiers) with whatever value
   // maximizes the resulting combo tier.
   wildcard?: boolean;
+  // ─── Phase 5b additions ─────────────────────────────────────────────────
+  // Anchor: +chips when this die's face appears 2+ times in scoringFaces
+  // (a soft "part of a combo" detector — fires on Pair / Two Pair /
+  // Three of a Kind etc).
+  pairedFaceChips?: number;
+  // Keystone: ×mult when this die's face is the strict max of scoringFaces.
+  keystoneMult?: number;
+  // Astrolabe: +chips per combo level on the PLAYED combo. Reads
+  // run.comboLevels[combo.id] via StepCtx.comboLevelOnPlayed.
+  chipsPerComboLevel?: number;
+  // Pressure: +chips per remaining hand this round (handsLeft).
+  chipsPerHandLeft?: number;
+  // Risk: face-conditional bonus on 6 AND penalty on 1.
+  riskHighMult?: number;   // applies on face 6
+  riskLowMult?: number;    // negative magnitude applied on face 1
+  // Singularity: ×mult that only fires at or above `singularityAnte`.
+  singularityAnte?: number;
+  singularityMult?: number;
+  // Refinery: +shards when this die scores in one of `refineryComboIds`.
+  refineryComboIds?: string[];
+  refineryShards?: number;
+  // ─── Phase 5d additions ─────────────────────────────────────────────────
+  // Polarize: ×mult when 3 mods are attached to this die (mod-density payoff).
+  polarizeMult?: number;
+  polarizeMinSlots?: number;
+  // Telescope: ×mult when this die is the FIRST scoring die AND the played
+  // combo has at least one galaxy level. Pays off Galaxy investment on the
+  // opening die of every hand.
+  telescopeMult?: number;
+  // Engraved: utility flag — protects the OWN die's Brittle (and other
+  // loseOnBust mods) from the bust-cleanup pass in transitions.ts.
+  // Has no scoring contribution.
+  engraved?: boolean;
+  // Echo: marker — when this slot fires, it copies the prior NON-Echo
+  // mod's chips/mult/multMul on this die. No-ops on the first slot.
+  echo?: boolean;
   visual?: ModVisual;
 };
 
@@ -181,6 +229,77 @@ export const MODS: ModDef[] = [
     desc: 'Counts as any face for combo detection (chooses best).',
     wildcard: true, rarity: 'legendary',
     visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse' },
+  },
+  // ─── Phase 5b: combo / round / ante / galaxy aware mods ────────────────
+  // Visuals reuse existing materialKeys so the renderer doesn't need new
+  // assets — picked by feel (anchor uses backstop's vault feel, keystone
+  // borrows crown's gold). New material/triggerFx work tracked separately.
+  {
+    id: 'anchor', name: 'Anchor', icon: '⚓',
+    desc: '+15 chips when this die is part of a combo set.',
+    pairedFaceChips: 15, rarity: 'uncommon',
+    visual: { materialKey: 'backstop', accentColor: '#88ddff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'keystone', name: 'Keystone', icon: '◆',
+    desc: '×1.4 mult when this die has the highest face among scoring dice.',
+    keystoneMult: 1.4, rarity: 'rare',
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
+  },
+  {
+    id: 'astrolabe', name: 'Astrolabe', icon: '✺',
+    desc: '+3 chips per combo level on the played hand.',
+    chipsPerComboLevel: 3, rarity: 'uncommon',
+    visual: { materialKey: 'sharpened', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'pressure', name: 'Pressure', icon: '⏲',
+    desc: '+5 chips per remaining hand this round.',
+    chipsPerHandLeft: 5, rarity: 'common',
+    visual: { materialKey: 'amplify', accentColor: '#ff7847', triggerFx: 'pulse' },
+  },
+  {
+    id: 'risk', name: 'Risk', icon: '⚡',
+    desc: '+6 mult on face 6. -3 mult on face 1.',
+    riskHighMult: 6, riskLowMult: 3, rarity: 'uncommon',
+    visual: { materialKey: 'high_roller', accentColor: '#ffd84a', triggerFx: 'pulse' },
+  },
+  {
+    id: 'singularity', name: 'Singularity', icon: '●',
+    desc: '×2 mult — but only on Ante 4 or higher.',
+    singularityAnte: 4, singularityMult: 2, rarity: 'legendary',
+    visual: { materialKey: 'crown', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'refinery', name: 'Refinery', icon: '◇',
+    desc: '+1 shard when scored as part of Two Pair or Full House.',
+    refineryComboIds: ['two_pair', 'full_house'], refineryShards: 1, rarity: 'uncommon',
+    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
+  },
+  // Phase 5d — mod-density / first-die / utility mods.
+  {
+    id: 'polarize', name: 'Polarize', icon: '◐',
+    desc: '×1.4 mult when 3 mods are attached to this die.',
+    polarizeMult: 1.4, polarizeMinSlots: 3, rarity: 'rare',
+    visual: { materialKey: 'polarize', accentColor: '#bba8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'telescope', name: 'Telescope', icon: '⌖',
+    desc: '×1.3 mult on the first scoring die when the combo has ≥1 galaxy level.',
+    telescopeMult: 1.3, rarity: 'rare',
+    visual: { materialKey: 'telescope', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'engraved', name: 'Engraved', icon: '⌑',
+    desc: 'This die\'s Brittle mods survive the bust cleanup.',
+    engraved: true, rarity: 'uncommon',
+    visual: { materialKey: 'engraved', accentColor: '#a4d4ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'echo', name: 'Echo', icon: '⤳',
+    desc: 'Repeats the previous mod\'s effect on this die.',
+    echo: true, rarity: 'legendary',
+    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse' },
   },
 ];
 

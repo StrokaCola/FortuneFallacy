@@ -2,17 +2,46 @@ import type { GameState } from '../../state/store';
 import type { GameEventEmission, DieSnapshot } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
-import { blindClearShardBonus, extraHandsPerRound } from '../vouchers';
+import { blindClearShardBonus, extraHandsPerRound, maxConsumableSlots } from '../vouchers';
 import { lookupMod } from '../mods';
 import { getDiceSpec } from '../run/diceContext';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
+import { CONSUMABLES } from '../consumables';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
-// the blind.
-function dropBrittleMods(diceMods: string[][]): string[][] {
-  return diceMods.map((mods) =>
-    mods.filter((id) => !lookupMod(id)?.loseOnBust),
-  );
+// the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
+// pass — pairs naturally with Brittle to keep its +5 mult/die without the
+// destroy-on-bust risk.
+//
+// Returns updated parallel arrays so diceModEditions stays length-synced
+// with diceMods when Brittle entries are removed.
+function dropBrittleMods(
+  diceMods: string[][],
+  diceModEditions: ((null | 'foil' | 'holo' | 'poly')[] | undefined)[],
+): { diceMods: string[][]; diceModEditions: (null | 'foil' | 'holo' | 'poly')[][] } {
+  const nextMods: string[][] = [];
+  const nextEditions: (null | 'foil' | 'holo' | 'poly')[][] = [];
+  for (let dieIdx = 0; dieIdx < diceMods.length; dieIdx++) {
+    const slotIds = diceMods[dieIdx] ?? [];
+    const slotEds = diceModEditions[dieIdx] ?? slotIds.map(() => null);
+    const hasEngraved = slotIds.some((id) => lookupMod(id)?.engraved);
+    if (hasEngraved) {
+      nextMods.push(slotIds);
+      nextEditions.push(slotEds);
+      continue;
+    }
+    const keptIds: string[] = [];
+    const keptEds: (null | 'foil' | 'holo' | 'poly')[] = [];
+    for (let j = 0; j < slotIds.length; j++) {
+      const id = slotIds[j]!;
+      if (lookupMod(id)?.loseOnBust) continue;
+      keptIds.push(id);
+      keptEds.push(slotEds[j] ?? null);
+    }
+    nextMods.push(keptIds);
+    nextEditions.push(keptEds);
+  }
+  return { diceMods: nextMods, diceModEditions: nextEditions };
 }
 
 export function startBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
@@ -35,10 +64,15 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     locked: true,
   }));
   const scoringOrder = spec.map((_, i) => i);
+  // Shard Lung (catalyst): when this blind starts, the player gains shards
+  // equal to the current ante. Pure round-start grant; the score-time spend
+  // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
+  const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
   return {
     state: {
       ...s,
       ui: { ...s.ui, screen: 'round' },
+      run: { ...s.run, shards: s.run.shards + shardLungBonus },
       round: {
         ...initialRoundSlice(),
         active: true,
@@ -130,12 +164,38 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
 
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const highScores = pushHighScore(s, s.round.score);
+  const dropped = dropBrittleMods(s.run.diceMods, s.run.diceModEditions ?? []);
+  // Audit (catalyst): one-shot — refunds 50% of catalyst shard spend
+  // back into the player's pocket on bust, then self-destructs (removes
+  // itself from run.catalysts so it can't fire again next bust).
+  const auditOwned = s.run.catalysts.includes('audit');
+  const auditRefund = auditOwned
+    ? Math.floor((s.run.catalystShardSpend ?? 0) * 0.5)
+    : 0;
+  const catalystsAfterAudit = auditOwned
+    ? s.run.catalysts.filter((c) => c !== 'audit')
+    : s.run.catalysts;
+  // Drop audit's edition stamp too so a later GRANT_CATALYST doesn't
+  // inherit it.
+  let editionsAfterAudit = s.run.catalystEditions ?? {};
+  if (auditOwned && editionsAfterAudit.audit) {
+    const { audit: _dropped, ...rest } = editionsAfterAudit;
+    editionsAfterAudit = rest;
+  }
   return {
     state: {
       ...s,
       ui: { ...s.ui, screen: 'fail' },
       round: { ...s.round, active: false },
-      run: { ...s.run, compoundingStacks: 0, diceMods: dropBrittleMods(s.run.diceMods) },
+      run: {
+        ...s.run,
+        compoundingStacks: 0,
+        diceMods: dropped.diceMods,
+        diceModEditions: dropped.diceModEditions,
+        shards: s.run.shards + auditRefund,
+        catalysts: catalystsAfterAudit,
+        catalystEditions: editionsAfterAudit,
+      },
       meta: { ...s.meta, highScores },
     },
     events: [
@@ -193,7 +253,10 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
   } else if (tag.id === 'pack') {
     const def = lookupPack('celestial')!;
     const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
-    const newUnlocks = new Set(nextState.meta.unlocks);
+    // Snapshot pre-open unlocks BEFORE we mutate meta.unlocks below.
+    const currentUnlocks = nextState.meta.unlocks ?? [];
+    const unlockedAtOpen = [...currentUnlocks];
+    const newUnlocks = new Set(currentUnlocks);
     for (const gid of galaxyIds) {
       if (!newUnlocks.has(gid)) {
         newUnlocks.add(gid);
@@ -210,6 +273,7 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
           galaxyIds,
           picksLeft: def.pickCount,
           pickedSoFar: [],
+          unlockedAtOpen,
         },
       },
     };
@@ -218,6 +282,24 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
       payload: { kind: 'celestial', galaxyIds, picksAllowed: def.pickCount },
     });
   }
+  // Silver Tongue (catalyst): when the player skips a blind, grant 2 random
+  // consumables (drawn from the regular pool — galaxies/spectrals excluded).
+  // Stops at the consumable cap so high-end players don't break inventory.
+  if (s.run.catalysts.includes('silver_tongue')) {
+    const pool = CONSUMABLES.filter((c) => c.type !== 'galaxy' && c.type !== 'spectral');
+    if (pool.length > 0) {
+      const cap = maxConsumableSlots(nextState);
+      let consumables = nextState.run.consumables;
+      let granted = 0;
+      while (granted < 2 && consumables.length < cap) {
+        const pick = pool[Math.floor(Math.random() * pool.length)]!;
+        consumables = [...consumables, pick.id];
+        granted++;
+      }
+      nextState = { ...nextState, run: { ...nextState.run, consumables } };
+    }
+  }
+
   const nextAnte = Math.floor(nextState.run.goalIdx / 3) + 1;
   nextState = { ...nextState, run: { ...nextState.run, ante: nextAnte } };
   return { state: nextState, events };

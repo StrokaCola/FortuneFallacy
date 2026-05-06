@@ -55,6 +55,9 @@ export type ShopOffer = {
   kind: 'catalyst' | 'voucher' | 'consumable' | 'mod' | 'pack';
   id: string;
   price: number;
+  // Catalyst-only: foil/holo/poly stamp rolled at offer time. Carried
+  // through BUY_OFFER into run.catalystEditions. See state/slices/run.ts.
+  edition?: 'foil' | 'holo' | 'poly';
 };
 
 export type GameEventMap = {

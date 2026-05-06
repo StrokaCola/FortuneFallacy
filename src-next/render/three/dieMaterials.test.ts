@@ -1,6 +1,7 @@
 // src-next/render/three/dieMaterials.test.ts
 import { describe, it, expect } from 'vitest';
 import { MOD_MATERIALS, type ModMaterialKey } from './dieMaterials';
+import { MOD_IDS } from '../../core/mods';
 
 const ALL_KEYS: ModMaterialKey[] = [
   'amplify', 'sharpened', 'gilded', 'loaded', 'snake_eyes',
@@ -37,7 +38,9 @@ describe('MOD_MATERIALS', () => {
     }
   });
 
-  it('has exactly 19 entries (one per mod)', () => {
-    expect(Object.keys(MOD_MATERIALS).length).toBe(19);
+  it('has exactly one entry per mod', () => {
+    // Source of truth lives in MOD_IDS — derive the count so adding a
+    // mod doesn't require updating a magic number here.
+    expect(Object.keys(MOD_MATERIALS).length).toBe(MOD_IDS.length);
   });
 });

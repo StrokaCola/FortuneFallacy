@@ -24,8 +24,10 @@ export const diceHandler: ActionHandler = (a, s) => {
       // are settled. This keeps lock-clicks predictable: face position drives
       // score order by default, drag overrides for the current state.
       const scoringOrder = lockedIdxs(dice);
+      // Crescendo Run: locking a die breaks the streak. Unlocking does not.
+      const rollsWithoutLock = newLocked ? 0 : (s.round.rollsWithoutLock ?? 0);
       return {
-        state: { ...s, round: { ...s.round, dice, scoringOrder } },
+        state: { ...s, round: { ...s.round, dice, scoringOrder, rollsWithoutLock } },
         events: [{ type: 'onLockToggled', payload: { dieIdx: a.dieIdx, locked: newLocked } }],
       };
     }
@@ -40,10 +42,19 @@ export const diceHandler: ActionHandler = (a, s) => {
       if (ownedIdx < 0) return { state: s, events: [] };
       const ownedMods = s.run.ownedMods.filter((_, i) => i !== ownedIdx);
       const diceMods = s.run.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
+      // Sync parallel edition arrays. The edition at ownedIdx (which may be
+      // null for plain mods) transfers to the new last slot of the die.
+      const ownedEditions = s.run.ownedModEditions ?? [];
+      const transferring = ownedEditions[ownedIdx] ?? null;
+      const ownedModEditions = ownedEditions.filter((_, i) => i !== ownedIdx);
+      const diceModEditionsCur = s.run.diceModEditions ?? s.run.diceMods.map(() => []);
+      const diceModEditions = diceModEditionsCur.map((r, i) =>
+        i === a.dieIdx ? [...(r ?? []), transferring] : r,
+      );
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
         },
         events: [],
       };
@@ -55,10 +66,55 @@ export const diceHandler: ActionHandler = (a, s) => {
       );
       // Detach returns the mod to the inventory (free swaps within shop budget).
       const ownedMods = detachedId ? [...s.run.ownedMods, detachedId] : s.run.ownedMods;
+      // Sync parallel edition arrays. The edition at (dieIdx, modIdx)
+      // travels back to ownedModEditions in the same slot order.
+      const diceModEditionsCur = s.run.diceModEditions ?? s.run.diceMods.map(() => []);
+      const detachedEdition = diceModEditionsCur[a.dieIdx]?.[a.modIdx] ?? null;
+      const diceModEditions = diceModEditionsCur.map((r, i) =>
+        i === a.dieIdx ? (r ?? []).filter((_, j) => j !== a.modIdx) : r,
+      );
+      const ownedModEditions = detachedId
+        ? [...(s.run.ownedModEditions ?? []), detachedEdition]
+        : (s.run.ownedModEditions ?? []);
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
+        },
+        events: [],
+      };
+    }
+    case 'FORGE_MOD': {
+      // Mod Forging: consume 2 unattached duplicates of `modId` from
+      // ownedMods (any editions) + 5 shards → push 1 editioned copy back
+      // into ownedMods. Forging is shop-economy adjacent but lives in the
+      // dice handler because it manipulates the same parallel arrays as
+      // ATTACH/DETACH.
+      const FORGE_COST = 5;
+      const owned = s.run.ownedMods;
+      const editions = s.run.ownedModEditions ?? [];
+      const idxs: number[] = [];
+      for (let i = 0; i < owned.length && idxs.length < 2; i++) {
+        if (owned[i] === a.modId) idxs.push(i);
+      }
+      if (idxs.length < 2) return { state: s, events: [] };
+      if (s.run.shards < FORGE_COST) return { state: s, events: [] };
+      // Drop the two consumed copies (descending index so splices don't shift).
+      const dropSet = new Set(idxs);
+      const newOwned = owned.filter((_, i) => !dropSet.has(i));
+      const newEditions = editions.filter((_, i) => !dropSet.has(i));
+      // Push the forged result.
+      newOwned.push(a.modId);
+      newEditions.push(a.targetEdition);
+      return {
+        state: {
+          ...s,
+          run: {
+            ...s.run,
+            shards: s.run.shards - FORGE_COST,
+            ownedMods: newOwned,
+            ownedModEditions: newEditions,
+          },
         },
         events: [],
       };

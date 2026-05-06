@@ -25,6 +25,9 @@ export const rollHandler: ActionHandler = (a, s) => {
           firstRollDone: true,
           handInProgress: true,
           scoringOrder: dice.flatMap((d, i) => (d.locked ? [i] : [])),
+          // Crescendo Run: every roll without a new lock pushes the counter
+          // up by one. Reset by TOGGLE_LOCK (when locking, see dice.ts).
+          rollsWithoutLock: (s.round.rollsWithoutLock ?? 0) + 1,
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);
@@ -56,7 +59,12 @@ export const rollHandler: ActionHandler = (a, s) => {
       return {
         state: {
           ...advanced,
-          round: { ...advanced.round, handInProgress: true, rerollsLeft: advanced.round.rerollsLeft - 1 },
+          round: {
+            ...advanced.round,
+            handInProgress: true,
+            rerollsLeft: advanced.round.rerollsLeft - 1,
+            rollsWithoutLock: (advanced.round.rollsWithoutLock ?? 0) + 1,
+          },
         },
         events,
       };
@@ -131,11 +139,22 @@ export const rollHandler: ActionHandler = (a, s) => {
       let shardBonus = 0;
       const modFiredEvents: GameEventEmission[] = [];
       const finalFaces = fakeResult.finalFaces;
+      // Refinery (Phase 5b): mods that grant shards conditionally on the
+      // played combo id. Gated by `refineryComboIds`; ignored when the
+      // pipeline didn't surface a combo (degenerate hand).
+      const playedComboId = final.combo?.id;
       workingState.run.diceMods.forEach((mods, dieIdx) => {
         for (const id of mods) {
           const def = lookupMod(id);
           if (def?.shardsBonus) {
             shardBonus += def.shardsBonus;
+            modFiredEvents.push({
+              type: 'onModFired',
+              payload: { dieIdx, modId: id, faceValue: finalFaces[dieIdx] ?? 0 },
+            });
+          }
+          if (def?.refineryShards && playedComboId && def.refineryComboIds?.includes(playedComboId)) {
+            shardBonus += def.refineryShards;
             modFiredEvents.push({
               type: 'onModFired',
               payload: { dieIdx, modId: id, faceValue: finalFaces[dieIdx] ?? 0 },

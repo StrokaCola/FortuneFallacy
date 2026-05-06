@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { roundHandler } from './round';
 import type { GameState } from '../../state/store';
 import { initialRunSlice } from '../../state/slices/run';
@@ -87,8 +87,13 @@ describe('BUST_BLIND', () => {
 });
 
 describe('SKIP_BLIND', () => {
-  it('emits no events', () => {
+  it('emits no events when the shard tag rolls (no pack opened)', () => {
+    // Pin Math.random so SKIP_TAGS lands on the first entry ('shard'),
+    // which has no event emissions. The 'pack' tag emits onPackOpened +
+    // onGalaxyDiscovered which is covered separately in shop tests.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     const r = roundHandler({ type: 'SKIP_BLIND' }, baseState());
     expect(r.events).toHaveLength(0);
+    vi.restoreAllMocks();
   });
 });

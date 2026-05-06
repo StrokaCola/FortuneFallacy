@@ -11,6 +11,13 @@ import { getDiceSpec } from '../../core/run/diceContext';
 import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
 } from '../../state/selectors';
+import type { ModEdition } from '../../state/slices/run';
+import { editionLabel, editionColor } from '../../core/upgrades/editions';
+
+const FORGE_COST = 5;
+const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
+
+const selectOwnedModEditions = (s: GameState) => s.run.ownedModEditions ?? [];
 
 const selectDiceSpec = (s: GameState) => getDiceSpec(s);
 
@@ -27,8 +34,12 @@ export function Forge() {
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const maxSlots = useStore(selectMaxMod);
   const ownedMods = useStore(selectOwnedMods);
+  const ownedModEditions = useStore(selectOwnedModEditions);
 
   const [selectedDie, setSelectedDie] = useState(0);
+  // Per-mod-id forge picker state. null = closed; 'amplify' = picker open
+  // for amplify. Closes after dispatch or click-outside.
+  const [forgeOpenFor, setForgeOpenFor] = useState<string | null>(null);
 
   // Resolve every die's attached mods into renderable DieMod[] up front, so the
   // orbit and the strip share the same visual representation.
@@ -204,18 +215,41 @@ export function Forge() {
             ) : (
               <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
                 {(() => {
-                  const counts = new Map<string, number>();
-                  for (const id of ownedMods) counts.set(id, (counts.get(id) ?? 0) + 1);
-                  return [...counts.entries()].map(([id, count]) => {
+                  // Group by (id, edition). Each unique pair gets its own
+                  // row so foil amplify + plain amplify show separately.
+                  type Key = `${string}|${string}`;
+                  const counts = new Map<Key, { id: string; edition: ModEdition | null; count: number; firstIndex: number }>();
+                  for (let i = 0; i < ownedMods.length; i++) {
+                    const id = ownedMods[i]!;
+                    const ed = ownedModEditions[i] ?? null;
+                    const key = `${id}|${ed ?? 'plain'}` as Key;
+                    const cur = counts.get(key);
+                    if (cur) cur.count++;
+                    else counts.set(key, { id, edition: ed, count: 1, firstIndex: i });
+                  }
+                  // Plain count for the same id (used to gate Forge button —
+                  // forging takes 2 plain copies of any edition combo with
+                  // the same id; for v1 we restrict to 2 plain copies).
+                  const plainCountById = new Map<string, number>();
+                  for (let i = 0; i < ownedMods.length; i++) {
+                    if ((ownedModEditions[i] ?? null) === null) {
+                      plainCountById.set(ownedMods[i]!, (plainCountById.get(ownedMods[i]!) ?? 0) + 1);
+                    }
+                  }
+                  return [...counts.values()].map(({ id, edition, count, firstIndex }) => {
                     const r = lookupMod(id);
                     if (!r) return null;
                     const c = r.visual?.accentColor ?? '#7be3ff';
                     const canAttach = slots.length < maxSlots;
-                    const firstIndex = ownedMods.indexOf(id);
                     const isLegendary = r.rarity === 'legendary';
+                    const editionAccent = edition ? editionColor(edition) : c;
+                    // Forging: only available on plain rows where the player
+                    // has 2+ plain copies of this id and 5+ shards.
+                    const canForge = edition === null && (plainCountById.get(id) ?? 0) >= 2 && shards >= FORGE_COST;
+                    const isPickerOpen = forgeOpenFor === id;
                     return (
                       <div
-                        key={id}
+                        key={`${id}|${edition ?? 'plain'}`}
                         onClick={() => {
                           if (!canAttach) return;
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
@@ -227,7 +261,11 @@ export function Forge() {
                           opacity: canAttach ? 1 : 0.4,
                           padding: 14, borderRadius: 8,
                           background: 'rgba(15,9,37,0.5)',
-                          border: isLegendary ? '1px solid #ff7847aa' : '1px solid rgba(149,119,255,0.2)',
+                          border: isLegendary
+                            ? '1px solid #ff7847aa'
+                            : edition
+                              ? `1px solid ${editionAccent}66`
+                              : '1px solid rgba(149,119,255,0.2)',
                           transition: 'all 150ms',
                           display: 'flex', alignItems: 'center', gap: 10,
                           position: 'relative',
@@ -251,27 +289,82 @@ export function Forge() {
                         <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
                           <div className="f-head" style={{ fontSize: 12, color: '#f3f0ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             {r.name}
+                            {edition && (
+                              <span className="f-mono uc" style={{
+                                marginLeft: 6, padding: '1px 5px',
+                                fontSize: 8, letterSpacing: '0.18em',
+                                borderRadius: 3,
+                                color: editionAccent,
+                                border: `1px solid ${editionAccent}88`,
+                                background: `${editionAccent}22`,
+                              }}>{editionLabel(edition).slice(0, 4).toLowerCase()}</span>
+                            )}
                           </div>
                           <div style={{ fontSize: 10, color: '#bba8ff', lineHeight: 1.3 }}>
                             {r.desc}
                           </div>
+                          {canForge && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setForgeOpenFor(isPickerOpen ? null : id);
+                              }}
+                              className="f-mono uc"
+                              style={{
+                                marginTop: 6, fontSize: 9, padding: '3px 8px', borderRadius: 4,
+                                background: 'rgba(245,196,81,0.12)', border: '1px solid rgba(245,196,81,0.5)',
+                                color: '#f5c451', letterSpacing: '0.18em', cursor: 'pointer',
+                              }}>
+                              {isPickerOpen ? '✕ cancel' : `🔨 forge ◆${FORGE_COST}`}
+                            </button>
+                          )}
+                          {isPickerOpen && (
+                            <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                              {ALL_EDITIONS.map((ed) => (
+                                <button
+                                  key={ed}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    dispatch({ type: 'FORGE_MOD', modId: id, targetEdition: ed });
+                                    setForgeOpenFor(null);
+                                    sfxPlay('modAttach');
+                                  }}
+                                  className="f-mono uc"
+                                  style={{
+                                    fontSize: 9, padding: '3px 8px', borderRadius: 4,
+                                    background: `${editionColor(ed)}22`,
+                                    border: `1px solid ${editionColor(ed)}88`,
+                                    color: editionColor(ed),
+                                    letterSpacing: '0.16em',
+                                    cursor: 'pointer',
+                                  }}>
+                                  {editionLabel(ed).slice(0, 4)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <SellButton kind="mod" id={id} index={firstIndex} />
                         {count > 1 && (
                           <div className="f-mono num" style={{
                             position: 'absolute', top: 4, right: 4,
-                            fontSize: 10, color: c,
+                            fontSize: 10, color: edition ? editionAccent : c,
                             background: 'rgba(15,9,37,0.8)',
-                            border: `1px solid ${c}80`,
+                            border: `1px solid ${edition ? editionAccent : c}80`,
                             borderRadius: 8, padding: '1px 6px',
                           }}>×{count}</div>
                         )}
                         <span className="tip">
-                          <span className="tip-title">{r.name}</span>
+                          <span className="tip-title">{r.name}{edition ? ` (${editionLabel(edition)})` : ''}</span>
                           {r.desc}
                           <span style={{ display: 'block', marginTop: 4, color: '#7be3ff', fontSize: 10 }}>
                             {canAttach ? 'Click to attach to the selected die.' : 'Selected die has no free mod slots.'}
                           </span>
+                          {canForge && (
+                            <span style={{ display: 'block', marginTop: 4, color: '#f5c451', fontSize: 10 }}>
+                              Forge: combine 2 plain copies + ◆{FORGE_COST} into one editioned mod.
+                            </span>
+                          )}
                         </span>
                       </div>
                     );

@@ -118,3 +118,135 @@ describe('REORDER_HOLD', () => {
     expect(r.events).toEqual([]);
   });
 });
+
+describe('ATTACH_MOD / DETACH_MOD — mod edition parallel sync', () => {
+  // Build state with dice unlocked + ownedMods pre-seeded with editions.
+  const seededState = (): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      run: {
+        ...s.run,
+        ownedMods: ['amplify', 'sharpened'],
+        ownedModEditions: ['foil', null],
+        diceMods: Array.from({ length: 5 }, () => [] as string[]),
+        diceModEditions: Array.from({ length: 5 }, () => [] as (string | null)[]),
+      },
+    } as unknown as GameState;
+  };
+
+  it('ATTACH_MOD transfers edition from ownedModEditions to diceModEditions', () => {
+    const s = seededState();
+    const r = diceHandler({ type: 'ATTACH_MOD', dieIdx: 2, modId: 'amplify' }, s);
+    expect(r.state.run.ownedMods).toEqual(['sharpened']);
+    expect(r.state.run.ownedModEditions).toEqual([null]);
+    expect(r.state.run.diceMods[2]).toEqual(['amplify']);
+    expect(r.state.run.diceModEditions?.[2]).toEqual(['foil']);
+  });
+
+  it('ATTACH_MOD with no edition transfers null', () => {
+    const s = seededState();
+    const r = diceHandler({ type: 'ATTACH_MOD', dieIdx: 1, modId: 'sharpened' }, s);
+    expect(r.state.run.diceModEditions?.[1]).toEqual([null]);
+    expect(r.state.run.ownedModEditions).toEqual(['foil']);
+  });
+
+  it('DETACH_MOD returns the edition to ownedModEditions', () => {
+    let s = seededState();
+    s = diceHandler({ type: 'ATTACH_MOD', dieIdx: 2, modId: 'amplify' }, s).state;
+    // Now amplify is on die 2 with foil. Detach it.
+    const r = diceHandler({ type: 'DETACH_MOD', dieIdx: 2, modIdx: 0 }, s);
+    expect(r.state.run.diceMods[2]).toEqual([]);
+    expect(r.state.run.diceModEditions?.[2]).toEqual([]);
+    // Returned to owned inventory at the END of the array.
+    expect(r.state.run.ownedMods).toContain('amplify');
+    const idx = r.state.run.ownedMods.indexOf('amplify');
+    expect(r.state.run.ownedModEditions?.[idx]).toBe('foil');
+  });
+
+  it('attach + detach roundtrip preserves edition identity', () => {
+    let s = seededState();
+    s = diceHandler({ type: 'ATTACH_MOD', dieIdx: 0, modId: 'amplify' }, s).state;
+    s = diceHandler({ type: 'DETACH_MOD', dieIdx: 0, modIdx: 0 }, s).state;
+    // amplify back in ownedMods, edition preserved
+    const idx = s.run.ownedMods.indexOf('amplify');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(s.run.ownedModEditions?.[idx]).toBe('foil');
+  });
+});
+
+describe('FORGE_MOD — combine duplicates into editioned mod', () => {
+  const baseWithMods = (mods: string[], editions: (string | null)[], shards = 10): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      run: {
+        ...s.run,
+        ownedMods: mods,
+        ownedModEditions: editions,
+        shards,
+      },
+    } as unknown as GameState;
+  };
+
+  it('consumes 2 duplicates + 5 shards, pushes 1 editioned copy', () => {
+    const s = baseWithMods(['amplify', 'amplify', 'sharpened'], [null, null, null], 10);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'foil' },
+      s,
+    );
+    expect(r.state.run.shards).toBe(5);
+    expect(r.state.run.ownedMods).toEqual(['sharpened', 'amplify']);
+    expect(r.state.run.ownedModEditions).toEqual([null, 'foil']);
+  });
+
+  it('refuses when fewer than 2 duplicates owned', () => {
+    const s = baseWithMods(['amplify', 'sharpened'], [null, null], 10);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'foil' },
+      s,
+    );
+    expect(r.state).toBe(s);
+  });
+
+  it('refuses when shards insufficient', () => {
+    const s = baseWithMods(['amplify', 'amplify'], [null, null], 2);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'holo' },
+      s,
+    );
+    expect(r.state).toBe(s);
+  });
+});
+
+describe('TOGGLE_LOCK — crescendo_run counter reset', () => {
+  const lockedState = (rollsWithoutLock = 5): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      round: {
+        ...s.round,
+        rollsWithoutLock,
+        // Start with all unlocked so toggling LOCKS rather than unlocks.
+        dice: s.round.dice.map((d) => ({ ...d, locked: false })),
+      },
+    };
+  };
+
+  it('locking a die resets rollsWithoutLock to 0', () => {
+    const s = lockedState(5);
+    const r = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 1 }, s);
+    expect(r.state.round.rollsWithoutLock).toBe(0);
+  });
+
+  it('unlocking a die does NOT reset rollsWithoutLock', () => {
+    // Start with a locked die so toggling unlocks.
+    const s = baseState();
+    const sWithStreak = {
+      ...s,
+      round: { ...s.round, rollsWithoutLock: 5 },
+    };
+    const r = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 0 }, sWithStreak);
+    expect(r.state.round.rollsWithoutLock).toBe(5);
+  });
+});

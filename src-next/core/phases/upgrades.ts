@@ -2,6 +2,7 @@ import { getByPhase } from '../upgrades/registry';
 import { Phase, type PhaseFn, type PipelineCtx } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
 import { applyDieModStep } from '../mods/applyDieModStep';
+import { editionBonus } from '../upgrades/editions';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -15,9 +16,39 @@ export const upgrades: PhaseFn = (ctx) => {
 
   if (!catalystsBlocked) {
     const owned = new Set(ctx.state.run.catalysts);
+    const editions = ctx.state.run.catalystEditions ?? {};
     for (const u of getByPhase(Phase.UPGRADES)) {
       if (!ALWAYS_ACTIVE.has(u.id) && !owned.has(u.id)) continue;
+      const before = next;
       next = u.apply(next);
+      // Apply edition bonus immediately after the catalyst's own apply, so
+      // the bonus rides any later catalyst multipliers. Only fires when
+      // the catalyst actually moved chips/mult — gated catalysts that
+      // returned ctx unchanged contribute nothing.
+      const ed = editions[u.id];
+      if (!ed) continue;
+      const dChips = next.chips - before.chips;
+      const dMult  = next.mult  - before.mult;
+      if (dChips === 0 && dMult === 0) continue;
+      const { bonusChips, bonusMult } = editionBonus(ed, dChips, dMult);
+      if (bonusChips === 0 && bonusMult === 0) continue;
+      next = {
+        ...next,
+        chips: next.chips + bonusChips,
+        mult: next.mult + bonusMult,
+        events: [
+          ...next.events,
+          {
+            type: 'onUpgradeTriggered',
+            payload: {
+              id: `edition:${ed}@${u.id}`,
+              phase: Phase.UPGRADES,
+              deltaChips: bonusChips,
+              deltaMult: bonusMult,
+            },
+          },
+        ],
+      };
     }
   }
 
@@ -46,20 +77,72 @@ const applyModScoring: PhaseFn = (ctx) => {
   let mult = ctx.mult;
   const events = [...ctx.events];
   let titheBudget = ctx.state.round.tithePrimedThisHand ?? 0;
+  // Phase 5b — context fields read by combo/ante/galaxy aware mods. Pulled
+  // out of ctx once so the per-die loop stays tight. comboLevelOnPlayed is
+  // 0 when no combo (chance hand at lvl 0) or comboLevels missing.
+  const comboId = ctx.combo?.id;
+  const comboTier = ctx.combo?.tier;
+  const ante = ctx.state.run.ante;
+  const handsLeft = ctx.state.round.handsLeft;
+  const comboLevelOnPlayed = comboId
+    ? (ctx.state.run.comboLevels?.[comboId] ?? 0)
+    : 0;
+
+  // Phase 5c — per-die mod editions stored in the parallel array. May
+  // be undefined on legacy state; default to an empty array so the
+  // applyDieModStep call sees nulls (= no edition).
+  const diceModEditions = ctx.state.run.diceModEditions ?? [];
+  // Gilding Press (catalyst): fires the FIRST mod on each die a second
+  // time for chips only. Tithe budget isn't re-charged on the second
+  // pass (the die already paid its shard cost) and mult contributions
+  // from the second pass are discarded — only chips ride.
+  const gildingPressOwned = ctx.state.run.catalysts.includes('gilding_press');
 
   for (let pos = 0; pos < scoringDice.length; pos++) {
     const i = scoringDice[pos]!;
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
+    const editions = diceModEditions[i] ?? [];
     const step = applyDieModStep(
-      { face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget },
+      {
+        face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget,
+        comboId, comboTier, ante, handsLeft, comboLevelOnPlayed,
+        modsOnThisDie: mods.length,
+      },
       mods,
+      editions,
     );
     titheBudget -= step.titheCost;
     chips += step.dChips;
     mult += step.dMult;
     const multAfterAdditive = mult;
     if (step.dMultMul !== 1) mult *= step.dMultMul;
+    // Gilding Press: re-run JUST the first mod (chips-only) and add to
+    // the running chips total. Skips silently when the die has no mods.
+    if (gildingPressOwned && mods.length > 0) {
+      const firstModEcho = applyDieModStep(
+        {
+          face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces,
+          titheBudget: 0, // never re-charge tithe on the echo pass
+          comboId, comboTier, ante, handsLeft, comboLevelOnPlayed,
+          modsOnThisDie: mods.length,
+        },
+        [mods[0]!],
+        [editions[0] ?? null],
+      );
+      if (firstModEcho.dChips !== 0) {
+        chips += firstModEcho.dChips;
+        events.push({
+          type: 'onUpgradeTriggered',
+          payload: {
+            id: `gilding_press@${i}`,
+            phase: Phase.UPGRADES,
+            deltaChips: firstModEcho.dChips,
+            deltaMult: 0,
+          },
+        });
+      }
+    }
     for (const ev of step.events) {
       if (ev.type === 'upgrade') {
         events.push({

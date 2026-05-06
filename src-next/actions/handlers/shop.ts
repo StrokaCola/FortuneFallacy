@@ -8,6 +8,7 @@ import { sellRefund } from '../../core/shop/sellRefund';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
+import { rollCatalystEdition } from '../../core/upgrades/editions';
 
 // 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
 // in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
@@ -41,20 +42,31 @@ function rollOffers(s: GameState): ShopOffer[] {
 
   if (!modsOff) {
     const modIds = shuffle([...MOD_IDS]).slice(0, 2);
-    for (const id of modIds) offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE });
+    for (const id of modIds) {
+      // Mod editions roll independently, same drop weights as catalysts:
+      // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.
+      const edition = rollCatalystEdition(Math.random);
+      offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE, ...(edition ? { edition } : {}) });
+    }
   }
 
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
   const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random);
-  for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
+  for (const id of catalystIds) {
+    const edition = rollCatalystEdition(Math.random);
+    offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
+  }
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
-  // Galaxies are excluded from the consumable offer pool — they only appear
-  // via Galaxy Packs. Otherwise a player could grab a Whirlpool for 3 shards
-  // and skip the whole pack ecosystem.
-  const consumableIds = CONSUMABLES.filter((c) => c.type !== 'galaxy').map((c) => c.id);
+  // Galaxies and spectrals are excluded from the regular consumable pool.
+  // Galaxies are gated behind Galaxy Packs (Phase 2). Spectrals (Catalyze,
+  // future Void) are rare and meant to come from boss rewards / dedicated
+  // Spectral Packs — never the everyday consumable slot.
+  const consumableIds = CONSUMABLES
+    .filter((c) => c.type !== 'galaxy' && c.type !== 'spectral')
+    .map((c) => c.id);
 
   // Three-way roll for the final slot: pack | voucher | consumable.
   // ~25% pack, then voucher-vs-consumable resolves like before.
@@ -88,8 +100,15 @@ function openPack(s: GameState, packKind: string): { state: GameState; events: G
     { type: 'onPackOpened', payload: { kind: packKind, galaxyIds, picksAllowed: def.pickCount } },
   ];
 
+  // Snapshot pre-open unlocks so the PackOverlay can render `???` for
+  // first-encounter galaxies. We freeze this BEFORE mutating meta.unlocks
+  // below — the snapshot captures "what the player already knew" at the
+  // moment they cracked the pack.
+  const unlockedAtOpen = [...s.meta.unlocks];
+
   // Discovery: any galaxy in this pack the player hasn't seen before goes
-  // into meta.unlocks. The shop UI uses this to flip ??? cards to real ones.
+  // into meta.unlocks. The codex / future hub uses this to flip cards
+  // permanently; the in-pack `???` rendering keys off `unlockedAtOpen`.
   const unlocks = new Set(s.meta.unlocks);
   for (const gid of galaxyIds) {
     if (!unlocks.has(gid)) {
@@ -109,6 +128,7 @@ function openPack(s: GameState, packKind: string): { state: GameState; events: G
           galaxyIds,
           picksLeft: def.pickCount,
           pickedSoFar: [],
+          unlockedAtOpen,
         },
       },
     },
@@ -178,9 +198,27 @@ export const shopHandler: ActionHandler = (a, s) => {
         : s.run.consumables;
       const vouchers = offer.kind === 'voucher' ? [...s.run.vouchers, offer.id] : s.run.vouchers;
       const ownedMods = offer.kind === 'mod' ? [...s.run.ownedMods, offer.id] : s.run.ownedMods;
+      // Carry the offer's rolled edition stamp into run.catalystEditions
+      // so the upgrades phase can read it on every score.
+      const catalystEditions =
+        offer.kind === 'catalyst' && offer.edition
+          ? { ...s.run.catalystEditions, [offer.id]: offer.edition }
+          : s.run.catalystEditions;
+      // Mods carry their edition in a parallel array — push or keep length-
+      // synced regardless of whether this offer had an edition.
+      const ownedModEditions =
+        offer.kind === 'mod'
+          ? [...(s.run.ownedModEditions ?? []), offer.edition ?? null]
+          : (s.run.ownedModEditions ?? []);
+      // Audit catalyst tracks total catalyst spend in the run. Other kinds
+      // (mods, vouchers, consumables) don't contribute — only catalyst price.
+      const catalystShardSpend =
+        offer.kind === 'catalyst'
+          ? (s.run.catalystShardSpend ?? 0) + offer.price
+          : (s.run.catalystShardSpend ?? 0);
       const bought: GameState = {
         ...s,
-        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods },
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions, catalystShardSpend },
         shop: { ...s.shop, offers: remaining },
       };
       // Catalyst purchase may cross the 4-catalyst threshold for the first
@@ -259,9 +297,26 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (a.kind === 'catalyst') {
         const id = s.run.catalysts[a.index];
         if (!id) return { state: s, events: [] };
-        const refund = sellRefund('catalyst', id);
+        const baseRefund = sellRefund('catalyst', id);
+        // Dust-Off: any owned dust_off catalyst boosts catalyst sell-back
+        // refunds by 50%. Doesn't apply to the dust_off itself if it's the
+        // one being sold — read the OTHER owned catalysts.
+        const otherCatalysts = s.run.catalysts.filter((_, i) => i !== a.index);
+        const dustOffOwned = otherCatalysts.includes('dust_off');
+        const refund = dustOffOwned ? Math.floor(baseRefund * 1.5) : baseRefund;
+        // Drop the edition stamp (if any) so a re-bought catalyst with
+        // the same id doesn't inherit the prior edition.
+        const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, catalysts: removeAt(s.run.catalysts, a.index) } },
+          state: {
+            ...s,
+            run: {
+              ...s.run,
+              shards: s.run.shards + refund,
+              catalysts: removeAt(s.run.catalysts, a.index),
+              catalystEditions: remainingEditions,
+            },
+          },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
         };
       }
@@ -280,8 +335,18 @@ export const shopHandler: ActionHandler = (a, s) => {
         const id = s.run.ownedMods[a.index];
         if (!id) return { state: s, events: [] };
         const refund = sellRefund('mod', id);
+        // Drop the parallel edition entry at the same index.
+        const ownedModEditions = removeAt(s.run.ownedModEditions ?? [], a.index);
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, ownedMods: removeAt(s.run.ownedMods, a.index) } },
+          state: {
+            ...s,
+            run: {
+              ...s.run,
+              shards: s.run.shards + refund,
+              ownedMods: removeAt(s.run.ownedMods, a.index),
+              ownedModEditions,
+            },
+          },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'mod', id, refund } }],
         };
       }

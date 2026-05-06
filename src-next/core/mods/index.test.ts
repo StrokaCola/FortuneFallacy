@@ -134,8 +134,8 @@ describe('order-aware mods', () => {
     }
   });
 
-  it('MODS has 19 entries total', () => {
-    expect(MODS.length).toBe(19);
+  it('MODS roster matches MOD_IDS length', () => {
+    expect(MODS.length).toBe(MOD_IDS.length);
   });
 
   it('MOD_IDS includes the 3 new ids', () => {

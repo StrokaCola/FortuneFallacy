@@ -27,7 +27,11 @@ function comboName(comboId: string): string {
 
 export function PackOverlay() {
   const pack = useStore(selectPendingPack);
+  // unlocks is read for forward-compat (not used directly here — the
+  // discovery `???` rendering keys off pack.unlockedAtOpen, the snapshot
+  // taken when the pack was cracked).
   const unlocks = useStore(selectUnlocks);
+  void unlocks;
   if (!pack) return null;
 
   const def = lookupPack(pack.kind);
@@ -63,24 +67,25 @@ export function PackOverlay() {
         {pack.galaxyIds.map((galaxyId, i) => {
           const taken = pack.pickedSoFar.includes(galaxyId);
           const def = lookupConsumable(galaxyId);
-          const discovered = unlocks.includes(galaxyId);
-          // Discovery-gate: undiscovered galaxies render as a question card.
-          // Once flipped (i.e. the pack opened), they're already in unlocks
-          // because openPack adds them, so on first encounter the player
-          // gets the "what is this?" beat for one frame before the reveal.
-          // To preserve that beat we only reveal galaxies that were ALREADY
-          // unlocked before this pack opened — but tracking that adds state.
-          // Simpler: always reveal here; rely on the codex meta-progression
-          // panel for the discovery hook. Mark this as a Phase 3 polish.
+          // Discovery beat: a galaxy was "known" if it appeared in
+          // meta.unlocks AT THE MOMENT this pack was cracked. openPack
+          // immediately adds the rolled ids to the global unlocks list
+          // (so the codex updates) — but pack.unlockedAtOpen preserves
+          // the pre-crack state so the overlay can hide first-encounter
+          // names behind `???` until the player clicks/picks.
+          const knownAtOpen = pack.unlockedAtOpen.includes(galaxyId);
+          const discovered = knownAtOpen || taken;
           const name = discovered && def ? def.name : '???';
           const icon = discovered && def ? def.icon : '?';
           const desc = discovered && def ? def.description : 'An unknown galaxy.';
           const bonus = GALAXY_BONUS[def?.comboId ?? ''];
-          const comboLabel = def?.comboId === 'all'
-            ? 'All combos'
-            : def?.comboId
-              ? comboName(def.comboId)
-              : '???';
+          const comboLabel = !discovered
+            ? '???'
+            : def?.comboId === 'all'
+              ? 'All combos'
+              : def?.comboId
+                ? comboName(def.comboId)
+                : '???';
           return (
             <button
               key={`${galaxyId}-${i}`}

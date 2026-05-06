@@ -251,6 +251,25 @@ describe('Galaxy packs — buy + open', () => {
     }
   });
 
+  it('pendingPack.unlockedAtOpen snapshots meta.unlocks at crack time (excluding the new ids)', () => {
+    // Pre-seed with one galaxy already known so we can verify it's in the
+    // snapshot but newly-rolled ids are NOT (even though they show up in
+    // meta.unlocks afterward).
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const seeded: GameState = {
+      ...s,
+      meta: { ...s.meta, unlocks: ['galaxy_milky_way'] },
+    } as GameState;
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, seeded);
+    expect(r.state.shop.pendingPack!.unlockedAtOpen).toEqual(['galaxy_milky_way']);
+    // meta.unlocks should be the snapshot UNION the rolled galaxy ids.
+    for (const gid of r.state.shop.pendingPack!.galaxyIds) {
+      expect(r.state.meta.unlocks).toContain(gid);
+    }
+    expect(r.state.meta.unlocks).toContain('galaxy_milky_way');
+  });
+
   it('emits onPackOpened + onGalaxyDiscovered events', () => {
     const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
     const s = baseState({ shards: 10, offers });
@@ -282,6 +301,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -306,6 +326,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way', 'galaxy_quasar'],
           picksLeft: 2,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -326,7 +347,8 @@ describe('Galaxy packs — picking', () => {
           kind: 'galactic',
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda'],
           picksLeft: 1,
-          pickedSoFar: ['galaxy_whirlpool'],
+          pickedSoFar: ["galaxy_whirlpool"],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -345,6 +367,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -365,6 +388,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_milky_way', 'galaxy_cartwheel'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -383,11 +407,44 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
     const r = shopHandler({ type: 'CLOSE_SHOP' }, sWithPack);
     expect(r.state.shop.pendingPack).toBeNull();
+  });
+});
+
+describe('Catalyst editions — buy + sell roundtrip', () => {
+  it('BUY_OFFER catalyst with edition stamps run.catalystEditions', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5, edition: 'foil' }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalysts).toContain('cold_hand');
+    expect(r.state.run.catalystEditions.cold_hand).toBe('foil');
+  });
+
+  it('BUY_OFFER catalyst without edition leaves catalystEditions untouched', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalystEditions.cold_hand).toBeUndefined();
+  });
+
+  it('SELL_UPGRADE catalyst clears its edition stamp', () => {
+    const s = baseState({ shards: 0, catalysts: ['cold_hand', 'six_bias'] });
+    const seeded: GameState = {
+      ...s,
+      run: {
+        ...s.run,
+        catalystEditions: { cold_hand: 'foil', six_bias: 'holo' },
+      },
+    };
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 0 }, seeded);
+    expect(r.state.run.catalysts).toEqual(['six_bias']);
+    expect(r.state.run.catalystEditions.cold_hand).toBeUndefined();
+    expect(r.state.run.catalystEditions.six_bias).toBe('holo');
   });
 });
 
@@ -428,5 +485,51 @@ describe('Legendary unlock progression', () => {
     const seeded: GameState = { ...s, meta: { ...s.meta, unlocks: ['legendary_all_band'] } } as GameState;
     const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, seeded);
     expect(r.state.meta.unlocks.filter((u) => u === 'legendary_all_band').length).toBe(1);
+  });
+});
+
+describe('dust_off catalyst — sell-refund boost', () => {
+  it('refund is +50% when dust_off is owned alongside the catalyst being sold', () => {
+    // Base catalyst sell = 2 shards. dust_off boosts to floor(2 * 1.5) = 3.
+    const s = baseState({ shards: 0, catalysts: ['dust_off', 'cold_hand'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 1 }, s);
+    expect(r.state.run.shards).toBe(3);
+    expect(r.state.run.catalysts).toEqual(['dust_off']);
+  });
+
+  it('selling dust_off itself does not get the boost', () => {
+    // dust_off at index 0; nothing else owned. Refund = base 2.
+    const s = baseState({ shards: 0, catalysts: ['dust_off'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 0 }, s);
+    expect(r.state.run.shards).toBe(2);
+  });
+});
+
+describe('Mod editions — buy + sell parallel-array sync', () => {
+  it('BUY_OFFER mod with edition pushes to ownedMods + ownedModEditions in lockstep', () => {
+    const offers: ShopOffer[] = [{ kind: 'mod', id: 'amplify', price: 4, edition: 'foil' }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.ownedMods).toEqual(['amplify']);
+    expect(r.state.run.ownedModEditions).toEqual(['foil']);
+  });
+
+  it('BUY_OFFER mod without edition pushes null to ownedModEditions', () => {
+    const offers: ShopOffer[] = [{ kind: 'mod', id: 'amplify', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.ownedMods).toEqual(['amplify']);
+    expect(r.state.run.ownedModEditions).toEqual([null]);
+  });
+
+  it('SELL_UPGRADE mod drops the parallel edition entry at the same index', () => {
+    const s = baseState({ shards: 0, ownedMods: ['amplify', 'sharpened'] });
+    const seeded: GameState = {
+      ...s,
+      run: { ...s.run, ownedModEditions: ['foil', 'holo'] },
+    } as GameState;
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'mod', index: 0 }, seeded);
+    expect(r.state.run.ownedMods).toEqual(['sharpened']);
+    expect(r.state.run.ownedModEditions).toEqual(['holo']);
   });
 });
