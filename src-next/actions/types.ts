@@ -29,6 +29,8 @@ export type Action =
   | { type: 'DETACH_MOD'; dieIdx: number; modIdx: number }
   | { type: 'REORDER_HOLD'; newOrder: number[] }
   | { type: 'SKIP_BLIND' }
-  | { type: 'END_SCORING' };
+  | { type: 'END_SCORING' }
+  | { type: 'PICK_FROM_PACK'; galaxyIdx: number }
+  | { type: 'SKIP_PACK' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

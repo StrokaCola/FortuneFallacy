@@ -219,3 +219,174 @@ describe('SELL_UPGRADE kind=voucher', () => {
     expect(r.state).toBe(s);
   });
 });
+
+describe('Galaxy packs — buy + open', () => {
+  it('buying a Celestial Pack debits price, removes offer, opens pendingPack with showCount=2 picks=1', () => {
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.shards).toBe(6);
+    expect(r.state.shop.offers).toEqual([]);
+    expect(r.state.shop.pendingPack).not.toBeNull();
+    expect(r.state.shop.pendingPack!.kind).toBe('celestial');
+    expect(r.state.shop.pendingPack!.galaxyIds.length).toBe(2);
+    expect(r.state.shop.pendingPack!.picksLeft).toBe(1);
+    expect(r.state.shop.pendingPack!.pickedSoFar).toEqual([]);
+  });
+
+  it('buying a Galactic Pack opens with showCount=4 picks=2', () => {
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'galactic', price: 8 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.shop.pendingPack!.galaxyIds.length).toBe(4);
+    expect(r.state.shop.pendingPack!.picksLeft).toBe(2);
+  });
+
+  it('opening a pack adds rolled galaxy ids to meta.unlocks', () => {
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    for (const gid of r.state.shop.pendingPack!.galaxyIds) {
+      expect(r.state.meta.unlocks).toContain(gid);
+    }
+  });
+
+  it('emits onPackOpened + onGalaxyDiscovered events', () => {
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    const types = r.events.map((e) => e.type);
+    expect(types).toContain('onOfferBought');
+    expect(types).toContain('onPackOpened');
+    expect(types.filter((t) => t === 'onGalaxyDiscovered').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects buying when shards insufficient', () => {
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 2, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state).toBe(s);
+  });
+});
+
+describe('Galaxy packs — picking', () => {
+  it('PICK_FROM_PACK applies the galaxy (increments comboLevels) and decrements picksLeft', () => {
+    // Manually seed a pendingPack with known galaxy ids so the test is deterministic.
+    const s = baseState({ shards: 0 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'stellar',
+          galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way'],
+          picksLeft: 1,
+          pickedSoFar: [] as string[],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, sWithPack);
+    // Pack should close (picksLeft was 1).
+    expect(r.state.shop.pendingPack).toBeNull();
+    expect(r.state.run.comboLevels.three_kind).toBe(1);
+    const types = r.events.map((e) => e.type);
+    expect(types).toContain('onGalaxyUsed');
+    expect(types).toContain('onPackPicked');
+    expect(types).toContain('onPackClosed');
+  });
+
+  it('Galactic pack: first pick keeps pack open with picksLeft=1', () => {
+    const s = baseState({ shards: 0 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'galactic',
+          galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way', 'galaxy_quasar'],
+          picksLeft: 2,
+          pickedSoFar: [] as string[],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 1 }, sWithPack);
+    expect(r.state.shop.pendingPack).not.toBeNull();
+    expect(r.state.shop.pendingPack!.picksLeft).toBe(1);
+    expect(r.state.shop.pendingPack!.pickedSoFar).toEqual(['galaxy_andromeda']);
+    expect(r.state.run.comboLevels.five_kind).toBe(1);
+  });
+
+  it('PICK_FROM_PACK rejects if galaxy already picked (no double-tap)', () => {
+    const s = baseState({ shards: 0 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'galactic',
+          galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda'],
+          picksLeft: 1,
+          pickedSoFar: ['galaxy_whirlpool'],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, sWithPack);
+    expect(r.state).toBe(sWithPack);
+  });
+
+  it('SKIP_PACK closes the pack without picking, emitting onPackClosed', () => {
+    const s = baseState({ shards: 0 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds: ['galaxy_whirlpool', 'galaxy_milky_way'],
+          picksLeft: 1,
+          pickedSoFar: [] as string[],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'SKIP_PACK' }, sWithPack);
+    expect(r.state.shop.pendingPack).toBeNull();
+    expect(r.state.run.comboLevels.three_kind ?? 0).toBe(0); // unchanged
+    expect(r.events.map((e) => e.type)).toEqual(['onPackClosed']);
+  });
+
+  it('REROLL_SHOP is blocked while pack is pending', () => {
+    const s = baseState({ shards: 100, rerollCost: 3 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds: ['galaxy_milky_way', 'galaxy_cartwheel'],
+          picksLeft: 1,
+          pickedSoFar: [] as string[],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'REROLL_SHOP' }, sWithPack);
+    expect(r.state).toBe(sWithPack);
+  });
+
+  it('CLOSE_SHOP clears pendingPack defensively (e.g., player escapes via Next Trial)', () => {
+    const s = baseState({ shards: 0 });
+    const sWithPack = {
+      ...s,
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds: ['galaxy_milky_way'],
+          picksLeft: 1,
+          pickedSoFar: [] as string[],
+        },
+      },
+    };
+    const r = shopHandler({ type: 'CLOSE_SHOP' }, sWithPack);
+    expect(r.state.shop.pendingPack).toBeNull();
+  });
+});

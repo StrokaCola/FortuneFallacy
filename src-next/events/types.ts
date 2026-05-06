@@ -52,7 +52,7 @@ export type UpgradeId = string;
 export type BlindId = string;
 
 export type ShopOffer = {
-  kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
+  kind: 'catalyst' | 'voucher' | 'consumable' | 'mod' | 'pack';
   id: string;
   price: number;
 };
@@ -87,6 +87,11 @@ export type GameEventMap = {
   onScoreBeat:         { beat: Beat };
   onScoreSequenceBuilt: { sequence: ScoreSequence };
   onReorderRejected:   { reason: 'length-mismatch' | 'duplicate-index' | 'unlocked-index'; newOrder: number[]; locked: number[] };
+  onGalaxyUsed:        { galaxyId: string; combo: ComboId | 'all'; levelsAdded: Record<ComboId, number> };
+  onPackOpened:        { kind: string; galaxyIds: string[]; picksAllowed: number };
+  onPackPicked:        { galaxyId: string; remainingPicks: number };
+  onPackClosed:        { kind: string; pickedCount: number; skippedCount: number };
+  onGalaxyDiscovered:  { galaxyId: string };
 };
 
 export type GameEventEmission = {
