@@ -43,6 +43,13 @@ export type RunSlice = {
   // Cleared on SELL_UPGRADE so a re-bought catalyst doesn't inherit the
   // old stamp.
   catalystEditions: Record<string, CatalystEdition>;
+  // Mod editions live in PARALLEL arrays to ownedMods/diceMods. We don't
+  // migrate diceMods to ModInstance[][] because the 3D renderer reads
+  // string[][] in many places — keeping the id arrays untouched avoids a
+  // 50-site cascade. The parallel structure must be kept length-synced
+  // with the id arrays (see actions/handlers/dice.ts and shop.ts).
+  ownedModEditions: (ModEdition | null)[];
+  diceModEditions: (ModEdition | null)[][];
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -52,6 +59,12 @@ export type RunSlice = {
 //   holo → +10 mult when this catalyst fires
 //   poly → ×1.5 to the catalyst's own contribution this trigger
 export type CatalystEdition = 'foil' | 'holo' | 'poly';
+
+// Mod-tier editions. Same axes, smaller magnitudes than catalyst editions.
+//   foil → +20 chips when this mod fires
+//   holo → +4 mult when this mod fires
+//   poly → ×1.25 to the mod's own contribution this fire
+export type ModEdition = 'foil' | 'holo' | 'poly';
 
 export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
@@ -83,4 +96,6 @@ export const initialRunSlice = (): RunSlice => ({
     five_kind: 0,
   },
   catalystEditions: {},
+  ownedModEditions: [],
+  diceModEditions: Array.from({ length: 5 }, () => [] as (ModEdition | null)[]),
 });

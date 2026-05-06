@@ -11,6 +11,8 @@ function run(over: Partial<RunSlice> = {}): RunSlice {
     tempoStreak: 0, tempoLastTier: -1, lastComboId: null, comboStreak: 0,
     comboLevels: {},
     catalystEditions: {},
+    ownedModEditions: [],
+    diceModEditions: [[], [], [], [], []],
     ...over,
   };
 }

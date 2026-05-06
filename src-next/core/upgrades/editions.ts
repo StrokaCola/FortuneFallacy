@@ -54,3 +54,20 @@ export function editionColor(edition: CatalystEdition): string {
     case 'poly': return '#ff7847';
   }
 }
+
+// Mod-tier edition bonuses. Smaller magnitudes than catalyst editions —
+// mods fire MANY times per hand (once per scoring die), so per-fire
+// bonuses need to be modest to avoid runaway combos.
+import type { ModEdition } from '../../state/slices/run';
+
+export function modEditionBonus(
+  edition: ModEdition,
+  modContribChips: number,
+  modContribMult: number,
+): { bonusChips: number; bonusMult: number } {
+  switch (edition) {
+    case 'foil': return { bonusChips: 20, bonusMult: 0 };
+    case 'holo': return { bonusChips: 0,  bonusMult: 4 };
+    case 'poly': return { bonusChips: modContribChips * 0.25, bonusMult: modContribMult * 0.25 };
+  }
+}

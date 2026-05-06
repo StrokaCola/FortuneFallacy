@@ -1,4 +1,6 @@
 import { lookupMod, type ModDef } from './index';
+import type { ModEdition } from '../../state/slices/run';
+import { modEditionBonus } from '../upgrades/editions';
 
 export type DieModEvent =
   | { type: 'upgrade'; modId: string; dieIdx: number; dChips: number; dMult: number }
@@ -56,12 +58,17 @@ type StepCtx = {
  * (default 6) matches the die's face, contributes a multiplicative bump
  * applied AFTER all additive contributions on this die.
  */
-export function applyDieModStep(stepCtx: StepCtx, modIds: string[]): DieModStepResult {
+export function applyDieModStep(
+  stepCtx: StepCtx,
+  modIds: string[],
+  editions?: ReadonlyArray<ModEdition | null>,
+): DieModStepResult {
   const { face, dieIdx, pos, totalScoring, scoringFaces } = stepCtx;
-  const defs: { id: string; def: ModDef }[] = [];
-  for (const id of modIds) {
+  const defs: { id: string; def: ModDef; edition: ModEdition | null }[] = [];
+  for (let i = 0; i < modIds.length; i++) {
+    const id = modIds[i]!;
     const def = lookupMod(id);
-    if (def) defs.push({ id, def });
+    if (def) defs.push({ id, def, edition: editions?.[i] ?? null });
   }
   const hasResonance = defs.some((d) => d.def.resonate);
 
@@ -71,7 +78,7 @@ export function applyDieModStep(stepCtx: StepCtx, modIds: string[]): DieModStepR
   let titheCost = 0;
   const events: DieModEvent[] = [];
 
-  for (const { id, def } of defs) {
+  for (const { id, def, edition } of defs) {
     const isResonance = !!def.resonate;
     // Resonance itself contributes nothing on its own row.
     if (isResonance) continue;
@@ -149,6 +156,16 @@ export function applyDieModStep(stepCtx: StepCtx, modIds: string[]): DieModStepR
     // Crown: collect multiplicative; apply to the die's accumulated mult at end.
     if (def.crownMult && face === (def.crownFace ?? 6)) {
       localMultMul *= def.crownMult;
+    }
+
+    // Mod editions: apply bonus when the mod fired (had any non-trivial
+    // contribution this step). Foil/holo are flat per-fire; poly scales
+    // with the mod's own contribution. Mod editions are smaller than
+    // catalyst editions (mods fire many times per hand).
+    if (edition && (modChips !== 0 || modMult !== 0 || localMultMul !== 1)) {
+      const eb = modEditionBonus(edition, modChips, modMult);
+      modChips += eb.bonusChips;
+      modMult += eb.bonusMult;
     }
 
     // Commit this mod's contributions to the die-level accumulators.

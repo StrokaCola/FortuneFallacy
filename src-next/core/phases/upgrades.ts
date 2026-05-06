@@ -88,10 +88,16 @@ const applyModScoring: PhaseFn = (ctx) => {
     ? (ctx.state.run.comboLevels?.[comboId] ?? 0)
     : 0;
 
+  // Phase 5c — per-die mod editions stored in the parallel array. May
+  // be undefined on legacy state; default to an empty array so the
+  // applyDieModStep call sees nulls (= no edition).
+  const diceModEditions = ctx.state.run.diceModEditions ?? [];
+
   for (let pos = 0; pos < scoringDice.length; pos++) {
     const i = scoringDice[pos]!;
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
+    const editions = diceModEditions[i] ?? [];
     const step = applyDieModStep(
       {
         face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget,
@@ -99,6 +105,7 @@ const applyModScoring: PhaseFn = (ctx) => {
         modsOnThisDie: mods.length,
       },
       mods,
+      editions,
     );
     titheBudget -= step.titheCost;
     chips += step.dChips;

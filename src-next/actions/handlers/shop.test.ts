@@ -462,3 +462,32 @@ describe('Legendary unlock progression', () => {
     expect(r.state.meta.unlocks.filter((u) => u === 'legendary_all_band').length).toBe(1);
   });
 });
+
+describe('Mod editions — buy + sell parallel-array sync', () => {
+  it('BUY_OFFER mod with edition pushes to ownedMods + ownedModEditions in lockstep', () => {
+    const offers: ShopOffer[] = [{ kind: 'mod', id: 'amplify', price: 4, edition: 'foil' }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.ownedMods).toEqual(['amplify']);
+    expect(r.state.run.ownedModEditions).toEqual(['foil']);
+  });
+
+  it('BUY_OFFER mod without edition pushes null to ownedModEditions', () => {
+    const offers: ShopOffer[] = [{ kind: 'mod', id: 'amplify', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.ownedMods).toEqual(['amplify']);
+    expect(r.state.run.ownedModEditions).toEqual([null]);
+  });
+
+  it('SELL_UPGRADE mod drops the parallel edition entry at the same index', () => {
+    const s = baseState({ shards: 0, ownedMods: ['amplify', 'sharpened'] });
+    const seeded: GameState = {
+      ...s,
+      run: { ...s.run, ownedModEditions: ['foil', 'holo'] },
+    } as GameState;
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'mod', index: 0 }, seeded);
+    expect(r.state.run.ownedMods).toEqual(['sharpened']);
+    expect(r.state.run.ownedModEditions).toEqual(['holo']);
+  });
+});

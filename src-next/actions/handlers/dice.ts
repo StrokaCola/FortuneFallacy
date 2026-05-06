@@ -40,10 +40,19 @@ export const diceHandler: ActionHandler = (a, s) => {
       if (ownedIdx < 0) return { state: s, events: [] };
       const ownedMods = s.run.ownedMods.filter((_, i) => i !== ownedIdx);
       const diceMods = s.run.diceMods.map((r, i) => (i === a.dieIdx ? [...r, a.modId] : r));
+      // Sync parallel edition arrays. The edition at ownedIdx (which may be
+      // null for plain mods) transfers to the new last slot of the die.
+      const ownedEditions = s.run.ownedModEditions ?? [];
+      const transferring = ownedEditions[ownedIdx] ?? null;
+      const ownedModEditions = ownedEditions.filter((_, i) => i !== ownedIdx);
+      const diceModEditionsCur = s.run.diceModEditions ?? s.run.diceMods.map(() => []);
+      const diceModEditions = diceModEditionsCur.map((r, i) =>
+        i === a.dieIdx ? [...(r ?? []), transferring] : r,
+      );
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
         },
         events: [],
       };
@@ -55,10 +64,20 @@ export const diceHandler: ActionHandler = (a, s) => {
       );
       // Detach returns the mod to the inventory (free swaps within shop budget).
       const ownedMods = detachedId ? [...s.run.ownedMods, detachedId] : s.run.ownedMods;
+      // Sync parallel edition arrays. The edition at (dieIdx, modIdx)
+      // travels back to ownedModEditions in the same slot order.
+      const diceModEditionsCur = s.run.diceModEditions ?? s.run.diceMods.map(() => []);
+      const detachedEdition = diceModEditionsCur[a.dieIdx]?.[a.modIdx] ?? null;
+      const diceModEditions = diceModEditionsCur.map((r, i) =>
+        i === a.dieIdx ? (r ?? []).filter((_, j) => j !== a.modIdx) : r,
+      );
+      const ownedModEditions = detachedId
+        ? [...(s.run.ownedModEditions ?? []), detachedEdition]
+        : (s.run.ownedModEditions ?? []);
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
         },
         events: [],
       };

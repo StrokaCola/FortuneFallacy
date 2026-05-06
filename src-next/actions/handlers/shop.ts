@@ -42,7 +42,12 @@ function rollOffers(s: GameState): ShopOffer[] {
 
   if (!modsOff) {
     const modIds = shuffle([...MOD_IDS]).slice(0, 2);
-    for (const id of modIds) offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE });
+    for (const id of modIds) {
+      // Mod editions roll independently, same drop weights as catalysts:
+      // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.
+      const edition = rollCatalystEdition(Math.random);
+      offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE, ...(edition ? { edition } : {}) });
+    }
   }
 
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
@@ -191,9 +196,15 @@ export const shopHandler: ActionHandler = (a, s) => {
         offer.kind === 'catalyst' && offer.edition
           ? { ...s.run.catalystEditions, [offer.id]: offer.edition }
           : s.run.catalystEditions;
+      // Mods carry their edition in a parallel array — push or keep length-
+      // synced regardless of whether this offer had an edition.
+      const ownedModEditions =
+        offer.kind === 'mod'
+          ? [...(s.run.ownedModEditions ?? []), offer.edition ?? null]
+          : (s.run.ownedModEditions ?? []);
       const bought: GameState = {
         ...s,
-        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions },
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions },
         shop: { ...s.shop, offers: remaining },
       };
       // Catalyst purchase may cross the 4-catalyst threshold for the first
@@ -304,8 +315,18 @@ export const shopHandler: ActionHandler = (a, s) => {
         const id = s.run.ownedMods[a.index];
         if (!id) return { state: s, events: [] };
         const refund = sellRefund('mod', id);
+        // Drop the parallel edition entry at the same index.
+        const ownedModEditions = removeAt(s.run.ownedModEditions ?? [], a.index);
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, ownedMods: removeAt(s.run.ownedMods, a.index) } },
+          state: {
+            ...s,
+            run: {
+              ...s.run,
+              shards: s.run.shards + refund,
+              ownedMods: removeAt(s.run.ownedMods, a.index),
+              ownedModEditions,
+            },
+          },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'mod', id, refund } }],
         };
       }
