@@ -174,3 +174,35 @@ describe('ATTACH_MOD / DETACH_MOD — mod edition parallel sync', () => {
     expect(s.run.ownedModEditions?.[idx]).toBe('foil');
   });
 });
+
+describe('TOGGLE_LOCK — crescendo_run counter reset', () => {
+  const lockedState = (rollsWithoutLock = 5): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      round: {
+        ...s.round,
+        rollsWithoutLock,
+        // Start with all unlocked so toggling LOCKS rather than unlocks.
+        dice: s.round.dice.map((d) => ({ ...d, locked: false })),
+      },
+    };
+  };
+
+  it('locking a die resets rollsWithoutLock to 0', () => {
+    const s = lockedState(5);
+    const r = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 1 }, s);
+    expect(r.state.round.rollsWithoutLock).toBe(0);
+  });
+
+  it('unlocking a die does NOT reset rollsWithoutLock', () => {
+    // Start with a locked die so toggling unlocks.
+    const s = baseState();
+    const sWithStreak = {
+      ...s,
+      round: { ...s.round, rollsWithoutLock: 5 },
+    };
+    const r = diceHandler({ type: 'TOGGLE_LOCK', dieIdx: 0 }, sWithStreak);
+    expect(r.state.round.rollsWithoutLock).toBe(5);
+  });
+});

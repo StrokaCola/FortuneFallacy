@@ -140,6 +140,14 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
     desc: 'Sell value of catalysts +50%.',
     flavor: 'A clean uninstall pays out.', rarity: 'common' },
+
+  // Phase 5e — lifecycle catalysts (need round-state counters or hooks).
+  { id: 'crescendo_run', name: 'Crescendo Run', icon: '↗', color: '#5be8a4',
+    desc: '×2 Mult after 3+ rolls in a round without locking a die.',
+    flavor: 'The pace builds. Don\'t hold back.', rarity: 'uncommon' },
+  { id: 'shard_lung', name: 'Shard Lung', icon: '⛁', color: '#f5c451',
+    desc: 'Round start: +shards equal to ante. Score: spend half shards for +Mult.',
+    flavor: 'Inhale. Exhale. The vault pays the breath.', rarity: 'uncommon' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

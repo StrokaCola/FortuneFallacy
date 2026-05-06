@@ -24,8 +24,10 @@ export const diceHandler: ActionHandler = (a, s) => {
       // are settled. This keeps lock-clicks predictable: face position drives
       // score order by default, drag overrides for the current state.
       const scoringOrder = lockedIdxs(dice);
+      // Crescendo Run: locking a die breaks the streak. Unlocking does not.
+      const rollsWithoutLock = newLocked ? 0 : (s.round.rollsWithoutLock ?? 0);
       return {
-        state: { ...s, round: { ...s.round, dice, scoringOrder } },
+        state: { ...s, round: { ...s.round, dice, scoringOrder, rollsWithoutLock } },
         events: [{ type: 'onLockToggled', payload: { dieIdx: a.dieIdx, locked: newLocked } }],
       };
     }

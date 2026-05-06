@@ -64,10 +64,15 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     locked: true,
   }));
   const scoringOrder = spec.map((_, i) => i);
+  // Shard Lung (catalyst): when this blind starts, the player gains shards
+  // equal to the current ante. Pure round-start grant; the score-time spend
+  // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
+  const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
   return {
     state: {
       ...s,
       ui: { ...s.ui, screen: 'round' },
+      run: { ...s.run, shards: s.run.shards + shardLungBonus },
       round: {
         ...initialRoundSlice(),
         active: true,

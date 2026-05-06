@@ -150,6 +150,26 @@ describe('bustBlind', () => {
   });
 });
 
+describe('startBlind — shard_lung round-start grant', () => {
+  it('grants +ante shards when shard_lung is owned', () => {
+    const s = makeState({ goalIdx: 3, ante: 2, shards: 0, catalysts: ['shard_lung'] });
+    const result = startBlind(s);
+    expect(result.state.run.shards).toBe(2);
+  });
+
+  it('does not grant when shard_lung is not owned', () => {
+    const s = makeState({ ante: 2, shards: 0, catalysts: [] });
+    const result = startBlind(s);
+    expect(result.state.run.shards).toBe(0);
+  });
+
+  it('grant scales with ante', () => {
+    const s = makeState({ ante: 4, shards: 5, catalysts: ['shard_lung'] });
+    const result = startBlind(s);
+    expect(result.state.run.shards).toBe(9); // 5 + 4
+  });
+});
+
 describe('skipBlind — silver_tongue catalyst', () => {
   it('grants 2 random consumables when silver_tongue is owned', () => {
     const s = makeState({ goalIdx: 0, catalysts: ['silver_tongue'], consumables: [] });

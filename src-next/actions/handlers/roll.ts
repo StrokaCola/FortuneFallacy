@@ -25,6 +25,9 @@ export const rollHandler: ActionHandler = (a, s) => {
           firstRollDone: true,
           handInProgress: true,
           scoringOrder: dice.flatMap((d, i) => (d.locked ? [i] : [])),
+          // Crescendo Run: every roll without a new lock pushes the counter
+          // up by one. Reset by TOGGLE_LOCK (when locking, see dice.ts).
+          rollsWithoutLock: (s.round.rollsWithoutLock ?? 0) + 1,
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);
@@ -56,7 +59,12 @@ export const rollHandler: ActionHandler = (a, s) => {
       return {
         state: {
           ...advanced,
-          round: { ...advanced.round, handInProgress: true, rerollsLeft: advanced.round.rerollsLeft - 1 },
+          round: {
+            ...advanced.round,
+            handInProgress: true,
+            rerollsLeft: advanced.round.rerollsLeft - 1,
+            rollsWithoutLock: (advanced.round.rollsWithoutLock ?? 0) + 1,
+          },
         },
         events,
       };

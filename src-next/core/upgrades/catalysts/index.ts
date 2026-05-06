@@ -37,6 +37,9 @@ import './lowChoir';
 import './harmonic';
 import './metronome';
 import './primeResonance';
+// Phase 5e (lifecycle catalysts that need state hooks)
+import './crescendoRun';
+import './shardLung';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -56,5 +59,8 @@ export const CATALYST_IDS = [
   // Phase 5d — non-pipeline catalysts (no register call; effects in
   // lifecycle hooks: silver_tongue → skipBlind, dust_off → SELL_UPGRADE).
   'silver_tongue', 'dust_off',
+  // Phase 5e — lifecycle catalysts: crescendo_run reads round.rollsWithoutLock,
+  // shard_lung needs both startBlind (round-start grant) and pipeline apply.
+  'crescendo_run', 'shard_lung',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

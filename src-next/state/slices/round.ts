@@ -31,6 +31,10 @@ export type RoundSlice = {
   // round; the catalyst skips itself thereafter. Resets on round start
   // because `initialRoundSlice()` is spread when a new blind begins.
   allBandUsedThisRound: boolean;
+  // Crescendo Run catalyst — counts rolls (ROLL_REQUESTED + REROLL_REQUESTED)
+  // since the last die was locked this round. Reset to 0 on lock; gates the
+  // ×2 mult bonus at >= 3.
+  rollsWithoutLock: number;
   scoringOrder: number[];
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
@@ -67,5 +71,6 @@ export const initialRoundSlice = (): RoundSlice => ({
   tithePrimedThisHand: 0,
   firstHandPlayed: false,
   allBandUsedThisRound: false,
+  rollsWithoutLock: 0,
   scoringOrder: [0, 1, 2, 3, 4],
 });
