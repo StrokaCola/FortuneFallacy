@@ -439,9 +439,22 @@ export class Dice3D {
     // ActionBar refs). When those vars change, the window doesn't fire
     // resize, so we need ResizeObserver to keep the drawing buffer and
     // ortho frustum in sync with the actual visible canvas rect.
+    //
+    // applyViewportSize() is wrapped in requestAnimationFrame so the
+    // callback returns before the next layout tick, otherwise the
+    // browser logs "ResizeObserver loop completed with undelivered
+    // notifications" — a benign warning we still want to silence.
     let canvasObserver: ResizeObserver | null = null;
+    let resizeRaf: number | null = null;
+    const scheduleResize = () => {
+      if (resizeRaf != null) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        this.applyViewportSize();
+      });
+    };
     if (typeof ResizeObserver !== 'undefined') {
-      canvasObserver = new ResizeObserver(() => this.applyViewportSize());
+      canvasObserver = new ResizeObserver(scheduleResize);
       canvasObserver.observe(this.canvas);
     }
 
@@ -449,7 +462,11 @@ export class Dice3D {
       // Tier 2: resize the renderer + recompute the orthographic frustum
       // whenever the stage dimensions change (rotate, address-bar, etc).
       onStageResize(() => this.applyViewportSize()),
-      () => { if (canvasObserver) { canvasObserver.disconnect(); canvasObserver = null; } },
+      () => {
+        if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+        resizeRaf = null;
+        if (canvasObserver) { canvasObserver.disconnect(); canvasObserver = null; }
+      },
       store.subscribe((s, prev) => {
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
