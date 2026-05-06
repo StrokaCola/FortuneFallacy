@@ -1,33 +1,41 @@
+// Tier 2 (responsive landscape HUD): the stage is no longer a fixed
+// 1280×800 logical box scaled by CSS transform — it IS the viewport,
+// minus safe-area insets. Layout flows with the actual window size.
+//
+// We keep STAGE_W/STAGE_H as nominal *design defaults* so callers that
+// care about a default aspect or fall back to a known size still have
+// something to import. Live size is read via getStageSize().
 export const STAGE_W = 1280;
 export const STAGE_H = 800;
 
 export type StageResizeListener = (info: { scale: number; w: number; h: number }) => void;
+export type Insets = { top: number; right: number; bottom: number; left: number };
 
+// Pure ratio. Useful for callers that want to derive a uniform scale
+// for a 1280×800 design at the current viewport (e.g. font-size
+// breakpoints). Layout no longer applies this scale to the root.
 export function computeScale(viewportW: number, viewportH: number): number {
   if (viewportW <= 0 || viewportH <= 0) return 1;
   return Math.min(viewportW / STAGE_W, viewportH / STAGE_H);
 }
 
+// Pass-through: client coords ARE stage coords now (the stage is the
+// viewport). The rect parameter is kept for API stability; only `left`
+// and `top` matter.
 export function mapClientToStage(
   clientX: number,
   clientY: number,
   rect: { left: number; top: number; width: number; height: number },
 ): { x: number; y: number } {
-  const sx = rect.width === 0 ? 1 : STAGE_W / rect.width;
-  const sy = rect.height === 0 ? 1 : STAGE_H / rect.height;
-  return {
-    x: (clientX - rect.left) * sx,
-    y: (clientY - rect.top) * sy,
-  };
+  return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
-let currentScale = 1;
+let currentW = 0;
+let currentH = 0;
 const listeners = new Set<StageResizeListener>();
 let installed = false;
 let rafPending = false;
 let safeProbe: HTMLDivElement | null = null;
-
-type Insets = { top: number; right: number; bottom: number; left: number };
 
 function readSafeAreaInsets(): Insets {
   if (typeof document === 'undefined') return { top: 0, right: 0, bottom: 0, left: 0 };
@@ -36,9 +44,6 @@ function readSafeAreaInsets(): Insets {
     d.setAttribute('aria-hidden', 'true');
     d.style.cssText = [
       'position:fixed', 'left:0', 'top:0', 'right:0', 'bottom:0',
-      // env() resolves to the viewport-relative safe-area inset on
-      // browsers that support it; on browsers that don't, the fallback
-      // 0px keeps everything working as before.
       'padding-top:env(safe-area-inset-top, 0px)',
       'padding-right:env(safe-area-inset-right, 0px)',
       'padding-bottom:env(safe-area-inset-bottom, 0px)',
@@ -57,23 +62,34 @@ function readSafeAreaInsets(): Insets {
   };
 }
 
+export function getSafeAreaInsets(): Insets {
+  return readSafeAreaInsets();
+}
+
+// Live viewport-minus-safe-area in CSS pixels. Layout, particle effects,
+// and orthographic camera bounds should read from this.
+export function getStageSize(): { w: number; h: number } {
+  if (typeof window === 'undefined') return { w: STAGE_W, h: STAGE_H };
+  const insets = readSafeAreaInsets();
+  const w = Math.max(1, window.innerWidth - insets.left - insets.right);
+  const h = Math.max(1, window.innerHeight - insets.top - insets.bottom);
+  return { w, h };
+}
+
 function recompute(): void {
   if (typeof window === 'undefined') return;
-  const insets = readSafeAreaInsets();
-  const safeW = Math.max(1, window.innerWidth - insets.left - insets.right);
-  const safeH = Math.max(1, window.innerHeight - insets.top - insets.bottom);
-  const next = computeScale(safeW, safeH);
-  // The stage centres on the viewport with translate(-50%, -50%). When the
-  // safe area is asymmetric (e.g. iPhone landscape with the notch on the
-  // left), shift the stage so it stays centred inside the safe area.
-  const shiftX = (insets.left - insets.right) / 2;
-  const shiftY = (insets.top - insets.bottom) / 2;
-  document.documentElement.style.setProperty('--inset-shift-x', `${shiftX}px`);
-  document.documentElement.style.setProperty('--inset-shift-y', `${shiftY}px`);
-  if (next === currentScale) return;
-  currentScale = next;
-  document.documentElement.style.setProperty('--stage-scale', String(next));
-  const info = { scale: next, w: STAGE_W * next, h: STAGE_H * next };
+  const { w, h } = getStageSize();
+  // CSS vars updated each tick so HUD code that wants a global "I'm in
+  // a small viewport" read can use them. --stage-scale is fixed at 1
+  // for back-compat with any leftover transforms; use --stage-w/h for
+  // sizing decisions.
+  document.documentElement.style.setProperty('--stage-w', `${w}px`);
+  document.documentElement.style.setProperty('--stage-h', `${h}px`);
+  document.documentElement.style.setProperty('--stage-scale', '1');
+  if (w === currentW && h === currentH) return;
+  currentW = w;
+  currentH = h;
+  const info = { scale: 1, w, h };
   for (const l of listeners) {
     try { l(info); } catch (e) { console.warn('[stage] listener threw', e); }
   }
@@ -103,12 +119,21 @@ export function installStage(): void {
   }
 }
 
+// Always 1 in tier 2 — the stage is the viewport, no inverse scaling.
+// Kept as a function (rather than a constant) so callers don't need to
+// change. Effects that currently divide by `stageScale()` simply become
+// no-ops, which is the correct behavior for viewport-anchored coords.
 export function stageScale(): number {
-  return currentScale;
+  return 1;
 }
 
 export function onStageResize(cb: StageResizeListener): () => void {
   listeners.add(cb);
+  // Fire once with the current size so subscribers don't have to
+  // separately query getStageSize() on mount.
+  if (currentW > 0 && currentH > 0) {
+    try { cb({ scale: 1, w: currentW, h: currentH }); } catch (e) { console.warn('[stage] listener threw', e); }
+  }
   return () => { listeners.delete(cb); };
 }
 

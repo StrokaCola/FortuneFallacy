@@ -35,11 +35,12 @@ export function Fail() {
       pointerEvents: 'auto',
       background: 'rgba(3,2,12,0.92)',
       animation: 'fadein 800ms ease-out both',
+      overflowY: 'auto', overflowX: 'hidden', padding: 16,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
         <div style={{
           fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 72, fontWeight: 900,
+          fontSize: 'clamp(40px, 10vw, 72px)', fontWeight: 900,
           color: '#ff4d6d', letterSpacing: '0.22em',
           textShadow: '0 0 36px #ff4d6d, 0 0 80px rgba(255,77,109,0.45)',
           opacity: 0,

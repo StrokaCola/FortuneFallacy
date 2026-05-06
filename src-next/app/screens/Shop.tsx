@@ -172,7 +172,7 @@ export function Shop() {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <TopBar
         ante={ante}
         blind="Bazaar"
@@ -510,7 +510,11 @@ function CollectionPanel({
   return (
     <div className="panel" style={{
       position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
-      width: 'min(1100px, calc(100vw - 60px))', maxHeight: 'min(220px, calc(100vh - 600px))',
+      width: 'min(1100px, calc(100vw - 60px))',
+      // Tier 2: was `min(220px, calc(100vh - 600px))` which collapses to
+      // 0 below 820px tall. Use clamp so it always shows at least 80px
+      // and grows up to 220 when there's room.
+      maxHeight: 'clamp(80px, calc(100vh - 540px), 220px)',
       padding: '12px 18px', zIndex: 4, overflowY: 'auto',
     }}>
       <div className="f-mono uc" style={{

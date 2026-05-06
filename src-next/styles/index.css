@@ -52,32 +52,27 @@ html, body {
 #bg-next { display: none; }
 
 #stage-root {
+  /* Tier 2: stage IS the viewport. Fixed 1280×800 + transform scale is
+     gone; layout flows. Safe-area insets are applied as padding so all
+     children (HUD overlays, dice canvas region) sit inside the visible
+     area on notched phones. */
   position: fixed;
-  left: 50%;
-  top: 50%;
-  width: 1280px;
-  height: 800px;
-  /* --inset-shift-x/-y are written by stage.ts so the stage centres
-     within the safe area, not the raw viewport. Keeps content out from
-     under the iOS notch and home indicator. */
-  transform: translate(
-    calc(-50% + var(--inset-shift-x, 0px)),
-    calc(-50% + var(--inset-shift-y, 0px))
-  ) scale(var(--stage-scale, 1));
-  transform-origin: center center;
+  inset: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
   overflow: hidden;
 }
 
 #three-next {
+  /* Legacy element kept in the DOM for back-compat; the actual dice are
+     rendered by sharedRenderer.ts into a single fixed-position canvas
+     that fills 100vw/100vh and uses scissor rects to draw each view's
+     bounding box. This element is invisible and harmless. */
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 1280px;
-  height: 800px;
-  /* Sits ABOVE the React HUD layer (#next-root z=2). The renderer is created
-     with `alpha: true` so unrendered pixels are transparent and the HUD shows
-     through. CosmosBackground inside #next-root paints an opaque gradient,
-     so putting the canvas underneath would hide the dice entirely. */
+  inset: 0;
   z-index: 3;
   pointer-events: none;
   display: none;
@@ -452,11 +447,8 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 .reduce-motion .score-star { display: none; }
 
 /* Screen-shake — applied to #stage-root by triggerShake() in app/visual/screenShake.ts.
-   #stage-root already has transform: translate(-50%,-50%) scale(var(--stage-scale));
-   we layer the shake on the OUTER --shake-x/--shake-y CSS vars so the existing
-   transform composition is preserved by the keyframes. @property registration
-   gives smooth interpolation; in older browsers the var snaps between keyframes
-   which is acceptable for a sub-half-second shake. */
+   In tier 2 the stage is no longer scaled, so the shake CSS just nudges
+   translate by --shake-x/--shake-y without composing with anything else. */
 @property --shake-x { syntax: '<length>'; initial-value: 0px; inherits: false; }
 @property --shake-y { syntax: '<length>'; initial-value: 0px; inherits: false; }
 @keyframes screenShake-tiny {
@@ -482,11 +474,11 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   65%      { --shake-x: 3px;  --shake-y: -2.5px; }
   80%      { --shake-x: -2px; --shake-y: 1.5px; }
 }
-#stage-root {
-  transform: translate(
-    calc(-50% + var(--shake-x, 0px) + var(--inset-shift-x, 0px)),
-    calc(-50% + var(--shake-y, 0px) + var(--inset-shift-y, 0px))
-  ) scale(var(--stage-scale, 1));
+#stage-root.shake-tiny,
+#stage-root.shake-mid,
+#stage-root.shake-big {
+  /* Translate-only shake; no scale composition needed in tier 2. */
+  transform: translate(var(--shake-x, 0px), var(--shake-y, 0px));
 }
 #stage-root.shake-tiny { animation: screenShake-tiny 180ms ease-out; }
 #stage-root.shake-mid  { animation: screenShake-mid  280ms ease-out; }

@@ -58,8 +58,14 @@ export function TopBar({
   const isCompactScore = scoreFmt.display !== scoreFmt.full;
   return (
     <div style={{
-      position: 'absolute', top: 18, left: 18, right: 18,
+      // Clamp the bar to a max content width so on wide screens the
+      // three panels don't drift to the far edges. `max(18px, ...)`
+      // keeps the 18px gutter on narrow phones.
+      position: 'absolute', top: 18,
+      left:  'max(18px, calc(50% - 700px))',
+      right: 'max(18px, calc(50% - 700px))',
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+      gap: 18, flexWrap: 'wrap',
       pointerEvents: 'none', zIndex: Z.hudTop,
     }}>
       <div className="panel has-tip" style={{ padding: '14px 18px', minWidth: 280, maxWidth: 360, pointerEvents: 'auto' }}>

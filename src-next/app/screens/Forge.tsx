@@ -62,7 +62,7 @@ export function Forge() {
   const selectedShape = diceSpec[selectedDie]?.shape ?? 'd6';
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <div className="mat-obsidian"
         style={{
           position: 'absolute', top: 18, left: 18,
@@ -92,13 +92,17 @@ export function Forge() {
         </div>
       </div>
 
-      {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory */}
+      {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
+          Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens. */}
       <div style={{
         position: 'absolute', left: '50%', top: 220, transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'flex-start', gap: 60,
+        display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
+        flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 'calc(100% - 40px)',
+        paddingBottom: 100,
       }}>
         {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 360 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
           {/* Selected die orbit */}
           <div className="panel" style={{ width: 360, height: 360, position: 'relative', display: 'grid', placeItems: 'center' }}>
             <svg width="320" height="320" viewBox="0 0 320 320" style={{ position: 'absolute' }}>
@@ -204,7 +208,7 @@ export function Forge() {
         </div>
 
         {/* Right column: mod inventory */}
-        <div style={{ width: 380, height: 440 }}>
+        <div style={{ width: 'min(380px, 100%)', height: 440 }}>
           <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between' }}>
               <span>◈ mod inventory</span>

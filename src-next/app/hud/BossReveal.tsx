@@ -67,7 +67,11 @@ export function BossReveal() {
         cursor: 'pointer',
       }}>
       <div style={{
-        width: 440, height: 600, position: 'relative',
+        // Cap to viewport so the reveal panel never overflows on
+        // landscape phones; preserves the original 440×600 on desktop.
+        width: 'min(440px, calc(100vw - 32px))',
+        height: 'min(600px, calc(100vh - 32px))',
+        position: 'relative',
         animation: 'float-y 4s ease-in-out infinite',
       }}>
         <div className="panel-strong" style={{

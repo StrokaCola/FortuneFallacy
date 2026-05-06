@@ -35,7 +35,7 @@ export function Title() {
   void score;
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden', padding: 16 }}>
       <div>
         <div className="f-mono uc" style={{
           fontSize: 11, color: '#7be3ff', letterSpacing: '0.6em', marginBottom: 24,
@@ -45,11 +45,11 @@ export function Title() {
         }}>
           ◇ the gambler's fallacy, weaponized ◇
         </div>
-        <div className="f-display" style={{ fontSize: 96, lineHeight: 1, color: '#f3f0ff',
+        <div className="f-display" style={{ fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: 1, color: '#f3f0ff',
           textShadow: '0 0 40px rgba(123,227,255,0.5), 0 0 80px rgba(149,119,255,0.4)' }}>
           Fortune
         </div>
-        <div className="f-display" style={{ fontSize: 96, lineHeight: 1, color: '#7be3ff',
+        <div className="f-display" style={{ fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: 1, color: '#7be3ff',
           textShadow: '0 0 40px rgba(123,227,255,0.6)', fontStyle: 'italic' }}>
           Fallacy
         </div>
