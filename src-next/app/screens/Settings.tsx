@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import * as audioSettings from '../../audio/audioSettings';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
+import { sfxPlay } from '../../audio/sfx';
+import { useFocusTrap } from '../hud/useFocusTrap';
 
 function useAudio(): { master: number; music: number; sfx: number } {
   const [v, setV] = useState({
@@ -34,27 +36,32 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
       <input
         type="range" min={0} max={1} step={0.01} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ accentColor: '#7be3ff', width: 320 }}
+        aria-label={`${label} volume`}
+        style={{ accentColor: '#7be3ff', width: '100%' }}
       />
     </label>
   );
 }
 
 function MotionToggle({ pref }: { pref: MotionPref }) {
-  const opts: { id: MotionPref; label: string }[] = [
-    { id: 'allow', label: 'Full' },
-    { id: 'os', label: 'System' },
-    { id: 'reduce', label: 'Reduced' },
+  const opts: { id: MotionPref; label: string; hint: string }[] = [
+    { id: 'allow', label: 'Full',    hint: 'Always animate' },
+    { id: 'os',    label: 'Match system', hint: 'Use OS Reduce Motion preference' },
+    { id: 'reduce', label: 'Reduced', hint: 'Minimise motion in-app' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>motion</span>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Motion preference">
         {opts.map((o) => {
           const active = pref === o.id;
           return (
             <button key={o.id}
-              className="btn btn-ghost mat-interactive"
+              type="button"
+              role="radio"
+              aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
               onClick={() => setMotionPref(o.id)}
               style={{
                 padding: '8px 14px', fontSize: 11,
@@ -74,16 +81,25 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
 export function Settings() {
   const audio = useAudio();
   const pref = useMotionPrefState();
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, true);
 
   return (
-    <div style={{
-      position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
-      pointerEvents: 'auto',
-      animation: 'fadein 400ms ease-out both',
-    }}>
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      style={{
+        position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+        pointerEvents: 'auto',
+        padding: 16,
+        animation: 'fadein 400ms ease-out both',
+      }}>
       <div className="panel-strong" style={{
-        width: 460, padding: 32, position: 'relative',
+        width: 'min(460px, 100%)', padding: 'clamp(20px, 3vw, 32px)', position: 'relative',
         display: 'flex', flexDirection: 'column', gap: 22,
+        maxHeight: 'calc(100% - 32px)', overflowY: 'auto',
       }}>
         <span className="flourish-corner tl" />
         <span className="flourish-corner tr" />
@@ -109,9 +125,24 @@ export function Settings() {
 
         <MotionToggle pref={pref} />
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 12, flexWrap: 'wrap' }}>
           <button
-            className="btn btn-primary mat-interactive"
+            type="button"
+            className="btn btn-ghost mat-interactive tap"
+            onClick={() => {
+              audioSettings.setMaster(1);
+              audioSettings.setMusic(1);
+              audioSettings.setSfx(1);
+              setMotionPref('os');
+              sfxPlay('uiClick');
+            }}
+            style={{ fontSize: 11, padding: '8px 14px' }}
+          >
+            Restore defaults
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary mat-interactive tap"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
           >
             ← Done

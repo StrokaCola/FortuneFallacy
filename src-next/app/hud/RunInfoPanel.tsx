@@ -76,6 +76,9 @@ export function RunInfoPanel() {
     <div style={{
       width: '100%', display: 'flex', flexDirection: 'column', gap: 14,
       maxHeight: 480, overflowY: 'auto', paddingRight: 4,
+      // Bottom fade-mask hints there's more content when the list scrolls.
+      maskImage: 'linear-gradient(to bottom, black calc(100% - 24px), transparent)',
+      WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 24px), transparent)',
     }}>
       {/* Header — constellation + ante + blind + economy */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

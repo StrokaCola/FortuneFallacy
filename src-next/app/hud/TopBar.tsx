@@ -4,6 +4,24 @@ import { lookupVoucher } from '../../data/vouchers';
 import { useStore, type GameState } from '../../state/store';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
+import { Z } from './zLayers';
+
+// Score panels overflow once you cross ~10⁷ at 38px font. Above that
+// switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
+// number in the tooltip. Below the threshold we keep the comma form so
+// the early game reads as a normal score.
+function formatScore(n: number): { display: string; full: string } {
+  const full = n.toLocaleString();
+  if (n < 10_000_000) return { display: full, full };
+  const fmt = (v: number, suffix: string) => {
+    const rounded = Math.round(v * 10) / 10;
+    return `${rounded}${suffix}`;
+  };
+  if (n < 1e9)  return { display: fmt(n / 1e6, 'M'),  full };
+  if (n < 1e12) return { display: fmt(n / 1e9, 'B'),  full };
+  if (n < 1e15) return { display: fmt(n / 1e12, 'T'), full };
+  return { display: fmt(n / 1e15, 'P'), full };
+}
 
 const selectStakeId = (s: GameState) => s.run.stakeId;
 const selectChallengeId = (s: GameState) => s.run.challengeId;
@@ -35,27 +53,37 @@ export function TopBar({
   // Hide the badge on Spark when no challenge is active — that's the
   // canonical run and the badge would just be noise.
   const showStakeBadge = stake.id !== 'spark' || !!challenge;
+  const scoreFmt = formatScore(score);
+  const targetFmt = target ? formatScore(target) : null;
+  const isCompactScore = scoreFmt.display !== scoreFmt.full;
   return (
     <div style={{
       position: 'absolute', top: 18, left: 18, right: 18,
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      pointerEvents: 'none', zIndex: 5,
+      pointerEvents: 'none', zIndex: Z.hudTop,
     }}>
-      <div className="panel has-tip" style={{ padding: '14px 18px', minWidth: 280, pointerEvents: 'auto' }}>
+      <div className="panel has-tip" style={{ padding: '14px 18px', minWidth: 280, maxWidth: 360, pointerEvents: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <Astrolabe size={92} score={score} target={target} accent={accent} />
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
-            <div className="f-display num" style={{ fontSize: 38, lineHeight: 1, color: '#f3f0ff', fontWeight: 700 }}>
-              {score.toLocaleString()}
+            <div
+              className="f-display num"
+              style={{ fontSize: 38, lineHeight: 1, color: '#f3f0ff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              aria-live="polite"
+              aria-atomic="true"
+              title={isCompactScore ? scoreFmt.full : undefined}
+            >
+              {scoreFmt.display}
             </div>
-            <div className="f-mono num" style={{ fontSize: 12, color: accent, marginTop: 2 }}>
-              / {target ? target.toLocaleString() : '—'}
+            <div className="f-mono num" style={{ fontSize: 12, color: accent, marginTop: 2, whiteSpace: 'nowrap' }}>
+              / {targetFmt ? targetFmt.display : '—'}
             </div>
           </div>
         </div>
         <span className="tip">
           <span className="tip-title">Score / Target</span>
+          {isCompactScore ? `${scoreFmt.full} / ${targetFmt?.full ?? '—'} — ` : ''}
           Reach the target to clear the trial. Score persists between hands until you bust or clear.
         </span>
       </div>

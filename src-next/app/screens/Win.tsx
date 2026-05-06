@@ -63,11 +63,20 @@ export function Win() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 14 }}>
-          <button
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
-            className="btn btn-primary mat-interactive">
-            ✦ New Run
-          </button>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
+              className="btn btn-primary mat-interactive tap">
+              ✦ New Run
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+              className="btn btn-ghost mat-interactive tap">
+              ← Title
+            </button>
+          </div>
           <PortalGate size={72} label="Travel" />
         </div>
       </div>

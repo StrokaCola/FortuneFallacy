@@ -1,9 +1,12 @@
+import { useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { selectPendingPack, selectUnlocks } from '../../state/selectors';
 import { lookupConsumable } from '../../core/consumables';
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { sfxPlay } from '../../audio/sfx';
+import { Z } from '../hud/zLayers';
+import { useFocusTrap } from '../hud/useFocusTrap';
 
 const accent = '#cc88ff';
 
@@ -32,6 +35,20 @@ export function PackOverlay() {
   // taken when the pack was cracked).
   const unlocks = useStore(selectUnlocks);
   void unlocks;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const isOpen = !!pack;
+
+  useFocusTrap(dialogRef, isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dispatch({ type: 'SKIP_PACK' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
   if (!pack) return null;
 
   const def = lookupPack(pack.kind);
@@ -42,11 +59,16 @@ export function PackOverlay() {
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title} pack — pick ${pack.picksLeft} ${pack.picksLeft === 1 ? itemNoun : itemNounPlural}`}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: Z.overlay,
         background: 'rgba(8, 5, 20, 0.85)',
         backdropFilter: 'blur(6px)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '32px 16px',
         pointerEvents: 'auto',
       }}
     >
@@ -100,7 +122,8 @@ export function PackOverlay() {
                 sfxPlay('cardFlip');
                 dispatch({ type: 'PICK_FROM_PACK', galaxyIdx: i });
               }}
-              className="panel-strong"
+              className="panel-strong tap"
+              aria-label={`${name} — ${comboLabel}`}
               style={{
                 width: 200, height: 280, padding: 16,
                 border: `1px solid ${accent}66`,
@@ -130,7 +153,12 @@ export function PackOverlay() {
               <div style={{
                 fontFamily: '"Exo 2", sans-serif',
                 fontSize: 11, color: '#bba8ff', marginTop: 8, textAlign: 'center', lineHeight: 1.4,
-              }}>
+                width: '100%',
+                display: '-webkit-box',
+                WebkitLineClamp: 4,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }} title={desc}>
                 {desc}
               </div>
               {discovered && bonus && def?.comboId !== 'all' && (
@@ -149,7 +177,7 @@ export function PackOverlay() {
       </div>
 
       <button
-        className="btn mat-interactive"
+        className="btn btn-ghost mat-interactive tap"
         onClick={() => dispatch({ type: 'SKIP_PACK' })}
         style={{ marginTop: 32 }}
       >

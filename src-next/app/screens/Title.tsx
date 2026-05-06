@@ -1,10 +1,14 @@
 import { dispatch } from '../../actions/dispatch';
 import { PortalGate } from '../portal/PortalGate';
-import { useStore } from '../../state/store';
+import { useStore, store } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
 
-const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0;
+// Match PauseMenu's notion of "run in progress" — also count an active
+// round (mid-hand) so a fresh-launch with `score === 0 && goalIdx === 0`
+// but a hand already in flight still surfaces "Continue Run".
+const selectHasRun = (s: GameState) =>
+  s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0 || s.round.active;
 // Each selector returns a primitive so useSyncExternalStore's Object.is
 // comparison stays stable across renders. Returning an object literal here
 // would create a fresh reference on every snapshot read and tear-loop.
@@ -82,17 +86,31 @@ export function Title() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 36, alignItems: 'center' }}>
           <button
-            className="btn btn-primary mat-interactive"
+            className="btn btn-primary mat-interactive tap"
             style={{ width: 240 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'nameentry' })}>
+            onClick={() => {
+              if (hasRun) {
+                const ok = window.confirm(
+                  'A run is in progress. Starting a new ascension will overwrite it. Continue?',
+                );
+                if (!ok) return;
+              }
+              dispatch({ type: 'SET_SCREEN', screen: 'nameentry' });
+            }}>
             Begin Ascension
           </button>
           {hasRun && (
             <>
               <button
-                className="btn btn-ghost"
+                className="btn btn-ghost tap"
                 style={{ width: 240 }}
-                onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
+                onClick={() => {
+                  // If we paused mid-round and bailed to title, resume the
+                  // game state back to playing. Toggle pause off via the
+                  // store so the round resumes naturally on hub-screen.
+                  if (store.getState().ui.paused) dispatch({ type: 'TOGGLE_PAUSE' });
+                  dispatch({ type: 'SET_SCREEN', screen: 'hub' });
+                }}>
                 Continue Run
               </button>
               <div className="f-mono uc" style={{
@@ -111,25 +129,25 @@ export function Title() {
             </div>
           )}
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost tap"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'codex' })}>
             Codex
           </button>
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost tap"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
             Challenges
           </button>
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost tap"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
             Records
           </button>
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost tap"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })}>
             Settings

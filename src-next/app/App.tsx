@@ -65,6 +65,12 @@ export function App() {
       const cur = store.getState().ui.screen;
       if (cur === 'round' || cur === 'hub' || cur === 'shop' || cur === 'forge') {
         dispatch({ type: 'TOGGLE_PAUSE' });
+        return;
+      }
+      // Meta screens — Escape returns to Title. Title itself ignores Escape
+      // because there is no parent screen.
+      if (cur === 'codex' || cur === 'challenges' || cur === 'scores' || cur === 'settings') {
+        dispatch({ type: 'SET_SCREEN', screen: 'title' });
       }
     };
     window.addEventListener('keydown', onKey);

@@ -224,14 +224,17 @@ export function Shop() {
           // and skips this layer to avoid double-glow.
           const ringStrength: Record<Rarity, number> = { common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0 };
           const ringIntensity = m.rarity ? ringStrength[m.rarity] : 0;
+          // Key includes the full offer set so a reroll forces React to
+          // remount each card and the spawn animation re-fires. Without
+          // this, cards just swap content and feel static after a reroll.
+          const offerVersion = offers.map((x) => x.id).join('|');
           return (
             <div
-              key={`${o.id}-${i}`}
+              key={`${offerVersion}-${i}`}
               className="card-wobble"
               style={{
                 position: 'relative',
-                animationDelay: `${i * 280}ms`,
-                animationDuration: `${3.2 + (i % 3) * 0.4}s`,
+                animation: `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both, card-wobble 3.4s ease-in-out ${i * 70 + 320}ms infinite`,
               }}
             >
               {ringIntensity > 0 && (

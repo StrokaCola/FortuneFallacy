@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { store, type GameState } from '../../state/store';
+import { Z } from './zLayers';
 
 // Floating "+N ◇" toast triggered by any shard-gain during a round (mod
 // shardsBonus, refinery, stipend, etc.). Watches the store so we don't have
@@ -51,9 +52,12 @@ export function ShardGainToast() {
       {toasts.map((t, i) => (
         <div key={t.id} style={{
           position: 'absolute',
-          // Stack vertically near the treasury counter on the TopBar (right side).
-          top: 32 + i * 20, right: 110,
-          zIndex: 12, pointerEvents: 'none',
+          // Anchor to the LEFT of the TopBar treasury panel (right:18,
+          // minWidth:200 → panel reaches right ~218). 232 puts the toast
+          // just outside that panel so it never covers the shard count
+          // it's celebrating. Stack vertically with a small step.
+          top: 32 + i * 20, right: 240,
+          zIndex: Z.toast, pointerEvents: 'none',
           fontFamily: '"JetBrains Mono", monospace',
           fontSize: 16, fontWeight: 700,
           color: '#f5c451',

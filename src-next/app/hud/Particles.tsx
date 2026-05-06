@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { STAGE_W, STAGE_H } from '../../render/stage';
+import { Z } from './zLayers';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
@@ -52,7 +53,7 @@ export function Particles() {
   }, []);
 
   return (
-    <div ref={targetRef} className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 10 }}>
+    <div ref={targetRef} className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: Z.fx }}>
       {bursts.map((b) => (
         <Ring key={b.id} x={b.x} y={b.y} color={b.color} tier={b.tier} />
       ))}

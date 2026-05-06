@@ -34,7 +34,9 @@ export function ConstellationSelect() {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 220 : 260}px, 1fr))`,
+          // Use min(target, 100%) so a single card on a 320px viewport
+          // collapses to viewport width instead of overflowing.
+          gridTemplateColumns: `repeat(auto-fit, minmax(min(${compact ? 220 : 260}px, 100%), 1fr))`,
           gap: compact ? 10 : 14,
           marginBottom: compact ? 16 : 28,
         }}>

@@ -17,6 +17,18 @@ export function Fail() {
 
   useEffect(() => { triggerShake('big'); }, []);
 
+  // Allow Enter/Space to retry without waiting for the button to fade in.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div style={{
       position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
@@ -65,15 +77,28 @@ export function Fail() {
           </div>
         </div>
 
+        {/* Render the action row on a faster timeline (550ms vs the
+            old 2100ms+) and never disable it — keyboard Enter/Space and
+            tap both work immediately even before the fade completes. */}
         <div style={{
           marginTop: 18,
-          opacity: 0,
-          animation: 'fadein 800ms ease-out 2100ms both',
+          display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+          animation: 'fadein 600ms ease-out 550ms both',
         }}>
           <button
+            type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
-            className="btn btn-primary mat-interactive">
+            className="btn btn-primary mat-interactive tap"
+            data-autofocus
+          >
             ↻ Try Again
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+            className="btn btn-ghost mat-interactive tap"
+          >
+            ← Title
           </button>
         </div>
       </div>

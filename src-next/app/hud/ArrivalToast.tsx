@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Z } from './zLayers';
 
 export function ArrivalToast() {
   const [shown, setShown] = useState(false);
@@ -22,7 +23,7 @@ export function ArrivalToast() {
       className="mat-crystal"
       style={{
         position: 'absolute', top: 18, right: '50%', transform: 'translate(50%, 0)',
-        padding: '8px 16px', borderRadius: 10, zIndex: 40,
+        padding: '8px 16px', borderRadius: 10, zIndex: Z.bannerArrival,
         cursor: 'pointer', pointerEvents: 'auto',
         animation: 'fadein 400ms ease-out',
       }}>

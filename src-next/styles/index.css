@@ -17,6 +17,22 @@
   --savored-long: 900ms;
   --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-savor: cubic-bezier(0.25, 0.46, 0.2, 1.0);
+
+  /* Semantic z-index tokens. Anything that previously used a magic
+     number should pull from this palette so layering stays predictable
+     when new overlays land. */
+  --z-canvas: 3;
+  --z-hud: 4;
+  --z-hud-top: 5;
+  --z-hud-control: 6;
+  --z-fx: 10;
+  --z-toast: 12;
+  --z-banner-boss: 30;
+  --z-banner-arrival: 40;
+  --z-modal: 50;
+  --z-modal-strong: 60;
+  --z-overlay: 100;
+  --z-orientation: 200;
 }
 
 html, body {
@@ -41,7 +57,13 @@ html, body {
   top: 50%;
   width: 1280px;
   height: 800px;
-  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  /* --inset-shift-x/-y are written by stage.ts so the stage centres
+     within the safe area, not the raw viewport. Keeps content out from
+     under the iOS notch and home indicator. */
+  transform: translate(
+    calc(-50% + var(--inset-shift-x, 0px)),
+    calc(-50% + var(--inset-shift-y, 0px))
+  ) scale(var(--stage-scale, 1));
   transform-origin: center center;
   overflow: hidden;
 }
@@ -87,7 +109,33 @@ html, body {
 .btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms; user-select: none; }
 @media (hover: hover) { .btn:hover { filter: brightness(1.1); } }
 .btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
-.tap { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+
+/* Visible focus ring on every keyboard-focusable element. Only fires
+   for keyboard navigation (`:focus-visible`), so mouse/touch users keep
+   the existing clean look. We use a 2-stop ring so it reads on both
+   dark and light surfaces. */
+:focus { outline: none; }
+:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(7,5,26,0.85),
+    0 0 0 4px rgba(123,227,255,0.85);
+  border-radius: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(7,5,26,0.85),
+    0 0 0 4px rgba(123,227,255,0.85);
+}
+.tap { min-height: 44px; min-width: 44px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(123,227,255,0.18); }
+.tap:active { transform: scale(0.96); transition: transform 60ms ease-out; }
+.reduce-motion .tap:active { transform: none; }
 .btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a; padding: 14px 28px; border-radius: 10px; font-size: 18px; box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
 .btn-ghost   { background: rgba(28,18,69,.6); color: #f3f0ff; padding: 12px 22px; border-radius: 10px; font-size: 14px; box-shadow: 0 0 0 1px rgba(149,119,255,.3); backdrop-filter: blur(8px); }
 
@@ -126,6 +174,14 @@ html, body {
   display: block; margin-top: 6px; font-style: italic; color: #bba8ff; font-size: 10px;
 }
 @media (hover: hover) { .has-tip:hover .tip { opacity: 1; } }
+/* Touch parity: tooltip appears while the trigger is held (and on
+   keyboard focus). Quick taps don't linger long enough to read the
+   tooltip — that's intentional, the player wanted to actually use the
+   thing, not study it. To inspect, press and hold. */
+@media (hover: none) {
+  .has-tip:active .tip,
+  .has-tip:focus-within .tip { opacity: 1; }
+}
 
 /* Sell button: hover-revealed badge on HUD upgrade tiles. The parent must
    carry .has-sell so we don't reveal sell affordances on every has-tip node. */
@@ -134,9 +190,21 @@ html, body {
   font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em;
   text-transform: uppercase; color: #f5c451;
   background: rgba(15,9,37,0.95); border: 1px solid rgba(245,196,81,0.6);
-  border-radius: 4px; padding: 2px 6px; cursor: pointer;
+  border-radius: 4px; padding: 4px 8px; cursor: pointer;
+  /* Min dimensions ensure the touch target meets WCAG 2.5.5 even though
+     the visual chip looks small. The chip itself is ~22px; the rest is
+     transparent breathing room. */
+  min-width: 28px; min-height: 22px; touch-action: manipulation;
   opacity: 0; transition: opacity 120ms, transform 120ms;
-  transform: translateY(-2px); z-index: 6;
+  transform: translateY(-2px); z-index: var(--z-hud-control);
+}
+/* Touch devices don't rely on hover, so give the badge an invisible
+   hit-area extension via padding-box that meets the 44px target. */
+@media (hover: none) {
+  .has-sell .sell-btn {
+    padding: 10px 12px;
+    margin: -8px -8px 0 0;
+  }
 }
 .has-sell .sell-btn:hover { background: rgba(245,196,81,0.18); }
 .has-sell .sell-btn:disabled {
@@ -275,6 +343,9 @@ html, body {
 .mat-interactive { transition: transform var(--snap) var(--ease-snap), box-shadow var(--snap) var(--ease-snap); }
 @media (hover: hover) { .mat-interactive:hover { transform: translateY(-1px); } }
 
+/* Forge orbit ring — gated on motion preference like the rest of the app. */
+html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
+
 /* Forge mod row hover (desktop only — touch uses tap) */
 @media (hover: hover) {
   .forge-mod-row:hover {
@@ -282,10 +353,21 @@ html, body {
     border-color: var(--mod-c, #7be3ff) !important;
   }
 }
+/* Touch parity: same visual on press so the player can see which row
+   they're about to attach. */
+@media (hover: none) {
+  .forge-mod-row:active {
+    background: color-mix(in srgb, var(--mod-c, #7be3ff) 12%, rgba(15,9,37,0.5)) !important;
+    border-color: var(--mod-c, #7be3ff) !important;
+  }
+}
 
 /* Portal gate hover (desktop only — gentle filter, doesn't fight inline transform) */
 @media (hover: hover) {
   .portal-gate:hover { filter: brightness(1.15) drop-shadow(0 0 12px rgba(123,227,255,0.5)); }
+}
+@media (hover: none) {
+  .portal-gate:active { filter: brightness(1.15) drop-shadow(0 0 12px rgba(123,227,255,0.5)); }
 }
 
 @keyframes chipPop {
@@ -401,7 +483,10 @@ html, body {
   80%      { --shake-x: -2px; --shake-y: 1.5px; }
 }
 #stage-root {
-  transform: translate(calc(-50% + var(--shake-x, 0px)), calc(-50% + var(--shake-y, 0px))) scale(var(--stage-scale, 1));
+  transform: translate(
+    calc(-50% + var(--shake-x, 0px) + var(--inset-shift-x, 0px)),
+    calc(-50% + var(--shake-y, 0px) + var(--inset-shift-y, 0px))
+  ) scale(var(--stage-scale, 1));
 }
 #stage-root.shake-tiny { animation: screenShake-tiny 180ms ease-out; }
 #stage-root.shake-mid  { animation: screenShake-mid  280ms ease-out; }
