@@ -5,10 +5,11 @@ import type { GameEventEmission } from '../../events/types';
 // the global CONSUMABLES list below.
 import { GALAXIES } from './galaxies';
 import { SPECTRALS } from './spectrals';
+import { MANEUVERS } from './maneuvers';
 
 export type ConsumableDef = {
   id: string;
-  type: 'calibration' | 'resource' | 'galaxy' | 'spectral';
+  type: 'calibration' | 'resource' | 'galaxy' | 'spectral' | 'maneuver';
   name: string;
   icon: string;
   description: string;
@@ -103,6 +104,7 @@ export const CONSUMABLES: ConsumableDef[] = [
   },
   ...GALAXIES,
   ...SPECTRALS,
+  ...MANEUVERS,
 ];
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {

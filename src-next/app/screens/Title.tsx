@@ -105,8 +105,20 @@ export function Title() {
           <button
             className="btn btn-ghost"
             style={{ width: 200 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'codex' })}>
             Codex
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ width: 200 }}
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
+            Challenges
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ width: 200 }}
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
+            Records
           </button>
           <button
             className="btn btn-ghost"

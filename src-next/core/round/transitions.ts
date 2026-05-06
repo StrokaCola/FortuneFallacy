@@ -5,6 +5,8 @@ import { initialRoundSlice } from '../../state/slices/round';
 import { blindClearShardBonus, extraHandsPerRound, maxConsumableSlots } from '../vouchers';
 import { lookupMod } from '../mods';
 import { getDiceSpec } from '../run/diceContext';
+import { stakeContext, rerollsPerHand } from '../run/stakeContext';
+import { stakeIndex } from '../../data/stakes';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
 
@@ -48,13 +50,14 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   const ante = s.run.ante;
   const blindIndex = s.run.goalIdx % 3;
   const def = BLIND_DEFS[blindIndex]!;
-  const target = targetForBlind(ante, blindIndex);
+  const ctx = stakeContext(s);
+  const target = Math.ceil(targetForBlind(ante, blindIndex) * ctx.targetMult);
   const isBoss = def.isBoss;
   const blindId = isBoss
     ? BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id
     : def.name.toLowerCase().replace(/\s+/g, '_');
   const baseHandsMax = 3;
-  const handsMax = baseHandsMax + extraHandsPerRound(s);
+  const handsMax = Math.max(1, baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta);
   // Build the dice array sized to whatever the active constellation declares.
   // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
   const spec = getDiceSpec(s);
@@ -82,6 +85,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         target,
         handsMax,
         handsLeft: handsMax,
+        rerollsLeft: rerollsPerHand(s),
         dice,
         scoringOrder,
       },
@@ -115,6 +119,13 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   const nextAnte = Math.floor(nextGoal / 3) + 1;
   const won = nextGoal >= 12;
   const highScores = won ? pushHighScore(s, s.round.score) : s.meta.highScores;
+  // On a successful run, record the cleared stake for this constellation
+  // so the next stake unlocks. Tied per-constellation so stake progress on
+  // Lyra doesn't unlock Mensa's harder rungs.
+  const stakeProgress = won ? upgradeStakeProgress(s) : s.meta.stakeProgress;
+  const challengeWins = won && s.run.challengeId
+    ? Array.from(new Set([...s.meta.challengeWins, s.run.challengeId]))
+    : s.meta.challengeWins;
   const events: GameEventEmission[] = [
     {
       type: 'onBlindCleared',
@@ -155,11 +166,24 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
       shop: { ...s.shop, offers: [] },
-      ui: { ...s.ui, screen: won ? 'win' : 'shop' },
-      meta: won ? { ...s.meta, highScores } : s.meta,
+      // Challenge overlays can disable the bazaar entirely; skip straight to hub.
+      ui: { ...s.ui, screen: won ? 'win' : (stakeContext(s).shopDisabled ? 'hub' : 'shop') },
+      meta: won ? { ...s.meta, highScores, stakeProgress, challengeWins } : s.meta,
     },
     events,
   };
+}
+
+// Bump the high-water-mark stake for the constellation that just won. Skipped
+// when the player was already on the highest stake. Pure helper.
+function upgradeStakeProgress(s: GameState): GameState['meta']['stakeProgress'] {
+  const cur = s.meta.stakeProgress[s.run.constellationId];
+  const ranOn = s.run.stakeId;
+  // Only upgrade if the just-cleared stake is at or above the current record.
+  // (Saved progress holds the highest CLEARED stake id; the next stake to play
+  // is one rung above. ConstellationSelect filters by progress.)
+  if (cur && stakeIndex(cur) >= stakeIndex(ranOn)) return s.meta.stakeProgress;
+  return { ...s.meta.stakeProgress, [s.run.constellationId]: ranOn };
 }
 
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {

@@ -103,14 +103,17 @@ function offerMeta(kind: string, id: string): Meta {
   }
   if (kind === 'pack') {
     const p = lookupPack(id);
-    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : '✦';
+    const isManeuver = id === 'maneuver';
+    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : isManeuver ? '⤴' : '✦';
     return {
       name: p?.name ?? id,
       icon: tier,
-      color: '#cc88ff',
-      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Galaxy booster pack.',
+      color: isManeuver ? '#7be3ff' : '#cc88ff',
+      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Booster pack.',
       kindLabel: 'booster',
-      flavor: 'Levels up the hand types you choose.',
+      flavor: isManeuver
+        ? 'Tactical maneuvers — shape the next hand.'
+        : 'Levels up the hand types you choose.',
     };
   }
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };

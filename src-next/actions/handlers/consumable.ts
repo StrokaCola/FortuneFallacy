@@ -2,6 +2,7 @@ import type { ActionHandler } from './types';
 import { lookupConsumable } from '../../core/consumables';
 import { maxConsumableSlots } from '../../core/vouchers';
 import { hasDebuff } from '../../core/round/debuffs';
+import { stakeContext } from '../../core/run/stakeContext';
 
 export const consumableHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -27,8 +28,11 @@ export const consumableHandler: ActionHandler = (a, s) => {
       const def = lookupConsumable(id);
       if (!def) return { state: s, events: [] };
       if (def.requiresTarget && (!a.targets || a.targets.length === 0)) return { state: s, events: [] };
-      // Charon (boss): trinkets sealed in stasis until the trial ends.
-      if (hasDebuff(s, 'consumables_locked')) return { state: s, events: [] };
+      // Charon (boss) or active challenge with consumables_locked overlay:
+      // trinkets sealed in stasis. Both gates resolve to the same no-op.
+      if (hasDebuff(s, 'consumables_locked') || stakeContext(s).consumablesLocked) {
+        return { state: s, events: [] };
+      }
       const result = def.apply(s, a.targets ?? []);
       const consumables = result.state.run.consumables.filter((_, i) => i !== a.index);
       return {

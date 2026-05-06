@@ -34,9 +34,23 @@ export function applySavedToInitial(s: GameState): GameState {
   // every constellation locked after upgrading.
   const savedUnlocks = saved.meta?.unlocks ?? [];
   mergedMeta.unlocks = Array.from(new Set([...SEEDED_UNLOCKS, ...savedUnlocks]));
+  // Defensive defaults for fields added after a player's first save.
+  mergedMeta.stakeProgress = mergedMeta.stakeProgress ?? {};
+  mergedMeta.challengeWins = mergedMeta.challengeWins ?? [];
+  const savedDisc = mergedMeta.discovered ?? {};
+  mergedMeta.discovered = {
+    catalysts: savedDisc.catalysts ?? [],
+    mods: savedDisc.mods ?? [],
+    vouchers: savedDisc.vouchers ?? [],
+    bosses: savedDisc.bosses ?? [],
+    consumables: savedDisc.consumables ?? [],
+  };
+  const mergedRun = { ...s.run, ...saved.run };
+  mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
+  mergedRun.challengeId = mergedRun.challengeId ?? '';
   return {
     ...s,
-    run:   { ...s.run,   ...saved.run   },
+    run:   mergedRun,
     meta:  mergedMeta,
     round: saved.round?.active ? { ...s.round, ...saved.round, handInProgress: false } : s.round,
     ui:    { ...s.ui, screen: saved.ui?.screen ?? s.ui.screen },

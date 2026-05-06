@@ -18,10 +18,16 @@ export const roundHandler: ActionHandler = (a, s) => {
       return skipBlind(s);
     case 'NEW_RUN': {
       const constellation = lookupConstellation(a.constellationId);
+      const baseRun = applyConstellation(initialRunSlice(), constellation);
+      const run = {
+        ...baseRun,
+        stakeId: a.stakeId ?? 'spark',
+        challengeId: a.challengeId ?? '',
+      };
       return {
         state: {
           ...s,
-          run: applyConstellation(initialRunSlice(), constellation),
+          run,
           round: initialRoundSlice(),
           shop: initialShopSlice(),
           ui: { ...s.ui, screen: 'hub' },

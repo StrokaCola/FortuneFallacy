@@ -1,6 +1,12 @@
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
+import { useStore, type GameState } from '../../state/store';
+import { lookupStake } from '../../data/stakes';
+import { lookupChallenge } from '../../data/challenges';
+
+const selectStakeId = (s: GameState) => s.run.stakeId;
+const selectChallengeId = (s: GameState) => s.run.challengeId;
 
 export function TopBar({
   ante = 1,
@@ -22,6 +28,13 @@ export function TopBar({
   vouchers?: string[];
   accent?: string;
 }) {
+  const stakeId = useStore(selectStakeId);
+  const challengeId = useStore(selectChallengeId);
+  const stake = lookupStake(stakeId);
+  const challenge = challengeId ? lookupChallenge(challengeId) : null;
+  // Hide the badge on Spark when no challenge is active — that's the
+  // canonical run and the badge would just be noise.
+  const showStakeBadge = stake.id !== 'spark' || !!challenge;
   return (
     <div style={{
       position: 'absolute', top: 18, left: 18, right: 18,
@@ -55,6 +68,23 @@ export function TopBar({
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
           hands {hands} · rerolls {rerolls}
         </div>
+        {showStakeBadge && (
+          <div className="has-tip" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            marginTop: 6, padding: '2px 8px', borderRadius: 4,
+            background: `${stake.color}22`, border: `1px solid ${stake.color}88`,
+            cursor: 'help', position: 'relative',
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: stake.color, boxShadow: `0 0 6px ${stake.color}` }} />
+            <span className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.22em', color: stake.color }}>
+              {stake.name.toLowerCase()}{challenge ? ` · ${challenge.name.toLowerCase()}` : ''}
+            </span>
+            <span className="tip">
+              <span className="tip-title">{stake.name} stake{challenge ? ` · ${challenge.name}` : ''}</span>
+              {stake.rules.join(' · ')}{challenge ? ` · ${challenge.rules.join(' · ')}` : ''}
+            </span>
+          </div>
+        )}
         <span className="tip">
           <span className="tip-title">{blind} · Ante {ante}</span>
           Hands left: how many full scoring hands you have this trial. Rerolls left: how many times you can re-roll the unlocked dice this hand.

@@ -6,6 +6,7 @@ import { startSimRunner } from './simulation/runSimulation';
 import { dispatch } from './actions/dispatch';
 import { store, setStateRaw } from './state/store';
 import { applySavedToInitial, startPersistence } from './state/persistence';
+import { startDiscoveryBridge } from './state/discoveryBridge';
 import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from './audio/audioBridge';
 import { sfxInit } from './audio/sfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
@@ -46,6 +47,7 @@ if (portal?.fromPortal) {
 
 startSimRunner();
 startAudioBridge();
+startDiscoveryBridge();
 startPersistence();
 installButtonJuice();
 startLeaderboard();

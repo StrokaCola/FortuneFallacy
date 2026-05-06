@@ -2,6 +2,7 @@ import type { GameState } from '../../state/store';
 import { VOUCHERS } from '../../data/vouchers';
 import { hasDebuff } from '../round/debuffs';
 import { getCatalystSlotBonus } from '../run/diceContext';
+import { stakeContext } from '../run/stakeContext';
 
 export function ownsVoucher(s: GameState, id: string): boolean {
   return s.run.vouchers.includes(id);
@@ -9,7 +10,9 @@ export function ownsVoucher(s: GameState, id: string): boolean {
 
 export function maxCatalystSlots(s: GameState): number {
   const base = ownsVoucher(s, 'bench') ? 7 : 6;
-  return base + getCatalystSlotBonus(s);
+  const computed = base + getCatalystSlotBonus(s);
+  const cap = stakeContext(s).catalystCap;
+  return cap > 0 ? Math.min(cap, computed) : computed;
 }
 
 export function maxModSlots(s: GameState): number {
