@@ -1,17 +1,24 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('./sfx', () => ({
   sfxPlay: vi.fn(),
 }));
 
+vi.mock('./AudioEngine', () => ({
+  audioEngine: { duck: vi.fn() },
+}));
+
 import { installScoringRouter } from './scoring';
 import { bus } from '../events/bus';
 import { sfxPlay } from './sfx';
+import { audioEngine } from './AudioEngine';
 
 const mockSfxPlay = sfxPlay as ReturnType<typeof vi.fn>;
+const mockDuck = audioEngine.duck as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   mockSfxPlay.mockClear();
+  mockDuck.mockClear();
 });
 
 describe('installScoringRouter', () => {
@@ -83,11 +90,27 @@ describe('installScoringRouter', () => {
     expect(mockSfxPlay).toHaveBeenCalledWith('notEnough');
   });
 
-  it('hold-breath beat does not call sfxPlay', () => {
+  it('bail beat ducks the music to silence', () => {
+    const unsub = installScoringRouter();
+    bus.emit('onScoreBeat', { beat: { kind: 'bail', t: 0, runningTotal: 50, target: 300 } });
+    unsub();
+    expect(mockDuck).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }));
+  });
+
+  it('hold-breath beat does not call sfxPlay (no SFX, only ducks the music)', () => {
     const unsub = installScoringRouter();
     bus.emit('onScoreBeat', { beat: { kind: 'hold-breath', t: 0, durMs: 400 } });
     unsub();
     expect(mockSfxPlay).not.toHaveBeenCalled();
+  });
+
+  it('hold-breath beat ducks the music to ~30% over the breath duration', () => {
+    const unsub = installScoringRouter();
+    bus.emit('onScoreBeat', { beat: { kind: 'hold-breath', t: 0, durMs: 400 } });
+    unsub();
+    expect(mockDuck).toHaveBeenCalledWith(
+      expect.objectContaining({ depth: 0.30, attackMs: 340 }),
+    );
   });
 
   it('unsubscribing stops routing', () => {
