@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Fortune Fallacy — Juice Pass</title>
+<link rel="stylesheet" href="styles/ff-juice.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: #050315; color: #f3f0ff; font-family: 'Exo 2', sans-serif; }
+  #root { min-height: 100vh; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="components/Die3D.jsx"></script>
+<script type="text/babel" src="components/RoundScreen.jsx"></script>
+<script type="text/babel" src="components/HubScreen.jsx"></script>
+<script type="text/babel" src="components/ShopScreen.jsx"></script>
+<script type="text/babel" src="components/TransitionsStrip.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState } = React;
+
+function Intro() {
+  return (
+    <div style={{
+      maxWidth: 920, margin: '40px auto 8px', padding: '32px 36px',
+      borderRadius: 16,
+      background: 'linear-gradient(180deg, rgba(46,29,107,.55), rgba(15,9,37,.85))',
+      border: '1px solid rgba(149,119,255,.32)',
+      color: '#f3f0ff',
+    }}>
+      <div className="f-mono uc" style={{ fontSize: 11, letterSpacing: '0.32em', color: '#7be3ff' }}>
+        ◇ design proposal
+      </div>
+      <h1 className="f-display" style={{
+        fontSize: 38, margin: '8px 0 14px', color: '#f3f0ff',
+        textShadow: '0 0 32px rgba(123,227,255,0.4)',
+      }}>
+        Fortune Fallacy — Juice & Choreography Pass
+      </h1>
+      <p className="f-body" style={{ color: '#dcd4ff', lineHeight: 1.6, fontSize: 14, margin: '0 0 14px' }}>
+        Three of your core screens, redesigned around <strong>tactile feedback</strong>, <strong>choreographed score moments</strong>, and <strong>cinematic transitions</strong> — without losing the cosmic/astral identity.
+        Hover, click, lock dice, play hands, buy items. Everything is interactive.
+      </p>
+      <ul style={{ color: '#bba8ff', fontSize: 13, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
+        <li><strong style={{ color: '#7be3ff' }}>Round</strong>: per-die chip pop, mult-tier ring, screen shake on tier-cross, ribbon banner, target-cross stamp, boom→star-flight→counter-catch.</li>
+        <li><strong style={{ color: '#cc88ff' }}>Hub</strong>: parallax-tilt trial cards, wax seal on cleared, pulsing aura on current, drawn constellation thread.</li>
+        <li><strong style={{ color: '#f5c451' }}>Shop</strong>: idle float, holo shimmer on rares, coin-flight on buy, SOLD wax stamp, restock flip-deal.</li>
+        <li><strong style={{ color: '#bba8ff' }}>Transitions</strong>: three candidate inter-screen styles to choose from.</li>
+      </ul>
+    </div>
+  );
+}
+
+function App() {
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  return (
+    <>
+      <Intro />
+      <DesignCanvas storageKey="ff-juice-canvas">
+        <DCSection id="round" title="Round Screen — Score Choreography">
+          <DCArtboard id="round-main" label="Round · interactive" width={1280} height={800}>
+            <window.RoundScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="hub" title="Hub — Tribunal of Stars">
+          <DCArtboard id="hub-main" label="Hub · trial select" width={1280} height={800}>
+            <window.HubScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="shop" title="Shop — Celestial Bazaar">
+          <DCArtboard id="shop-main" label="Shop · holo + stamps" width={1280} height={800}>
+            <window.ShopScreen />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="transitions" title="Transitions — three candidates">
+          <DCArtboard id="trans-strip" label="Constellation · Card-deal · Parallax" width={1280} height={320}>
+            <window.TransitionsStrip />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
