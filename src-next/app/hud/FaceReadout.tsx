@@ -89,7 +89,13 @@ export function FaceReadout() {
     // 38% → 30% so the numerals sit clear of the dice underneath.
     return (
       <div style={{
-        position: 'absolute', left: '50%', top: compact ? '30%' : '38%',
+        position: 'absolute', left: '50%',
+        // Center within the play area (between TopBar and ActionBar) so
+        // the captain numeral never sits behind a wrapped TopBar on
+        // narrow viewports.
+        top: compact
+          ? 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.30)'
+          : 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.38)',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center', pointerEvents: 'none', zIndex: 4,
         display: 'flex', alignItems: 'center', gap: compact ? 32 : 18,
@@ -164,7 +170,10 @@ export function FaceReadout() {
 
   return (
     <div style={{
-      position: 'absolute', left: '50%', bottom: 92,
+      position: 'absolute', left: '50%',
+      // Sits just above the ActionBar; tracks ActionBar height when its
+      // buttons grow on tighter viewports.
+      bottom: 'calc(var(--hud-bottom-h, 60px) + 24px)',
       transform: 'translateX(-50%)',
       display: 'flex', gap: 8, padding: '6px 14px',
       background: 'rgba(15,9,37,0.78)',

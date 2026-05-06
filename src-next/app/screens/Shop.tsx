@@ -189,7 +189,9 @@ export function Shop() {
       <PauseButton />
 
       <div style={{
-        position: 'absolute', left: '50%', top: 180, transform: 'translateX(-50%)',
+        position: 'absolute', left: '50%',
+        top: 'calc(var(--hud-top-h, 134px) + 46px)',
+        transform: 'translateX(-50%)',
         textAlign: 'center', zIndex: 4,
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
@@ -201,7 +203,9 @@ export function Shop() {
       </div>
 
       <div style={{
-        position: 'absolute', left: '50%', top: 290, transform: 'translateX(-50%)',
+        position: 'absolute', left: '50%',
+        top: 'calc(var(--hud-top-h, 134px) + 156px)',
+        transform: 'translateX(-50%)',
         display: 'flex', gap: 18, zIndex: 4,
       }}>
         {offers.length === 0 && (
@@ -509,7 +513,11 @@ function CollectionPanel({
 
   return (
     <div className="panel" style={{
-      position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
+      position: 'absolute', left: '50%',
+      // Sit just above the action bar; tracks ActionBar height so the
+      // collection panel never overlaps it on tighter viewports.
+      bottom: 'calc(var(--hud-bottom-h, 60px) + 32px)',
+      transform: 'translateX(-50%)',
       width: 'min(1100px, calc(100vw - 60px))',
       // Tier 2: was `min(220px, calc(100vh - 600px))` which collapses to
       // 0 below 820px tall. Use clamp so it always shows at least 80px
@@ -565,7 +573,9 @@ function HandLevelsPanel({ comboLevels }: { comboLevels: Record<string, number> 
   if (rows.length === 0) return null;
   return (
     <div className="panel" style={{
-      position: 'absolute', right: 24, top: 180, width: 200,
+      position: 'absolute', right: 24,
+      top: 'calc(var(--hud-top-h, 134px) + 46px)',
+      width: 200,
       padding: '10px 14px', zIndex: 4,
     }}>
       <div className="f-mono uc" style={{

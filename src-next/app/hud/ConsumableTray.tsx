@@ -38,7 +38,11 @@ export function ConsumableTray() {
   return (
     <>
       <div style={{
-        position: 'absolute', top: 142, right: 18,
+        position: 'absolute',
+        // Mirrors the CatalystStrip on the opposite side; stack from
+        // TopBar's bottom edge so the row never collides with a wrapped TopBar.
+        top: 'calc(var(--hud-top-h, 134px) + 8px)',
+        right: 18,
         display: 'flex', gap: 8, zIndex: Z.hud, pointerEvents: 'auto',
       }}>
         {items.map((id, i) => {
@@ -109,7 +113,12 @@ export function ConsumableTray() {
             aria-modal="true"
             aria-label={`Select a die for ${armed.def?.name ?? 'consumable'}`}
             style={{
-              position: 'absolute', top: 240, left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute',
+              // Pinned just below the consumable tray row; tracks TopBar
+              // height so the prompt doesn't ride up under TopBar on
+              // narrow viewports.
+              top: 'calc(var(--hud-top-h, 134px) + 100px)',
+              left: '50%', transform: 'translateX(-50%)',
               padding: '14px 20px', borderRadius: 12,
               background: 'rgba(123,227,255,0.92)', color: '#0f0925',
               fontFamily: 'Cinzel, serif', fontSize: 14, fontWeight: 600,

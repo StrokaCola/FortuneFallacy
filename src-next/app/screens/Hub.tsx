@@ -56,7 +56,15 @@ export function Hub() {
   }));
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div style={{
+      position: 'absolute', inset: 0, pointerEvents: 'auto',
+      // Tight viewports (landscape phones, ~360px tall) drop enough
+      // header copy that the layout fits without scrolling. On larger
+      // viewports keep the auto-scroll fallback so over-tall content
+      // (long flavor copy, many constellation rows) stays accessible.
+      overflowY: tight ? 'hidden' : 'auto',
+      overflowX: 'hidden',
+    }}>
       <TopBar
         ante={ante}
         blind="Hub"
@@ -80,20 +88,31 @@ export function Hub() {
       <div style={{
         minHeight: '100%',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: tight ? 12 : 20,
-        paddingTop: 'clamp(96px, 22vh, 170px)',
-        paddingBottom: 28, paddingInline: 20,
+        gap: tight ? 8 : 20,
+        // Pad past the TopBar at every size; on tight, hug it close so
+        // the cards still fit. Falls back to the original clamp if the
+        // CSS var isn't set yet.
+        paddingTop: tight
+          ? 'calc(var(--hud-top-h, 96px) + 8px)'
+          : 'clamp(96px, 22vh, 170px)',
+        paddingBottom: tight ? 12 : 28, paddingInline: tight ? 12 : 20,
         textAlign: 'center',
       }}>
-        <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
-          ◇ choose your trial ◇
-        </div>
-        <div className="f-display" style={{ fontSize: 'clamp(24px, 5vw, 36px)', color: '#f3f0ff', marginTop: 4 }}>
-          Tribunal of Stars
-        </div>
-        <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: -4, maxWidth: 460 }}>
-          Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
-        </div>
+        {/* Decorative copy is dropped on tight viewports — landscape
+            phones can't fit it alongside the trial cards and action row. */}
+        {!tight && (
+          <>
+            <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
+              ◇ choose your trial ◇
+            </div>
+            <div className="f-display" style={{ fontSize: 'clamp(24px, 5vw, 36px)', color: '#f3f0ff', marginTop: 4 }}>
+              Tribunal of Stars
+            </div>
+            <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: -4, maxWidth: 460 }}>
+              Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
+            </div>
+          </>
+        )}
         <div className="f-mono uc" style={{
           fontSize: compact ? 12 : 9,
           letterSpacing: compact ? '0.18em' : '0.28em',
@@ -102,10 +121,14 @@ export function Hub() {
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
 
-        <ConstellationThread blinds={blinds} accent={accent} />
+        {/* The constellation thread is 3×240+2×26=772px wide and never
+            fits on a 640px landscape phone — drop it on tight. */}
+        {!tight && <ConstellationThread blinds={blinds} accent={accent} />}
 
         <div style={{
-          display: 'flex', gap: CARD_GAP, flexWrap: 'wrap', justifyContent: 'center',
+          display: 'flex',
+          gap: tight ? 8 : CARD_GAP,
+          flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: '100%',
         }}>
           {blinds.map((b, i) => {
@@ -119,11 +142,14 @@ export function Hub() {
               key={i}
               className="panel-strong has-tip"
               style={{
-                width: CARD_W,
+                // Tight: shrink width so 3 cards fit a 640px landscape
+                // phone (3*200 + 2*8 = 616 < 640). Wider viewports keep
+                // the original 240px design size.
+                width: tight ? 'clamp(150px, 30vw, 200px)' : CARD_W,
                 // Card height clamps with viewport so on short landscape
                 // phones the three trial cards plus action bar all fit.
-                height: 'clamp(240px, 50vh, 320px)',
-                padding: 20, position: 'relative',
+                height: tight ? 'clamp(150px, 60vh, 200px)' : 'clamp(240px, 50vh, 320px)',
+                padding: tight ? 12 : 20, position: 'relative',
                 border: cur ? `2px solid ${accent}` : (isBoss ? '1px solid rgba(226,51,74,0.5)' : '1px solid rgba(149,119,255,0.3)'),
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
                 opacity: cleared ? 0.55 : locked ? 0.78 : 1,
@@ -132,7 +158,11 @@ export function Hub() {
                 transition: 'opacity 200ms ease, filter 200ms ease',
               }}>
               <OrnateFrame style={{ width: '100%', height: '100%' }} color={frameColor}>
-                <div style={{ position: 'absolute', inset: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{
+                  position: 'absolute',
+                  inset: tight ? 10 : 20,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                }}>
                   <div className="f-mono uc" style={{
                     fontSize: 9, letterSpacing: '0.3em',
                     color: cur ? accent : locked ? '#7a6fa6' : '#bba8ff',
@@ -140,8 +170,8 @@ export function Hub() {
                     trial {String(i + 1).padStart(2, '0')}
                   </div>
                   <div className="f-display" style={{
-                    fontSize: compact ? 16 : 18,
-                    color: '#f3f0ff', marginTop: 6,
+                    fontSize: tight ? 13 : compact ? 16 : 18,
+                    color: '#f3f0ff', marginTop: tight ? 2 : 6,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
@@ -155,24 +185,60 @@ export function Hub() {
                     {b.def.name}
                   </div>
                   <div style={{
-                    marginTop: 14, height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    // Tight: sigil shrinks and the slot stretches to fill,
+                    // pushing the target row to the bottom edge so the
+                    // card stays visually balanced at 150-200px height.
+                    marginTop: tight ? 4 : 14,
+                    flex: tight ? 1 : undefined,
+                    height: tight ? undefined : 96,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {cleared
                       ? <ClearedNode color={b.tierColor} />
-                      : <TierSigil tier={i} size={96} animate={cur ? 'idle' : 'none'} />}
+                      : <TierSigil tier={i} size={tight ? 48 : 96} animate={cur ? 'idle' : 'none'} />}
                   </div>
                   <div style={{ marginTop: 'auto', textAlign: 'center', width: '100%' }}>
                     <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.2em', color: '#bba8ff' }}>target</div>
-                    <div className="f-display num" style={{ fontSize: 26, color: '#f3f0ff' }}>{b.target.toLocaleString()}</div>
-                    <div className="f-mono" style={{ fontSize: 10, color: accent, marginTop: 2 }}>×{b.mult.toFixed(1)} multiplier</div>
-                    <div className="f-mono" style={{ fontSize: 10, color: '#f5c451', marginTop: 6 }}>
-                      ◇ +{b.reward} shards
-                    </div>
+                    <div className="f-display num" style={{
+                      fontSize: tight ? 18 : 26, color: '#f3f0ff',
+                    }}>{b.target.toLocaleString()}</div>
+                    {/* Multiplier + reward subtext drops on tight to
+                        free vertical space — the tooltip still has it. */}
+                    {!tight && (
+                      <>
+                        <div className="f-mono" style={{ fontSize: 10, color: accent, marginTop: 2 }}>×{b.mult.toFixed(1)} multiplier</div>
+                        <div className="f-mono" style={{ fontSize: 10, color: '#f5c451', marginTop: 6 }}>
+                          ◇ +{b.reward} shards
+                        </div>
+                      </>
+                    )}
+                    {/* Tight-mode Begin button sits inside the card so
+                        nothing overhangs into adjacent cards on a wrap.
+                        ✓ cleared collapses to inline as well. */}
+                    {tight && cur && (
+                      <button
+                        className="btn btn-primary mat-interactive"
+                        onClick={() => dispatch({ type: 'START_BLIND' })}
+                        style={{
+                          marginTop: 6, fontSize: 11, padding: '6px 12px',
+                        }}>
+                        Begin
+                      </button>
+                    )}
+                    {tight && cleared && (
+                      <div style={{
+                        marginTop: 4, fontSize: 10, color: '#9577ff', fontFamily: 'JetBrains Mono, monospace',
+                      }}>
+                        ✓ cleared
+                      </div>
+                    )}
                   </div>
                 </div>
               </OrnateFrame>
 
-              {cur && (
+              {/* Desktop / compact layout keeps the dramatic overhanging
+                  Begin button. Tight mode renders it inline above. */}
+              {!tight && cur && (
                 <button
                   className="btn btn-primary mat-interactive"
                   onClick={() => dispatch({ type: 'START_BLIND' })}
@@ -183,7 +249,7 @@ export function Hub() {
                   Begin
                 </button>
               )}
-              {cleared && (
+              {!tight && cleared && (
                 <div style={{
                   position: 'absolute', bottom: -10, left: '50%', transform: 'translateX(-50%)',
                   fontSize: 10, color: '#9577ff', fontFamily: 'JetBrains Mono, monospace',
@@ -213,13 +279,17 @@ export function Hub() {
             short landscape phones. Inline placement keeps it under the
             cards at every viewport size. */}
         <div style={{
-          display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
-          maxWidth: 'calc(100% - 40px)', marginTop: 4,
+          display: 'flex',
+          gap: tight ? 6 : 12,
+          flexWrap: 'wrap', justifyContent: 'center',
+          maxWidth: 'calc(100% - 40px)',
+          marginTop: tight ? 0 : 4,
         }}>
           {!forgeDisabled && (
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
-              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}>
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}
+              style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
               ⚒ Forge
               <span className="tip tip-above">
                 <span className="tip-title">Star Forge</span>
@@ -230,7 +300,8 @@ export function Hub() {
           {!blinds[blindIdx]?.def.isBoss && (
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
-              onClick={() => dispatch({ type: 'SKIP_BLIND' })}>
+              onClick={() => dispatch({ type: 'SKIP_BLIND' })}
+              style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
               ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
               <span className="tip tip-above">
                 <span className="tip-title">Skip Trial</span>
@@ -240,7 +311,8 @@ export function Hub() {
           )}
           <button
             className="btn btn-ghost mat-interactive has-tip tap"
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+            style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
             ← Title
             <span className="tip tip-above">
               <span className="tip-title">Return to Title</span>
@@ -249,17 +321,21 @@ export function Hub() {
           </button>
         </div>
 
-        {/* Travel portals also flow inline. Size shrinks on tight
-            viewports so the gates don't hog the cramped landing. */}
-        <div style={{
-          display: 'flex', gap: 18, justifyContent: 'center',
-          alignItems: 'flex-end', flexWrap: 'wrap',
-        }}>
-          <PortalGate size={tight ? 56 : 96} label="Travel" />
-          {(typeof window !== 'undefined' && window.Portal?.readPortalParams().ref) && (
-            <PortalGate size={tight ? 48 : 72} label="Return" refUrl={window.Portal.readPortalParams().ref!} />
-          )}
-        </div>
+        {/* Travel portals are decorative and don't fit on landscape
+            phones (~360px tall) alongside trial cards + action row. They
+            disappear on tight viewports — the player can still travel
+            via the Portal flow on the title screen. */}
+        {!tight && (
+          <div style={{
+            display: 'flex', gap: 18, justifyContent: 'center',
+            alignItems: 'flex-end', flexWrap: 'wrap',
+          }}>
+            <PortalGate size={96} label="Travel" />
+            {(typeof window !== 'undefined' && window.Portal?.readPortalParams().ref) && (
+              <PortalGate size={72} label="Return" refUrl={window.Portal.readPortalParams().ref!} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -63,7 +63,8 @@ export function ClearShardsToast() {
       style={{
         position: 'absolute',
         left: '50%',
-        top: '38%',
+        // Center within play area (between TopBar and ActionBar).
+        top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.38)',
         transform: 'translate(-50%, -50%)',
         zIndex: Z.toast,
         pointerEvents: 'none',

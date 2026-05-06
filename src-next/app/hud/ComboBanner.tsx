@@ -22,7 +22,9 @@ export function ComboBanner({ accent = '#7be3ff' }: { accent?: string }) {
 
   return (
     <div style={{
-      position: 'absolute', left: '50%', top: 145, transform: 'translateX(-50%)',
+      position: 'absolute', left: '50%',
+      top: 'calc(var(--hud-top-h, 134px) + 12px)',
+      transform: 'translateX(-50%)',
       pointerEvents: 'none', textAlign: 'center', zIndex: 4,
       animation: 'fadein 0.25s ease-out',
     }}>
