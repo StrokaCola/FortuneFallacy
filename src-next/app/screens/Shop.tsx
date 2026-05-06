@@ -20,12 +20,13 @@ import { sfxPlay } from '../../audio/sfx';
 // is in the shop or not (skip-blind pack rewards open the picker mid-screen).
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 
-type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string };
+type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string; rarity?: Rarity };
 
 function offerMeta(kind: string, id: string): Meta {
   if (kind === 'catalyst') {
     const c = lookupCatalyst(id);
-    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst', flavor: c?.flavor };
+    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst', flavor: c?.flavor, rarity: c?.rarity };
   }
   if (kind === 'consumable') {
     const c = lookupConsumable(id);
@@ -49,6 +50,7 @@ function offerMeta(kind: string, id: string): Meta {
       color: m?.visual?.accentColor ?? '#bba8ff',
       desc: m?.desc ?? '',
       kindLabel: 'mod',
+      rarity: m?.rarity,
     };
   }
   if (kind === 'pack') {
@@ -65,6 +67,15 @@ function offerMeta(kind: string, id: string): Meta {
   }
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
 }
+
+// Per-rarity ring color + label. Legendary uses ember/orange paired with the
+// holographic foil sweep — see styles/index.css `.ff-holo` and `.legendary-aura`.
+const RARITY_COLORS: Record<Rarity, string> = {
+  common:    '#7be3ff',
+  uncommon:  '#cc88ff',
+  rare:      '#f5c451',
+  legendary: '#ff7847',
+};
 
 const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectConsumables = (s: GameState) => s.run.consumables;
@@ -146,52 +157,79 @@ export function Shop() {
           const c = m.color;
           const affordable = shards >= o.price;
           const refundIfBought = sellRefund(o.kind, o.id);
+          const isLegendary = m.rarity === 'legendary';
+          const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;
+          const cardBorder = isLegendary
+            ? `1.5px solid ${ringColor}cc`
+            : m.rarity === 'rare'
+              ? `1px solid ${ringColor}aa`
+              : `1px solid ${c}55`;
           return (
             <div
               key={`${o.id}-${i}`}
-              className="panel-strong has-tip"
+              className={`panel-strong has-tip${isLegendary ? ' legendary-aura' : ''}`}
               onMouseEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
               style={{
                 width: 180, height: 250, padding: 14,
-                border: `1px solid ${c}55`,
+                border: cardBorder,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 cursor: affordable ? 'pointer' : 'not-allowed',
                 opacity: affordable ? 1 : 0.6,
                 animation: `float-y ${3 + i * 0.4}s ease-in-out infinite`,
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
-              <div className="f-mono uc" style={{
-                fontSize: 9, letterSpacing: '0.28em', color: c, marginBottom: 6,
-                padding: '2px 6px', border: `1px solid ${c}55`, borderRadius: 4,
-              }}>{m.kindLabel}</div>
-              <div style={{
-                width: 84, height: 84, borderRadius: 12, marginTop: 8,
-                background: `radial-gradient(circle, ${c}30, rgba(15,9,37,0.9))`,
-                border: `1px solid ${c}80`,
-                display: 'grid', placeItems: 'center',
-                fontSize: 40, color: c,
-                filter: `drop-shadow(0 0 10px ${c}80)`,
-              }}>{m.icon}</div>
-              <div className="f-head" style={{ fontSize: 14, color: '#f3f0ff', marginTop: 12, textAlign: 'center' }}>
-                {m.name}
-              </div>
-              <div style={{
-                fontFamily: '"Exo 2", sans-serif',
-                fontSize: 11, color: '#bba8ff', marginTop: 6, textAlign: 'center', lineHeight: 1.4, flex: 1,
-              }}>
-                {m.desc}
-              </div>
-              <div style={{
-                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(149,119,255,0.2)',
-              }}>
-                <span className="f-mono num" style={{ color: '#f5c451', fontSize: 14 }}>◆ {o.price}</span>
-                <span className="f-mono uc" style={{
-                  fontSize: 9, color: affordable ? accent : '#e2334a', letterSpacing: '0.2em',
+              {/* Holographic foil sweep — legendary only. Sits above the
+                  panel-strong gradient but below the content via z-index. */}
+              {isLegendary && (
+                <>
+                  <div className="ff-holo" />
+                  <div className="ff-holo-shimmer" />
+                </>
+              )}
+
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>
+                <div className="f-mono uc rarity-tag" style={{
+                  color: ringColor, marginBottom: 6,
+                  border: `1px solid ${ringColor}66`,
+                  background: isLegendary ? `${ringColor}14` : 'transparent',
                 }}>
-                  {affordable ? 'buy' : 'low'}
-                </span>
+                  {m.kindLabel}{m.rarity ? ` · ${m.rarity}` : ''}
+                </div>
+                <div style={{
+                  width: 84, height: 84, borderRadius: 12, marginTop: 8,
+                  background: `radial-gradient(circle at 30% 25%, ${c}40, rgba(15,9,37,0.9) 75%)`,
+                  border: `1px solid ${c}80`,
+                  display: 'grid', placeItems: 'center',
+                  fontSize: 40, color: c,
+                  filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
+                  position: 'relative',
+                }}>{m.icon}</div>
+                <div className="f-head" style={{
+                  fontSize: 14, color: '#f3f0ff', marginTop: 12, textAlign: 'center',
+                  textShadow: isLegendary ? `0 0 8px ${ringColor}80` : undefined,
+                }}>
+                  {m.name}
+                </div>
+                <div style={{
+                  fontFamily: '"Exo 2", sans-serif',
+                  fontSize: 11, color: '#bba8ff', marginTop: 6, textAlign: 'center', lineHeight: 1.4, flex: 1,
+                }}>
+                  {m.desc}
+                </div>
+                <div style={{
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(149,119,255,0.2)',
+                }}>
+                  <span className="f-mono num" style={{ color: '#f5c451', fontSize: 14 }}>◆ {o.price}</span>
+                  <span className="f-mono uc" style={{
+                    fontSize: 9, color: affordable ? (isLegendary ? ringColor : accent) : '#e2334a', letterSpacing: '0.2em',
+                  }}>
+                    {affordable ? 'buy' : 'low'}
+                  </span>
+                </div>
               </div>
               <span className="tip">
                 <span className="tip-title">{m.name}</span>
@@ -251,7 +289,7 @@ export function Shop() {
 
 type CollectionRowProps = {
   kindLabel: string;
-  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; disabled?: boolean; disabledReason?: string }[];
+  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; rarity?: Rarity; disabled?: boolean; disabledReason?: string }[];
   emptyHint: string;
   kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
 };
@@ -272,32 +310,45 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {items.map((it) => (
-            <div
-              key={`${it.id}-${it.index}`}
-              className="has-tip"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '6px 8px', borderRadius: 6,
-                background: 'rgba(15,9,37,0.5)',
-                border: `1px solid ${it.color}40`,
-              }}
-            >
-              <span style={{
-                width: 26, height: 26, borderRadius: 4,
-                background: `${it.color}25`, border: `1px solid ${it.color}80`,
-                display: 'grid', placeItems: 'center', color: it.color, fontSize: 14,
-              }}>{it.icon}</span>
-              <span className="f-mono" style={{ fontSize: 11, color: '#f3f0ff', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {it.name}
-              </span>
-              <SellButton kind={kind} id={it.id} index={it.index} disabled={it.disabled} disabledReason={it.disabledReason} />
-              <span className="tip">
-                <span className="tip-title">{it.name}</span>
-                {it.desc}
-              </span>
-            </div>
-          ))}
+          {items.map((it) => {
+            const isLegendary = it.rarity === 'legendary';
+            const rarityRing = it.rarity ? RARITY_COLORS[it.rarity] : it.color;
+            return (
+              <div
+                key={`${it.id}-${it.index}`}
+                className="has-tip"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 8px', borderRadius: 6,
+                  background: 'rgba(15,9,37,0.5)',
+                  border: `1px solid ${isLegendary ? rarityRing + 'aa' : it.color + '40'}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: isLegendary ? `0 0 12px ${rarityRing}55, inset 0 0 6px ${rarityRing}22` : undefined,
+                }}
+              >
+                {isLegendary && <div className="ff-holo" style={{ borderRadius: 6, opacity: 0.55 }} />}
+                <span style={{
+                  width: 26, height: 26, borderRadius: 4,
+                  background: `${it.color}25`, border: `1px solid ${it.color}80`,
+                  display: 'grid', placeItems: 'center', color: it.color, fontSize: 14,
+                  position: 'relative', zIndex: 2,
+                }}>{it.icon}</span>
+                <span className="f-mono" style={{
+                  fontSize: 11, color: '#f3f0ff', flex: 1, minWidth: 0,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  position: 'relative', zIndex: 2,
+                }}>
+                  {it.name}
+                </span>
+                <SellButton kind={kind} id={it.id} index={it.index} disabled={it.disabled} disabledReason={it.disabledReason} />
+                <span className="tip">
+                  <span className="tip-title">{it.name}</span>
+                  {it.desc}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -321,6 +372,7 @@ function CollectionPanel({
       desc: c?.desc ?? '',
       icon: c?.icon ?? '✦',
       color: c?.color ?? '#7be3ff',
+      rarity: c?.rarity,
     };
   });
   const voucherRows = vouchers.map((id, index) => {
@@ -354,6 +406,7 @@ function CollectionPanel({
       desc: m?.desc ?? '',
       icon: m?.icon ?? '⫶',
       color: m?.visual?.accentColor ?? '#bba8ff',
+      rarity: m?.rarity,
     };
   });
 

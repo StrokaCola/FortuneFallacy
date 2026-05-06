@@ -34,11 +34,14 @@ export type ModVisual = {
   triggerFx: 'loaded' | 'pipCharge' | 'backstop' | 'pulse';  // pilot or generic; used by Phase 5/6
 };
 
+export type ModRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+
 export type ModDef = {
   id: ModId;
   name: string;
   icon: string;
   desc: string;
+  rarity: ModRarity;
   scoreBonus?: number;
   multBonus?: number;
   shardsBonus?: number;
@@ -77,106 +80,106 @@ export type ModDef = {
 export const MODS: ModDef[] = [
   {
     id: 'amplify', name: 'Amplify', icon: '⬆',
-    desc: '+2 chips per scoring die', scoreBonus: 2,
+    desc: '+2 chips per scoring die', scoreBonus: 2, rarity: 'common',
     visual: { materialKey: 'amplify', accentColor: '#f5c451', triggerFx: 'pulse' },
   },
   {
     id: 'sharpened', name: 'Sharpened', icon: '▲',
-    desc: '+1 mult per scoring die', multBonus: 1,
+    desc: '+1 mult per scoring die', multBonus: 1, rarity: 'common',
     visual: { materialKey: 'sharpened', accentColor: '#a4d4ff', triggerFx: 'pulse' },
   },
   {
     id: 'gilded', name: 'Gilded', icon: '◆',
-    desc: '+1 shard on score', shardsBonus: 1,
+    desc: '+1 shard on score', shardsBonus: 1, rarity: 'common',
     visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
   },
   {
     id: 'loaded', name: 'Loaded', icon: '⚔',
-    desc: '1s count as 6', faceRemap: { from: 1, to: 6 },
+    desc: '1s count as 6', faceRemap: { from: 1, to: 6 }, rarity: 'uncommon',
     visual: { materialKey: 'loaded', accentColor: '#c87a4a', geometricVariant: 'asymmetric', triggerFx: 'loaded' },
   },
   {
     id: 'snake_eyes', name: 'Snake Eyes', icon: '①',
-    desc: '+2 mult if face is 1', snakeEyes: 2,
+    desc: '+2 mult if face is 1', snakeEyes: 2, rarity: 'common',
     visual: { materialKey: 'snake_eyes', accentColor: '#7be3ff', triggerFx: 'pulse' },
   },
   {
     id: 'high_roller', name: 'High Roller', icon: '🎯',
-    desc: '+1 mult if face is 5 or 6', highFaceMult: 1,
+    desc: '+1 mult if face is 5 or 6', highFaceMult: 1, rarity: 'common',
     visual: { materialKey: 'high_roller', accentColor: '#ff7847', triggerFx: 'pulse' },
   },
   {
     id: 'backstop', name: 'Backstop', icon: '✦',
-    desc: 'Scores at least 4', scoreMin: 4,
+    desc: 'Scores at least 4', scoreMin: 4, rarity: 'uncommon',
     visual: { materialKey: 'backstop', accentColor: '#9bd0a8', geometricVariant: 'plated', triggerFx: 'backstop' },
   },
   {
     id: 'pip_charge', name: 'Pip Charge', icon: '⫶',
-    desc: '+chips equal to face × 2 per scoring die', chipPerPip: 2,
+    desc: '+chips equal to face × 2 per scoring die', chipPerPip: 2, rarity: 'uncommon',
     visual: { materialKey: 'pip_charge', accentColor: '#ffd84a', geometricVariant: 'recessed', triggerFx: 'pipCharge' },
   },
   {
     id: 'even_keel', name: 'Even Keel', icon: '⚖',
-    desc: '+2 mult if face is even (2/4/6)', evenFaceMult: 2,
+    desc: '+2 mult if face is even (2/4/6)', evenFaceMult: 2, rarity: 'common',
     visual: { materialKey: 'even_keel', accentColor: '#c0c8d8', triggerFx: 'pulse' },
   },
   {
     id: 'mirror_pair', name: 'Mirror Pair', icon: '⚉',
-    desc: '+3 mult per other die in hand sharing this face', pairBonus: 3,
+    desc: '+3 mult per other die in hand sharing this face', pairBonus: 3, rarity: 'rare',
     visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'pulse' },
   },
   {
     id: 'vanguard', name: 'Vanguard', icon: '◀',
     desc: '+5 chips if scored first',
-    firstBonus: 5,
+    firstBonus: 5, rarity: 'common',
     visual: { materialKey: 'vanguard', accentColor: '#ff7847', triggerFx: 'pulse' },
   },
   {
     id: 'capstone', name: 'Capstone', icon: '▶',
     desc: '+10 chips if scored last',
-    lastBonus: 10,
+    lastBonus: 10, rarity: 'common',
     visual: { materialKey: 'capstone', accentColor: '#5be8a4', triggerFx: 'pulse' },
   },
   {
     id: 'conduit', name: 'Conduit', icon: '⫸',
     desc: '+1 mult per die scored before this one',
-    chainMult: 1,
+    chainMult: 1, rarity: 'uncommon',
     visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse' },
   },
   {
     id: 'tithe', name: 'Tithe', icon: '⛁',
     desc: '+5 chips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
-    titheChips: 5, titheMult: 2,
+    titheChips: 5, titheMult: 2, rarity: 'rare',
     visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'pulse' },
   },
   {
     id: 'resonance', name: 'Resonance', icon: '♺',
     desc: 'The other mod on this die fires a second time (chips/mult only).',
-    resonate: true,
+    resonate: true, rarity: 'legendary',
     visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse' },
   },
   {
     id: 'crescendo', name: 'Crescendo', icon: '⫷',
     desc: '+1 mult per die scored after this one',
-    chainMultPost: 1,
+    chainMultPost: 1, rarity: 'uncommon',
     visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse' },
   },
   {
     id: 'crown', name: 'Crown', icon: '♛',
     desc: 'If face is 6: ×1.5 mult on this die (multiplicative)',
-    crownMult: 1.5, crownFace: 6,
+    crownMult: 1.5, crownFace: 6, rarity: 'legendary',
     visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
   },
   {
     id: 'brittle', name: 'Brittle', icon: '☄',
     desc: '+5 mult per scoring die. Destroyed if the hand busts.',
-    multBonus: 5, loseOnBust: true,
+    multBonus: 5, loseOnBust: true, rarity: 'rare',
     visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse' },
   },
   {
     id: 'wildcard', name: 'Wildcard', icon: '✱',
     desc: 'Counts as any face for combo detection (chooses best).',
-    wildcard: true,
+    wildcard: true, rarity: 'legendary',
     visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse' },
   },
 ];

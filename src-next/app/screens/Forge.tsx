@@ -212,6 +212,7 @@ export function Forge() {
                     const c = r.visual?.accentColor ?? '#7be3ff';
                     const canAttach = slots.length < maxSlots;
                     const firstIndex = ownedMods.indexOf(id);
+                    const isLegendary = r.rarity === 'legendary';
                     return (
                       <div
                         key={id}
@@ -220,26 +221,34 @@ export function Forge() {
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
                         }}
-                        className="forge-mod-row has-tip"
+                        className={`forge-mod-row has-tip${isLegendary ? ' legendary-aura' : ''}`}
                         style={{
                           cursor: canAttach ? 'pointer' : 'not-allowed',
                           opacity: canAttach ? 1 : 0.4,
                           padding: 14, borderRadius: 8,
                           background: 'rgba(15,9,37,0.5)',
-                          border: '1px solid rgba(149,119,255,0.2)',
+                          border: isLegendary ? '1px solid #ff7847aa' : '1px solid rgba(149,119,255,0.2)',
                           transition: 'all 150ms',
                           display: 'flex', alignItems: 'center', gap: 10,
                           position: 'relative',
+                          overflow: 'hidden',
                           ['--mod-c' as never]: c,
                         } as React.CSSProperties}>
+                        {isLegendary && (
+                          <>
+                            <div className="ff-holo" style={{ borderRadius: 8 }} />
+                            <div className="ff-holo-shimmer" style={{ borderRadius: 8 }} />
+                          </>
+                        )}
                         <div style={{
                           width: 36, height: 36, borderRadius: 6,
                           background: `${c}25`, border: `1px solid ${c}80`,
                           display: 'grid', placeItems: 'center',
                           color: c, fontSize: 16,
                           filter: `drop-shadow(0 0 4px ${c})`,
+                          position: 'relative', zIndex: 2,
                         }}>{r.icon}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
                           <div className="f-head" style={{ fontSize: 12, color: '#f3f0ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             {r.name}
                           </div>

@@ -406,6 +406,90 @@ html, body {
   transform: none;
 }
 
+/* ---- Holographic legendary treatment (from handoff/fallacy2) ----- */
+
+/* The holo overlay sweeps a multi-stop rainbow gradient across the surface
+   on a slow loop. .ff-holo-shimmer adds a fine repeating-line texture on
+   top so the sweep looks like an actual foil card rather than a flat blur.
+   Both layers are pointer-events: none so they sit purely on top. */
+.ff-holo {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(115deg,
+    transparent 30%,
+    rgba(123,227,255,0.18) 42%,
+    rgba(245,196,81,0.22) 50%,
+    rgba(204,136,255,0.18) 58%,
+    transparent 70%);
+  background-size: 200% 100%;
+  mix-blend-mode: screen;
+  animation: holoSweep 3.6s linear infinite;
+  opacity: 0.85;
+  z-index: 1;
+}
+.ff-holo-shimmer {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    repeating-linear-gradient(115deg,
+      rgba(255,255,255,0.04) 0 2px,
+      transparent 2px 6px);
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+  z-index: 1;
+}
+
+@keyframes holoSweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Legendary ring + glow — drop on a card with its own border to stack
+   the legendary aura. The ember tone keeps it distinct from the gold
+   used for shards and the rare tier. */
+.legendary-aura {
+  box-shadow:
+    0 0 0 1px rgba(255,180,140,0.55),
+    0 0 22px rgba(255,120,71,0.45),
+    0 0 44px rgba(245,196,81,0.18),
+    0 12px 32px rgba(0,0,0,0.55) !important;
+}
+
+@keyframes legendaryPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255,180,140,0.55),
+      0 0 22px rgba(255,120,71,0.45),
+      0 0 44px rgba(245,196,81,0.18),
+      0 12px 32px rgba(0,0,0,0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255,200,160,0.85),
+      0 0 32px rgba(255,120,71,0.6),
+      0 0 64px rgba(245,196,81,0.3),
+      0 12px 32px rgba(0,0,0,0.55);
+  }
+}
+html:not(.reduce-motion) .legendary-aura {
+  animation: legendaryPulse 2.8s ease-in-out infinite;
+}
+html:not(.reduce-motion) .legendary-aura.legendary-aura-static {
+  animation: none;
+}
+
+/* Compact rarity tag chip used above the artwork on shop cards. */
+.rarity-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.reduce-motion .ff-holo { animation: none; }
+
 /* ---- Boss sigil animations (T4) ----------------------------------- */
 
 @keyframes sigilReveal {
