@@ -463,6 +463,23 @@ describe('Legendary unlock progression', () => {
   });
 });
 
+describe('dust_off catalyst — sell-refund boost', () => {
+  it('refund is +50% when dust_off is owned alongside the catalyst being sold', () => {
+    // Base catalyst sell = 2 shards. dust_off boosts to floor(2 * 1.5) = 3.
+    const s = baseState({ shards: 0, catalysts: ['dust_off', 'cold_hand'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 1 }, s);
+    expect(r.state.run.shards).toBe(3);
+    expect(r.state.run.catalysts).toEqual(['dust_off']);
+  });
+
+  it('selling dust_off itself does not get the boost', () => {
+    // dust_off at index 0; nothing else owned. Refund = base 2.
+    const s = baseState({ shards: 0, catalysts: ['dust_off'] });
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 0 }, s);
+    expect(r.state.run.shards).toBe(2);
+  });
+});
+
 describe('Mod editions — buy + sell parallel-array sync', () => {
   it('BUY_OFFER mod with edition pushes to ownedMods + ownedModEditions in lockstep', () => {
     const offers: ShopOffer[] = [{ kind: 'mod', id: 'amplify', price: 4, edition: 'foil' }];

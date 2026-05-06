@@ -131,6 +131,15 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'prime_resonance', name: 'Prime Resonance', icon: 'ℜ', color: '#a080c0',
     desc: 'Mult raised to the power 1.05 per scoring die.',
     flavor: 'Exponentials wear thin clothing.', rarity: 'rare' },
+
+  // Phase 5d — non-pipeline catalysts: their effects fire in lifecycle
+  // hooks (skip-blind, sell-refund) rather than the per-hand upgrades pass.
+  { id: 'silver_tongue', name: 'Silver Tongue', icon: '✎', color: '#a4d4ff',
+    desc: 'When you skip a blind, gain 2 random consumables.',
+    flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon' },
+  { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
+    desc: 'Sell value of catalysts +50%.',
+    flavor: 'A clean uninstall pays out.', rarity: 'common' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

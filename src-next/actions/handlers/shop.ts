@@ -283,7 +283,13 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (a.kind === 'catalyst') {
         const id = s.run.catalysts[a.index];
         if (!id) return { state: s, events: [] };
-        const refund = sellRefund('catalyst', id);
+        const baseRefund = sellRefund('catalyst', id);
+        // Dust-Off: any owned dust_off catalyst boosts catalyst sell-back
+        // refunds by 50%. Doesn't apply to the dust_off itself if it's the
+        // one being sold — read the OTHER owned catalysts.
+        const otherCatalysts = s.run.catalysts.filter((_, i) => i !== a.index);
+        const dustOffOwned = otherCatalysts.includes('dust_off');
+        const refund = dustOffOwned ? Math.floor(baseRefund * 1.5) : baseRefund;
         // Drop the edition stamp (if any) so a re-bought catalyst with
         // the same id doesn't inherit the prior edition.
         const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};

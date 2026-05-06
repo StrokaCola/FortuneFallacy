@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clearBlind, bustBlind, startBlind } from './transitions';
+import { clearBlind, bustBlind, startBlind, skipBlind } from './transitions';
 import { hasDebuff } from './debuffs';
 import { maxModSlots } from '../vouchers';
 import type { GameState } from '../../state/store';
@@ -128,6 +128,50 @@ describe('bustBlind', () => {
     const s = makeState({ compoundingStacks: 5, target: 100, score: 80, catalysts: ['cold_hand'] });
     const result = bustBlind(s);
     expect(result.state.ui.screen).toBe('fail');
+  });
+
+  it('drops Brittle mods on bust by default', () => {
+    const s = makeState({ target: 100, score: 0 });
+    s.run.diceMods = [['brittle', 'amplify'], [], [], [], []];
+    s.run.diceModEditions = [['foil', null], [], [], [], []];
+    const result = bustBlind(s);
+    expect(result.state.run.diceMods[0]).toEqual(['amplify']);
+    // Edition array stays length-synced with diceMods.
+    expect(result.state.run.diceModEditions?.[0]).toEqual([null]);
+  });
+
+  it('Engraved on the same die preserves Brittle through bust', () => {
+    const s = makeState({ target: 100, score: 0 });
+    s.run.diceMods = [['brittle', 'engraved'], [], [], [], []];
+    s.run.diceModEditions = [['foil', null], [], [], [], []];
+    const result = bustBlind(s);
+    expect(result.state.run.diceMods[0]).toEqual(['brittle', 'engraved']);
+    expect(result.state.run.diceModEditions?.[0]).toEqual(['foil', null]);
+  });
+});
+
+describe('skipBlind — silver_tongue catalyst', () => {
+  it('grants 2 random consumables when silver_tongue is owned', () => {
+    const s = makeState({ goalIdx: 0, catalysts: ['silver_tongue'], consumables: [] });
+    const result = skipBlind(s);
+    expect(result.state.run.consumables.length).toBe(2);
+  });
+
+  it('does not grant consumables when silver_tongue is not owned', () => {
+    const s = makeState({ goalIdx: 0, catalysts: [], consumables: [] });
+    const result = skipBlind(s);
+    expect(result.state.run.consumables.length).toBe(0);
+  });
+
+  it('respects the consumable cap (no overflow)', () => {
+    const s = makeState({
+      goalIdx: 0,
+      catalysts: ['silver_tongue'],
+      consumables: ['shard_drop', 'shard_drop', 'shard_drop'],
+    });
+    const result = skipBlind(s);
+    // Cap is 4 by default — only one slot available, only 1 granted.
+    expect(result.state.run.consumables.length).toBe(4);
   });
 });
 

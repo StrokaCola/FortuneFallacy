@@ -193,4 +193,22 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     transmission: 0.08, rough: 0.40, ior: 1.55, eIntensity: 1.0,
     metalness: 0.80, sheen: 0.45, sheenColor: 0xf5c451,
   },
+  // 27. Polarize — Half-moon violet split: bright crown, dark base.
+  polarize: {
+    bodyTint: 0x6a4a8a, bodyDeep: 0x1a0a30,
+    edge: 0xbba8ff, halo: 0xe0c8ff,
+    transmission: 0.18, rough: 0.30, eIntensity: 1.6,
+  },
+  // 28. Telescope — Smoky lens; high IOR with cyan rim glow.
+  telescope: {
+    bodyTint: 0x2a2a4a, bodyDeep: 0x07051a,
+    edge: 0xcc88ff, halo: 0xa4d4ff,
+    transmission: 0.30, rough: 0.18, ior: 1.85, eIntensity: 1.5,
+  },
+  // 29. Engraved — Etched basalt; matte, low halo, deeply textured.
+  engraved: {
+    bodyTint: 0x4a4a4a, bodyDeep: 0x0a0a0a,
+    edge: 0xa4d4ff, halo: 0xa4d4ff,
+    transmission: 0.04, rough: 0.70, eIntensity: 0.7,
+  },
 };

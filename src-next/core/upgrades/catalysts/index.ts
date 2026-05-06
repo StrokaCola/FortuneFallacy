@@ -53,5 +53,8 @@ export const CATALYST_IDS = [
   'straight_signal', 'tetrad', 'apex',
   'chance_doctrine', 'low_choir', 'harmonic',
   'metronome', 'prime_resonance',
+  // Phase 5d — non-pipeline catalysts (no register call; effects in
+  // lifecycle hooks: silver_tongue → skipBlind, dust_off → SELL_UPGRADE).
+  'silver_tongue', 'dust_off',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

@@ -31,6 +31,9 @@ export const MOD_IDS = [
   'risk',
   'singularity',
   'refinery',
+  'polarize',
+  'telescope',
+  'engraved',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -103,6 +106,18 @@ export type ModDef = {
   // Refinery: +shards when this die scores in one of `refineryComboIds`.
   refineryComboIds?: string[];
   refineryShards?: number;
+  // ─── Phase 5d additions ─────────────────────────────────────────────────
+  // Polarize: ×mult when 3 mods are attached to this die (mod-density payoff).
+  polarizeMult?: number;
+  polarizeMinSlots?: number;
+  // Telescope: ×mult when this die is the FIRST scoring die AND the played
+  // combo has at least one galaxy level. Pays off Galaxy investment on the
+  // opening die of every hand.
+  telescopeMult?: number;
+  // Engraved: utility flag — protects the OWN die's Brittle (and other
+  // loseOnBust mods) from the bust-cleanup pass in transitions.ts.
+  // Has no scoring contribution.
+  engraved?: boolean;
   visual?: ModVisual;
 };
 
@@ -256,6 +271,25 @@ export const MODS: ModDef[] = [
     desc: '+1 shard when scored as part of Two Pair or Full House.',
     refineryComboIds: ['two_pair', 'full_house'], refineryShards: 1,
     visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
+  },
+  // Phase 5d — mod-density / first-die / utility mods.
+  {
+    id: 'polarize', name: 'Polarize', icon: '◐',
+    desc: '×1.4 mult when 3 mods are attached to this die.',
+    polarizeMult: 1.4, polarizeMinSlots: 3,
+    visual: { materialKey: 'polarize', accentColor: '#bba8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'telescope', name: 'Telescope', icon: '⌖',
+    desc: '×1.3 mult on the first scoring die when the combo has ≥1 galaxy level.',
+    telescopeMult: 1.3,
+    visual: { materialKey: 'telescope', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'engraved', name: 'Engraved', icon: '⌑',
+    desc: 'This die\'s Brittle mods survive the bust cleanup.',
+    engraved: true,
+    visual: { materialKey: 'engraved', accentColor: '#a4d4ff', triggerFx: 'pulse' },
   },
 ];
 

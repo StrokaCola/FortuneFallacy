@@ -133,6 +133,15 @@ export function applyDieModStep(
         localMultMul *= def.singularityMult;
       }
     }
+    if (def.polarizeMult && stepCtx.modsOnThisDie != null) {
+      const min = def.polarizeMinSlots ?? 3;
+      if (stepCtx.modsOnThisDie >= min) {
+        localMultMul *= def.polarizeMult;
+      }
+    }
+    if (def.telescopeMult && pos === 0 && (stepCtx.comboLevelOnPlayed ?? 0) > 0) {
+      localMultMul *= def.telescopeMult;
+    }
     // Refinery emits no chips/mult — its only effect is shard accrual,
     // which the caller (upgrades.ts) doesn't currently fold here. We mark
     // the fire so the HUD shows the trigger; the shard credit is handled
