@@ -104,6 +104,33 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'all_band', name: 'All-Band', icon: '⌬', color: '#ff7847',
     desc: 'Once per round: this hand scores as if it were the next tier higher.',
     flavor: 'Frequency leaks. The judge upgrades the verdict.', rarity: 'legendary' },
+
+  // Phase 5 additions — completes the combo-tribal lane (one catalyst per
+  // hand-type) and rounds out the math/scaling band.
+  { id: 'straight_signal', name: 'Straight Signal', icon: '↗', color: '#5be8a4',
+    desc: 'Small Straight → +6 Mult.',
+    flavor: 'Four steps in tune. The fifth lifts.', rarity: 'uncommon' },
+  { id: 'tetrad', name: 'Tetrad', icon: '⊞', color: '#ff7847',
+    desc: 'Four of a Kind → Chips ×3.',
+    flavor: 'Four corners, one frequency.', rarity: 'rare' },
+  { id: 'apex', name: 'Apex', icon: '✦', color: '#ffd84a',
+    desc: 'Five of a Kind → Mult ×3, plus +1 Mult per matching scoring die.',
+    flavor: 'Every face the same. Every face higher.', rarity: 'rare' },
+  { id: 'chance_doctrine', name: 'Chance Doctrine', icon: '?', color: '#c0c8ff',
+    desc: 'Chance hand → +20 Chips and +4 Mult per scoring die.',
+    flavor: 'When nothing matches, score everything.', rarity: 'uncommon' },
+  { id: 'low_choir', name: 'Low Choir', icon: '⫯', color: '#88ddff',
+    desc: 'Each scoring face ≤2 → +3 Mult.',
+    flavor: 'Bass register. Carries farther.', rarity: 'uncommon' },
+  { id: 'harmonic', name: 'Harmonic', icon: '∿', color: '#bba8ff',
+    desc: 'Each mod id repeated across dice → +25 Chips, ×1.25 Mult.',
+    flavor: 'Two strings tuned same. The room rings.', rarity: 'rare' },
+  { id: 'metronome', name: 'Metronome', icon: '♩', color: '#5be8a4',
+    desc: 'Odd hand → Chips ×1.5. Even hand → Mult ×1.5.',
+    flavor: 'Tick. Tock. Both pay.', rarity: 'rare' },
+  { id: 'prime_resonance', name: 'Prime Resonance', icon: 'ℜ', color: '#a080c0',
+    desc: 'Mult raised to the power 1.05 per scoring die.',
+    flavor: 'Exponentials wear thin clothing.', rarity: 'rare' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

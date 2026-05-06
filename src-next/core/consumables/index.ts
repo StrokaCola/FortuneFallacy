@@ -4,10 +4,11 @@ import type { GameEventEmission } from '../../events/types';
 // generated from a per-combo bonus map. Importing here registers them in
 // the global CONSUMABLES list below.
 import { GALAXIES } from './galaxies';
+import { SPECTRALS } from './spectrals';
 
 export type ConsumableDef = {
   id: string;
-  type: 'calibration' | 'resource' | 'galaxy';
+  type: 'calibration' | 'resource' | 'galaxy' | 'spectral';
   name: string;
   icon: string;
   description: string;
@@ -101,6 +102,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     }),
   },
   ...GALAXIES,
+  ...SPECTRALS,
 ];
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {

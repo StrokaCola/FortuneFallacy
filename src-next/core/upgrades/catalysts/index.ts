@@ -28,6 +28,15 @@ import './oddVoice';
 import './usurer';
 import './levelsLevy';
 import './allBand';
+// Phase 5 additions
+import './straightSignal';
+import './tetrad';
+import './apex';
+import './chanceDoctrine';
+import './lowChoir';
+import './harmonic';
+import './metronome';
+import './primeResonance';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -40,5 +49,9 @@ export const CATALYST_IDS = [
   'pair_dynamo', 'triplet_engine', 'magnitude',
   'prime_pact', 'even_keeled', 'odd_voice',
   'usurer', 'levels_levy', 'all_band',
+  // Phase 5
+  'straight_signal', 'tetrad', 'apex',
+  'chance_doctrine', 'low_choir', 'harmonic',
+  'metronome', 'prime_resonance',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

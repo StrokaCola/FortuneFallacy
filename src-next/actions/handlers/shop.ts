@@ -55,10 +55,13 @@ function rollOffers(s: GameState): ShopOffer[] {
   }
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
-  // Galaxies are excluded from the consumable offer pool — they only appear
-  // via Galaxy Packs. Otherwise a player could grab a Whirlpool for 3 shards
-  // and skip the whole pack ecosystem.
-  const consumableIds = CONSUMABLES.filter((c) => c.type !== 'galaxy').map((c) => c.id);
+  // Galaxies and spectrals are excluded from the regular consumable pool.
+  // Galaxies are gated behind Galaxy Packs (Phase 2). Spectrals (Catalyze,
+  // future Void) are rare and meant to come from boss rewards / dedicated
+  // Spectral Packs — never the everyday consumable slot.
+  const consumableIds = CONSUMABLES
+    .filter((c) => c.type !== 'galaxy' && c.type !== 'spectral')
+    .map((c) => c.id);
 
   // Three-way roll for the final slot: pack | voucher | consumable.
   // ~25% pack, then voucher-vs-consumable resolves like before.
