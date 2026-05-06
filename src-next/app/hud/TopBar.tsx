@@ -5,6 +5,7 @@ import { useStore, type GameState } from '../../state/store';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
 // switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
@@ -56,26 +57,39 @@ export function TopBar({
   const scoreFmt = formatScore(score);
   const targetFmt = target ? formatScore(target) : null;
   const isCompactScore = scoreFmt.display !== scoreFmt.full;
+  const tight = useIsTightStage();
+  // The big blind line restates the same word that's already in the
+  // small "ante NN · blind" label above it. On a phone where vertical
+  // space is precious we drop it; on desktop the redundancy is fine
+  // because it gives the panel typographic weight.
+  const renderBigBlind = !tight;
+
+  // Astrolabe collapses to a small dial (or hides) on tight stages so
+  // the score panel doesn't eat half the visible viewport on a phone.
+  const astrolabeSize = tight ? 0 : 92;
+  const scoreFontSize = tight ? 26 : 38;
+  const panelPad = tight ? '8px 12px' : '14px 18px';
+  const centerPad = tight ? '6px 12px' : '12px 22px';
   return (
     <div style={{
       // Clamp the bar to a max content width so on wide screens the
       // three panels don't drift to the far edges. `max(18px, ...)`
       // keeps the 18px gutter on narrow phones.
-      position: 'absolute', top: 18,
-      left:  'max(18px, calc(50% - 700px))',
-      right: 'max(18px, calc(50% - 700px))',
+      position: 'absolute', top: tight ? 10 : 18,
+      left:  tight ? '10px' : 'max(18px, calc(50% - 700px))',
+      right: tight ? '10px' : 'max(18px, calc(50% - 700px))',
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      gap: 18, flexWrap: 'wrap',
+      gap: tight ? 8 : 18, flexWrap: 'wrap',
       pointerEvents: 'none', zIndex: Z.hudTop,
     }}>
-      <div className="panel has-tip" style={{ padding: '14px 18px', minWidth: 280, maxWidth: 360, pointerEvents: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Astrolabe size={92} score={score} target={target} accent={accent} />
+      <div className="panel has-tip" style={{ padding: panelPad, minWidth: tight ? 0 : 280, maxWidth: tight ? 220 : 360, pointerEvents: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tight ? 8 : 14 }}>
+          {astrolabeSize > 0 && <Astrolabe size={astrolabeSize} score={score} target={target} accent={accent} />}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
               className="f-display num"
-              style={{ fontSize: 38, lineHeight: 1, color: '#f3f0ff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              style={{ fontSize: scoreFontSize, lineHeight: 1, color: '#f3f0ff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
               aria-live="polite"
               aria-atomic="true"
               title={isCompactScore ? scoreFmt.full : undefined}
@@ -94,11 +108,13 @@ export function TopBar({
         </span>
       </div>
 
-      <div className="panel has-tip" style={{ padding: '12px 22px', textAlign: 'center', pointerEvents: 'auto' }}>
+      <div className="panel has-tip" style={{ padding: centerPad, textAlign: 'center', pointerEvents: 'auto' }}>
         <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff' }}>
           ante {String(ante).padStart(2, '0')} · {blind.toLowerCase()}
         </div>
-        <div className="f-display" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
+        {renderBigBlind && (
+          <div className="f-display" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
+        )}
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
           hands {hands} · rerolls {rerolls}
         </div>
