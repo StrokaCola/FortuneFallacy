@@ -42,6 +42,7 @@ import './crescendoRun';
 import './shardLung';
 // Phase 5f (no-op apply, real effect in upgrades.ts / transitions.ts)
 import './gildingPress';
+import './modGravity';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -66,5 +67,7 @@ export const CATALYST_IDS = [
   'crescendo_run', 'shard_lung',
   // Phase 5f — bust-hook + mod-density.
   'audit', 'gilding_press',
+  // Phase 5g — wide-scoring bonus.
+  'mod_gravity',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

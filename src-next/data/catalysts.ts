@@ -156,6 +156,11 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'gilding_press', name: 'Gilding Press', icon: '⊟', color: '#f5c451',
     desc: 'The first mod on each scoring die fires twice for chips.',
     flavor: 'A second strike on every plate.', rarity: 'uncommon' },
+
+  // Phase 5g — wide-hand bonus.
+  { id: 'mod_gravity', name: 'Mod Gravity', icon: '◐', color: '#cc88ff',
+    desc: '+5 Mult when 4 or more dice score this hand.',
+    flavor: 'Mass attracts mass. The crowd tilts.', rarity: 'uncommon' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

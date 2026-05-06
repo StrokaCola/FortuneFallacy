@@ -85,3 +85,55 @@ describe('gilding_press catalyst (first mod on each die fires twice for chips)',
     expect(out.mult).toBe(2);
   });
 });
+
+describe('mod_gravity catalyst (+5 mult on 4+ scoring dice)', () => {
+  function makeMultCtx(scoringFaces: number[]): PipelineCtx {
+    const state = {
+      run: { ...initialRunSlice(), catalysts: ['mod_gravity'] },
+      round: { ...initialRoundSlice(), firstHandPlayed: true },
+    } as unknown as GameState;
+    return {
+      state,
+      sim: { finalFaces: scoringFaces } as unknown as PipelineCtx['sim'],
+      chips: 0,
+      mult: 1,
+      total: 0,
+      events: [],
+      rng: mulberry32(0),
+      combo: { id: 'test', tier: 0, baseChips: 0, baseMult: 0, scoringFaces },
+    };
+  }
+
+  it('fires at exactly 4 scoring dice', () => {
+    const ctx = makeMultCtx([1, 2, 3, 4]);
+    expect(upgrades(ctx).mult).toBe(6); // 1 base + 5
+  });
+
+  it('fires at 5 scoring dice', () => {
+    const ctx = makeMultCtx([1, 2, 3, 4, 5]);
+    expect(upgrades(ctx).mult).toBe(6);
+  });
+
+  it('does not fire at 3 scoring dice', () => {
+    const ctx = makeMultCtx([1, 2, 3]);
+    expect(upgrades(ctx).mult).toBe(1);
+  });
+
+  it('does not fire when not owned', () => {
+    const state = {
+      run: { ...initialRunSlice(), catalysts: [] },
+      round: { ...initialRoundSlice(), firstHandPlayed: true },
+    } as unknown as GameState;
+    const ctx: PipelineCtx = {
+      state,
+      sim: { finalFaces: [1, 2, 3, 4] } as unknown as PipelineCtx['sim'],
+      chips: 0,
+      mult: 1,
+      total: 0,
+      events: [],
+      rng: mulberry32(0),
+      combo: { id: 'test', tier: 0, baseChips: 0, baseMult: 0, scoringFaces: [1, 2, 3, 4] },
+    };
+    expect(upgrades(ctx).mult).toBe(1);
+  });
+});
