@@ -90,6 +90,10 @@ export function CosmosBackground({
   const tensionClamped = Math.max(0, Math.min(1, tension));
   // Crimson tint fades in from 0 starting at tension=0.3, reaching opacity 0.25 at tension=1.
   const crimsonOpacity = tensionClamped < 0.3 ? 0 : (tensionClamped - 0.3) * (0.25 / 0.7);
+  // Dark corner vignette ramps from 0 starting at tension=0.6 toward 0.55 at
+  // tension=1. Pulls the edges into the dark and pushes attention to centre,
+  // mimicking Clover Pit's claustrophobic moods on boss/late-blind hands.
+  const vigOpacity = tensionClamped < 0.6 ? 0 : (tensionClamped - 0.6) * (0.55 / 0.4);
 
   return (
     <div style={{
@@ -104,6 +108,13 @@ export function CosmosBackground({
         opacity: crimsonOpacity,
         mixBlendMode: 'multiply',
         transition: 'opacity 600ms ease',
+        willChange: 'opacity',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,1) 105%)',
+        opacity: vigOpacity,
+        transition: 'opacity 800ms ease',
         willChange: 'opacity',
       }} />
     </div>

@@ -12,6 +12,7 @@ const DEBUFF_GLYPHS: Record<string, { glyph: string; label: string }> = {
   auto_unlock_after_roll: { glyph: '⌀', label: 'Auto-unlock after roll' },
   no_pairs: { glyph: '⊗', label: 'Pairs forsaken' },
   half_score: { glyph: '½', label: 'Half score' },
+  consumables_locked: { glyph: '⛔', label: 'Consumables sealed' },
 };
 
 export function DangerCorner() {

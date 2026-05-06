@@ -36,6 +36,9 @@ export function PackOverlay() {
 
   const def = lookupPack(pack.kind);
   const title = def?.name ?? 'Galaxy Pack';
+  const isManeuver = pack.kind === 'maneuver';
+  const itemNoun = isManeuver ? 'maneuver' : 'galaxy';
+  const itemNounPlural = isManeuver ? 'maneuvers' : 'galaxies';
 
   return (
     <div
@@ -57,7 +60,7 @@ export function PackOverlay() {
         fontFamily: '"Exo 2", sans-serif',
         fontSize: 13, color: '#bba8ff', marginTop: 4,
       }}>
-        Pick {pack.picksLeft} {pack.picksLeft === 1 ? 'galaxy' : 'galaxies'} to add to the run.
+        Pick {pack.picksLeft} {pack.picksLeft === 1 ? itemNoun : itemNounPlural} to add to the run.
       </div>
 
       <div style={{
@@ -85,7 +88,9 @@ export function PackOverlay() {
               ? 'All combos'
               : def?.comboId
                 ? comboName(def.comboId)
-                : '???';
+                : def?.type === 'maneuver'
+                  ? 'tactical'
+                  : '???';
           return (
             <button
               key={`${galaxyId}-${i}`}
@@ -109,7 +114,7 @@ export function PackOverlay() {
               <div className="f-mono uc" style={{
                 fontSize: 9, letterSpacing: '0.28em', color: accent, marginBottom: 6,
                 padding: '2px 6px', border: `1px solid ${accent}55`, borderRadius: 4,
-              }}>{taken ? 'taken' : 'galaxy'}</div>
+              }}>{taken ? 'taken' : itemNoun}</div>
               <div style={{
                 width: 96, height: 96, borderRadius: 12, marginTop: 10,
                 background: `radial-gradient(circle, ${accent}30, rgba(15,9,37,0.9))`,

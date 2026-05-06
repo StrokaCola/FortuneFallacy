@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { selectScore, selectTarget, selectAnte, selectPlayerName } from '../../state/selectors';
 import { lookupConstellation } from '../../data/constellations';
+import { triggerShake } from '../visual/screenShake';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 
@@ -12,6 +14,8 @@ export function Fail() {
   const name   = useStore(selectPlayerName);
   const constellationId = useStore(selectConstellationId);
   const constellation = lookupConstellation(constellationId);
+
+  useEffect(() => { triggerShake('big'); }, []);
 
   return (
     <div style={{

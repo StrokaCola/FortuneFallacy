@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { dispatch } from '../../actions/dispatch';
 import { stageScale } from '../../render/stage';
+import { triggerShake } from '../visual/screenShake';
 import type { Beat } from '../../core/scoring/types';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
@@ -91,16 +92,21 @@ export function ScoreMoment() {
         case 'mult-slam': {
           const id = slamId++;
           setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed, tint: beat.tint }]);
+          // Bigger mults punch harder. Threshold tuned so common pair-mults
+          // don't shake; only meaningful x4+ slams or post-cross slams do.
+          if (beat.multiplier >= 4 || crossed) triggerShake('tiny');
           schedule(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
           break;
         }
         case 'cross-target':
           crossed = true;
           setStamp('target');
+          triggerShake('mid');
           schedule(() => setStamp((cur) => (cur === 'target' ? null : cur)), 700);
           break;
         case 'boom': {
           const gold = beat.crossedTarget;
+          if (gold) triggerShake('big');
           const reduced = isReducedMotion();
           const useStars = gold && !reduced;
           const hold = gold ? HOLD_GOLD_MS : HOLD_BASE_MS;
@@ -141,6 +147,7 @@ export function ScoreMoment() {
         }
         case 'bail':
           setStamp('bail');
+          triggerShake('mid');
           schedule(() => {
             setActive(false);
             setStamp(null);

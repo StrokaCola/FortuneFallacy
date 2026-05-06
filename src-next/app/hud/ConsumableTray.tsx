@@ -2,17 +2,21 @@ import { useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
 import { lookupConsumable } from '../../core/consumables';
+import { hasDebuff } from '../../core/round/debuffs';
 import { SellButton } from './SellButton';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
+const selectConsumablesLocked = (s: GameState) => hasDebuff(s, 'consumables_locked');
 
 export function ConsumableTray() {
   const items = useStore(selectConsumables);
   const diceCount = useStore(selectDiceCount);
+  const locked = useStore(selectConsumablesLocked);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
 
   const onUse = (index: number) => {
+    if (locked) return;
     const id = items[index];
     if (!id) return;
     const def = lookupConsumable(id);
@@ -46,14 +50,17 @@ export function ConsumableTray() {
               <button
                 onClick={() => onUse(i)}
                 className="tap"
+                disabled={locked}
                 style={{
                   width: 64, height: 88, borderRadius: 8,
                   background: 'linear-gradient(180deg, rgba(28,18,69,0.9), rgba(15,9,37,0.95))',
                   border: `1px dashed ${color}60`,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
                   padding: '6px 4px',
-                  cursor: 'pointer',
+                  cursor: locked ? 'not-allowed' : 'pointer',
                   color: '#dcd4ff',
+                  opacity: locked ? 0.4 : 1,
+                  filter: locked ? 'grayscale(0.7)' : undefined,
                 }}>
                 <div className="f-mono uc" style={{
                   fontSize: 8, letterSpacing: '0.18em', color,

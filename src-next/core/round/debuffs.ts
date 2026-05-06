@@ -8,7 +8,8 @@ export type Debuff =
   | 'hand_size_cap_4'
   | 'no_mod_transforms_on_ones'
   | 'disable_catalysts_first_hand'
-  | 'mod_slots_capped_1';
+  | 'mod_slots_capped_1'
+  | 'consumables_locked';
 
 export function activeDebuffs(s: GameState): Set<Debuff> {
   if (!s.round.isBoss || !s.round.blindId) return new Set();

@@ -10,6 +10,7 @@ uniform vec2  u_res;
 uniform float u_time;
 uniform float u_mode;
 uniform float u_flash;
+uniform float u_vig;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 float noise(vec2 p) {
@@ -56,8 +57,16 @@ void main() {
   float hTwinkle = 0.5 + 0.5 * sin(u_time * 0.9 + hash(floor(hUV)) * 6.28);
   col += hStar * hTwinkle * vec3(0.90, 0.88, 1.00) * 0.80;
 
-  float vig = 1.0 - smoothstep(0.25, 1.05, length((uv - 0.5) * vec2(1.78, 1.0)));
-  col *= vig * 0.92 + 0.08;
+  // u_vig in [0,1]: at 0 the original soft vignette, at 1 oppressive corners.
+  // Inner radius pulls in (0.25 -> 0.10), edge floor drops (0.08 -> 0.02),
+  // and the col multiplier on the lit core slightly increases so the dark
+  // edges feel pinched rather than flat.
+  float vigInner = mix(0.25, 0.10, u_vig);
+  float vigOuter = mix(1.05, 0.92, u_vig);
+  float vigFloor = mix(0.08, 0.02, u_vig);
+  float vigCore  = mix(0.92, 0.98, u_vig);
+  float vig = 1.0 - smoothstep(vigInner, vigOuter, length((uv - 0.5) * vec2(1.78, 1.0)));
+  col *= vig * vigCore + vigFloor;
 
   col += u_flash * vec3(0.18, 0.12, 0.32) * smoothstep(0.3, 1.0, nebula);
   col += u_flash * 0.06 * vec3(1.0, 0.9, 1.0);
@@ -70,17 +79,19 @@ import type { Screen } from '../../state/slices/ui';
 
 const SCREEN_MODES: Record<Screen, number> = {
   title: 0, nameentry: 0, constellation_select: 0, scores: 0, win: 1, fail: 0,
-  round: 1, hub: 2, shop: 2, forge: 2, pause: 0,
+  round: 1, hub: 2, shop: 2, forge: 2, pause: 0, settings: 0, codex: 0, challenges: 0,
 };
 
 let gl: WebGLRenderingContext | null = null;
 let program: WebGLProgram | null = null;
-let uniforms: { res: WebGLUniformLocation | null; time: WebGLUniformLocation | null; mode: WebGLUniformLocation | null; flash: WebGLUniformLocation | null } = { res: null, time: null, mode: null, flash: null };
+let uniforms: { res: WebGLUniformLocation | null; time: WebGLUniformLocation | null; mode: WebGLUniformLocation | null; flash: WebGLUniformLocation | null; vig: WebGLUniformLocation | null } = { res: null, time: null, mode: null, flash: null, vig: null };
 let vbo: WebGLBuffer | null = null;
 let _canvas: HTMLCanvasElement | null = null;
 let _active = false;
 let _flash = 0;
 let _intensity = 0;
+let _vig = 0;
+let _vigTarget = 0;
 let _screen: Screen = 'title';
 
 function compile(type: number, src: string): WebGLShader | null {
@@ -121,6 +132,7 @@ export function initNebula(canvas: HTMLCanvasElement): boolean {
     time: gl.getUniformLocation(program, 'u_time'),
     mode: gl.getUniformLocation(program, 'u_mode'),
     flash: gl.getUniformLocation(program, 'u_flash'),
+    vig: gl.getUniformLocation(program, 'u_vig'),
   };
   _active = true;
   resizeCanvas();
@@ -139,6 +151,11 @@ function resizeCanvas() {
 export function setNebulaScreen(s: Screen): void { _screen = s; }
 export function setNebulaIntensity(i: number): void { _intensity = Math.max(0, Math.min(1, i)); }
 export function flashNebula(amount = 0.7): void { _flash = Math.min(1, _flash + amount); }
+// Tension in [0,1]; below 0.6 vignette stays neutral, above 0.6 ramps up to 1.
+export function setNebulaTension(t: number): void {
+  const clamped = Math.max(0, Math.min(1, t));
+  _vigTarget = clamped < 0.6 ? 0 : (clamped - 0.6) / 0.4;
+}
 
 let rafHandle: number | null = null;
 function startLoop() {
@@ -148,6 +165,8 @@ function startLoop() {
     rafHandle = requestAnimationFrame(loop);
     if (!_active || !gl || !program || !_canvas) return;
     _flash = Math.max(0, _flash - 0.022);
+    // Smooth-approach the vignette target so changes don't snap.
+    _vig += (_vigTarget - _vig) * 0.04;
     const time = (performance.now() - start) / 1000;
     const baseMode = SCREEN_MODES[_screen] ?? 0;
     const mode = baseMode + (3 - baseMode) * _intensity * 0.45;
@@ -163,6 +182,7 @@ function startLoop() {
     gl.uniform1f(uniforms.time, time);
     gl.uniform1f(uniforms.mode, mode);
     gl.uniform1f(uniforms.flash, _flash);
+    gl.uniform1f(uniforms.vig, _vig);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
   rafHandle = requestAnimationFrame(loop);

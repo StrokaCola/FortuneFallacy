@@ -149,7 +149,7 @@ const GALAXY_PACK_WEIGHTS: Record<string, number> = {
   galaxy_quasar:      1,
 };
 
-export type PackKind = 'celestial' | 'stellar' | 'galactic';
+export type PackKind = 'celestial' | 'stellar' | 'galactic' | 'maneuver';
 
 export type PackDef = {
   kind: PackKind;
@@ -166,6 +166,35 @@ export const PACK_DEFS: PackDef[] = [
   { kind: 'celestial', name: 'Celestial Pack', price: 4, showCount: 2, pickCount: 1 },
   { kind: 'stellar',   name: 'Stellar Pack',   price: 6, showCount: 3, pickCount: 1 },
   { kind: 'galactic',  name: 'Galactic Pack',  price: 8, showCount: 4, pickCount: 2, quasarWeightMultiplier: 3 },
+  // Maneuver Pack rolls from the orbital-maneuver pool (course corrections,
+  // burns, sync-ups). Skews toward immediate hand-shaping rather than
+  // permanent levels — the tactical sibling of galaxy packs.
+  { kind: 'maneuver',  name: 'Maneuver Pack', price: 5, showCount: 3, pickCount: 1 },
+];
+
+// Roll N distinct maneuver ids uniformly. Maneuvers are flat-tiered for now
+// (no rarity weights) so a uniform draw keeps the pack feeling like a clean
+// tactical pick. Pure helper, takes RNG so tests can seed.
+export function rollManeuverContents(showCount: number, rng: () => number): string[] {
+  const pool = MANEUVER_IDS_FOR_PACK.slice();
+  const picks: string[] = [];
+  for (let i = 0; i < showCount && pool.length > 0; i++) {
+    const idx = Math.floor(rng() * pool.length);
+    picks.push(pool[idx]!);
+    pool.splice(idx, 1);
+  }
+  return picks;
+}
+
+// Authored separately so the pack pool can deliberately omit any maneuver
+// that's tagged as shop-only or boss-reward-only later.
+const MANEUVER_IDS_FOR_PACK = [
+  'course_correction',
+  'burn_pass',
+  'sync_up',
+  'thrust_boost',
+  'recoil_vent',
+  'rendezvous',
 ];
 
 export function lookupPack(kind: string): PackDef | undefined {

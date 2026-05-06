@@ -12,10 +12,11 @@ import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
 import { lookupConstellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
 import { isForgeDisabled } from '../../core/run/diceContext';
+import { stakeContext } from '../../core/run/stakeContext';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
-const selectForgeDisabled = (s: GameState) => isForgeDisabled(s);
+const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;

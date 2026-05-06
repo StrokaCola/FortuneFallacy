@@ -20,6 +20,9 @@ import { Fail }  from './screens/Fail';
 import { Forge } from './screens/Forge';
 import { Scores } from './screens/Scores';
 import { NameEntry } from './screens/NameEntry';
+import { Settings } from './screens/Settings';
+import { Codex } from './screens/Codex';
+import { ChallengeSelect } from './screens/ChallengeSelect';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -106,6 +109,9 @@ export function App() {
             {screen === 'win'    && <Win />}
             {screen === 'fail'   && <Fail />}
             {screen === 'scores' && <Scores />}
+            {screen === 'settings' && <Settings />}
+            {screen === 'codex' && <Codex />}
+            {screen === 'challenges' && <ChallengeSelect />}
           </ScreenTransition>
           <BossReveal />
           <ArrivalToast />

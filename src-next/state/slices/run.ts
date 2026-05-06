@@ -54,6 +54,12 @@ export type RunSlice = {
   // BUY_OFFER for kind=catalyst increments by the offer's price. Audit
   // refunds 50% of this on bust. Persists across blinds within the run.
   catalystShardSpend: number;
+  // Stake id chosen on ConstellationSelect. Drives target multiplier, hand
+  // count, reroll budget, shop pricing. Default 'spark' is the canonical run.
+  stakeId: string;
+  // Optional Challenge id when this run was started from ChallengeSelect.
+  // Empty string = standard run. Challenge modifiers stack on top of stake.
+  challengeId: string;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -103,4 +109,6 @@ export const initialRunSlice = (): RunSlice => ({
   ownedModEditions: [],
   diceModEditions: Array.from({ length: 5 }, () => [] as (ModEdition | null)[]),
   catalystShardSpend: 0,
+  stakeId: 'spark',
+  challengeId: '',
 });

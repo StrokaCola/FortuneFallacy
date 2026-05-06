@@ -103,14 +103,17 @@ function offerMeta(kind: string, id: string): Meta {
   }
   if (kind === 'pack') {
     const p = lookupPack(id);
-    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : '✦';
+    const isManeuver = id === 'maneuver';
+    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : isManeuver ? '⤴' : '✦';
     return {
       name: p?.name ?? id,
       icon: tier,
-      color: '#cc88ff',
-      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Galaxy booster pack.',
+      color: isManeuver ? '#7be3ff' : '#cc88ff',
+      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Booster pack.',
       kindLabel: 'booster',
-      flavor: 'Levels up the hand types you choose.',
+      flavor: isManeuver
+        ? 'Tactical maneuvers — shape the next hand.'
+        : 'Levels up the hand types you choose.',
     };
   }
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
@@ -213,9 +216,33 @@ export function Shop() {
             : m.rarity === 'rare'
               ? `1px solid ${ringColor}aa`
               : `1px solid ${c}55`;
+          // Rarity glow ring — soft halo sitting BEHIND the card. Stronger
+          // for higher rarities; legendary keeps its existing pulsing aura
+          // and skips this layer to avoid double-glow.
+          const ringStrength: Record<Rarity, number> = { common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0 };
+          const ringIntensity = m.rarity ? ringStrength[m.rarity] : 0;
           return (
             <div
               key={`${o.id}-${i}`}
+              className="card-wobble"
+              style={{
+                position: 'relative',
+                animationDelay: `${i * 280}ms`,
+                animationDuration: `${3.2 + (i % 3) * 0.4}s`,
+              }}
+            >
+              {ringIntensity > 0 && (
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute', inset: -10, borderRadius: 18, pointerEvents: 'none',
+                    background: `radial-gradient(circle at center, ${ringColor}${Math.round(ringIntensity * 255).toString(16).padStart(2, '0')} 0%, transparent 65%)`,
+                    filter: 'blur(8px)',
+                    zIndex: 0,
+                  }}
+                />
+              )}
+            <div
               className={`panel-strong has-tip${isLegendary ? ' legendary-aura' : ''}`}
               onMouseEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
@@ -225,7 +252,6 @@ export function Shop() {
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 cursor: affordable ? 'pointer' : 'not-allowed',
                 opacity: affordable ? 1 : 0.6,
-                animation: `float-y ${3 + i * 0.4}s ease-in-out infinite`,
                 position: 'relative',
                 overflow: 'hidden',
               }}
@@ -297,6 +323,7 @@ export function Shop() {
                   Buy ◆ {o.price} · sell back ◆ {refundIfBought}
                 </span>
               </span>
+            </div>
             </div>
           );
         })}

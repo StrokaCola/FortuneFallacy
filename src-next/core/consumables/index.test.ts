@@ -46,8 +46,8 @@ describe('spare_reroll', () => {
 });
 
 describe('CONSUMABLES roster', () => {
-  it('contains 6 base + 10 galaxies + 2 spectrals (Catalyze, Void)', () => {
-    expect(CONSUMABLES.length).toBe(18);
+  it('contains 6 base + 10 galaxies + 2 spectrals + 6 maneuvers', () => {
+    expect(CONSUMABLES.length).toBe(24);
   });
 
   it('every galaxy has type=galaxy and a comboId', () => {

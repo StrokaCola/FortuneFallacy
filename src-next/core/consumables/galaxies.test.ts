@@ -24,8 +24,8 @@ describe('GALAXIES roster', () => {
 });
 
 describe('PACK_DEFS', () => {
-  it('has 3 tiers (celestial, stellar, galactic)', () => {
-    expect(PACK_DEFS.map((p) => p.kind)).toEqual(['celestial', 'stellar', 'galactic']);
+  it('has 4 tiers (celestial, stellar, galactic, maneuver)', () => {
+    expect(PACK_DEFS.map((p) => p.kind)).toEqual(['celestial', 'stellar', 'galactic', 'maneuver']);
   });
 
   it('lookupPack returns the def for known kinds', () => {

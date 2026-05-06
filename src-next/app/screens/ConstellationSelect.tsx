@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
+import { STAKES, stakeIndex } from '../../data/stakes';
+import { useStore, type GameState } from '../../state/store';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
+
+const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
 
 export function ConstellationSelect() {
   const compact = useIsCompactStage();
+  const stakeProgress = useStore(selectStakeProgress);
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
@@ -28,11 +34,18 @@ export function ConstellationSelect() {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 200 : 240}px, 1fr))`,
+          gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 220 : 260}px, 1fr))`,
           gap: compact ? 10 : 14,
           marginBottom: compact ? 16 : 28,
         }}>
-          {CONSTELLATIONS.map((c) => <Card key={c.id} c={c} compact={compact} />)}
+          {CONSTELLATIONS.map((c) => (
+            <Card
+              key={c.id}
+              c={c}
+              compact={compact}
+              progressId={stakeProgress[c.id] ?? null}
+            />
+          ))}
         </div>
 
         <button
@@ -46,21 +59,26 @@ export function ConstellationSelect() {
   );
 }
 
-function Card({ c, compact }: { c: Constellation; compact: boolean }) {
+function Card({ c, compact, progressId }: { c: Constellation; compact: boolean; progressId: string | null }) {
   const accent = '#7be3ff';
+  // Highest stake the player has cleared for this constellation. Stakes up to
+  // and including (cleared + 1) are playable. Spark is always playable.
+  const clearedIdx = progressId ? stakeIndex(progressId) : -1;
+  const maxPlayable = Math.min(STAKES.length - 1, clearedIdx + 1);
+  const [picked, setPicked] = useState<number>(0);
+  const playable = picked <= maxPlayable;
+  const stake = STAKES[picked]!;
   return (
-    <button
+    <div
       className="panel mat-interactive"
-      onClick={() => dispatch({ type: 'NEW_RUN', constellationId: c.id })}
       style={{
         textAlign: 'left',
         padding: compact ? 12 : 16,
         background: 'rgba(15,9,37,0.6)',
         border: '1px solid rgba(149,119,255,0.25)',
         borderRadius: 12,
-        cursor: 'pointer',
         display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10,
-        minHeight: compact ? 200 : 280,
+        minHeight: compact ? 240 : 320,
       }}>
       <Glyph points={c.glyph} accent={accent} />
       <div className="f-display" style={{ fontSize: compact ? 22 : 18, color: '#f3f0ff', lineHeight: 1.1 }}>
@@ -75,12 +93,64 @@ function Card({ c, compact }: { c: Constellation; compact: boolean }) {
         {c.flavor}
       </div>
       <ul style={{
-        marginTop: 'auto', paddingLeft: 18, marginBottom: 0,
+        marginTop: 4, paddingLeft: 18, marginBottom: 0,
         fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
       }}>
         {c.rules.map((r, i) => <li key={i}>{r}</li>)}
       </ul>
-    </button>
+
+      {/* Stake row */}
+      <div style={{
+        marginTop: 'auto', paddingTop: 8,
+        borderTop: '1px dashed rgba(149,119,255,0.22)',
+      }}>
+        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', marginBottom: 6 }}>
+          stake
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+          {STAKES.map((s, i) => {
+            const unlocked = i <= maxPlayable;
+            const active = i === picked;
+            return (
+              <button
+                key={s.id}
+                onClick={() => unlocked && setPicked(i)}
+                title={unlocked ? `${s.name} — ${s.flavor}` : `Clear ${STAKES[i - 1]?.name ?? 'previous stake'} first`}
+                disabled={!unlocked}
+                style={{
+                  width: 18, height: 18, borderRadius: 4,
+                  background: unlocked ? s.color : 'rgba(28,18,69,0.4)',
+                  border: active ? '2px solid #f3f0ff' : `1px solid ${unlocked ? s.color : 'rgba(149,119,255,0.25)'}`,
+                  cursor: unlocked ? 'pointer' : 'not-allowed',
+                  opacity: unlocked ? 1 : 0.35,
+                  padding: 0,
+                  filter: active ? `drop-shadow(0 0 6px ${s.color})` : undefined,
+                }}
+              />
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span className="f-head" style={{ fontSize: 12, color: stake.color }}>{stake.name}</span>
+          <span className="f-mono" style={{ fontSize: 9, color: '#9577ff' }}>
+            {stake.rules.join(' · ')}
+          </span>
+        </div>
+      </div>
+
+      <button
+        className="btn btn-primary mat-interactive"
+        disabled={!playable}
+        onClick={() => playable && dispatch({ type: 'NEW_RUN', constellationId: c.id, stakeId: stake.id })}
+        style={{
+          marginTop: 8, width: '100%', padding: '8px 14px', fontSize: 12,
+          opacity: playable ? 1 : 0.4,
+          cursor: playable ? 'pointer' : 'not-allowed',
+        }}
+      >
+        Begin · {stake.name}
+      </button>
+    </div>
   );
 }
 

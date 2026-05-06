@@ -4,6 +4,7 @@ import { BOSS_BLINDS } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
+import { triggerShake } from '../visual/screenShake';
 
 type Reveal = { id: string; ts: number; ante: number };
 
@@ -14,6 +15,7 @@ export function BossReveal() {
     return bus.on('onBossRevealed', ({ blindId, ante }) => {
       setReveal({ id: blindId, ts: Date.now(), ante });
       sfxPlay('sigilDraw');
+      triggerShake('big');
       setTimeout(() => sfxPlay('sigilDraw'), 350);
       setTimeout(() => sfxPlay('sigilDraw'), 700);
       setTimeout(() => setReveal(null), 3200);

@@ -2,6 +2,7 @@ import type { ActionHandler } from './types';
 import { runRollPipelineUpToSim, runRollPipelineAfterSim } from '../../core/pipeline/runRollPipeline';
 import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
+import { rerollsPerHand } from '../../core/run/stakeContext';
 import { lookupMod } from '../../core/mods';
 import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
 import { recursiveSinkActive } from '../../core/upgrades/catalysts/recursiveSink';
@@ -179,7 +180,7 @@ export const rollHandler: ActionHandler = (a, s) => {
         round: {
           ...workingState.round,
           handsLeft: newHandsLeft,
-          rerollsLeft: 2,
+          rerollsLeft: rerollsPerHand(workingState),
           scoring: true,
           firstHandPlayed: true,
           pendingScoreDelta: final.total,

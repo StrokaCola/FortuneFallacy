@@ -22,7 +22,17 @@ export function startAudioBridge(): () => void {
         window.setTimeout(() => sfxModule.sfxPlay('diceClack'), i * (30 + Math.random() * 50));
       }
     }),
-    bus.on('onSimulationEnd', () => audioEngine.bumpHeat(0.06)),
+    bus.on('onSimulationEnd', ({ result }) => {
+      audioEngine.bumpHeat(0.06);
+      // Slot-machine settle clatter — one clack per die, reels-stopping
+      // stagger so dice "land" sequentially instead of all at once.
+      // Slightly heavier and slower than the rolling clatter on onRollStart.
+      const count = result?.finalFaces?.length ?? 0;
+      for (let i = 0; i < count; i++) {
+        const delay = 60 + i * (70 + Math.random() * 40);
+        window.setTimeout(() => sfxModule.sfxPlay('diceClack'), delay);
+      }
+    }),
     bus.on('onComboDetected', ({ tier }) => {
       audioEngine.bumpComboFromTier(tier);
       sfxModule.sfxPlay('combo', { tier });

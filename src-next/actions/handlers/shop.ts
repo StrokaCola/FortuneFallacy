@@ -6,9 +6,10 @@ import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
-import { PACK_DEFS, lookupPack, rollPackContents } from '../../core/consumables/galaxies';
+import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
 import { rollCatalystEdition } from '../../core/upgrades/editions';
+import { stakeContext } from '../../core/run/stakeContext';
 
 // 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
 // in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
@@ -33,6 +34,11 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
+}
+
+function applyShopPriceMult(offers: ShopOffer[], mult: number): ShopOffer[] {
+  if (mult === 1) return offers;
+  return offers.map((o) => ({ ...o, price: Math.max(1, Math.round(o.price * mult)) }));
 }
 
 function rollOffers(s: GameState): ShopOffer[] {
@@ -72,9 +78,14 @@ function rollOffers(s: GameState): ShopOffer[] {
   // ~25% pack, then voucher-vs-consumable resolves like before.
   const r = Math.random();
   if (r < 0.25) {
-    // Pack tier weighted: 60% Celestial, 30% Stellar, 10% Galactic.
+    // Pack tier weighted: 45% Celestial, 22% Stellar, 8% Galactic, 25% Maneuver.
+    // Pulled by index from PACK_DEFS to avoid drift if the table is reordered.
     const tierRoll = Math.random();
-    const pack = tierRoll < 0.6 ? PACK_DEFS[0]! : tierRoll < 0.9 ? PACK_DEFS[1]! : PACK_DEFS[2]!;
+    const pack =
+      tierRoll < 0.45 ? PACK_DEFS[0]! :
+      tierRoll < 0.67 ? PACK_DEFS[1]! :
+      tierRoll < 0.75 ? PACK_DEFS[2]! :
+      PACK_DEFS[3]!;
     offers.push({ kind: 'pack', id: pack.kind, price: pack.price });
   } else {
     const useVoucher = availableVouchers.length > 0 && (consumableIds.length === 0 || Math.random() < 0.5);
@@ -87,7 +98,7 @@ function rollOffers(s: GameState): ShopOffer[] {
     }
   }
 
-  return offers;
+  return applyShopPriceMult(offers, stakeContext(s).shopPriceMult);
 }
 
 // Open a freshly purchased pack: roll its contents, mark all rolled galaxy
@@ -95,7 +106,12 @@ function rollOffers(s: GameState): ShopOffer[] {
 function openPack(s: GameState, packKind: string): { state: GameState; events: GameEventEmission[] } {
   const def = lookupPack(packKind);
   if (!def) return { state: s, events: [] };
-  const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
+  // Maneuver Packs draw from the orbital-maneuver pool; the rest draw from
+  // the galaxy pool. The PackOverlay reads ids generically through
+  // lookupConsumable so the same UI handles both.
+  const galaxyIds = packKind === 'maneuver'
+    ? rollManeuverContents(def.showCount, Math.random)
+    : rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
   const events: GameEventEmission[] = [
     { type: 'onPackOpened', payload: { kind: packKind, galaxyIds, picksAllowed: def.pickCount } },
   ];
@@ -139,6 +155,8 @@ function openPack(s: GameState, packKind: string): { state: GameState; events: G
 export const shopHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'OPEN_SHOP': {
+      // Challenge overlay can lock the shop entirely. Stay in hub.
+      if (stakeContext(s).shopDisabled) return { state: s, events: [] };
       const offers = rollOffers(s);
       return {
         state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: freeShopReroll(s) ? 0 : BASE_REROLL_COST }, ui: { ...s.ui, screen: 'shop' } },
@@ -238,12 +256,29 @@ export const shopHandler: ActionHandler = (a, s) => {
       const galaxyId = pack.galaxyIds[a.galaxyIdx];
       if (!galaxyId || pack.pickedSoFar.includes(galaxyId)) return { state: s, events: [] };
       const def = lookupConsumable(galaxyId);
-      if (!def || def.type !== 'galaxy') return { state: s, events: [] };
+      if (!def) return { state: s, events: [] };
 
-      // Apply the galaxy directly — picks bypass the consumable inventory
-      // (matches Balatro's planet-pack flow). The galaxy's apply increments
-      // run.comboLevels and emits onGalaxyUsed.
-      const applied = def.apply(s, []);
+      // Galaxies apply immediately (combo level bump). Maneuvers go into the
+      // consumable tray so the player can choose when to fire them. Other
+      // types are rejected for safety.
+      let applied: { state: GameState; events: GameEventEmission[] };
+      if (def.type === 'galaxy') {
+        applied = def.apply(s, []);
+      } else if (def.type === 'maneuver') {
+        if (s.run.consumables.length >= maxConsumableSlots(s)) {
+          // Inventory full — skip silently. The pick still counts so the
+          // player can move on; alternative is to refund a pick, but the
+          // simpler flow keeps overlay logic clean.
+          applied = { state: s, events: [] };
+        } else {
+          applied = {
+            state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, def.id] } },
+            events: [],
+          };
+        }
+      } else {
+        return { state: s, events: [] };
+      }
       const picksLeft = pack.picksLeft - 1;
       const pickedSoFar = [...pack.pickedSoFar, galaxyId];
       const events: GameEventEmission[] = [

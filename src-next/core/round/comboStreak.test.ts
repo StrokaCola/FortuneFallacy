@@ -14,6 +14,8 @@ function run(over: Partial<RunSlice> = {}): RunSlice {
     ownedModEditions: [],
     diceModEditions: [[], [], [], [], []],
     catalystShardSpend: 0,
+    stakeId: 'spark',
+    challengeId: '',
     ...over,
   };
 }
