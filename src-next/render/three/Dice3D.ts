@@ -11,7 +11,7 @@ import {
 import { MOD_MATERIALS } from './dieMaterials';
 import { getFaceCenters } from './polyhedra';
 import { getDiceSpec } from '../../core/run/diceContext';
-import { onStageResize } from '../stage';
+import { onStageResize, getStageSize } from '../stage';
 import { spatialIdxForValue, type DieShape, type DieFace } from '../../data/dice';
 import { buildOrbitalSatellite } from './orbitalSatellite';
 import { buildRimOverlay } from './rimOverlay';
@@ -434,39 +434,13 @@ export class Dice3D {
 
     this.buildDice();
 
-    // Watch the canvas CSS box directly. The canvas height is now driven
-    // by --hud-top-h / --hud-bottom-h CSS variables (set by TopBar /
-    // ActionBar refs). When those vars change, the window doesn't fire
-    // resize, so we need ResizeObserver to keep the drawing buffer and
-    // ortho frustum in sync with the actual visible canvas rect.
-    //
-    // applyViewportSize() is wrapped in requestAnimationFrame so the
-    // callback returns before the next layout tick, otherwise the
-    // browser logs "ResizeObserver loop completed with undelivered
-    // notifications" — a benign warning we still want to silence.
-    let canvasObserver: ResizeObserver | null = null;
-    let resizeRaf: number | null = null;
-    const scheduleResize = () => {
-      if (resizeRaf != null) return;
-      resizeRaf = requestAnimationFrame(() => {
-        resizeRaf = null;
-        this.applyViewportSize();
-      });
-    };
-    if (typeof ResizeObserver !== 'undefined') {
-      canvasObserver = new ResizeObserver(scheduleResize);
-      canvasObserver.observe(this.canvas);
-    }
-
     this.unsubscribers.push(
       // Tier 2: resize the renderer + recompute the orthographic frustum
       // whenever the stage dimensions change (rotate, address-bar, etc).
+      // The canvas is `inset: 0` on top of the full stage and its size is
+      // driven by getStageSize() in applyViewportSize, so a stage-resize
+      // listener is the only sync we need.
       onStageResize(() => this.applyViewportSize()),
-      () => {
-        if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
-        resizeRaf = null;
-        if (canvasObserver) { canvasObserver.disconnect(); canvasObserver = null; }
-      },
       store.subscribe((s, prev) => {
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
@@ -774,14 +748,15 @@ export class Dice3D {
   }
 
   // Tier 2: keep the WebGL drawing buffer + ortho frustum in sync with
-  // the canvas's CSS size. Width is driven by the canvas rect; ortho
-  // half-height stays fixed so dice render at a stable physical size,
-  // and aspect = w/h widens the frustum on landscape so wider screens
-  // see more tray on the sides without distorting dice.
+  // the stage size. We deliberately use getStageSize() (viewport minus
+  // safe-area insets) instead of the canvas's getBoundingClientRect,
+  // because the canvas rect can briefly collapse to 0 during screen
+  // transitions when CSS-var-driven layouts are mid-update — which would
+  // leave the drawing buffer at 1×1 and the dice invisible. Stage size
+  // is the same dimension #stage-root resolves to, so the canvas (which
+  // is `inset: 0` inside stage-root) always matches.
   private applyViewportSize(): void {
-    const rect = this.canvas.getBoundingClientRect();
-    const w = Math.max(1, Math.round(rect.width || window.innerWidth));
-    const h = Math.max(1, Math.round(rect.height || window.innerHeight));
+    const { w, h } = getStageSize();
     this.renderer.setSize(w, h, false);
     const ortho = 7.5;
     const aspect = w / h;

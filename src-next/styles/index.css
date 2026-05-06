@@ -67,15 +67,14 @@ html, body {
 }
 
 #three-next {
-  /* Dice canvas is sized to the play area between TopBar and ActionBar.
-     --hud-top-h / --hud-bottom-h are written by the TopBar/ActionBar
-     refs via useReportHudHeight; defaults of 0px preserve full-viewport
-     behavior when those vars are unset (e.g. test envs, Hub screen). */
+  /* Dice canvas covers the full stage. The HUD overlays (TopBar,
+     ActionBar, CatalystStrip, etc.) sit on top via #next-root and
+     position themselves around the play area using the --hud-top-h
+     and --hud-bottom-h CSS vars. The canvas itself stays full-size
+     so its CSS box can never collapse if a HUD ref reports a
+     transient/extreme height during a screen transition. */
   position: absolute;
-  top:    var(--hud-top-h, 0px);
-  bottom: var(--hud-bottom-h, 0px);
-  left: 0;
-  right: 0;
+  inset: 0;
   z-index: 3;
   pointer-events: none;
   display: none;
