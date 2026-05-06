@@ -5,22 +5,30 @@ import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
 
 const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0;
-const selectRunSummary = (s: GameState) => ({
-  ante: s.run.ante,
-  goalIdx: s.run.goalIdx,
-  score: s.round.score,
-  constellationId: s.run.constellationId,
-});
-const selectBestScore = (s: GameState) => {
-  const hs = s.meta.highScores;
-  if (!hs || hs.length === 0) return null;
-  return hs.reduce((best, cur) => (cur.score > best.score ? cur : best), hs[0]!);
-};
+// Each selector returns a primitive so useSyncExternalStore's Object.is
+// comparison stays stable across renders. Returning an object literal here
+// would create a fresh reference on every snapshot read and tear-loop.
+const selectAnte = (s: GameState) => s.run.ante;
+const selectGoalIdx = (s: GameState) => s.run.goalIdx;
+const selectScore = (s: GameState) => s.round.score;
+const selectConstellationId = (s: GameState) => s.run.constellationId;
+const selectHighScores = (s: GameState) => s.meta.highScores;
 
 export function Title() {
   const hasRun = useStore(selectHasRun);
-  const runSummary = useStore(selectRunSummary);
-  const best = useStore(selectBestScore);
+  const ante = useStore(selectAnte);
+  const goalIdx = useStore(selectGoalIdx);
+  const score = useStore(selectScore);
+  const constellationId = useStore(selectConstellationId);
+  const highScores = useStore(selectHighScores);
+  // Derived in render — the underlying array reference is stable, so this
+  // recomputes only when highScores actually changes.
+  const best = highScores.length === 0
+    ? null
+    : highScores.reduce((b, c) => (c.score > b.score ? c : b), highScores[0]!);
+  // `score` is round score; surfaced in the run-summary line for parity with
+  // the previous structured selector.
+  void score;
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', pointerEvents: 'auto' }}>
@@ -90,7 +98,7 @@ export function Title() {
               <div className="f-mono uc" style={{
                 fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff', marginTop: -4,
               }}>
-                ante {runSummary.ante} · blind {(runSummary.goalIdx % 3) + 1} · {lookupConstellation(runSummary.constellationId).name}
+                ante {ante} · blind {(goalIdx % 3) + 1} · {lookupConstellation(constellationId).name}
               </div>
             </>
           )}

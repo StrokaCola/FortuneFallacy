@@ -17,7 +17,10 @@ import { editionLabel, editionColor } from '../../core/upgrades/editions';
 const FORGE_COST = 5;
 const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
 
-const selectOwnedModEditions = (s: GameState) => s.run.ownedModEditions ?? [];
+// Stable empty-array fallback so the selector returns a consistent ref
+// across renders (avoids useSyncExternalStore tear-loops on legacy saves).
+const EMPTY_MOD_EDITIONS: never[] = [];
+const selectOwnedModEditions = (s: GameState) => s.run.ownedModEditions ?? EMPTY_MOD_EDITIONS;
 
 const selectDiceSpec = (s: GameState) => getDiceSpec(s);
 
