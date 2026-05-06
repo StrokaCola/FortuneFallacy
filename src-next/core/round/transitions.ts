@@ -254,8 +254,9 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
     const def = lookupPack('celestial')!;
     const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
     // Snapshot pre-open unlocks BEFORE we mutate meta.unlocks below.
-    const unlockedAtOpen = [...nextState.meta.unlocks];
-    const newUnlocks = new Set(nextState.meta.unlocks);
+    const currentUnlocks = nextState.meta.unlocks ?? [];
+    const unlockedAtOpen = [...currentUnlocks];
+    const newUnlocks = new Set(currentUnlocks);
     for (const gid of galaxyIds) {
       if (!newUnlocks.has(gid)) {
         newUnlocks.add(gid);
