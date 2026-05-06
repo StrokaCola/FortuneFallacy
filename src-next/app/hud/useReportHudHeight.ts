@@ -26,33 +26,51 @@ export function useReportHudHeight(
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement.style;
+    let lastValue = '';
+    let rafHandle: number | null = null;
     const write = () => {
       const r = el.getBoundingClientRect();
-      if (mode === 'top') {
+      const next = mode === 'top'
         // Bottom edge of the bar in viewport space — children stack from here.
-        root.setProperty(varName, `${Math.round(r.bottom)}px`);
-      } else {
+        ? `${Math.round(r.bottom)}px`
         // Inset from viewport bottom — `bottom: var(--hud-bottom-h)` reserves
         // exactly the bar's footprint.
-        root.setProperty(varName, `${Math.round(window.innerHeight - r.top)}px`);
-      }
+        : `${Math.round(window.innerHeight - r.top)}px`;
+      // Skip writes when the value is unchanged. Avoids spurious style
+      // recalcs when ResizeObserver fires for sub-pixel rounding noise.
+      if (next === lastValue) return;
+      lastValue = next;
+      root.setProperty(varName, next);
+    };
+
+    // Defer ResizeObserver work to the next animation frame so the
+    // callback finishes within the same paint cycle, otherwise the
+    // browser logs "ResizeObserver loop completed with undelivered
+    // notifications". Coalesces bursts of resize events too.
+    const scheduleWrite = () => {
+      if (rafHandle != null) return;
+      rafHandle = requestAnimationFrame(() => {
+        rafHandle = null;
+        write();
+      });
     };
 
     write();
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(write);
+      ro = new ResizeObserver(scheduleWrite);
       ro.observe(el);
     }
     // Window resize / orientation also shifts the bottom-mode value
     // (depends on innerHeight) and the top-mode value if the bar wraps.
-    window.addEventListener('resize', write);
-    window.addEventListener('orientationchange', write);
+    window.addEventListener('resize', scheduleWrite);
+    window.addEventListener('orientationchange', scheduleWrite);
 
     return () => {
+      if (rafHandle != null) cancelAnimationFrame(rafHandle);
       if (ro) ro.disconnect();
-      window.removeEventListener('resize', write);
-      window.removeEventListener('orientationchange', write);
+      window.removeEventListener('resize', scheduleWrite);
+      window.removeEventListener('orientationchange', scheduleWrite);
       // Reset to 0 so screens without this bar (Hub, Title, …) get full-viewport.
       root.setProperty(varName, '0px');
     };
