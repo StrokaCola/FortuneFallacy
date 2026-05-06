@@ -102,14 +102,10 @@ export function Hub() {
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
 
-        {/* Thread uses fixed-pixel SVG geometry tied to the design
-            CARD_W. Once cards CSS-clamp on tight stages they no longer
-            line up under the thread dots, so we drop it on tight —
-            the cards already label themselves "trial 01 / 02 / 03". */}
-        {!tight && <ConstellationThread blinds={blinds} accent={accent} />}
+        <ConstellationThread blinds={blinds} accent={accent} />
 
         <div style={{
-          display: 'flex', gap: tight ? 10 : CARD_GAP, flexWrap: 'wrap', justifyContent: 'center',
+          display: 'flex', gap: CARD_GAP, flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: '100%',
         }}>
           {blinds.map((b, i) => {
@@ -123,15 +119,11 @@ export function Hub() {
               key={i}
               className="panel-strong has-tip"
               style={{
-                // Card width clamps so three cards always fit on one
-                // row at any viewport ≥ ~580px, no horizontal scroll.
-                // 80px = 2× outer paddingInline (20) + 2× CARD_GAP (26).
-                // Falls back to the design 240 on roomy stages.
-                width: `min(${CARD_W}px, calc((100vw - 80px) / 3))`,
+                width: CARD_W,
                 // Card height clamps with viewport so on short landscape
                 // phones the three trial cards plus action bar all fit.
                 height: 'clamp(240px, 50vh, 320px)',
-                padding: 'clamp(12px, 2vw, 20px)', position: 'relative',
+                padding: 20, position: 'relative',
                 border: cur ? `2px solid ${accent}` : (isBoss ? '1px solid rgba(226,51,74,0.5)' : '1px solid rgba(149,119,255,0.3)'),
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
                 opacity: cleared ? 0.55 : locked ? 0.78 : 1,
