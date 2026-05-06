@@ -10,6 +10,7 @@ function run(over: Partial<RunSlice> = {}): RunSlice {
     handsPlayed: 0, compoundingStacks: 0, rollCounter: 0,
     tempoStreak: 0, tempoLastTier: -1, lastComboId: null, comboStreak: 0,
     comboLevels: {},
+    catalystEditions: {},
     ...over,
   };
 }

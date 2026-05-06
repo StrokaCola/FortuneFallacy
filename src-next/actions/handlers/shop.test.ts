@@ -391,6 +391,38 @@ describe('Galaxy packs — picking', () => {
   });
 });
 
+describe('Catalyst editions — buy + sell roundtrip', () => {
+  it('BUY_OFFER catalyst with edition stamps run.catalystEditions', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5, edition: 'foil' }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalysts).toContain('cold_hand');
+    expect(r.state.run.catalystEditions.cold_hand).toBe('foil');
+  });
+
+  it('BUY_OFFER catalyst without edition leaves catalystEditions untouched', () => {
+    const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5 }];
+    const s = baseState({ shards: 10, offers });
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, s);
+    expect(r.state.run.catalystEditions.cold_hand).toBeUndefined();
+  });
+
+  it('SELL_UPGRADE catalyst clears its edition stamp', () => {
+    const s = baseState({ shards: 0, catalysts: ['cold_hand', 'six_bias'] });
+    const seeded: GameState = {
+      ...s,
+      run: {
+        ...s.run,
+        catalystEditions: { cold_hand: 'foil', six_bias: 'holo' },
+      },
+    };
+    const r = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 0 }, seeded);
+    expect(r.state.run.catalysts).toEqual(['six_bias']);
+    expect(r.state.run.catalystEditions.cold_hand).toBeUndefined();
+    expect(r.state.run.catalystEditions.six_bias).toBe('holo');
+  });
+});
+
 describe('Legendary unlock progression', () => {
   it('buying a 4th catalyst unlocks all_band in meta.unlocks', () => {
     const offers: ShopOffer[] = [{ kind: 'catalyst', id: 'cold_hand', price: 5 }];

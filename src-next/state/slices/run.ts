@@ -36,7 +36,22 @@ export type RunSlice = {
   // (see core/phases/evaluation.ts and core/consumables/galaxies.ts).
   // Run-scoped: resets on a new run, persists across blinds within the run.
   comboLevels: Record<string, number>;
+  // Per-catalyst edition stamp. Keyed by catalyst id (catalysts can't be
+  // duplicated within a run — see catalyst.ts GRANT_CATALYST guard). Edition
+  // bonuses are applied in core/phases/upgrades.ts immediately after the
+  // catalyst's own apply, so they ride any later catalyst multipliers.
+  // Cleared on SELL_UPGRADE so a re-bought catalyst doesn't inherit the
+  // old stamp.
+  catalystEditions: Record<string, CatalystEdition>;
 };
+
+// Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
+// system at smaller magnitudes, scaled to FortuneFallacy's economy.
+//
+//   foil → +50 chips when this catalyst fires
+//   holo → +10 mult when this catalyst fires
+//   poly → ×1.5 to the catalyst's own contribution this trigger
+export type CatalystEdition = 'foil' | 'holo' | 'poly';
 
 export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
@@ -67,4 +82,5 @@ export const initialRunSlice = (): RunSlice => ({
     four_kind: 0,
     five_kind: 0,
   },
+  catalystEditions: {},
 });

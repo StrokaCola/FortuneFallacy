@@ -8,6 +8,7 @@ import { sellRefund } from '../../core/shop/sellRefund';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
+import { rollCatalystEdition } from '../../core/upgrades/editions';
 
 // 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
 // in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
@@ -48,7 +49,10 @@ function rollOffers(s: GameState): ShopOffer[] {
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
   const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random);
-  for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
+  for (const id of catalystIds) {
+    const edition = rollCatalystEdition(Math.random);
+    offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
+  }
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
   // Galaxies are excluded from the consumable offer pool — they only appear
@@ -178,9 +182,15 @@ export const shopHandler: ActionHandler = (a, s) => {
         : s.run.consumables;
       const vouchers = offer.kind === 'voucher' ? [...s.run.vouchers, offer.id] : s.run.vouchers;
       const ownedMods = offer.kind === 'mod' ? [...s.run.ownedMods, offer.id] : s.run.ownedMods;
+      // Carry the offer's rolled edition stamp into run.catalystEditions
+      // so the upgrades phase can read it on every score.
+      const catalystEditions =
+        offer.kind === 'catalyst' && offer.edition
+          ? { ...s.run.catalystEditions, [offer.id]: offer.edition }
+          : s.run.catalystEditions;
       const bought: GameState = {
         ...s,
-        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods },
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions },
         shop: { ...s.shop, offers: remaining },
       };
       // Catalyst purchase may cross the 4-catalyst threshold for the first
@@ -260,8 +270,19 @@ export const shopHandler: ActionHandler = (a, s) => {
         const id = s.run.catalysts[a.index];
         if (!id) return { state: s, events: [] };
         const refund = sellRefund('catalyst', id);
+        // Drop the edition stamp (if any) so a re-bought catalyst with
+        // the same id doesn't inherit the prior edition.
+        const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, catalysts: removeAt(s.run.catalysts, a.index) } },
+          state: {
+            ...s,
+            run: {
+              ...s.run,
+              shards: s.run.shards + refund,
+              catalysts: removeAt(s.run.catalysts, a.index),
+              catalystEditions: remainingEditions,
+            },
+          },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
         };
       }

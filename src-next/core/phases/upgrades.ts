@@ -2,6 +2,7 @@ import { getByPhase } from '../upgrades/registry';
 import { Phase, type PhaseFn, type PipelineCtx } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
 import { applyDieModStep } from '../mods/applyDieModStep';
+import { editionBonus } from '../upgrades/editions';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -15,9 +16,39 @@ export const upgrades: PhaseFn = (ctx) => {
 
   if (!catalystsBlocked) {
     const owned = new Set(ctx.state.run.catalysts);
+    const editions = ctx.state.run.catalystEditions ?? {};
     for (const u of getByPhase(Phase.UPGRADES)) {
       if (!ALWAYS_ACTIVE.has(u.id) && !owned.has(u.id)) continue;
+      const before = next;
       next = u.apply(next);
+      // Apply edition bonus immediately after the catalyst's own apply, so
+      // the bonus rides any later catalyst multipliers. Only fires when
+      // the catalyst actually moved chips/mult — gated catalysts that
+      // returned ctx unchanged contribute nothing.
+      const ed = editions[u.id];
+      if (!ed) continue;
+      const dChips = next.chips - before.chips;
+      const dMult  = next.mult  - before.mult;
+      if (dChips === 0 && dMult === 0) continue;
+      const { bonusChips, bonusMult } = editionBonus(ed, dChips, dMult);
+      if (bonusChips === 0 && bonusMult === 0) continue;
+      next = {
+        ...next,
+        chips: next.chips + bonusChips,
+        mult: next.mult + bonusMult,
+        events: [
+          ...next.events,
+          {
+            type: 'onUpgradeTriggered',
+            payload: {
+              id: `edition:${ed}@${u.id}`,
+              phase: Phase.UPGRADES,
+              deltaChips: bonusChips,
+              deltaMult: bonusMult,
+            },
+          },
+        ],
+      };
     }
   }
 

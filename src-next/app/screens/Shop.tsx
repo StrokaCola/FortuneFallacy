@@ -19,6 +19,39 @@ import { sfxPlay } from '../../audio/sfx';
 // PackOverlay is mounted at the App level so it shows whether the player
 // is in the shop or not (skip-blind pack rewards open the picker mid-screen).
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
+import { editionLabel, editionColor } from '../../core/upgrades/editions';
+import type { CatalystEdition } from '../../state/slices/run';
+
+const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? {};
+
+// Tiny inline pill that renders next to a catalyst's name when it's been
+// stamped with an edition. Color-coded; tooltip text explains the bonus.
+function EditionBadge({ edition }: { edition: CatalystEdition }) {
+  const c = editionColor(edition);
+  const tip =
+    edition === 'foil' ? 'Foil — +50 chips when this catalyst fires.'
+    : edition === 'holo' ? 'Holographic — +10 mult when this catalyst fires.'
+    : 'Polychrome — adds +50% of this catalyst\'s contribution each fire.';
+  return (
+    <span
+      className="f-mono uc has-tip"
+      style={{
+        position: 'relative',
+        marginLeft: 6,
+        padding: '1px 5px',
+        fontSize: 8,
+        letterSpacing: '0.18em',
+        borderRadius: 3,
+        color: c,
+        border: `1px solid ${c}88`,
+        background: `${c}22`,
+      }}
+    >
+      {editionLabel(edition).slice(0, 4).toLowerCase()}
+      <span className="tip">{tip}</span>
+    </span>
+  );
+}
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string; rarity?: Rarity };
@@ -88,6 +121,7 @@ export function Shop() {
   const rerollCost = useStore(selectShopRerollCost);
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
+  const catalystEditions = useStore(selectCatalystEditions);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const vouchers = useStore(selectVouchers);
   const consumables = useStore(selectConsumables);
@@ -212,6 +246,7 @@ export function Shop() {
                   textShadow: isLegendary ? `0 0 8px ${ringColor}80` : undefined,
                 }}>
                   {m.name}
+                  {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
                 </div>
                 <div style={{
                   fontFamily: '"Exo 2", sans-serif',
@@ -248,6 +283,7 @@ export function Shop() {
 
       <CollectionPanel
         catalysts={catalysts}
+        catalystEditions={catalystEditions}
         vouchers={vouchers}
         consumables={consumables}
         ownedMods={ownedMods}
@@ -289,7 +325,7 @@ export function Shop() {
 
 type CollectionRowProps = {
   kindLabel: string;
-  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; rarity?: Rarity; disabled?: boolean; disabledReason?: string }[];
+  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; rarity?: Rarity; edition?: CatalystEdition; disabled?: boolean; disabledReason?: string }[];
   emptyHint: string;
   kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
 };
@@ -340,6 +376,7 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
                   position: 'relative', zIndex: 2,
                 }}>
                   {it.name}
+                  {it.edition && <EditionBadge edition={it.edition} />}
                 </span>
                 <SellButton kind={kind} id={it.id} index={it.index} disabled={it.disabled} disabledReason={it.disabledReason} />
                 <span className="tip">
@@ -356,9 +393,10 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
 }
 
 function CollectionPanel({
-  catalysts, vouchers, consumables, ownedMods, voucherSellBlock,
+  catalysts, catalystEditions, vouchers, consumables, ownedMods, voucherSellBlock,
 }: {
   catalysts: string[];
+  catalystEditions: Record<string, CatalystEdition>;
   vouchers: string[];
   consumables: string[];
   ownedMods: string[];
@@ -373,6 +411,7 @@ function CollectionPanel({
       icon: c?.icon ?? '✦',
       color: c?.color ?? '#7be3ff',
       rarity: c?.rarity,
+      edition: catalystEditions[id],
     };
   });
   const voucherRows = vouchers.map((id, index) => {
