@@ -1,12 +1,13 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
 import { CATALYST_IDS } from '../../core/upgrades/catalysts';
-import { CONSUMABLES } from '../../core/consumables';
+import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
-import type { ShopOffer } from '../../events/types';
+import type { GameEventEmission, ShopOffer } from '../../events/types';
+import { PACK_DEFS, lookupPack, rollPackContents } from '../../core/consumables/galaxies';
 
 const BASE_REROLL_COST = 3;
 const MOD_OFFER_PRICE = 4;
@@ -37,17 +38,69 @@ function rollOffers(s: GameState): ShopOffer[] {
   for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
-  const consumableIds = CONSUMABLES.map((c) => c.id);
-  const useVoucher = availableVouchers.length > 0 && (consumableIds.length === 0 || Math.random() < 0.5);
-  if (useVoucher) {
-    const v = shuffle(availableVouchers)[0]!;
-    offers.push({ kind: 'voucher', id: v.id, price: v.price });
-  } else if (consumableIds.length > 0) {
-    const consId = shuffle(consumableIds)[0]!;
-    offers.push({ kind: 'consumable', id: consId, price: 3 });
+  // Galaxies are excluded from the consumable offer pool — they only appear
+  // via Galaxy Packs. Otherwise a player could grab a Whirlpool for 3 shards
+  // and skip the whole pack ecosystem.
+  const consumableIds = CONSUMABLES.filter((c) => c.type !== 'galaxy').map((c) => c.id);
+
+  // Three-way roll for the final slot: pack | voucher | consumable.
+  // ~25% pack, then voucher-vs-consumable resolves like before.
+  const r = Math.random();
+  if (r < 0.25) {
+    // Pack tier weighted: 60% Celestial, 30% Stellar, 10% Galactic.
+    const tierRoll = Math.random();
+    const pack = tierRoll < 0.6 ? PACK_DEFS[0]! : tierRoll < 0.9 ? PACK_DEFS[1]! : PACK_DEFS[2]!;
+    offers.push({ kind: 'pack', id: pack.kind, price: pack.price });
+  } else {
+    const useVoucher = availableVouchers.length > 0 && (consumableIds.length === 0 || Math.random() < 0.5);
+    if (useVoucher) {
+      const v = shuffle(availableVouchers)[0]!;
+      offers.push({ kind: 'voucher', id: v.id, price: v.price });
+    } else if (consumableIds.length > 0) {
+      const consId = shuffle(consumableIds)[0]!;
+      offers.push({ kind: 'consumable', id: consId, price: 3 });
+    }
   }
 
   return offers;
+}
+
+// Open a freshly purchased pack: roll its contents, mark all rolled galaxy
+// ids as discovered in meta.unlocks, and stash the open state in shop.pendingPack.
+function openPack(s: GameState, packKind: string): { state: GameState; events: GameEventEmission[] } {
+  const def = lookupPack(packKind);
+  if (!def) return { state: s, events: [] };
+  const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
+  const events: GameEventEmission[] = [
+    { type: 'onPackOpened', payload: { kind: packKind, galaxyIds, picksAllowed: def.pickCount } },
+  ];
+
+  // Discovery: any galaxy in this pack the player hasn't seen before goes
+  // into meta.unlocks. The shop UI uses this to flip ??? cards to real ones.
+  const unlocks = new Set(s.meta.unlocks);
+  for (const gid of galaxyIds) {
+    if (!unlocks.has(gid)) {
+      unlocks.add(gid);
+      events.push({ type: 'onGalaxyDiscovered', payload: { galaxyId: gid } });
+    }
+  }
+
+  return {
+    state: {
+      ...s,
+      meta: { ...s.meta, unlocks: [...unlocks] },
+      shop: {
+        ...s.shop,
+        pendingPack: {
+          kind: packKind,
+          galaxyIds,
+          picksLeft: def.pickCount,
+          pickedSoFar: [],
+        },
+      },
+    },
+    events,
+  };
 }
 
 export const shopHandler: ActionHandler = (a, s) => {
@@ -61,11 +114,13 @@ export const shopHandler: ActionHandler = (a, s) => {
     }
     case 'CLOSE_SHOP':
       return {
-        state: { ...s, shop: { ...s.shop, open: false }, ui: { ...s.ui, screen: 'round' } },
+        state: { ...s, shop: { ...s.shop, open: false, pendingPack: null }, ui: { ...s.ui, screen: 'round' } },
         events: [],
       };
     case 'REROLL_SHOP': {
       if (!s.shop.open) return { state: s, events: [] };
+      // Pack picker is modal — block rerolls until it's resolved.
+      if (s.shop.pendingPack) return { state: s, events: [] };
       const cost = s.shop.rerollCost;
       if (s.run.shards < cost) return { state: s, events: [] };
       const offers = rollOffers(s);
@@ -82,7 +137,28 @@ export const shopHandler: ActionHandler = (a, s) => {
     case 'BUY_OFFER': {
       const offer = s.shop.offers[a.offerIdx];
       if (!offer || s.run.shards < offer.price) return { state: s, events: [] };
+      // Pack picker is modal — no further buys until it's resolved.
+      if (s.shop.pendingPack) return { state: s, events: [] };
       const remaining = s.shop.offers.filter((_, i) => i !== a.offerIdx);
+
+      if (offer.kind === 'pack') {
+        // Buying a pack debits shards, removes the offer, and opens the
+        // pack picker. The picker grants galaxies via PICK_FROM_PACK.
+        const debited: GameState = {
+          ...s,
+          run: { ...s.run, shards: s.run.shards - offer.price },
+          shop: { ...s.shop, offers: remaining },
+        };
+        const opened = openPack(debited, offer.id);
+        return {
+          state: opened.state,
+          events: [
+            { type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } },
+            ...opened.events,
+          ],
+        };
+      }
+
       const catalysts = offer.kind === 'catalyst' ? [...s.run.catalysts, offer.id] : s.run.catalysts;
       const consumables = offer.kind === 'consumable' && s.run.consumables.length < maxConsumableSlots(s)
         ? [...s.run.consumables, offer.id]
@@ -96,6 +172,66 @@ export const shopHandler: ActionHandler = (a, s) => {
           shop: { ...s.shop, offers: remaining },
         },
         events: [{ type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } }],
+      };
+    }
+    case 'PICK_FROM_PACK': {
+      const pack = s.shop.pendingPack;
+      if (!pack) return { state: s, events: [] };
+      const galaxyId = pack.galaxyIds[a.galaxyIdx];
+      if (!galaxyId || pack.pickedSoFar.includes(galaxyId)) return { state: s, events: [] };
+      const def = lookupConsumable(galaxyId);
+      if (!def || def.type !== 'galaxy') return { state: s, events: [] };
+
+      // Apply the galaxy directly — picks bypass the consumable inventory
+      // (matches Balatro's planet-pack flow). The galaxy's apply increments
+      // run.comboLevels and emits onGalaxyUsed.
+      const applied = def.apply(s, []);
+      const picksLeft = pack.picksLeft - 1;
+      const pickedSoFar = [...pack.pickedSoFar, galaxyId];
+      const events: GameEventEmission[] = [
+        ...applied.events,
+        { type: 'onPackPicked', payload: { galaxyId, remainingPicks: picksLeft } },
+      ];
+
+      if (picksLeft <= 0) {
+        // Pack exhausted — close it and move on.
+        events.push({
+          type: 'onPackClosed',
+          payload: {
+            kind: pack.kind,
+            pickedCount: pickedSoFar.length,
+            skippedCount: pack.galaxyIds.length - pickedSoFar.length,
+          },
+        });
+        return {
+          state: { ...applied.state, shop: { ...applied.state.shop, pendingPack: null } },
+          events,
+        };
+      }
+
+      return {
+        state: {
+          ...applied.state,
+          shop: { ...applied.state.shop, pendingPack: { ...pack, picksLeft, pickedSoFar } },
+        },
+        events,
+      };
+    }
+    case 'SKIP_PACK': {
+      const pack = s.shop.pendingPack;
+      if (!pack) return { state: s, events: [] };
+      return {
+        state: { ...s, shop: { ...s.shop, pendingPack: null } },
+        events: [
+          {
+            type: 'onPackClosed',
+            payload: {
+              kind: pack.kind,
+              pickedCount: pack.pickedSoFar.length,
+              skippedCount: pack.galaxyIds.length - pack.pickedSoFar.length,
+            },
+          },
+        ],
       };
     }
     case 'SELL_UPGRADE': {

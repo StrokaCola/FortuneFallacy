@@ -19,6 +19,8 @@ export const selectBlindId    = (s: GameState) => s.round.blindId;
 export const selectIsBoss     = (s: GameState) => s.round.isBoss;
 export const selectShopOffers = (s: GameState) => s.shop.offers;
 export const selectShopRerollCost = (s: GameState) => s.shop.rerollCost;
+export const selectPendingPack = (s: GameState) => s.shop.pendingPack;
+export const selectComboLevels = (s: GameState) => s.run.comboLevels;
 export const selectOwnedMods = (s: GameState) => s.run.ownedMods;
 export const selectCatalysts  = (s: GameState) => s.run.catalysts;
 export const selectMaxCatalystSlots = (s: GameState) => maxCatalystSlots(s);

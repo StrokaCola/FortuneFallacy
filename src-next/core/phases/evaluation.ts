@@ -1,6 +1,7 @@
 import type { PhaseFn } from '../pipeline/types';
 import { detectCombo } from '../scoring/detectCombo';
 import { getComboCtx, getDiceSpec, getScoringMode, getBaseScoreMults, getFaceMultiplierPerCatalyst } from '../run/diceContext';
+import { GALAXY_BONUS } from '../consumables/galaxies';
 
 // Resolve a hand of faces (some of which may be 'WILD') into the substitution
 // that maximises the combo tier. Tries each candidate value once and picks
@@ -87,8 +88,15 @@ export const evaluation: PhaseFn = (ctx) => {
 
   const { faces: resolvedFaces, combo } = resolveWildcards(heldFaces, universe, comboCtx);
   const sumFaces = resolvedFaces.reduce((s, f) => s + f, 0);
-  const baseChips = combo.chips * baseMults.chips;
-  const baseMult  = combo.mult  * baseMults.mult;
+  // Galaxy consumables raise per-combo levels in run.comboLevels. Each level
+  // adds flat chips/mult to the combo's base, applied here so that catalyst
+  // multipliers in Phase.UPGRADES compound on the leveled base.
+  const lvl = ctx.state.run.comboLevels?.[combo.id] ?? 0;
+  const galaxy = GALAXY_BONUS[combo.id];
+  const galaxyChips = lvl * (galaxy?.chips ?? 0);
+  const galaxyMult  = lvl * (galaxy?.mult  ?? 0);
+  const baseChips = combo.chips * baseMults.chips + galaxyChips;
+  const baseMult  = combo.mult  * baseMults.mult  + galaxyMult;
   // Discard the 'spec' parameter — currently unused but reserved for behavior dice.
   void spec;
   return {

@@ -7,7 +7,7 @@ import { mulberry32 } from '../rng';
 function makeCtx(
   faces: number[],
   scoringOrder: number[] | undefined,
-  opts: { constellationId?: string; catalysts?: string[] } = {},
+  opts: { constellationId?: string; catalysts?: string[]; comboLevels?: Record<string, number> } = {},
 ): PipelineCtx {
   const state = {
     run: {
@@ -15,6 +15,7 @@ function makeCtx(
       constellationId: opts.constellationId ?? 'lyra',
       catalysts: opts.catalysts ?? [],
       vouchers: [], consumables: [], handsPlayed: 0, compoundingStacks: 0,
+      comboLevels: opts.comboLevels ?? {},
     },
     round: { scoringOrder, diceMods: [] },
   } as unknown as GameState;
@@ -124,5 +125,47 @@ describe('evaluation phase — captain-crew (Argo)', () => {
     });
     const out = evaluation(ctx);
     expect(out.chips).toBe(50);
+  });
+});
+
+describe('evaluation phase — galaxy combo levels', () => {
+  it('Three of a Kind at level 4 adds +80 chips and +8 mult to base', () => {
+    // Base Three of a Kind: chips=30, mult=5. Whirlpool per level: +20 chips, +2 mult.
+    // At lvl 4: baseChips = 30 + 80 = 110, baseMult = 5 + 8 = 13.
+    // Held faces: [3,3,3]. sumFaces = 9. ctx.chips = baseChips + sumFaces = 119.
+    const ctx = makeCtx([3, 3, 3, 1, 6], [0, 1, 2], { comboLevels: { three_kind: 4 } });
+    const out = evaluation(ctx);
+    expect(out.combo?.id).toBe('three_kind');
+    expect(out.combo?.baseChips).toBe(110);
+    expect(out.combo?.baseMult).toBe(13);
+    expect(out.chips).toBe(119);
+    expect(out.mult).toBe(13);
+  });
+
+  it('level 0 leaves base values untouched (back-compat)', () => {
+    // No comboLevels at all. Three of a Kind base: 30 chips, 5 mult.
+    const ctx = makeCtx([3, 3, 3, 1, 6], [0, 1, 2]);
+    const out = evaluation(ctx);
+    expect(out.combo?.baseChips).toBe(30);
+    expect(out.combo?.baseMult).toBe(5);
+  });
+
+  it('only the matched combo gets its level bonus (other combo levels ignored)', () => {
+    // Two Pair on [4,4,5,5,1]. Levels set on five_kind and chance — should NOT apply.
+    const ctx = makeCtx([4, 4, 5, 5, 1], [0, 1, 2, 3], {
+      comboLevels: { five_kind: 99, chance: 99, two_pair: 0 },
+    });
+    const out = evaluation(ctx);
+    expect(out.combo?.id).toBe('two_pair');
+    expect(out.combo?.baseChips).toBe(20); // unchanged
+    expect(out.combo?.baseMult).toBe(3);   // unchanged
+  });
+
+  it('Five of a Kind at level 1: +40 chips, +4 mult', () => {
+    const ctx = makeCtx([6, 6, 6, 6, 6], [0, 1, 2, 3, 4], { comboLevels: { five_kind: 1 } });
+    const out = evaluation(ctx);
+    expect(out.combo?.id).toBe('five_kind');
+    expect(out.combo?.baseChips).toBe(140); // 100 + 40
+    expect(out.combo?.baseMult).toBe(24);   // 20 + 4
   });
 });

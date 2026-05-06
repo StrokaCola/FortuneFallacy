@@ -1,10 +1,13 @@
 import { dispatch } from '../../actions/dispatch';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
-import type { ShopOffer } from '../../events/types';
+
+// Sellable kinds — narrower than `ShopOffer['kind']` because packs are
+// one-shot booster items that consume themselves on purchase.
+export type SellableKind = 'catalyst' | 'voucher' | 'consumable' | 'mod';
 
 type Props = {
-  kind: ShopOffer['kind'];
+  kind: SellableKind;
   id: string;
   index: number;
   disabled?: boolean;

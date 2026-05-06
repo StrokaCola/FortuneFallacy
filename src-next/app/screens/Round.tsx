@@ -10,6 +10,7 @@ import { ComboBanner } from '../hud/ComboBanner';
 import { FaceReadout } from '../hud/FaceReadout';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
+import { ScoreExplain } from '../hud/ScoreExplain';
 import { AstralHint } from '../hud/AstralHint';
 import { useScoreDisplay } from '../hud/useScoreDisplay';
 import {
@@ -63,6 +64,7 @@ export function Round() {
       <ScoreBreakdown />
       <ScoreMoment />
       <AstralHint />
+      <ScoreExplain />
 
       <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} />
     </div>

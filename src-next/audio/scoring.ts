@@ -1,5 +1,7 @@
 import { bus } from '../events/bus';
 import { sfxPlay } from './sfx';
+import { audioEngine } from './AudioEngine';
+import { DUCK_PRESETS } from './duckEnvelope';
 
 const SEMI = Math.pow(2, 1 / 12);
 const BASE_HZ = 440;
@@ -26,14 +28,21 @@ export function installScoringRouter(): () => void {
       case 'cross-target':
         sfxPlay('targetCross');
         break;
-      case 'hold-breath':
-        // Master duck handled by AudioEngine if exposed; otherwise no-op for SFX
+      case 'hold-breath': {
+        // Anticipation hush: dim the music bus over the breath duration so
+        // the upcoming boom punches through silence.
+        const env = DUCK_PRESETS.holdBreath(beat.durMs);
+        audioEngine.duck(env);
         break;
+      }
       case 'boom':
         sfxPlay('castBoom', { gain: beat.crossedTarget ? 1.2 : 0.85 });
         break;
       case 'bail':
+        // Silence-on-bust: cut all music for ~1s so the failure lands in a
+        // dead room, then let the fail layer ramp back in via audioBridge.
         sfxPlay('notEnough');
+        audioEngine.duck(DUCK_PRESETS.silenceOnBust());
         break;
     }
   });

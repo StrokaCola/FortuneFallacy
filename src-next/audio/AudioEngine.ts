@@ -9,6 +9,7 @@ import {
   type AudioMemory,
 } from './heat';
 import * as audioSettings from './audioSettings';
+import { evalDuck, isDuckComplete, type DuckPhase } from './duckEnvelope';
 
 type Mode = 'idle' | 'active' | 'peak' | 'fail';
 
@@ -51,6 +52,10 @@ class AudioEngineImpl {
   private active = true;
   // Round progress: score / target, clamped 0..1. Drives layer crossfade thresholds.
   private progress = 0;
+  // Duck envelope multiplier on the music bus. 1.0 when idle. Driven by
+  // scoring beats (hold-breath, bail) via `duck()`.
+  private duckPhase: DuckPhase | null = null;
+  private duckEnvelope = 1;
 
   constructor() {
     const mem = loadMemory();
@@ -154,6 +159,23 @@ class AudioEngineImpl {
     return this.progress;
   }
 
+  // Schedule a duck envelope on the music bus. The envelope ramps the
+  // music multiplier 1 → depth → 1 over (attack + hold + release) ms.
+  // Calling again replaces any in-flight envelope.
+  duck(opts: { attackMs: number; holdMs: number; releaseMs: number; depth: number }): void {
+    this.duckPhase = {
+      startMs: performance.now(),
+      attackMs: Math.max(0, opts.attackMs),
+      holdMs: Math.max(0, opts.holdMs),
+      releaseMs: Math.max(0, opts.releaseMs),
+      depth: Math.max(0, Math.min(1, opts.depth)),
+    };
+  }
+
+  getDuckEnvelope(): number {
+    return this.duckEnvelope;
+  }
+
   bumpHeat(delta: number): void {
     if (delta <= 0) return;
     this.state.heat = Math.min(1, this.state.heat + delta);
@@ -208,7 +230,7 @@ class AudioEngineImpl {
 
   private applyVolumes(): void {
     if (!this.layers) return;
-    const m = audioSettings.getMaster() * audioSettings.getMusic() * (this.paused ? 0 : 1);
+    const m = audioSettings.getMaster() * audioSettings.getMusic() * (this.paused ? 0 : 1) * this.duckEnvelope;
     this.layers.base.volume(this.actual.base * m);
     this.layers.combo.volume(this.actual.combo * m);
     this.layers.peak.volume(this.actual.peak * m);
@@ -315,6 +337,16 @@ class AudioEngineImpl {
     this.actual.combo += (comboTarget - this.actual.combo) * lerpK;
     this.actual.peak += (peakTarget - this.actual.peak) * lerpK;
     this.actual.fail += (failTarget - this.actual.fail) * lerpK;
+
+    if (this.duckPhase) {
+      this.duckEnvelope = evalDuck(this.duckPhase, now);
+      if (isDuckComplete(this.duckPhase, now)) {
+        this.duckPhase = null;
+        this.duckEnvelope = 1;
+      }
+    } else if (this.duckEnvelope !== 1) {
+      this.duckEnvelope = 1;
+    }
 
     this.applyVolumes();
 
