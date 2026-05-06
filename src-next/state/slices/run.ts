@@ -50,6 +50,10 @@ export type RunSlice = {
   // with the id arrays (see actions/handlers/dice.ts and shop.ts).
   ownedModEditions: (ModEdition | null)[];
   diceModEditions: (ModEdition | null)[][];
+  // Audit catalyst — running tally of shards spent on catalysts this run.
+  // BUY_OFFER for kind=catalyst increments by the offer's price. Audit
+  // refunds 50% of this on bust. Persists across blinds within the run.
+  catalystShardSpend: number;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -98,4 +102,5 @@ export const initialRunSlice = (): RunSlice => ({
   catalystEditions: {},
   ownedModEditions: [],
   diceModEditions: Array.from({ length: 5 }, () => [] as (ModEdition | null)[]),
+  catalystShardSpend: 0,
 });

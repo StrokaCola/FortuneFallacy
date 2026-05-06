@@ -77,11 +77,47 @@ export function applyDieModStep(
   let dMultMul = 1;
   let titheCost = 0;
   const events: DieModEvent[] = [];
+  // Echo mod: tracks the previous mod's contribution on this die so an
+  // Echo slot copies it. "Previous" = the most recent NON-Echo mod that
+  // emitted any contribution. Updated at the end of each iteration.
+  let prevContrib: { chips: number; mult: number; multMul: number } | null = null;
 
   for (const { id, def, edition } of defs) {
     const isResonance = !!def.resonate;
     // Resonance itself contributes nothing on its own row.
     if (isResonance) continue;
+    // Echo: short-circuit. Re-uses the prior mod's chips/mult/multMul
+    // as this slot's contribution. No double-tithe; the prior mod paid.
+    if (def.echo) {
+      if (!prevContrib) {
+        // Echo with nothing to copy → silent no-op.
+        continue;
+      }
+      const echoChips = prevContrib.chips;
+      const echoMult = prevContrib.mult;
+      const echoMultMul = prevContrib.multMul;
+      // Apply edition to the echoed contribution if Echo itself is editioned.
+      let modChips = echoChips;
+      let modMult = echoMult;
+      if (edition && (modChips !== 0 || modMult !== 0 || echoMultMul !== 1)) {
+        const eb = modEditionBonus(edition, modChips, modMult);
+        modChips += eb.bonusChips;
+        modMult += eb.bonusMult;
+      }
+      dMultMul *= echoMultMul;
+      if (modChips !== 0 || modMult !== 0) {
+        events.push({ type: 'upgrade', modId: id, dieIdx, dChips: modChips, dMult: modMult });
+        events.push({ type: 'fired', modId: id, dieIdx, faceValue: face });
+        dChips += modChips;
+        dMult += modMult;
+      } else if (echoMultMul !== 1) {
+        events.push({ type: 'fired', modId: id, dieIdx, faceValue: face });
+      }
+      // Update prevContrib so a chain of echoes works (each repeats the
+      // ORIGINAL contribution that started the chain — the value was
+      // already preserved across the loop).
+      continue;
+    }
 
     let modChips = 0;
     let modMult = 0;
@@ -189,6 +225,11 @@ export function applyDieModStep(
       // the fire so the HUD/animation can attribute the bump even though
       // the additive sweep is empty.
       events.push({ type: 'fired', modId: id, dieIdx, faceValue: face });
+    }
+    // Snapshot for the next slot's potential Echo. Only update when
+    // SOMETHING fired — gated mods that returned 0 don't poison Echo.
+    if (modChips !== 0 || modMult !== 0 || localMultMul !== 1) {
+      prevContrib = { chips: modChips, mult: modMult, multMul: localMultMul };
     }
   }
 

@@ -28,6 +28,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   ATTACH_MOD: diceHandler,
   DETACH_MOD: diceHandler,
   REORDER_HOLD: diceHandler,
+  FORGE_MOD: diceHandler,
   START_BLIND: roundHandler,
   CLEAR_BLIND: roundHandler,
   BUST_BLIND: roundHandler,

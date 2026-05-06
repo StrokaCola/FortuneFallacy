@@ -92,6 +92,11 @@ const applyModScoring: PhaseFn = (ctx) => {
   // be undefined on legacy state; default to an empty array so the
   // applyDieModStep call sees nulls (= no edition).
   const diceModEditions = ctx.state.run.diceModEditions ?? [];
+  // Gilding Press (catalyst): fires the FIRST mod on each die a second
+  // time for chips only. Tithe budget isn't re-charged on the second
+  // pass (the die already paid its shard cost) and mult contributions
+  // from the second pass are discarded — only chips ride.
+  const gildingPressOwned = ctx.state.run.catalysts.includes('gilding_press');
 
   for (let pos = 0; pos < scoringDice.length; pos++) {
     const i = scoringDice[pos]!;
@@ -112,6 +117,32 @@ const applyModScoring: PhaseFn = (ctx) => {
     mult += step.dMult;
     const multAfterAdditive = mult;
     if (step.dMultMul !== 1) mult *= step.dMultMul;
+    // Gilding Press: re-run JUST the first mod (chips-only) and add to
+    // the running chips total. Skips silently when the die has no mods.
+    if (gildingPressOwned && mods.length > 0) {
+      const firstModEcho = applyDieModStep(
+        {
+          face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces,
+          titheBudget: 0, // never re-charge tithe on the echo pass
+          comboId, comboTier, ante, handsLeft, comboLevelOnPlayed,
+          modsOnThisDie: mods.length,
+        },
+        [mods[0]!],
+        [editions[0] ?? null],
+      );
+      if (firstModEcho.dChips !== 0) {
+        chips += firstModEcho.dChips;
+        events.push({
+          type: 'onUpgradeTriggered',
+          payload: {
+            id: `gilding_press@${i}`,
+            phase: Phase.UPGRADES,
+            deltaChips: firstModEcho.dChips,
+            deltaMult: 0,
+          },
+        });
+      }
+    }
     for (const ev of step.events) {
       if (ev.type === 'upgrade') {
         events.push({

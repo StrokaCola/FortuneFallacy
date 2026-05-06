@@ -148,6 +148,22 @@ describe('bustBlind', () => {
     expect(result.state.run.diceMods[0]).toEqual(['brittle', 'engraved']);
     expect(result.state.run.diceModEditions?.[0]).toEqual(['foil', null]);
   });
+
+  it('audit catalyst refunds 50% of catalystShardSpend and self-destructs', () => {
+    const s = makeState({ target: 100, score: 0, catalysts: ['audit', 'cold_hand'], shards: 0 });
+    s.run.catalystShardSpend = 20;
+    const result = bustBlind(s);
+    expect(result.state.run.shards).toBe(10); // floor(20 * 0.5)
+    expect(result.state.run.catalysts).toEqual(['cold_hand']); // audit self-destructed
+  });
+
+  it('audit no-op when zero catalyst spend', () => {
+    const s = makeState({ target: 100, score: 0, catalysts: ['audit'], shards: 5 });
+    s.run.catalystShardSpend = 0;
+    const result = bustBlind(s);
+    expect(result.state.run.shards).toBe(5);
+    expect(result.state.run.catalysts).toEqual([]); // still self-destructs
+  });
 });
 
 describe('startBlind — shard_lung round-start grant', () => {

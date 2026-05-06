@@ -13,7 +13,7 @@ export type ConsumableDef = {
   icon: string;
   description: string;
   requiresTarget: boolean;
-  targetType?: 'die' | 'catalyst';
+  targetType?: 'die' | 'catalyst' | 'combo';
   // Galaxy-only metadata. `comboId` names the combo this galaxy levels (or
   // 'all' for universals like Quasar). `levels` is the +levels granted on
   // use (default 1). Both fields are unused for non-galaxy consumables.

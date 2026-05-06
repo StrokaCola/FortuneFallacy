@@ -13,6 +13,50 @@ function baseState(catalysts: string[] = []): GameState {
   } as unknown as GameState;
 }
 
+describe('Void (spectral) — combo level swap', () => {
+  it('moves a level from chosen combo to the next-tier combo and grants +5 shards', () => {
+    const s: GameState = {
+      run: {
+        catalysts: [],
+        catalystEditions: {},
+        comboLevels: { three_kind: 4, sm_straight: 1 },
+        shards: 0,
+      },
+    } as unknown as GameState;
+    const def = SPECTRALS.find((c) => c.id === 'void')!;
+    // three_kind is index 3 in the tier order; next is sm_straight (idx 4).
+    const r = def.apply(s, [3]);
+    expect(r.state.run.comboLevels.three_kind).toBe(3);
+    expect(r.state.run.comboLevels.sm_straight).toBe(2);
+    expect(r.state.run.shards).toBe(5);
+  });
+
+  it('refuses on top-tier combo (no adjacent up)', () => {
+    const s: GameState = {
+      run: {
+        comboLevels: { five_kind: 5 },
+        shards: 0,
+      },
+    } as unknown as GameState;
+    const def = SPECTRALS.find((c) => c.id === 'void')!;
+    // five_kind is index 8 (top); idx === COMBO_TIER_ORDER.length - 1 → refused.
+    const r = def.apply(s, [8]);
+    expect(r.state).toBe(s);
+  });
+
+  it('refuses when chosen combo has 0 levels (nothing to spend)', () => {
+    const s: GameState = {
+      run: {
+        comboLevels: { three_kind: 0 },
+        shards: 0,
+      },
+    } as unknown as GameState;
+    const def = SPECTRALS.find((c) => c.id === 'void')!;
+    const r = def.apply(s, [3]);
+    expect(r.state).toBe(s);
+  });
+});
+
 describe('Catalyze (spectral) — random edition stamp', () => {
   it('stamps an edition onto the targeted catalyst id', () => {
     const s = baseState(['cold_hand', 'six_bias']);

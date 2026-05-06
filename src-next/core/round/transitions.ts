@@ -165,6 +165,23 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const highScores = pushHighScore(s, s.round.score);
   const dropped = dropBrittleMods(s.run.diceMods, s.run.diceModEditions ?? []);
+  // Audit (catalyst): one-shot — refunds 50% of catalyst shard spend
+  // back into the player's pocket on bust, then self-destructs (removes
+  // itself from run.catalysts so it can't fire again next bust).
+  const auditOwned = s.run.catalysts.includes('audit');
+  const auditRefund = auditOwned
+    ? Math.floor((s.run.catalystShardSpend ?? 0) * 0.5)
+    : 0;
+  const catalystsAfterAudit = auditOwned
+    ? s.run.catalysts.filter((c) => c !== 'audit')
+    : s.run.catalysts;
+  // Drop audit's edition stamp too so a later GRANT_CATALYST doesn't
+  // inherit it.
+  let editionsAfterAudit = s.run.catalystEditions ?? {};
+  if (auditOwned && editionsAfterAudit.audit) {
+    const { audit: _dropped, ...rest } = editionsAfterAudit;
+    editionsAfterAudit = rest;
+  }
   return {
     state: {
       ...s,
@@ -175,6 +192,9 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         compoundingStacks: 0,
         diceMods: dropped.diceMods,
         diceModEditions: dropped.diceModEditions,
+        shards: s.run.shards + auditRefund,
+        catalysts: catalystsAfterAudit,
+        catalystEditions: editionsAfterAudit,
       },
       meta: { ...s.meta, highScores },
     },

@@ -34,6 +34,7 @@ export const MOD_IDS = [
   'polarize',
   'telescope',
   'engraved',
+  'echo',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -118,6 +119,9 @@ export type ModDef = {
   // loseOnBust mods) from the bust-cleanup pass in transitions.ts.
   // Has no scoring contribution.
   engraved?: boolean;
+  // Echo: marker — when this slot fires, it copies the prior NON-Echo
+  // mod's chips/mult/multMul on this die. No-ops on the first slot.
+  echo?: boolean;
   visual?: ModVisual;
 };
 
@@ -290,6 +294,12 @@ export const MODS: ModDef[] = [
     desc: 'This die\'s Brittle mods survive the bust cleanup.',
     engraved: true,
     visual: { materialKey: 'engraved', accentColor: '#a4d4ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'echo', name: 'Echo', icon: '⤳',
+    desc: 'Repeats the previous mod\'s effect on this die.',
+    echo: true,
+    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse' },
   },
 ];
 

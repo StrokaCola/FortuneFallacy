@@ -13,6 +13,7 @@ function run(over: Partial<RunSlice> = {}): RunSlice {
     catalystEditions: {},
     ownedModEditions: [],
     diceModEditions: [[], [], [], [], []],
+    catalystShardSpend: 0,
     ...over,
   };
 }

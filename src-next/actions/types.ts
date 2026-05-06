@@ -31,6 +31,7 @@ export type Action =
   | { type: 'SKIP_BLIND' }
   | { type: 'END_SCORING' }
   | { type: 'PICK_FROM_PACK'; galaxyIdx: number }
-  | { type: 'SKIP_PACK' };
+  | { type: 'SKIP_PACK' }
+  | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

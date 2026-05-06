@@ -40,6 +40,8 @@ import './primeResonance';
 // Phase 5e (lifecycle catalysts that need state hooks)
 import './crescendoRun';
 import './shardLung';
+// Phase 5f (no-op apply, real effect in upgrades.ts / transitions.ts)
+import './gildingPress';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -62,5 +64,7 @@ export const CATALYST_IDS = [
   // Phase 5e — lifecycle catalysts: crescendo_run reads round.rollsWithoutLock,
   // shard_lung needs both startBlind (round-start grant) and pipeline apply.
   'crescendo_run', 'shard_lung',
+  // Phase 5f — bust-hook + mod-density.
+  'audit', 'gilding_press',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

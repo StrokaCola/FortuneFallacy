@@ -84,6 +84,41 @@ export const diceHandler: ActionHandler = (a, s) => {
         events: [],
       };
     }
+    case 'FORGE_MOD': {
+      // Mod Forging: consume 2 unattached duplicates of `modId` from
+      // ownedMods (any editions) + 5 shards → push 1 editioned copy back
+      // into ownedMods. Forging is shop-economy adjacent but lives in the
+      // dice handler because it manipulates the same parallel arrays as
+      // ATTACH/DETACH.
+      const FORGE_COST = 5;
+      const owned = s.run.ownedMods;
+      const editions = s.run.ownedModEditions ?? [];
+      const idxs: number[] = [];
+      for (let i = 0; i < owned.length && idxs.length < 2; i++) {
+        if (owned[i] === a.modId) idxs.push(i);
+      }
+      if (idxs.length < 2) return { state: s, events: [] };
+      if (s.run.shards < FORGE_COST) return { state: s, events: [] };
+      // Drop the two consumed copies (descending index so splices don't shift).
+      const dropSet = new Set(idxs);
+      const newOwned = owned.filter((_, i) => !dropSet.has(i));
+      const newEditions = editions.filter((_, i) => !dropSet.has(i));
+      // Push the forged result.
+      newOwned.push(a.modId);
+      newEditions.push(a.targetEdition);
+      return {
+        state: {
+          ...s,
+          run: {
+            ...s.run,
+            shards: s.run.shards - FORGE_COST,
+            ownedMods: newOwned,
+            ownedModEditions: newEditions,
+          },
+        },
+        events: [],
+      };
+    }
     case 'REORDER_HOLD': {
       const locked = lockedIdxs(s.round.dice);
       let reason: 'length-mismatch' | 'duplicate-index' | 'unlocked-index' | null = null;

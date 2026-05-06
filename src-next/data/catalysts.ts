@@ -148,6 +148,14 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'shard_lung', name: 'Shard Lung', icon: '⛁', color: '#f5c451',
     desc: 'Round start: +shards equal to ante. Score: spend half shards for +Mult.',
     flavor: 'Inhale. Exhale. The vault pays the breath.', rarity: 'uncommon' },
+
+  // Phase 5f — bust-hook + mod-density catalysts.
+  { id: 'audit', name: 'Audit', icon: '☷', color: '#a4d4ff',
+    desc: 'On bust: refund 50% of shards spent on catalysts this run. Self-destructs.',
+    flavor: 'The ledger closes. Some debts unwind.', rarity: 'uncommon' },
+  { id: 'gilding_press', name: 'Gilding Press', icon: '⊟', color: '#f5c451',
+    desc: 'The first mod on each scoring die fires twice for chips.',
+    flavor: 'A second strike on every plate.', rarity: 'uncommon' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

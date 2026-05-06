@@ -211,4 +211,10 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0xa4d4ff, halo: 0xa4d4ff,
     transmission: 0.04, rough: 0.70, eIntensity: 0.7,
   },
+  // 30. Echo — Translucent quartz with cyan ripple, doubled rim glow.
+  echo: {
+    bodyTint: 0x2a4a8a, bodyDeep: 0x0a1a30,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.42, rough: 0.18, ior: 1.65, eIntensity: 1.7,
+  },
 };

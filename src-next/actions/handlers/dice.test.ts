@@ -175,6 +175,50 @@ describe('ATTACH_MOD / DETACH_MOD — mod edition parallel sync', () => {
   });
 });
 
+describe('FORGE_MOD — combine duplicates into editioned mod', () => {
+  const baseWithMods = (mods: string[], editions: (string | null)[], shards = 10): GameState => {
+    const s = baseState();
+    return {
+      ...s,
+      run: {
+        ...s.run,
+        ownedMods: mods,
+        ownedModEditions: editions,
+        shards,
+      },
+    } as unknown as GameState;
+  };
+
+  it('consumes 2 duplicates + 5 shards, pushes 1 editioned copy', () => {
+    const s = baseWithMods(['amplify', 'amplify', 'sharpened'], [null, null, null], 10);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'foil' },
+      s,
+    );
+    expect(r.state.run.shards).toBe(5);
+    expect(r.state.run.ownedMods).toEqual(['sharpened', 'amplify']);
+    expect(r.state.run.ownedModEditions).toEqual([null, 'foil']);
+  });
+
+  it('refuses when fewer than 2 duplicates owned', () => {
+    const s = baseWithMods(['amplify', 'sharpened'], [null, null], 10);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'foil' },
+      s,
+    );
+    expect(r.state).toBe(s);
+  });
+
+  it('refuses when shards insufficient', () => {
+    const s = baseWithMods(['amplify', 'amplify'], [null, null], 2);
+    const r = diceHandler(
+      { type: 'FORGE_MOD', modId: 'amplify', targetEdition: 'holo' },
+      s,
+    );
+    expect(r.state).toBe(s);
+  });
+});
+
 describe('TOGGLE_LOCK — crescendo_run counter reset', () => {
   const lockedState = (rollsWithoutLock = 5): GameState => {
     const s = baseState();

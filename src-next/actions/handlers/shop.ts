@@ -202,9 +202,15 @@ export const shopHandler: ActionHandler = (a, s) => {
         offer.kind === 'mod'
           ? [...(s.run.ownedModEditions ?? []), offer.edition ?? null]
           : (s.run.ownedModEditions ?? []);
+      // Audit catalyst tracks total catalyst spend in the run. Other kinds
+      // (mods, vouchers, consumables) don't contribute — only catalyst price.
+      const catalystShardSpend =
+        offer.kind === 'catalyst'
+          ? (s.run.catalystShardSpend ?? 0) + offer.price
+          : (s.run.catalystShardSpend ?? 0);
       const bought: GameState = {
         ...s,
-        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions },
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions, catalystShardSpend },
         shop: { ...s.shop, offers: remaining },
       };
       // Catalyst purchase may cross the 4-catalyst threshold for the first
