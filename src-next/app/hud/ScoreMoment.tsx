@@ -207,7 +207,8 @@ export function ScoreMoment() {
       </div>
       {stamp === 'target' && (
         <div style={{
-          position: 'absolute', top: '32%',
+          position: 'absolute',
+          top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
           fontFamily: '"Cinzel Decorative", serif', fontSize: 48, fontWeight: 900,
           color: '#f5c451', letterSpacing: '0.2em',
           textShadow: '0 0 30px #f5c451',
@@ -216,7 +217,8 @@ export function ScoreMoment() {
       )}
       {stamp === 'bail' && (
         <div style={{
-          position: 'absolute', top: '32%',
+          position: 'absolute',
+          top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
           fontFamily: '"Cinzel Decorative", serif', fontSize: 48, fontWeight: 900,
           color: '#ff4d6d', letterSpacing: '0.2em',
           textShadow: '0 0 30px #ff4d6d',

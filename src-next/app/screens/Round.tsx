@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
+import { useReportHudHeight } from '../hud/useReportHudHeight';
 import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
@@ -74,8 +76,14 @@ export function Round() {
 }
 
 function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean }) {
+  // Self-measure so the dice canvas can shrink to the play area above
+  // this bar (#three-next reads --hud-bottom-h) and pinned overlays can
+  // align upward from the bar's top edge.
+  const ref = useRef<HTMLDivElement>(null);
+  useReportHudHeight(ref, '--hud-bottom-h', 'bottom');
   return (
     <div
+      ref={ref}
       style={{
         position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 16, zIndex: 5, pointerEvents: 'auto',

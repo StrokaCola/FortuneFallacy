@@ -111,7 +111,10 @@ export function ScoreBreakdown() {
       style={{
         position: 'absolute',
         left: '50%',
-        top: 210,
+        // Sit just below the catalyst/consumable rows so the breakdown
+        // strip never overlaps TopBar even when it wraps. 76px is the
+        // approximate combined chip height of the strips above it.
+        top: 'calc(var(--hud-top-h, 134px) + 76px)',
         transform: 'translateX(-50%)',
         display: 'flex',
         gap: 22,

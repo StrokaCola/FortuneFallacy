@@ -8,7 +8,12 @@ export function PauseButton() {
       className="f-mono tap"
       style={{
         position: 'absolute',
-        top: 110,
+        // Sit just below TopBar's bottom edge so the pause control follows
+        // it when TopBar wraps onto more rows on narrow viewports.
+        // `max(80px, …)` guards against screens that don't mount a
+        // TopBar (Forge) where --hud-top-h stays 0; the calc would
+        // otherwise resolve to a negative top.
+        top: 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
         right: 18,
         zIndex: Z.hudControl,
         width: 44,

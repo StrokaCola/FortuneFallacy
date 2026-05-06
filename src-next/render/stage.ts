@@ -86,6 +86,12 @@ function recompute(): void {
   document.documentElement.style.setProperty('--stage-w', `${w}px`);
   document.documentElement.style.setProperty('--stage-h', `${h}px`);
   document.documentElement.style.setProperty('--stage-scale', '1');
+  // Seed HUD-height vars so consumers that read them before the
+  // TopBar / ActionBar refs mount still get a sane value. Don't
+  // overwrite once a HUD component has set a real value.
+  const rootStyle = document.documentElement.style;
+  if (!rootStyle.getPropertyValue('--hud-top-h')) rootStyle.setProperty('--hud-top-h', '0px');
+  if (!rootStyle.getPropertyValue('--hud-bottom-h')) rootStyle.setProperty('--hud-bottom-h', '0px');
   if (w === currentW && h === currentH) return;
   currentW = w;
   currentH = h;

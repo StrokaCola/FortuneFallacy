@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
@@ -6,6 +7,7 @@ import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
 import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { useReportHudHeight } from './useReportHudHeight';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
 // switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
@@ -70,8 +72,13 @@ export function TopBar({
   const scoreFontSize = tight ? 26 : 38;
   const panelPad = tight ? '8px 12px' : '14px 18px';
   const centerPad = tight ? '6px 12px' : '12px 22px';
+  // Self-measure so HUD overlays (CatalystStrip, ConsumableTray, ScoreBreakdown)
+  // and the dice canvas can stack/shrink against this bar's actual height
+  // — including when the panels wrap onto multiple rows on narrow viewports.
+  const ref = useRef<HTMLDivElement>(null);
+  useReportHudHeight(ref, '--hud-top-h', 'top');
   return (
-    <div style={{
+    <div ref={ref} style={{
       // Clamp the bar to a max content width so on wide screens the
       // three panels don't drift to the far edges. `max(18px, ...)`
       // keeps the 18px gutter on narrow phones.

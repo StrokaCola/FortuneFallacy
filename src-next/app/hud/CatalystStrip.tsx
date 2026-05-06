@@ -72,7 +72,12 @@ export function CatalystStrip() {
 
   return (
     <div style={{
-      position: 'absolute', top: 142, left: 18,
+      position: 'absolute',
+      // Stack from the bottom edge of TopBar (with breathing room) so
+      // catalysts never disappear under TopBar when it wraps onto two
+      // rows on narrow viewports.
+      top: 'calc(var(--hud-top-h, 134px) + 8px)',
+      left: 18,
       display: 'flex', gap: 8, zIndex: 4,
     }}>
       {catalysts.map((id, i) => {

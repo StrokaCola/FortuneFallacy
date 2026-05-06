@@ -33,7 +33,9 @@ export function AstralHint() {
       style={{
         position: 'absolute',
         left: 18,
-        bottom: 18,
+        // Sit just above the ActionBar so the hint never disappears
+        // behind it on tighter viewports where the bar grows.
+        bottom: 'calc(var(--hud-bottom-h, 0px) + 8px)',
         zIndex: 4,
         maxWidth: 300,
         fontFamily: '"Exo 2", sans-serif',

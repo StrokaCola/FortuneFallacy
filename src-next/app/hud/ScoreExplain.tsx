@@ -36,7 +36,9 @@ export function ScoreExplain() {
         className="btn btn-ghost mat-interactive tap"
         onClick={() => setOpen(true)}
         style={{
-          position: 'absolute', bottom: 22, left: 22, zIndex: Z.hudControl,
+          position: 'absolute',
+          bottom: 'calc(var(--hud-bottom-h, 0px) + 12px)',
+          left: 22, zIndex: Z.hudControl,
           pointerEvents: 'auto', fontSize: 11, padding: '6px 12px',
         }}
         aria-label="Show breakdown of last scored hand"

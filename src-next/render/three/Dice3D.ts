@@ -434,10 +434,22 @@ export class Dice3D {
 
     this.buildDice();
 
+    // Watch the canvas CSS box directly. The canvas height is now driven
+    // by --hud-top-h / --hud-bottom-h CSS variables (set by TopBar /
+    // ActionBar refs). When those vars change, the window doesn't fire
+    // resize, so we need ResizeObserver to keep the drawing buffer and
+    // ortho frustum in sync with the actual visible canvas rect.
+    let canvasObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      canvasObserver = new ResizeObserver(() => this.applyViewportSize());
+      canvasObserver.observe(this.canvas);
+    }
+
     this.unsubscribers.push(
       // Tier 2: resize the renderer + recompute the orthographic frustum
       // whenever the stage dimensions change (rotate, address-bar, etc).
       onStageResize(() => this.applyViewportSize()),
+      () => { if (canvasObserver) { canvasObserver.disconnect(); canvasObserver = null; } },
       store.subscribe((s, prev) => {
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
