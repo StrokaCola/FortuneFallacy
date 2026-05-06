@@ -110,3 +110,36 @@ describe('USE_CONSUMABLE', () => {
     expect(r.state.run.consumables).toHaveLength(0);
   });
 });
+
+describe('USE_CONSUMABLE — galaxies', () => {
+  it('whirlpool increments three_kind level by 1 and emits onGalaxyUsed', () => {
+    const s = baseState({ consumables: ['galaxy_whirlpool'], comboLevels: { three_kind: 2 } });
+    const r = consumableHandler({ type: 'USE_CONSUMABLE', index: 0 }, s);
+    expect(r.state.run.comboLevels?.three_kind).toBe(3);
+    expect(r.state.run.consumables).toHaveLength(0);
+    expect(r.events).toHaveLength(1);
+    expect(r.events[0]?.type).toBe('onGalaxyUsed');
+  });
+
+  it('andromeda increments five_kind level from undefined baseline (treats missing as 0)', () => {
+    // Don't seed comboLevels — galaxies must tolerate missing keys.
+    const s = baseState({ consumables: ['galaxy_andromeda'] });
+    const r = consumableHandler({ type: 'USE_CONSUMABLE', index: 0 }, s);
+    expect(r.state.run.comboLevels?.five_kind).toBe(1);
+  });
+
+  it('quasar increments every combo level by 1', () => {
+    const s = baseState({ consumables: ['galaxy_quasar'] });
+    const r = consumableHandler({ type: 'USE_CONSUMABLE', index: 0 }, s);
+    const lvls = r.state.run.comboLevels ?? {};
+    expect(lvls.chance).toBe(1);
+    expect(lvls.one_pair).toBe(1);
+    expect(lvls.two_pair).toBe(1);
+    expect(lvls.three_kind).toBe(1);
+    expect(lvls.sm_straight).toBe(1);
+    expect(lvls.full_house).toBe(1);
+    expect(lvls.lg_straight).toBe(1);
+    expect(lvls.four_kind).toBe(1);
+    expect(lvls.five_kind).toBe(1);
+  });
+});

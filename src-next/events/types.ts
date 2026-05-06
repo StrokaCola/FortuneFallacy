@@ -87,6 +87,7 @@ export type GameEventMap = {
   onScoreBeat:         { beat: Beat };
   onScoreSequenceBuilt: { sequence: ScoreSequence };
   onReorderRejected:   { reason: 'length-mismatch' | 'duplicate-index' | 'unlocked-index'; newOrder: number[]; locked: number[] };
+  onGalaxyUsed:        { galaxyId: string; combo: ComboId | 'all'; levelsAdded: Record<ComboId, number> };
 };
 
 export type GameEventEmission = {

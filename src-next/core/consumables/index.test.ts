@@ -46,7 +46,15 @@ describe('spare_reroll', () => {
 });
 
 describe('CONSUMABLES roster', () => {
-  it('contains 6 entries (4 existing + 2 new)', () => {
-    expect(CONSUMABLES.length).toBe(6);
+  it('contains 6 base entries + 10 galaxies (9 combo galaxies + Quasar)', () => {
+    expect(CONSUMABLES.length).toBe(16);
+  });
+
+  it('every galaxy has type=galaxy and a comboId', () => {
+    const galaxies = CONSUMABLES.filter((c) => c.type === 'galaxy');
+    expect(galaxies.length).toBe(10);
+    for (const g of galaxies) {
+      expect(g.comboId).toBeDefined();
+    }
   });
 });

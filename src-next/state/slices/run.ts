@@ -31,6 +31,11 @@ export type RunSlice = {
   // a streak counter for repeats of the same combo across consecutive hands.
   lastComboId: string | null;
   comboStreak: number;
+  // Galaxy consumables raise per-combo levels. Each level adds flat chips
+  // and flat mult to the combo's base values in the EVALUATION phase
+  // (see core/phases/evaluation.ts and core/consumables/galaxies.ts).
+  // Run-scoped: resets on a new run, persists across blinds within the run.
+  comboLevels: Record<string, number>;
 };
 
 export const initialRunSlice = (): RunSlice => ({
@@ -51,4 +56,15 @@ export const initialRunSlice = (): RunSlice => ({
   tempoLastTier: -1,
   lastComboId: null,
   comboStreak: 0,
+  comboLevels: {
+    chance: 0,
+    one_pair: 0,
+    two_pair: 0,
+    three_kind: 0,
+    sm_straight: 0,
+    full_house: 0,
+    lg_straight: 0,
+    four_kind: 0,
+    five_kind: 0,
+  },
 });

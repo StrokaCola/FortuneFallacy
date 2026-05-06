@@ -1,14 +1,23 @@
 import type { GameState } from '../../state/store';
 import type { GameEventEmission } from '../../events/types';
+// Galaxies are kept in their own file because the table is large and is
+// generated from a per-combo bonus map. Importing here registers them in
+// the global CONSUMABLES list below.
+import { GALAXIES } from './galaxies';
 
 export type ConsumableDef = {
   id: string;
-  type: 'calibration' | 'resource';
+  type: 'calibration' | 'resource' | 'galaxy';
   name: string;
   icon: string;
   description: string;
   requiresTarget: boolean;
   targetType?: 'die' | 'catalyst';
+  // Galaxy-only metadata. `comboId` names the combo this galaxy levels (or
+  // 'all' for universals like Quasar). `levels` is the +levels granted on
+  // use (default 1). Both fields are unused for non-galaxy consumables.
+  comboId?: string | 'all';
+  levels?: number;
   apply: (s: GameState, targets: number[]) => { state: GameState; events: GameEventEmission[] };
 };
 
@@ -91,6 +100,7 @@ export const CONSUMABLES: ConsumableDef[] = [
       events: [],
     }),
   },
+  ...GALAXIES,
 ];
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {
