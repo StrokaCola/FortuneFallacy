@@ -48,6 +48,19 @@ export function applySavedToInitial(s: GameState): GameState {
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
+  // Defensive defaults for fields that might be missing in older saves but
+  // are read by selectors in tight render paths. Without these, selectors
+  // that fall back to a fresh `{}`/`[]` literal cause useSyncExternalStore
+  // to tear-loop and crash with React #185.
+  mergedRun.catalystEditions = mergedRun.catalystEditions ?? {};
+  mergedRun.ownedModEditions = mergedRun.ownedModEditions ?? [];
+  mergedRun.diceModEditions = mergedRun.diceModEditions ?? [];
+  mergedRun.comboLevels = mergedRun.comboLevels ?? {};
+  mergedRun.consumables = mergedRun.consumables ?? [];
+  mergedRun.catalysts = mergedRun.catalysts ?? [];
+  mergedRun.vouchers = mergedRun.vouchers ?? [];
+  mergedRun.ownedMods = mergedRun.ownedMods ?? [];
+  mergedRun.diceMods = mergedRun.diceMods ?? [];
   return {
     ...s,
     run:   mergedRun,

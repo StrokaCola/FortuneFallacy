@@ -5,8 +5,11 @@ import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
 
+// Stable fallback so the selector doesn't return a fresh object on every
+// snapshot read (which tear-loops useSyncExternalStore).
+const EMPTY_EDITIONS: Record<string, never> = {};
 const selectCatalysts = (s: GameState) => s.run.catalysts;
-const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? {};
+const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? EMPTY_EDITIONS;
 const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
 const selectHandsPlayed = (s: GameState) => s.run.handsPlayed;
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;

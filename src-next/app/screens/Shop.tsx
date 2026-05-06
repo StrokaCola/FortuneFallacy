@@ -22,7 +22,10 @@ import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import type { CatalystEdition } from '../../state/slices/run';
 
-const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? {};
+// Stable empty-object fallback so the selector returns a consistent ref
+// across renders (avoids useSyncExternalStore tear-loops).
+const EMPTY_CATALYST_EDITIONS: Record<string, never> = {};
+const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? EMPTY_CATALYST_EDITIONS;
 
 // Plain-language summary of edition's mechanical effect, scoped by the
 // kind of upgrade it sits on. Catalyst foil/holo are flat-per-fire at
