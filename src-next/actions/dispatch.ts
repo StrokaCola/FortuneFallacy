@@ -38,6 +38,8 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   BUY_OFFER: shopHandler,
   SELL_UPGRADE: shopHandler,
   REROLL_SHOP: shopHandler,
+  PICK_FROM_PACK: shopHandler,
+  SKIP_PACK: shopHandler,
   USE_CONSUMABLE: consumableHandler,
   GRANT_CONSUMABLE: consumableHandler,
   DISCARD_CONSUMABLE: consumableHandler,

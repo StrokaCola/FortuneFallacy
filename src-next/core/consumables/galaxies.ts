@@ -130,3 +130,73 @@ const QUASAR: ConsumableDef = {
 };
 
 export const GALAXIES: ConsumableDef[] = [...COMBO_GALAXIES, QUASAR];
+
+// All galaxy ids that can roll inside a pack. Quasar is included with a low
+// weight so it shows up rarely. Combo galaxies share equal weight; rarer
+// hands (Five of a Kind, Large Straight) are weighted slightly LOWER inside
+// packs to match Balatro's planet rarity — they're still ultra-valuable but
+// players shouldn't fall into Andromeda decks by accident.
+const GALAXY_PACK_WEIGHTS: Record<string, number> = {
+  galaxy_milky_way:  10,
+  galaxy_cartwheel:  10,
+  galaxy_cigar:      10,
+  galaxy_whirlpool:  10,
+  galaxy_pinwheel:    9,
+  galaxy_sombrero:    9,
+  galaxy_bodes:       7,
+  galaxy_triangulum:  7,
+  galaxy_andromeda:   5,
+  galaxy_quasar:      1,
+};
+
+export type PackKind = 'celestial' | 'stellar' | 'galactic';
+
+export type PackDef = {
+  kind: PackKind;
+  name: string;
+  price: number;
+  showCount: number;
+  pickCount: number;
+  // Quasar weight override: Galactic Pack triples the Quasar chance to make
+  // it the "splashy" pack of the three. Other kinds use the base weights.
+  quasarWeightMultiplier?: number;
+};
+
+export const PACK_DEFS: PackDef[] = [
+  { kind: 'celestial', name: 'Celestial Pack', price: 4, showCount: 2, pickCount: 1 },
+  { kind: 'stellar',   name: 'Stellar Pack',   price: 6, showCount: 3, pickCount: 1 },
+  { kind: 'galactic',  name: 'Galactic Pack',  price: 8, showCount: 4, pickCount: 2, quasarWeightMultiplier: 3 },
+];
+
+export function lookupPack(kind: string): PackDef | undefined {
+  return PACK_DEFS.find((p) => p.kind === kind);
+}
+
+// Roll N distinct galaxy ids from the weighted pool. `quasarMult` scales
+// the Quasar weight (1 by default; Galactic uses 3). Pure function — caller
+// supplies a random source so it can be seeded in tests.
+export function rollPackContents(
+  showCount: number,
+  rng: () => number,
+  quasarMult = 1,
+): string[] {
+  const pool: { id: string; weight: number }[] = Object.entries(GALAXY_PACK_WEIGHTS).map(([id, w]) => ({
+    id,
+    weight: id === 'galaxy_quasar' ? w * quasarMult : w,
+  }));
+  const picks: string[] = [];
+  for (let i = 0; i < showCount; i++) {
+    const remaining = pool.filter((p) => !picks.includes(p.id));
+    if (remaining.length === 0) break;
+    const totalWeight = remaining.reduce((s, p) => s + p.weight, 0);
+    let roll = rng() * totalWeight;
+    for (const p of remaining) {
+      roll -= p.weight;
+      if (roll <= 0) {
+        picks.push(p.id);
+        break;
+      }
+    }
+  }
+  return picks;
+}

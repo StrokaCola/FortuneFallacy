@@ -7,6 +7,7 @@ import { SellButton } from '../hud/SellButton';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
+  selectComboLevels, selectPendingPack,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
@@ -15,6 +16,8 @@ import { lookupMod } from '../../core/mods';
 import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
+import { PackOverlay } from './PackOverlay';
+import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string };
 
@@ -47,6 +50,18 @@ function offerMeta(kind: string, id: string): Meta {
       kindLabel: 'mod',
     };
   }
+  if (kind === 'pack') {
+    const p = lookupPack(id);
+    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : '✦';
+    return {
+      name: p?.name ?? id,
+      icon: tier,
+      color: '#cc88ff',
+      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Galaxy booster pack.',
+      kindLabel: 'booster',
+      flavor: 'Levels up the hand types you choose.',
+    };
+  }
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
 }
 
@@ -70,6 +85,8 @@ export function Shop() {
   const target   = useStore(selectTarget);
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
+  const comboLevels = useStore(selectComboLevels);
+  const pendingPack = useStore(selectPendingPack);
 
   // Voucher invariants used to disable selling cap-granting vouchers when
   // doing so would strand items above the post-sell cap.
@@ -189,6 +206,8 @@ export function Shop() {
         })}
       </div>
 
+      <HandLevelsPanel comboLevels={comboLevels} />
+
       <CollectionPanel
         catalysts={catalysts}
         vouchers={vouchers}
@@ -196,6 +215,8 @@ export function Shop() {
         ownedMods={ownedMods}
         voucherSellBlock={voucherSellBlock}
       />
+
+      {pendingPack && <PackOverlay />}
 
       <div style={{
         position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
@@ -368,6 +389,64 @@ function CollectionPanel({
           <CollectionRow kindLabel="mods (inventory)" kind="mod" items={modRows} emptyHint="no mods (attached mods sit in the Forge)" />
         </div>
       )}
+    </div>
+  );
+}
+
+// Compact, fixed-position panel showing the player's leveled hand types.
+// Only renders rows where the level is > 0 — keeps the panel out of the
+// way at the start of a run, then grows as galaxies are picked.
+const HAND_LEVEL_ROWS: { id: string; label: string }[] = [
+  { id: 'five_kind',   label: '5 Kind'    },
+  { id: 'four_kind',   label: '4 Kind'    },
+  { id: 'lg_straight', label: 'Lg Str'    },
+  { id: 'full_house',  label: 'Full Hse'  },
+  { id: 'sm_straight', label: 'Sm Str'    },
+  { id: 'three_kind',  label: '3 Kind'    },
+  { id: 'two_pair',    label: '2 Pair'    },
+  { id: 'one_pair',    label: 'Pair'      },
+  { id: 'chance',      label: 'Chance'    },
+];
+
+function HandLevelsPanel({ comboLevels }: { comboLevels: Record<string, number> }) {
+  const rows = HAND_LEVEL_ROWS
+    .map((r) => ({ ...r, lvl: comboLevels[r.id] ?? 0, bonus: GALAXY_BONUS[r.id] }))
+    .filter((r) => r.lvl > 0);
+  if (rows.length === 0) return null;
+  return (
+    <div className="panel" style={{
+      position: 'absolute', right: 24, top: 180, width: 200,
+      padding: '10px 14px', zIndex: 4,
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff', marginBottom: 8,
+      }}>
+        ◇ hand levels ◇
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {rows.map((r) => (
+          <div
+            key={r.id}
+            className="f-mono"
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              fontSize: 10, color: '#f3f0ff',
+              padding: '3px 6px', borderRadius: 4,
+              background: 'rgba(15,9,37,0.5)',
+            }}
+          >
+            <span>{r.label}</span>
+            <span style={{ color: '#cc88ff' }}>
+              lvl {r.lvl}
+              {r.bonus && (
+                <span style={{ color: 'rgba(204,136,255,0.7)', marginLeft: 4 }}>
+                  +{r.lvl * r.bonus.chips}/+{r.lvl * r.bonus.mult}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
