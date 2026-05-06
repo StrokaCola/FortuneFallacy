@@ -81,22 +81,35 @@ export function CatalystStrip() {
           : pulseKind === 'fire'
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms ease-out`
           : undefined;
+        const isLegendary = c.rarity === 'legendary';
         return (
           <div key={i} className="has-tip has-sell" style={{ position: 'relative' }}>
             <SellButton kind="catalyst" id={id} index={i} variant="badge" />
-            <div style={{
-              width: 64, height: 88, borderRadius: 8,
-              background: `linear-gradient(180deg, ${c.color}25, rgba(15,9,37,0.85))`,
-              border: `1px solid ${c.color}80`,
-              boxShadow: `0 0 14px ${c.color}40, inset 0 0 10px ${c.color}20`,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 4px',
-              cursor: 'help',
-              animation,
-            }}>
-              <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff' }}>catalyst</div>
-              <div style={{ fontSize: 28, color: c.color, filter: `drop-shadow(0 0 6px ${c.color})` }}>{c.icon}</div>
-              <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2 }}>
+            <div
+              className={isLegendary ? 'legendary-aura legendary-aura-static' : undefined}
+              style={{
+                width: 64, height: 88, borderRadius: 8,
+                background: `linear-gradient(180deg, ${c.color}25, rgba(15,9,37,0.85))`,
+                border: `1px solid ${isLegendary ? '#ff7847cc' : c.color + '80'}`,
+                boxShadow: isLegendary
+                  ? undefined
+                  : `0 0 14px ${c.color}40, inset 0 0 10px ${c.color}20`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+                padding: '6px 4px',
+                cursor: 'help',
+                animation,
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
+              {isLegendary && (
+                <>
+                  <div className="ff-holo" />
+                  <div className="ff-holo-shimmer" />
+                </>
+              )}
+              <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff', position: 'relative', zIndex: 2 }}>catalyst</div>
+              <div style={{ fontSize: 28, color: c.color, filter: `drop-shadow(0 0 6px ${c.color})`, position: 'relative', zIndex: 2 }}>{c.icon}</div>
+              <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}>
                 {c.name.split(' ').pop()}
               </div>
               {id === 'compounding_bias' && compoundingStacks > 0 && (
