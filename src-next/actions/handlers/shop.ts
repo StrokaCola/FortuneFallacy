@@ -100,8 +100,15 @@ function openPack(s: GameState, packKind: string): { state: GameState; events: G
     { type: 'onPackOpened', payload: { kind: packKind, galaxyIds, picksAllowed: def.pickCount } },
   ];
 
+  // Snapshot pre-open unlocks so the PackOverlay can render `???` for
+  // first-encounter galaxies. We freeze this BEFORE mutating meta.unlocks
+  // below — the snapshot captures "what the player already knew" at the
+  // moment they cracked the pack.
+  const unlockedAtOpen = [...s.meta.unlocks];
+
   // Discovery: any galaxy in this pack the player hasn't seen before goes
-  // into meta.unlocks. The shop UI uses this to flip ??? cards to real ones.
+  // into meta.unlocks. The codex / future hub uses this to flip cards
+  // permanently; the in-pack `???` rendering keys off `unlockedAtOpen`.
   const unlocks = new Set(s.meta.unlocks);
   for (const gid of galaxyIds) {
     if (!unlocks.has(gid)) {
@@ -121,6 +128,7 @@ function openPack(s: GameState, packKind: string): { state: GameState; events: G
           galaxyIds,
           picksLeft: def.pickCount,
           pickedSoFar: [],
+          unlockedAtOpen,
         },
       },
     },

@@ -24,6 +24,21 @@ import type { CatalystEdition } from '../../state/slices/run';
 
 const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? {};
 
+// Plain-language summary of edition's mechanical effect, scoped by the
+// kind of upgrade it sits on. Catalyst foil/holo are flat-per-fire at
+// bigger magnitudes; mod editions fire many times per hand at smaller
+// magnitudes — the tooltip surfaces the right numbers.
+function editionBonusDescription(kind: 'catalyst' | 'mod', edition: CatalystEdition): string {
+  if (kind === 'catalyst') {
+    if (edition === 'foil') return '+50 chips on each fire';
+    if (edition === 'holo') return '+10 mult on each fire';
+    return '+50% of own contribution';
+  }
+  if (edition === 'foil') return '+20 chips per fire';
+  if (edition === 'holo') return '+4 mult per fire';
+  return '+25% of own contribution per fire';
+}
+
 // Tiny inline pill that renders next to a catalyst's name when it's been
 // stamped with an edition. Color-coded; tooltip text explains the bonus.
 function EditionBadge({ edition }: { edition: CatalystEdition }) {
@@ -270,6 +285,14 @@ export function Shop() {
                 <span className="tip-title">{m.name}</span>
                 {m.desc}
                 {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
+                {o.edition && (o.kind === 'catalyst' || o.kind === 'mod') && (
+                  <span style={{
+                    display: 'block', marginTop: 6,
+                    color: editionColor(o.edition),
+                  }}>
+                    {editionLabel(o.edition)}: {editionBonusDescription(o.kind, o.edition)}
+                  </span>
+                )}
                 <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
                   Buy ◆ {o.price} · sell back ◆ {refundIfBought}
                 </span>

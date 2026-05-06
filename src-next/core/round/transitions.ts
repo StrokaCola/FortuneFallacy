@@ -253,6 +253,8 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
   } else if (tag.id === 'pack') {
     const def = lookupPack('celestial')!;
     const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
+    // Snapshot pre-open unlocks BEFORE we mutate meta.unlocks below.
+    const unlockedAtOpen = [...nextState.meta.unlocks];
     const newUnlocks = new Set(nextState.meta.unlocks);
     for (const gid of galaxyIds) {
       if (!newUnlocks.has(gid)) {
@@ -270,6 +272,7 @@ export function skipBlind(s: GameState): { state: GameState; events: GameEventEm
           galaxyIds,
           picksLeft: def.pickCount,
           pickedSoFar: [],
+          unlockedAtOpen,
         },
       },
     };

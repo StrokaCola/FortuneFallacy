@@ -9,6 +9,12 @@ export type PendingPack = {
   galaxyIds: string[];     // 2-4 galaxy ids rolled at open time
   picksLeft: number;       // remaining picks before the pack closes
   pickedSoFar: string[];   // ids the player has already picked
+  // Snapshot of meta.unlocks AT THE MOMENT the pack opened. The PackOverlay
+  // uses this to render galaxies the player hasn't seen before as `???`
+  // for the discovery beat — even though `openPack` immediately writes the
+  // ids into meta.unlocks (so the codex is up-to-date), the snapshot
+  // preserves "did the player know this when they cracked the pack?"
+  unlockedAtOpen: string[];
 };
 
 export type ShopSlice = {

@@ -251,6 +251,25 @@ describe('Galaxy packs — buy + open', () => {
     }
   });
 
+  it('pendingPack.unlockedAtOpen snapshots meta.unlocks at crack time (excluding the new ids)', () => {
+    // Pre-seed with one galaxy already known so we can verify it's in the
+    // snapshot but newly-rolled ids are NOT (even though they show up in
+    // meta.unlocks afterward).
+    const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
+    const s = baseState({ shards: 10, offers });
+    const seeded: GameState = {
+      ...s,
+      meta: { ...s.meta, unlocks: ['galaxy_milky_way'] },
+    } as GameState;
+    const r = shopHandler({ type: 'BUY_OFFER', offerIdx: 0 }, seeded);
+    expect(r.state.shop.pendingPack!.unlockedAtOpen).toEqual(['galaxy_milky_way']);
+    // meta.unlocks should be the snapshot UNION the rolled galaxy ids.
+    for (const gid of r.state.shop.pendingPack!.galaxyIds) {
+      expect(r.state.meta.unlocks).toContain(gid);
+    }
+    expect(r.state.meta.unlocks).toContain('galaxy_milky_way');
+  });
+
   it('emits onPackOpened + onGalaxyDiscovered events', () => {
     const offers: ShopOffer[] = [{ kind: 'pack', id: 'celestial', price: 4 }];
     const s = baseState({ shards: 10, offers });
@@ -282,6 +301,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -306,6 +326,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda', 'galaxy_milky_way', 'galaxy_quasar'],
           picksLeft: 2,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -326,7 +347,8 @@ describe('Galaxy packs — picking', () => {
           kind: 'galactic',
           galaxyIds: ['galaxy_whirlpool', 'galaxy_andromeda'],
           picksLeft: 1,
-          pickedSoFar: ['galaxy_whirlpool'],
+          pickedSoFar: ["galaxy_whirlpool"],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -345,6 +367,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_whirlpool', 'galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -365,6 +388,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_milky_way', 'galaxy_cartwheel'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
@@ -383,6 +407,7 @@ describe('Galaxy packs — picking', () => {
           galaxyIds: ['galaxy_milky_way'],
           picksLeft: 1,
           pickedSoFar: [] as string[],
+          unlockedAtOpen: [],
         },
       },
     };
