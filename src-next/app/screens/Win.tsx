@@ -17,6 +17,7 @@ export function Win() {
     <div style={{
       position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
       pointerEvents: 'auto', background: 'rgba(7,5,26,0.85)',
+      overflowY: 'auto', overflowX: 'hidden', padding: 16,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
         {/* shatter constellation */}
@@ -41,7 +42,7 @@ export function Win() {
         </svg>
 
         <div className="f-display" style={{
-          fontSize: 56, color: '#f5c451', letterSpacing: '0.2em',
+          fontSize: 'clamp(36px, 8vw, 56px)', color: '#f5c451', letterSpacing: '0.2em',
           textShadow: '0 0 30px rgba(245,196,81,0.8)',
         }}>VICTORY</div>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
@@ -63,11 +64,20 @@ export function Win() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 14 }}>
-          <button
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
-            className="btn btn-primary mat-interactive">
-            ✦ New Run
-          </button>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
+              className="btn btn-primary mat-interactive tap">
+              ✦ New Run
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+              className="btn btn-ghost mat-interactive tap">
+              ← Title
+            </button>
+          </div>
           <PortalGate size={72} label="Travel" />
         </div>
       </div>

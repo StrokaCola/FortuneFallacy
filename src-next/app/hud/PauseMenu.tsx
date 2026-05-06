@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { PortalGate } from '../portal/PortalGate';
 import * as audioSettings from '../../audio/audioSettings';
 import { RunInfoPanel } from './RunInfoPanel';
+import { Z } from './zLayers';
+import { useFocusTrap } from './useFocusTrap';
 
 const selectPaused = (s: GameState) => s.ui.paused;
 const selectRunActive = (s: GameState) =>
@@ -25,6 +27,9 @@ export function PauseMenu() {
   const runActive = useStore(selectRunActive);
   const [sliders, setSliders] = useState<Sliders>(readSliders);
   const [tab, setTab] = useState<Tab>('menu');
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(dialogRef, paused);
 
   useEffect(() => {
     if (!paused) return;
@@ -44,13 +49,17 @@ export function PauseMenu() {
 
   return (
     <div
+      ref={dialogRef}
       style={{
-        position: 'absolute', inset: 0, zIndex: 50,
+        position: 'absolute', inset: 0, zIndex: Z.modalStrong,
         background: 'rgba(7,5,26,0.75)',
         display: 'grid', placeItems: 'center',
         animation: 'fadein 200ms ease-out',
         pointerEvents: 'auto',
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Game paused"
     >
       <div
         className="panel-strong"
@@ -76,9 +85,10 @@ export function PauseMenu() {
         {tab === 'menu' && (
           <>
             <button
-              className="btn btn-primary mat-interactive"
+              className="btn btn-primary mat-interactive tap"
               style={{ width: 220 }}
               onClick={onResume}
+              data-autofocus
             >
               Resume
             </button>
@@ -108,7 +118,7 @@ export function PauseMenu() {
             <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: '4px 0' }} />
 
             <button
-              className="btn btn-ghost mat-interactive"
+              className="btn btn-ghost mat-interactive tap"
               style={{ width: 220 }}
               onClick={onBackToTitle}
             >
@@ -121,7 +131,7 @@ export function PauseMenu() {
           <>
             <RunInfoPanel />
             <button
-              className="btn btn-ghost mat-interactive"
+              className="btn btn-ghost mat-interactive tap"
               style={{ width: 180, marginTop: 6 }}
               onClick={onResume}
             >
@@ -138,7 +148,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className="f-mono uc"
+      className="f-mono uc tap"
       style={{
         background: active ? 'rgba(123,227,255,0.18)' : 'rgba(28,18,69,0.6)',
         border: `1px solid ${active ? '#7be3ffaa' : 'rgba(149,119,255,0.3)'}`,

@@ -20,14 +20,19 @@ export function Scores() {
   const initialId = unlocks.includes(activeId) ? activeId : DEFAULT_CONSTELLATION_ID;
   const [selectedId, setSelectedId] = useState<string>(initialId);
   const [allScores, setAllScores] = useState<OnlineScore[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // fetchOnlineScores swallows network errors and returns [] — we surface that
-    // as "no runs yet" rather than an explicit offline state.
-    fetchOnlineScores().then((scores) => {
-      if (!cancelled) setAllScores(scores);
-    });
+    setLoadError(null);
+    fetchOnlineScores().then(
+      (scores) => { if (!cancelled) setAllScores(scores); },
+      (err: unknown) => {
+        if (cancelled) return;
+        setAllScores([]);
+        setLoadError(err instanceof Error ? err.message : 'Could not reach the leaderboard.');
+      },
+    );
     return () => { cancelled = true; };
   }, []);
 
@@ -58,9 +63,9 @@ export function Scores() {
                 key={c.id}
                 type="button"
                 aria-pressed={isSelected}
-                aria-disabled={!isUnlocked}
+                disabled={!isUnlocked}
                 onClick={() => setSelectedId(c.id)}
-                className="f-mono uc"
+                className="f-mono uc tap"
                 style={{
                   flexShrink: 0,
                   minHeight: 44,
@@ -90,6 +95,8 @@ export function Scores() {
 
       <div
         className="w-full max-w-md min-h-[18rem] max-h-72 overflow-y-auto bg-cosmos-800/60 ring-1 ring-cosmos-300/30 rounded-xl p-4 mb-6"
+        aria-live="polite"
+        aria-busy={selectedUnlocked && visible === null}
       >
         {!selectedUnlocked && (
           <div className="text-cosmos-300 text-sm text-center py-8">
@@ -99,8 +106,14 @@ export function Scores() {
         {selectedUnlocked && visible === null && (
           <div className="text-cosmos-300 text-sm text-center py-8">loading…</div>
         )}
-        {selectedUnlocked && visible !== null && visible.length === 0 && (
+        {selectedUnlocked && visible !== null && visible.length === 0 && !loadError && (
           <div className="text-cosmos-300 text-sm text-center py-8">— no runs yet —</div>
+        )}
+        {selectedUnlocked && loadError && (
+          <div className="text-sm text-center py-8" style={{ color: '#ff8e9c' }}>
+            Could not load leaderboard.<br />
+            <span className="f-mono" style={{ fontSize: 10, opacity: 0.7 }}>{loadError}</span>
+          </div>
         )}
         {selectedUnlocked && visible !== null && visible.length > 0 && visible.map((s, i) => (
           <div
@@ -115,9 +128,10 @@ export function Scores() {
       </div>
 
       <button
+        type="button"
         onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
         className="px-8 py-2 rounded-lg bg-cosmos-700/80 hover:bg-cosmos-600 text-cosmos-50
-                   font-head ring-1 ring-cosmos-300/30"
+                   font-head ring-1 ring-cosmos-300/30 tap"
         style={{ minHeight: 44 }}
       >
         back

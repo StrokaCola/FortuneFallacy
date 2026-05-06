@@ -4,6 +4,7 @@ import { dispatch } from '../../actions/dispatch';
 import { stageScale } from '../../render/stage';
 import { triggerShake } from '../visual/screenShake';
 import type { Beat } from '../../core/scoring/types';
+import { Z } from './zLayers';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
@@ -172,7 +173,7 @@ export function ScoreMoment() {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 8,
+      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: Z.fx,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     }}>
       {comboName && (

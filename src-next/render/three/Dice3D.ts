@@ -11,6 +11,7 @@ import {
 import { MOD_MATERIALS } from './dieMaterials';
 import { getFaceCenters } from './polyhedra';
 import { getDiceSpec } from '../../core/run/diceContext';
+import { onStageResize } from '../stage';
 import { spatialIdxForValue, type DieShape, type DieFace } from '../../data/dice';
 import { buildOrbitalSatellite } from './orbitalSatellite';
 import { buildRimOverlay } from './rimOverlay';
@@ -291,7 +292,9 @@ export class Dice3D {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    this.renderer.setSize(960, 540, false);
+    // Tier 2: drawing buffer follows the canvas's CSS size, which now
+    // fills its #stage-root parent. Initial size derives from window;
+    // applyViewportSize() re-runs on every resize/orientationchange.
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -303,8 +306,12 @@ export class Dice3D {
     } catch (e) {
       console.warn('[Dice3D] env map init failed:', e);
     }
+    // Orthographic camera; aspect comes from the canvas, ortho size is
+    // the fixed half-height. Wider screens see more of the tray on the
+    // sides; portrait/narrow trims to height.
     const ortho = 7.5;
-    this.camera = new THREE.OrthographicCamera(-ortho * 1.78, ortho * 1.78, ortho, -ortho, 0.1, 100);
+    this.camera = new THREE.OrthographicCamera(-ortho, ortho, ortho, -ortho, 0.1, 100);
+    this.applyViewportSize();
     // Top-down. up=(0,0,-1) maps screen-Y onto world -Z so the rolling tray
     // (Z=+1) reads in the upper half of canvas and the hold strip
     // (Z=HOLD_Z) reads in the lower half.
@@ -428,6 +435,9 @@ export class Dice3D {
     this.buildDice();
 
     this.unsubscribers.push(
+      // Tier 2: resize the renderer + recompute the orthographic frustum
+      // whenever the stage dimensions change (rotate, address-bar, etc).
+      onStageResize(() => this.applyViewportSize()),
       store.subscribe((s, prev) => {
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
@@ -732,6 +742,25 @@ export class Dice3D {
     this.isDragging = false;
     this.canvas.style.cursor = '';
     this.dragStart = null;
+  }
+
+  // Tier 2: keep the WebGL drawing buffer + ortho frustum in sync with
+  // the canvas's CSS size. Width is driven by the canvas rect; ortho
+  // half-height stays fixed so dice render at a stable physical size,
+  // and aspect = w/h widens the frustum on landscape so wider screens
+  // see more tray on the sides without distorting dice.
+  private applyViewportSize(): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width || window.innerWidth));
+    const h = Math.max(1, Math.round(rect.height || window.innerHeight));
+    this.renderer.setSize(w, h, false);
+    const ortho = 7.5;
+    const aspect = w / h;
+    this.camera.left   = -ortho * aspect;
+    this.camera.right  =  ortho * aspect;
+    this.camera.top    =  ortho;
+    this.camera.bottom = -ortho;
+    this.camera.updateProjectionMatrix();
   }
 
   destroy(): void {

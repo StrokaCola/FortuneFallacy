@@ -78,8 +78,15 @@ export function ChallengeSelect() {
                 }}>
                   {ch.rules.map((r, i) => <li key={i}>{r}</li>)}
                 </ul>
+                <div className="f-mono uc" style={{
+                  fontSize: 9, letterSpacing: '0.24em', color: '#f5c451',
+                  marginTop: 4,
+                }}>
+                  reward · {won ? 'badge cleared' : 'codex badge'}
+                </div>
                 <button
-                  className="btn btn-primary mat-interactive"
+                  type="button"
+                  className="btn btn-primary mat-interactive tap"
                   onClick={() => dispatch({
                     type: 'NEW_RUN',
                     constellationId: ch.constellationId,
@@ -97,7 +104,8 @@ export function ChallengeSelect() {
 
         <div style={{ textAlign: 'center', marginTop: 18 }}>
           <button
-            className="btn btn-ghost mat-interactive"
+            type="button"
+            className="btn btn-ghost mat-interactive tap"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
             ← Back

@@ -17,17 +17,30 @@ export function Fail() {
 
   useEffect(() => { triggerShake('big'); }, []);
 
+  // Allow Enter/Space to retry without waiting for the button to fade in.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div style={{
       position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
       pointerEvents: 'auto',
       background: 'rgba(3,2,12,0.92)',
       animation: 'fadein 800ms ease-out both',
+      overflowY: 'auto', overflowX: 'hidden', padding: 16,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
         <div style={{
           fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 72, fontWeight: 900,
+          fontSize: 'clamp(40px, 10vw, 72px)', fontWeight: 900,
           color: '#ff4d6d', letterSpacing: '0.22em',
           textShadow: '0 0 36px #ff4d6d, 0 0 80px rgba(255,77,109,0.45)',
           opacity: 0,
@@ -65,15 +78,28 @@ export function Fail() {
           </div>
         </div>
 
+        {/* Render the action row on a faster timeline (550ms vs the
+            old 2100ms+) and never disable it — keyboard Enter/Space and
+            tap both work immediately even before the fade completes. */}
         <div style={{
           marginTop: 18,
-          opacity: 0,
-          animation: 'fadein 800ms ease-out 2100ms both',
+          display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+          animation: 'fadein 600ms ease-out 550ms both',
         }}>
           <button
+            type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
-            className="btn btn-primary mat-interactive">
+            className="btn btn-primary mat-interactive tap"
+            data-autofocus
+          >
             ↻ Try Again
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+            className="btn btn-ghost mat-interactive tap"
+          >
+            ← Title
           </button>
         </div>
       </div>

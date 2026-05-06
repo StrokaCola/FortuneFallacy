@@ -29,7 +29,7 @@ export function SellButton({ kind, id, index, disabled, disabledReason, variant 
   if (variant === 'badge') {
     return (
       <button
-        className="sell-btn has-tip"
+        className="sell-btn has-tip tap"
         onClick={onClick}
         disabled={disabled}
         aria-label={`Sell for ${refund} shards`}
@@ -44,11 +44,11 @@ export function SellButton({ kind, id, index, disabled, disabledReason, variant 
     <button
       onClick={onClick}
       disabled={disabled}
-      className="f-mono uc has-tip"
+      className="f-mono uc has-tip tap"
       style={{
         position: 'relative',
         fontSize: 9,
-        padding: '4px 10px',
+        padding: '8px 12px',
         borderRadius: 4,
         background: disabled ? 'rgba(149,119,255,0.08)' : 'rgba(245,196,81,0.15)',
         border: `1px solid ${disabled ? 'rgba(149,119,255,0.3)' : 'rgba(245,196,81,0.5)'}`,

@@ -5,6 +5,7 @@ import {
   buildExplanation, formatDelta, formatNumber,
   type LastScoringCtx, type Explanation,
 } from './scoreExplainData';
+import { Z } from './zLayers';
 
 const LABEL_COLOR = '#bba8ff';
 const CHIPS_COLOR = '#7be3ff';
@@ -35,7 +36,7 @@ export function ScoreExplain() {
         className="btn btn-ghost mat-interactive tap"
         onClick={() => setOpen(true)}
         style={{
-          position: 'absolute', bottom: 22, left: 22, zIndex: 6,
+          position: 'absolute', bottom: 22, left: 22, zIndex: Z.hudControl,
           pointerEvents: 'auto', fontSize: 11, padding: '6px 12px',
         }}
         aria-label="Show breakdown of last scored hand"
@@ -57,8 +58,11 @@ function BreakdownModal({ lastCtx, onClose }: { lastCtx: LastScoringCtx; onClose
   return (
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Score breakdown"
       style={{
-        position: 'absolute', inset: 0, zIndex: 50,
+        position: 'absolute', inset: 0, zIndex: Z.modal,
         background: 'rgba(7,5,26,0.78)',
         display: 'grid', placeItems: 'center',
         animation: 'fadein 180ms ease-out',

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
-import { STAGE_W, STAGE_H } from '../../render/stage';
+import { getStageSize } from '../../render/stage';
+import { Z } from './zLayers';
 
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
@@ -18,32 +19,36 @@ export function Particles() {
 
   useEffect(() => {
     const off1 = bus.on('onComboDetected', ({ tier }) => {
-      const x = STAGE_W / 2;
-      const y = STAGE_H / 2 - 80;
+      const { w, h } = getStageSize();
+      const x = w / 2;
+      const y = h / 2 - 80;
       const color = TIER_COLORS[Math.min(tier, TIER_COLORS.length - 1)] ?? '#9577ff';
       const id = nextId++;
       setBursts((b) => [...b, { id, x, y, tier, color }]);
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 900);
     });
     const off3 = bus.on('onUpgradeTriggered', () => {
-      const x = STAGE_W * 0.2 + Math.random() * STAGE_W * 0.6;
-      const y = STAGE_H * 0.4 + Math.random() * 80;
+      const { w, h } = getStageSize();
+      const x = w * 0.2 + Math.random() * w * 0.6;
+      const y = h * 0.4 + Math.random() * 80;
       const id = nextId++;
       setBursts((b) => [...b, { id, x, y, tier: 0, color: '#7be3ff' }]);
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 700);
     });
     const off4 = bus.on('onScoreBeat', ({ beat }) => {
       if (beat.kind === 'mult-slam') {
+        const { w, h } = getStageSize();
         const id = nextId++;
-        const x = STAGE_W / 2;
-        const y = STAGE_H / 2;
+        const x = w / 2;
+        const y = h / 2;
         setShocks((s) => [...s, { id, x, y, scale: beat.ampScale }]);
         setTimeout(() => setShocks((s) => s.filter((v) => v.id !== id)), 600);
       }
       if (beat.kind === 'die-tick') {
+        const { w, h } = getStageSize();
         const id = nextId++;
-        const x = STAGE_W * (0.2 + 0.15 * beat.dieIdx);
-        const y = STAGE_H * 0.65;
+        const x = w * (0.2 + 0.15 * beat.dieIdx);
+        const y = h * 0.65;
         setFlies((f) => [...f, { id, x, y, text: `+${beat.chipDelta}`, color: '#7be3ff' }]);
         setTimeout(() => setFlies((f) => f.filter((v) => v.id !== id)), 900);
       }
@@ -52,7 +57,7 @@ export function Particles() {
   }, []);
 
   return (
-    <div ref={targetRef} className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 10 }}>
+    <div ref={targetRef} className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: Z.fx }}>
       {bursts.map((b) => (
         <Ring key={b.id} x={b.x} y={b.y} color={b.color} tier={b.tier} />
       ))}

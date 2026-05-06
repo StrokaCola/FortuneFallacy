@@ -105,7 +105,11 @@ export function FaceReadout() {
                   {tone.label || '◇ captain ◇'}
                 </div>
                 <div className="f-display num" style={{
-                  fontSize: compact ? 112 : 96, lineHeight: 1, color: tone.fg,
+                  // Cap captain numeral against viewport on the smallest
+                  // phones — 14vw ≈ 50px on a 360px viewport, ~96px on a
+                  // tablet — so the number never overruns the stage.
+                  fontSize: compact ? 'clamp(60px, 14vw, 112px)' : 96,
+                  lineHeight: 1, color: tone.fg,
                   textShadow: `0 0 24px ${tone.glow}, 0 0 56px ${tone.glow}66`,
                   marginTop: 2,
                 }}>

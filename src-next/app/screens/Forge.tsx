@@ -62,7 +62,7 @@ export function Forge() {
   const selectedShape = diceSpec[selectedDie]?.shape ?? 'd6';
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <div className="mat-obsidian"
         style={{
           position: 'absolute', top: 18, left: 18,
@@ -92,18 +92,22 @@ export function Forge() {
         </div>
       </div>
 
-      {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory */}
+      {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
+          Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens. */}
       <div style={{
         position: 'absolute', left: '50%', top: 220, transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'flex-start', gap: 60,
+        display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
+        flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 'calc(100% - 40px)',
+        paddingBottom: 100,
       }}>
         {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 360 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
           {/* Selected die orbit */}
           <div className="panel" style={{ width: 360, height: 360, position: 'relative', display: 'grid', placeItems: 'center' }}>
             <svg width="320" height="320" viewBox="0 0 320 320" style={{ position: 'absolute' }}>
               <circle cx="160" cy="160" r="140" stroke="rgba(149,119,255,0.3)" strokeWidth="1" fill="none" strokeDasharray="4 6" />
-              <g style={{ transformOrigin: 'center', animation: 'orbit 30s linear infinite' }}>
+              <g className="forge-orbit" style={{ transformOrigin: 'center' }}>
                 {[0, 90, 180, 270].map((a) => {
                   const x = 160 + Math.cos((a * Math.PI) / 180) * 140;
                   const y = 160 + Math.sin((a * Math.PI) / 180) * 140;
@@ -128,24 +132,25 @@ export function Forge() {
               const dieMods = allDiceMods[i] ?? [];
               const extraCount = Math.max(0, dieMods.length - 1);
               const badgeColor = dieMods[1]?.color ?? dieMods[0]?.color ?? accent;
+              const isSelected = i === selectedDie;
               return (
-                <div
+                <button
                   key={i}
+                  type="button"
                   onClick={() => setSelectedDie(i)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDie(i); }}
-                  className="has-tip"
+                  className="has-tip tap"
+                  aria-label={`Select die ${i + 1}`}
+                  aria-pressed={isSelected}
                   style={{
                     cursor: 'pointer',
-                    opacity: i === selectedDie ? 1 : 0.55,
-                    transform: i === selectedDie ? 'translateY(-4px)' : 'none',
+                    opacity: isSelected ? 1 : 0.55,
+                    transform: isSelected ? 'translateY(-4px)' : 'none',
                     transition: 'all 200ms',
                     position: 'relative',
                     padding: 6,
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent',
                     pointerEvents: 'auto',
+                    background: 'transparent',
+                    border: 'none',
                   }}>
                   <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
@@ -164,7 +169,7 @@ export function Forge() {
                       ? 'No mods attached.'
                       : `Mods: ${dieMods.map((m) => m.name).join(', ')}`}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -181,15 +186,18 @@ export function Forge() {
                 return (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => {
                       dispatch({ type: 'DETACH_MOD', dieIdx: selectedDie, modIdx: idx });
                       sfxPlay('modDetach');
                     }}
-                    className="f-mono uc"
+                    aria-label={`Detach ${r.name} from die ${selectedDie + 1}`}
+                    className="f-mono uc tap"
                     style={{
-                      fontSize: 9, padding: '4px 10px', borderRadius: 6,
-                      background: 'rgba(226,51,74,0.15)', border: '1px solid rgba(226,51,74,0.5)',
-                      color: '#ff8e9c', letterSpacing: '0.18em', cursor: 'pointer',
+                      fontSize: 10, padding: '8px 14px', borderRadius: 8,
+                      background: 'rgba(149,119,255,0.12)', border: '1px solid rgba(149,119,255,0.45)',
+                      color: '#dcd4ff', letterSpacing: '0.18em', cursor: 'pointer',
+                      maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
                     ✕ {r.name}
                   </button>
@@ -200,7 +208,7 @@ export function Forge() {
         </div>
 
         {/* Right column: mod inventory */}
-        <div style={{ width: 380, height: 440 }}>
+        <div style={{ width: 'min(380px, 100%)', height: 440 }}>
           <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between' }}>
               <span>◈ mod inventory</span>
@@ -253,12 +261,24 @@ export function Forge() {
                     return (
                       <div
                         key={`${id}|${edition ?? 'plain'}`}
+                        role="button"
+                        tabIndex={canAttach ? 0 : -1}
+                        aria-disabled={!canAttach}
+                        aria-label={`${r.name}${edition ? ` ${editionLabel(edition)}` : ''} — ${canAttach ? 'attach to selected die' : 'no free mod slots'}`}
                         onClick={() => {
                           if (!canAttach) return;
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
                         }}
-                        className={`forge-mod-row has-tip${isLegendary ? ' legendary-aura' : ''}`}
+                        onKeyDown={(e) => {
+                          if (!canAttach) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
+                            sfxPlay('modAttach');
+                          }
+                        }}
+                        className={`forge-mod-row has-tip tap${isLegendary ? ' legendary-aura' : ''}`}
                         style={{
                           cursor: canAttach ? 'pointer' : 'not-allowed',
                           opacity: canAttach ? 1 : 0.4,
@@ -290,7 +310,11 @@ export function Forge() {
                           position: 'relative', zIndex: 2,
                         }}>{r.icon}</div>
                         <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
-                          <div className="f-head" style={{ fontSize: 12, color: '#f3f0ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          <div className="f-head" style={{
+                            fontSize: 12, color: '#f3f0ff',
+                            textTransform: 'uppercase', letterSpacing: '0.08em',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }} title={r.name}>
                             {r.name}
                             {edition && (
                               <span className="f-mono uc" style={{
@@ -308,13 +332,14 @@ export function Forge() {
                           </div>
                           {canForge && (
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setForgeOpenFor(isPickerOpen ? null : id);
                               }}
-                              className="f-mono uc"
+                              className="f-mono uc tap"
                               style={{
-                                marginTop: 6, fontSize: 9, padding: '3px 8px', borderRadius: 4,
+                                marginTop: 6, fontSize: 10, padding: '6px 12px', borderRadius: 6,
                                 background: 'rgba(245,196,81,0.12)', border: '1px solid rgba(245,196,81,0.5)',
                                 color: '#f5c451', letterSpacing: '0.18em', cursor: 'pointer',
                               }}>
@@ -322,19 +347,20 @@ export function Forge() {
                             </button>
                           )}
                           {isPickerOpen && (
-                            <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                            <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               {ALL_EDITIONS.map((ed) => (
                                 <button
                                   key={ed}
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     dispatch({ type: 'FORGE_MOD', modId: id, targetEdition: ed });
                                     setForgeOpenFor(null);
                                     sfxPlay('modAttach');
                                   }}
-                                  className="f-mono uc"
+                                  className="f-mono uc tap"
                                   style={{
-                                    fontSize: 9, padding: '3px 8px', borderRadius: 4,
+                                    fontSize: 10, padding: '6px 12px', borderRadius: 6,
                                     background: `${editionColor(ed)}22`,
                                     border: `1px solid ${editionColor(ed)}88`,
                                     color: editionColor(ed),

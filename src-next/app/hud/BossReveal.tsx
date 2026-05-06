@@ -1,26 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { BOSS_BLINDS } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
 import { triggerShake } from '../visual/screenShake';
+import { Z } from './zLayers';
 
 type Reveal = { id: string; ts: number; ante: number };
 
 export function BossReveal() {
   const [reveal, setReveal] = useState<Reveal | null>(null);
+  // Hold every timer so the auto-dismiss + secondary stings can be
+  // cleared if the player taps to skip or the component unmounts.
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  const clearTimers = () => {
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current.clear();
+  };
+
+  const dismiss = () => {
+    clearTimers();
+    setReveal(null);
+  };
 
   useEffect(() => {
-    return bus.on('onBossRevealed', ({ blindId, ante }) => {
+    const off = bus.on('onBossRevealed', ({ blindId, ante }) => {
       setReveal({ id: blindId, ts: Date.now(), ante });
       sfxPlay('sigilDraw');
       triggerShake('big');
-      setTimeout(() => sfxPlay('sigilDraw'), 350);
-      setTimeout(() => sfxPlay('sigilDraw'), 700);
-      setTimeout(() => setReveal(null), 3200);
+      const sting1 = setTimeout(() => sfxPlay('sigilDraw'), 350);
+      const sting2 = setTimeout(() => sfxPlay('sigilDraw'), 700);
+      const auto   = setTimeout(() => dismiss(), 3200);
+      timersRef.current.add(sting1);
+      timersRef.current.add(sting2);
+      timersRef.current.add(auto);
     });
+    return () => { off(); clearTimers(); };
+    // dismiss is stable (no deps), eslint-disable for the empty array.
   }, []);
+
+  useEffect(() => {
+    if (!reveal) return;
+    const onKey = () => dismiss();
+    window.addEventListener('keydown', onKey, { once: true });
+    return () => window.removeEventListener('keydown', onKey);
+  }, [reveal]);
 
   if (!reveal) return null;
   const def = BOSS_BLINDS.find((b) => b.id === reveal.id);
@@ -28,14 +54,24 @@ export function BossReveal() {
   const anomalyIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
 
   return (
-    <div style={{
-      position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
-      pointerEvents: 'none', zIndex: 30,
-      background: 'rgba(7,5,26,0.65)',
-      animation: 'fadein 0.4s ease-out',
-    }}>
+    <div
+      onClick={dismiss}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Boss revealed: ${def.name}. Tap to continue.`}
+      style={{
+        position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+        pointerEvents: 'auto', zIndex: Z.bannerBoss,
+        background: 'rgba(7,5,26,0.65)',
+        animation: 'fadein 0.4s ease-out',
+        cursor: 'pointer',
+      }}>
       <div style={{
-        width: 440, height: 600, position: 'relative',
+        // Cap to viewport so the reveal panel never overflows on
+        // landscape phones; preserves the original 440×600 on desktop.
+        width: 'min(440px, calc(100vw - 32px))',
+        height: 'min(600px, calc(100vh - 32px))',
+        position: 'relative',
         animation: 'float-y 4s ease-in-out infinite',
       }}>
         <div className="panel-strong" style={{

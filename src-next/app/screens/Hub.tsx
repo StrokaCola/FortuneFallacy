@@ -55,7 +55,7 @@ export function Hub() {
   }));
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <TopBar
         ante={ante}
         blind="Hub"
@@ -71,35 +71,39 @@ export function Hub() {
       />
       <PauseButton />
 
+      {/* Tier 2: flex column instead of absolute pixel offsets, so the
+          trial cards stay on-screen at any viewport size (including
+          short landscape phones where top:360 would push them under). */}
       <div style={{
-        position: 'absolute', left: '50%', top: 200, transform: 'translateX(-50%)',
-        textAlign: 'center', zIndex: 4,
+        minHeight: '100%',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: 20,
+        paddingTop: 170, paddingBottom: 110, paddingInline: 20,
+        textAlign: 'center',
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
           ◇ choose your trial ◇
         </div>
-        <div className="f-display" style={{ fontSize: 36, color: '#f3f0ff', marginTop: 8 }}>
+        <div className="f-display" style={{ fontSize: 'clamp(24px, 5vw, 36px)', color: '#f3f0ff', marginTop: 4 }}>
           Tribunal of Stars
         </div>
-        <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: 6, maxWidth: 460, marginInline: 'auto' }}>
+        <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: -4, maxWidth: 460 }}>
           Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
         </div>
         <div className="f-mono uc" style={{
-          marginTop: 10,
           fontSize: compact ? 12 : 9,
           letterSpacing: compact ? '0.18em' : '0.28em',
           color: '#f5c451',
         }}>
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
-      </div>
 
-      <ConstellationThread blinds={blinds} accent={accent} />
+        <ConstellationThread blinds={blinds} accent={accent} />
 
-      <div style={{
-        position: 'absolute', left: '50%', top: 360, transform: 'translateX(-50%)',
-        display: 'flex', gap: CARD_GAP, zIndex: 4,
-      }}>
+        <div style={{
+          display: 'flex', gap: CARD_GAP, flexWrap: 'wrap', justifyContent: 'center',
+          maxWidth: '100%',
+        }}>
         {blinds.map((b, i) => {
           const isBoss = b.def.isBoss;
           const cur = b.current;
@@ -192,11 +196,13 @@ export function Hub() {
             </div>
           );
         })}
+        </div>
       </div>
 
       <div style={{
         position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5,
+        display: 'flex', gap: 12, zIndex: 5, flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 'calc(100% - 40px)',
       }}>
         {!forgeDisabled && (
           <button
@@ -269,9 +275,12 @@ function ConstellationThread({ blinds, accent }: { blinds: ThreadBlind[]; accent
     <svg
       width={totalW}
       height={bandH}
+      // Tier 2: flows inline within the Hub flex column. On viewports
+      // narrower than `totalW`, the SVG simply overflows the centered
+      // column horizontally; cards still wrap below it.
       style={{
-        position: 'absolute', left: '50%', top: 322, transform: 'translateX(-50%)',
-        zIndex: 3, pointerEvents: 'none', overflow: 'visible',
+        maxWidth: '100%',
+        pointerEvents: 'none', overflow: 'visible',
       }}
       aria-hidden="true">
       {centers.slice(0, -1).map((x, i) => (

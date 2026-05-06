@@ -172,7 +172,7 @@ export function Shop() {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <TopBar
         ante={ante}
         blind="Bazaar"
@@ -224,14 +224,17 @@ export function Shop() {
           // and skips this layer to avoid double-glow.
           const ringStrength: Record<Rarity, number> = { common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0 };
           const ringIntensity = m.rarity ? ringStrength[m.rarity] : 0;
+          // Key includes the full offer set so a reroll forces React to
+          // remount each card and the spawn animation re-fires. Without
+          // this, cards just swap content and feel static after a reroll.
+          const offerVersion = offers.map((x) => x.id).join('|');
           return (
             <div
-              key={`${o.id}-${i}`}
+              key={`${offerVersion}-${i}`}
               className="card-wobble"
               style={{
                 position: 'relative',
-                animationDelay: `${i * 280}ms`,
-                animationDuration: `${3.2 + (i % 3) * 0.4}s`,
+                animation: `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both, card-wobble 3.4s ease-in-out ${i * 70 + 320}ms infinite`,
               }}
             >
               {ringIntensity > 0 && (
@@ -507,7 +510,11 @@ function CollectionPanel({
   return (
     <div className="panel" style={{
       position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
-      width: 'min(1100px, calc(100vw - 60px))', maxHeight: 'min(220px, calc(100vh - 600px))',
+      width: 'min(1100px, calc(100vw - 60px))',
+      // Tier 2: was `min(220px, calc(100vh - 600px))` which collapses to
+      // 0 below 820px tall. Use clamp so it always shows at least 80px
+      // and grows up to 220 when there's room.
+      maxHeight: 'clamp(80px, calc(100vh - 540px), 220px)',
       padding: '12px 18px', zIndex: 4, overflowY: 'auto',
     }}>
       <div className="f-mono uc" style={{

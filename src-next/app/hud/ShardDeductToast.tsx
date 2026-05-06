@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
+import { Z } from './zLayers';
 
 type Toast = { id: number; ts: number };
 let toastId = 1;
@@ -31,8 +32,9 @@ export function ShardDeductToast() {
       {toasts.map((t) => (
         <div key={t.id} style={{
           position: 'absolute',
-          top: 32, right: 110,
-          zIndex: 12, pointerEvents: 'none',
+          // Anchored left of the treasury panel (see ShardGainToast).
+          top: 32, right: 240,
+          zIndex: Z.toast, pointerEvents: 'none',
           fontFamily: '"JetBrains Mono", monospace',
           fontSize: 14, fontWeight: 700,
           color: '#f5c451',

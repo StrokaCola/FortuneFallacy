@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Z } from './zLayers';
 
 function isPhonePortrait(): boolean {
   if (typeof window === 'undefined') return false;
@@ -33,7 +34,7 @@ export function OrientationGate() {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9999,
+        zIndex: Z.orientation,
         background: 'rgba(7,5,26,0.96)',
         display: 'flex',
         flexDirection: 'column',

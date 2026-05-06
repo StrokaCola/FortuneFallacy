@@ -77,14 +77,13 @@ export function NameEntry() {
               background: 'rgba(8, 4, 28, 0.7)',
               border: '1px solid rgba(149,119,255,0.45)',
               borderRadius: 10,
-              outline: 'none',
               letterSpacing: '0.12em',
               textAlign: 'center',
             }}
           />
           <button
             type="submit"
-            className="btn btn-primary mat-interactive"
+            className="btn btn-primary mat-interactive tap"
             style={{ width: '100%', minHeight: 48 }}
           >
             Begin
@@ -92,7 +91,7 @@ export function NameEntry() {
           <button
             type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-            className="btn btn-ghost"
+            className="btn btn-ghost tap"
             style={{ width: '100%', minHeight: 44 }}
           >
             back

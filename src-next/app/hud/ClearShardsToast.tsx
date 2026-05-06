@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
+import { Z } from './zLayers';
 
 // Toast that breaks down the shard reward at blind clear: base / hands /
 // interest / voucher / total. Replaces the silent jump in the treasury
@@ -64,7 +65,7 @@ export function ClearShardsToast() {
         left: '50%',
         top: '38%',
         transform: 'translate(-50%, -50%)',
-        zIndex: 12,
+        zIndex: Z.toast,
         pointerEvents: 'none',
         background: 'rgba(15, 9, 37, 0.92)',
         border: '1px solid rgba(245, 196, 81, 0.55)',

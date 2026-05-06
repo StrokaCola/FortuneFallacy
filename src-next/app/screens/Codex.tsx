@@ -23,7 +23,6 @@ const TABS: { id: Tab; label: string }[] = [
 
 const selectDiscovered = (s: GameState) => s.meta.discovered;
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
-const selectChallengeWins = (s: GameState) => s.meta.challengeWins;
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#7be3ff',
@@ -36,7 +35,6 @@ export function Codex() {
   const [tab, setTab] = useState<Tab>('catalysts');
   const discovered = useStore(selectDiscovered);
   const stakeProgress = useStore(selectStakeProgress);
-  const challengeWins = useStore(selectChallengeWins);
 
   return (
     <div style={{
@@ -100,7 +98,7 @@ export function Codex() {
             <ConstellationGrid stakeProgress={stakeProgress} />
           )}
           {tab === 'bosses' && (
-            <BossGrid discovered={discovered.bosses} challengeWins={challengeWins} />
+            <BossGrid discovered={discovered.bosses} />
           )}
         </div>
 
@@ -298,7 +296,7 @@ function ConstellationGrid({ stakeProgress }: { stakeProgress: Record<string, st
   );
 }
 
-function BossGrid({ discovered, challengeWins: _challengeWins }: { discovered: string[]; challengeWins: string[] }) {
+function BossGrid({ discovered }: { discovered: string[] }) {
   return (
     <>
       {BOSS_BLINDS.map((b) => {
