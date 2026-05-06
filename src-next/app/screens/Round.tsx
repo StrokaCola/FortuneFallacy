@@ -4,6 +4,7 @@ import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
+import { ShardGainToast } from '../hud/ShardGainToast';
 import { ClearShardsToast } from '../hud/ClearShardsToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { ComboBanner } from '../hud/ComboBanner';
@@ -56,6 +57,7 @@ export function Round() {
 
       <CatalystStrip />
       <ShardDeductToast />
+      <ShardGainToast />
       <ClearShardsToast />
       <ConsumableTray />
 

@@ -2,11 +2,25 @@ import { dispatch } from '../../actions/dispatch';
 import { PortalGate } from '../portal/PortalGate';
 import { useStore } from '../../state/store';
 import type { GameState } from '../../state/store';
+import { lookupConstellation } from '../../data/constellations';
 
 const selectHasRun = (s: GameState) => s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0;
+const selectRunSummary = (s: GameState) => ({
+  ante: s.run.ante,
+  goalIdx: s.run.goalIdx,
+  score: s.round.score,
+  constellationId: s.run.constellationId,
+});
+const selectBestScore = (s: GameState) => {
+  const hs = s.meta.highScores;
+  if (!hs || hs.length === 0) return null;
+  return hs.reduce((best, cur) => (cur.score > best.score ? cur : best), hs[0]!);
+};
 
 export function Title() {
   const hasRun = useStore(selectHasRun);
+  const runSummary = useStore(selectRunSummary);
+  const best = useStore(selectBestScore);
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', pointerEvents: 'auto' }}>
@@ -66,18 +80,39 @@ export function Title() {
             Begin Ascension
           </button>
           {hasRun && (
-            <button
-              className="btn btn-ghost"
-              style={{ width: 240 }}
-              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
-              Continue Run
-            </button>
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ width: 240 }}
+                onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
+                Continue Run
+              </button>
+              <div className="f-mono uc" style={{
+                fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff', marginTop: -4,
+              }}>
+                ante {runSummary.ante} · blind {(runSummary.goalIdx % 3) + 1} · {lookupConstellation(runSummary.constellationId).name}
+              </div>
+            </>
+          )}
+          {!hasRun && best && (
+            <div className="f-mono uc" style={{
+              fontSize: 9, letterSpacing: '0.32em', color: '#f5c451', marginTop: -2,
+              textShadow: '0 0 10px rgba(245,196,81,0.35)',
+            }}>
+              best ◆ {best.score.toLocaleString()} · {best.name}
+            </div>
           )}
           <button
             className="btn btn-ghost"
             style={{ width: 200 }}
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
             Codex
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ width: 200 }}
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })}>
+            Settings
           </button>
           <div style={{ marginTop: 18 }}>
             <PortalGate size={72} label="Travel" />

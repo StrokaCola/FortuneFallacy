@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { BOSS_BLINDS } from './blinds';
 
 describe('BOSS_BLINDS shape contract', () => {
-  it('has 7 entries', () => {
-    expect(BOSS_BLINDS).toHaveLength(7);
+  it('has 8 entries', () => {
+    expect(BOSS_BLINDS).toHaveLength(8);
   });
 
   it('every entry has iconGlyph with paths', () => {
@@ -35,11 +35,11 @@ describe('BOSS_BLINDS shape contract', () => {
     }
   });
 
-  it('at least 6 of 7 bosses have an orbit-class group (Callisto exempt)', () => {
+  it('at least 7 of 8 bosses have an orbit-class group (Callisto exempt)', () => {
     const withOrbit = BOSS_BLINDS.filter((b) =>
       b.sigil.groups.some((g) => g.class === 'orbit-main' || g.class === 'orbit-aux'),
     );
-    expect(withOrbit.length).toBeGreaterThanOrEqual(6);
+    expect(withOrbit.length).toBeGreaterThanOrEqual(7);
   });
 
   it('every sigil group has at least one path', () => {

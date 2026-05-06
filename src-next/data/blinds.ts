@@ -239,6 +239,38 @@ export const BOSS_BLINDS: BossBlind[] = [
     },
   },
   {
+    id: 'charon', name: 'Charon', color: '#8a8aaa',
+    description: 'Ferryman\'s tariff. Consumables sealed in stasis.', debuffs: ['consumables_locked'],
+    iconGlyph: { viewBox: '0 0 24 24', paths: [
+      'M 4 16 L 20 16',
+      'M 6 16 L 8 10',
+      'M 18 16 L 16 10',
+      'M 8 10 L 16 10',
+      'M 12 6 a 1.5 1.5 0 1 0 3 0 a 1.5 1.5 0 1 0 -3 0',
+    ]},
+    sigil: {
+      viewBox: '0 0 100 100',
+      groups: [
+        // Outer dashed orbit — the river the ferryman crosses.
+        { class: 'orbit-aux', dashed: true, opacity: 0.45,
+          paths: ['M 14 60 a 36 14 0 1 0 72 0 a 36 14 0 1 0 -72 0'] },
+        // Body of the boat (a thin horizontal lozenge).
+        { class: 'body-core',
+          paths: ['M 30 60 L 70 60 L 64 66 L 36 66 Z'] },
+        // Mast.
+        { class: 'mark', strokeWidth: 2,
+          paths: ['M 50 60 L 50 32'] },
+        // Square sail.
+        { class: 'mark', strokeWidth: 1.5, opacity: 0.85,
+          paths: ['M 50 32 L 64 38 L 50 44 Z'] },
+        // Two coins above (the toll).
+        { class: 'satellite', filled: true,
+          paths: ['M 36 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0',
+                  'M 58 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0'] },
+      ],
+    },
+  },
+  {
     id: 'sedna', name: 'Sedna', color: '#4477cc',
     description: 'Mod slots capped at 1.', debuffs: ['mod_slots_capped_1'],
     iconGlyph: { viewBox: '0 0 24 24', paths: [

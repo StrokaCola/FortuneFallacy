@@ -152,6 +152,14 @@ html, body {
 @keyframes orbit   { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes drift   { 0% { transform: translate(0,0); } 100% { transform: translate(-2%, 1%); } }
 @keyframes float-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes card-wobble {
+  0%, 100% { transform: translateY(0)   rotate(0); }
+  25%      { transform: translateY(-3px) rotate(0.8deg); }
+  50%      { transform: translateY(-5px) rotate(0); }
+  75%      { transform: translateY(-2px) rotate(-0.7deg); }
+}
+.card-wobble { animation: card-wobble 3.4s ease-in-out infinite; }
+.reduce-motion .card-wobble { animation: none; }
 @keyframes idle-tumble {
   0%, 100% { transform: var(--face-rot) rotateX(0deg) rotateY(0deg); }
   25%      { transform: var(--face-rot) rotateX(4deg) rotateY(-3deg); }
@@ -319,6 +327,11 @@ html, body {
   0%   { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-30px); }
 }
+@keyframes shard-gain-toast {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.7); }
+  20%  { opacity: 1; transform: translateY(0)   scale(1.15); }
+  100% { opacity: 0; transform: translateY(-38px) scale(0.95); }
+}
 
 /* Score breakdown juice — chip ticks + mult slams. */
 @keyframes chipsTickPop {
@@ -355,6 +368,47 @@ html, body {
   100% { transform: scale(1); }
 }
 .reduce-motion .score-star { display: none; }
+
+/* Screen-shake — applied to #stage-root by triggerShake() in app/visual/screenShake.ts.
+   #stage-root already has transform: translate(-50%,-50%) scale(var(--stage-scale));
+   we layer the shake on the OUTER --shake-x/--shake-y CSS vars so the existing
+   transform composition is preserved by the keyframes. @property registration
+   gives smooth interpolation; in older browsers the var snaps between keyframes
+   which is acceptable for a sub-half-second shake. */
+@property --shake-x { syntax: '<length>'; initial-value: 0px; inherits: false; }
+@property --shake-y { syntax: '<length>'; initial-value: 0px; inherits: false; }
+@keyframes screenShake-tiny {
+  0%, 100% { --shake-x: 0px; --shake-y: 0px; }
+  25%      { --shake-x: 1.5px; --shake-y: -1px; }
+  50%      { --shake-x: -1px; --shake-y: 1.5px; }
+  75%      { --shake-x: 1px; --shake-y: 0px; }
+}
+@keyframes screenShake-mid {
+  0%, 100% { --shake-x: 0px; --shake-y: 0px; }
+  15%      { --shake-x: 4px; --shake-y: -3px; }
+  30%      { --shake-x: -3.5px; --shake-y: 3px; }
+  45%      { --shake-x: 3px; --shake-y: -2px; }
+  60%      { --shake-x: -2px; --shake-y: 2.5px; }
+  80%      { --shake-x: 1.5px; --shake-y: -1px; }
+}
+@keyframes screenShake-big {
+  0%, 100% { --shake-x: 0px; --shake-y: 0px; }
+  10%      { --shake-x: 7px;  --shake-y: -5px; }
+  22%      { --shake-x: -6px; --shake-y: 6px; }
+  35%      { --shake-x: 5px;  --shake-y: -4px; }
+  50%      { --shake-x: -4px; --shake-y: 4px; }
+  65%      { --shake-x: 3px;  --shake-y: -2.5px; }
+  80%      { --shake-x: -2px; --shake-y: 1.5px; }
+}
+#stage-root {
+  transform: translate(calc(-50% + var(--shake-x, 0px)), calc(-50% + var(--shake-y, 0px))) scale(var(--stage-scale, 1));
+}
+#stage-root.shake-tiny { animation: screenShake-tiny 180ms ease-out; }
+#stage-root.shake-mid  { animation: screenShake-mid  280ms ease-out; }
+#stage-root.shake-big  { animation: screenShake-big  420ms ease-out; }
+.reduce-motion #stage-root.shake-tiny,
+.reduce-motion #stage-root.shake-mid,
+.reduce-motion #stage-root.shake-big { animation: none; }
 
 /* Button juice — press scale + accent shockwave on release. */
 .btn-primary {

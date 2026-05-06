@@ -3,8 +3,10 @@ import { useStore, type GameState } from '../../state/store';
 import { lookupCatalyst } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
+import { editionColor } from '../../core/upgrades/editions';
 
 const selectCatalysts = (s: GameState) => s.run.catalysts;
+const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? {};
 const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
 const selectHandsPlayed = (s: GameState) => s.run.handsPlayed;
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
@@ -15,6 +17,7 @@ const CHAIN_PULSE_STEP_MS = 80;
 
 export function CatalystStrip() {
   const catalysts = useStore(selectCatalysts);
+  const catalystEditions = useStore(selectCatalystEditions);
   const compoundingStacks = useStore(selectCompoundingStacks);
   const handsPlayed = useStore(selectHandsPlayed);
   const handsLeft = useStore(selectHandsLeft);
@@ -82,18 +85,37 @@ export function CatalystStrip() {
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms ease-out`
           : undefined;
         const isLegendary = c.rarity === 'legendary';
+        const edition = catalystEditions[id];
+        const eColor = edition ? editionColor(edition) : null;
+        // Holo edition gets the rainbow sweep already used for legendaries.
+        // Foil gets a static rainbow border. Poly gets a chromatic-aberration
+        // double-shadow on the icon. Legendary already shimmers; if it ALSO
+        // has an edition, we just add the per-edition border accent.
+        const showHolo = edition === 'holo' || isLegendary;
+        const borderColor =
+          edition === 'foil' && eColor ? eColor :
+          edition === 'poly' && eColor ? eColor :
+          isLegendary ? '#ff7847cc' : c.color + '80';
+        const extraShadow =
+          edition === 'foil' && eColor ? `0 0 18px ${eColor}88, ` :
+          edition === 'poly' && eColor ? `0 0 14px ${eColor}88, ` :
+          '';
         return (
-          <div key={i} className="has-tip has-sell" style={{ position: 'relative' }}>
+          <div
+            key={i}
+            className="has-tip has-sell card-wobble"
+            style={{ position: 'relative', animationDelay: `${(i * 230) % 1700}ms` }}
+          >
             <SellButton kind="catalyst" id={id} index={i} variant="badge" />
             <div
               className={isLegendary ? 'legendary-aura legendary-aura-static' : undefined}
               style={{
                 width: 64, height: 88, borderRadius: 8,
                 background: `linear-gradient(180deg, ${c.color}25, rgba(15,9,37,0.85))`,
-                border: `1px solid ${isLegendary ? '#ff7847cc' : c.color + '80'}`,
+                border: `1px solid ${borderColor}`,
                 boxShadow: isLegendary
                   ? undefined
-                  : `0 0 14px ${c.color}40, inset 0 0 10px ${c.color}20`,
+                  : `${extraShadow}0 0 14px ${c.color}40, inset 0 0 10px ${c.color}20`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
                 padding: '6px 4px',
                 cursor: 'help',
@@ -101,17 +123,39 @@ export function CatalystStrip() {
                 position: 'relative',
                 overflow: 'hidden',
               }}>
-              {isLegendary && (
+              {showHolo && (
                 <>
                   <div className="ff-holo" />
                   <div className="ff-holo-shimmer" />
                 </>
               )}
               <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff', position: 'relative', zIndex: 2 }}>catalyst</div>
-              <div style={{ fontSize: 28, color: c.color, filter: `drop-shadow(0 0 6px ${c.color})`, position: 'relative', zIndex: 2 }}>{c.icon}</div>
+              <div style={{
+                fontSize: 28, color: c.color,
+                filter: edition === 'poly' && eColor
+                  ? `drop-shadow(-1.5px 0 0 ${eColor}aa) drop-shadow(1.5px 0 0 ${c.color}aa) drop-shadow(0 0 6px ${c.color})`
+                  : `drop-shadow(0 0 6px ${c.color})`,
+                position: 'relative', zIndex: 2,
+              }}>{c.icon}</div>
               <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}>
                 {c.name.split(' ').pop()}
               </div>
+              {edition && eColor && (
+                <div
+                  className="f-mono uc"
+                  style={{
+                    position: 'absolute', top: 3, left: 3, zIndex: 3,
+                    fontSize: 7, letterSpacing: '0.14em',
+                    padding: '1px 3px', borderRadius: 3,
+                    color: eColor,
+                    background: 'rgba(15,9,37,0.85)',
+                    border: `1px solid ${eColor}88`,
+                  }}
+                  title={`${edition} edition`}
+                >
+                  {edition.slice(0, 3)}
+                </div>
+              )}
               {id === 'compounding_bias' && compoundingStacks > 0 && (
                 <div style={{
                   position: 'absolute', top: 4, right: 4,
