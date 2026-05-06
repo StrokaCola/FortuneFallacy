@@ -6,8 +6,9 @@ import { ArrivalToast } from './hud/ArrivalToast';
 import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
+import { PackOverlay } from './screens/PackOverlay';
 import { useStore, store } from '../state/store';
-import { selectScreen, selectIsBoss, selectTensionFromState } from '../state/selectors';
+import { selectScreen, selectIsBoss, selectTensionFromState, selectPendingPack } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
 import { ConstellationSelect } from './screens/ConstellationSelect';
@@ -32,6 +33,7 @@ export function App() {
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
+  const pendingPack = useStore(selectPendingPack);
 
   useEffect(() => {
     ensureAudioAfterGesture();
@@ -112,6 +114,7 @@ export function App() {
 
         <OrientationGate />
         <PauseMenu />
+        {pendingPack && <PackOverlay />}
         {import.meta.env.DEV && <DevConsole />}
       </div>
     </DiagnosticOverlay>

@@ -1,6 +1,5 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
-import { CATALYST_IDS } from '../../core/upgrades/catalysts';
 import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
@@ -8,6 +7,20 @@ import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents } from '../../core/consumables/galaxies';
+import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
+
+// 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
+// in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
+// the gate as open. Pure helper; no side effects.
+function maybeUnlockAllBand(s: GameState): { state: GameState; events: GameEventEmission[] } {
+  if (s.run.catalysts.length < 4) return { state: s, events: [] };
+  const unlockId = `${LEGENDARY_UNLOCK_PREFIX}all_band`;
+  if (s.meta.unlocks.includes(unlockId)) return { state: s, events: [] };
+  return {
+    state: { ...s, meta: { ...s.meta, unlocks: [...s.meta.unlocks, unlockId] } },
+    events: [],
+  };
+}
 
 const BASE_REROLL_COST = 3;
 const MOD_OFFER_PRICE = 4;
@@ -34,7 +47,7 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = shuffle([...CATALYST_IDS]).slice(0, catalystCount);
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random);
   for (const id of catalystIds) offers.push({ kind: 'catalyst', id, price: 5 });
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
@@ -165,13 +178,20 @@ export const shopHandler: ActionHandler = (a, s) => {
         : s.run.consumables;
       const vouchers = offer.kind === 'voucher' ? [...s.run.vouchers, offer.id] : s.run.vouchers;
       const ownedMods = offer.kind === 'mod' ? [...s.run.ownedMods, offer.id] : s.run.ownedMods;
+      const bought: GameState = {
+        ...s,
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods },
+        shop: { ...s.shop, offers: remaining },
+      };
+      // Catalyst purchase may cross the 4-catalyst threshold for the first
+      // time, unlocking the All-Band legendary in meta.unlocks.
+      const withUnlock = offer.kind === 'catalyst' ? maybeUnlockAllBand(bought) : { state: bought, events: [] };
       return {
-        state: {
-          ...s,
-          run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods },
-          shop: { ...s.shop, offers: remaining },
-        },
-        events: [{ type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } }],
+        state: withUnlock.state,
+        events: [
+          { type: 'onOfferBought', payload: { kind: offer.kind, id: offer.id, price: offer.price } },
+          ...withUnlock.events,
+        ],
       };
     }
     case 'PICK_FROM_PACK': {
