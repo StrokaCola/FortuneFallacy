@@ -26,6 +26,20 @@ type StepCtx = {
   // Remaining tithe budget AT THE START of this die's evaluation. Tithe will
   // self-skip if budget hits 0 mid-die (each Tithe instance costs 1).
   titheBudget: number;
+  // Optional run/round context — Phase 5b mods read these for combo/ante
+  // gating and galaxy-level scaling. Older callers can omit these without
+  // breaking existing mods (all gates self-skip when fields are absent).
+  comboId?: string;
+  comboTier?: number;
+  ante?: number;
+  handsLeft?: number;
+  // Galaxy levels for the played combo. The mod looks up its combo via
+  // comboId; passing the slice (rather than the full record) keeps the
+  // step ctx flat.
+  comboLevelOnPlayed?: number;
+  // Mod count on this die — Polarize-style mods read this without us needing
+  // to thread the full diceMods array.
+  modsOnThisDie?: number;
 };
 
 /**
@@ -81,6 +95,43 @@ export function applyDieModStep(stepCtx: StepCtx, modIds: string[]): DieModStepR
     if (def.chainMultPost && pos < totalScoring - 1) {
       modMult += def.chainMultPost * (totalScoring - 1 - pos);
     }
+    // Phase 5b — combo / round / ante / galaxy aware fields. Each gate is
+    // independent so multiple fields on the same mod are additive (none of
+    // the new mods set more than one, but the design allows it).
+    if (def.pairedFaceChips) {
+      // "Part of a combo set": this die's face appears 2+ times in scoringFaces.
+      const matches = scoringFaces.filter((f) => f === face).length;
+      if (matches >= 2) modChips += def.pairedFaceChips;
+    }
+    // Keystone/Singularity contribute to dMultMul (same channel as Crown).
+    // Tracked via `localMultMul` so we can fire a "fired" event even when
+    // the additive sweep is empty, mirroring the crown path below.
+    let localMultMul = 1;
+    if (def.keystoneMult) {
+      const maxFace = scoringFaces.length > 0 ? Math.max(...scoringFaces) : 0;
+      if (face === maxFace && scoringFaces.filter((f) => f === maxFace).length === 1) {
+        localMultMul *= def.keystoneMult;
+      }
+    }
+    if (def.chipsPerComboLevel && stepCtx.comboLevelOnPlayed) {
+      modChips += def.chipsPerComboLevel * stepCtx.comboLevelOnPlayed;
+    }
+    if (def.chipsPerHandLeft && stepCtx.handsLeft != null) {
+      modChips += def.chipsPerHandLeft * Math.max(0, stepCtx.handsLeft);
+    }
+    if (def.riskHighMult && face === 6) modMult += def.riskHighMult;
+    if (def.riskLowMult && face === 1) modMult -= def.riskLowMult;
+    if (def.singularityAnte != null && def.singularityMult && stepCtx.ante != null) {
+      if (stepCtx.ante >= def.singularityAnte) {
+        localMultMul *= def.singularityMult;
+      }
+    }
+    // Refinery emits no chips/mult — its only effect is shard accrual,
+    // which the caller (upgrades.ts) doesn't currently fold here. We mark
+    // the fire so the HUD shows the trigger; the shard credit is handled
+    // by roll.ts when it sweeps post-score shard sources.
+    void def.refineryComboIds;
+    void def.refineryShards;
     // Tithe: gated by per-hand shard budget. One shard per die per Tithe mod.
     if ((def.titheChips || def.titheMult) && stepCtx.titheBudget - titheCost > 0) {
       titheCost += 1;
@@ -97,16 +148,20 @@ export function applyDieModStep(stepCtx: StepCtx, modIds: string[]): DieModStepR
 
     // Crown: collect multiplicative; apply to the die's accumulated mult at end.
     if (def.crownMult && face === (def.crownFace ?? 6)) {
-      dMultMul *= def.crownMult;
+      localMultMul *= def.crownMult;
     }
 
+    // Commit this mod's contributions to the die-level accumulators.
+    dMultMul *= localMultMul;
     if (modChips !== 0 || modMult !== 0) {
       events.push({ type: 'upgrade', modId: id, dieIdx, dChips: modChips, dMult: modMult });
       events.push({ type: 'fired', modId: id, dieIdx, faceValue: face });
       dChips += modChips;
       dMult += modMult;
-    } else if (def.crownMult && face === (def.crownFace ?? 6)) {
-      // Crown fired — emit the visual even though the additive sweep is empty.
+    } else if (localMultMul !== 1) {
+      // Multiplicative-only mods (Crown, Keystone, Singularity) — emit
+      // the fire so the HUD/animation can attribute the bump even though
+      // the additive sweep is empty.
       events.push({ type: 'fired', modId: id, dieIdx, faceValue: face });
     }
   }

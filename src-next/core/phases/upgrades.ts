@@ -77,13 +77,27 @@ const applyModScoring: PhaseFn = (ctx) => {
   let mult = ctx.mult;
   const events = [...ctx.events];
   let titheBudget = ctx.state.round.tithePrimedThisHand ?? 0;
+  // Phase 5b — context fields read by combo/ante/galaxy aware mods. Pulled
+  // out of ctx once so the per-die loop stays tight. comboLevelOnPlayed is
+  // 0 when no combo (chance hand at lvl 0) or comboLevels missing.
+  const comboId = ctx.combo?.id;
+  const comboTier = ctx.combo?.tier;
+  const ante = ctx.state.run.ante;
+  const handsLeft = ctx.state.round.handsLeft;
+  const comboLevelOnPlayed = comboId
+    ? (ctx.state.run.comboLevels?.[comboId] ?? 0)
+    : 0;
 
   for (let pos = 0; pos < scoringDice.length; pos++) {
     const i = scoringDice[pos]!;
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
     const step = applyDieModStep(
-      { face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget },
+      {
+        face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget,
+        comboId, comboTier, ante, handsLeft, comboLevelOnPlayed,
+        modsOnThisDie: mods.length,
+      },
       mods,
     );
     titheBudget -= step.titheCost;

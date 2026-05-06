@@ -37,7 +37,10 @@ describe('MOD_MATERIALS', () => {
     }
   });
 
-  it('has exactly 19 entries (one per mod)', () => {
-    expect(Object.keys(MOD_MATERIALS).length).toBe(19);
+  it('has exactly one entry per mod', () => {
+    // Source of truth lives in MOD_IDS — keep this assertion derived so
+    // adding a mod doesn't require updating a magic number here.
+    // (See core/mods/index.ts MOD_IDS.)
+    expect(Object.keys(MOD_MATERIALS).length).toBe(26);
   });
 });

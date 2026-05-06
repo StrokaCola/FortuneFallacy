@@ -23,6 +23,14 @@ export const MOD_IDS = [
   'crown',
   'brittle',
   'wildcard',
+  // Phase 5b — combo / round / ante / galaxy aware mods.
+  'anchor',
+  'keystone',
+  'astrolabe',
+  'pressure',
+  'risk',
+  'singularity',
+  'refinery',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -74,6 +82,27 @@ export type ModDef = {
   // Wildcard: face is replaced (in postRollModifiers) with whatever value
   // maximizes the resulting combo tier.
   wildcard?: boolean;
+  // ─── Phase 5b additions ─────────────────────────────────────────────────
+  // Anchor: +chips when this die's face appears 2+ times in scoringFaces
+  // (a soft "part of a combo" detector — fires on Pair / Two Pair /
+  // Three of a Kind etc).
+  pairedFaceChips?: number;
+  // Keystone: ×mult when this die's face is the strict max of scoringFaces.
+  keystoneMult?: number;
+  // Astrolabe: +chips per combo level on the PLAYED combo. Reads
+  // run.comboLevels[combo.id] via StepCtx.comboLevelOnPlayed.
+  chipsPerComboLevel?: number;
+  // Pressure: +chips per remaining hand this round (handsLeft).
+  chipsPerHandLeft?: number;
+  // Risk: face-conditional bonus on 6 AND penalty on 1.
+  riskHighMult?: number;   // applies on face 6
+  riskLowMult?: number;    // negative magnitude applied on face 1
+  // Singularity: ×mult that only fires at or above `singularityAnte`.
+  singularityAnte?: number;
+  singularityMult?: number;
+  // Refinery: +shards when this die scores in one of `refineryComboIds`.
+  refineryComboIds?: string[];
+  refineryShards?: number;
   visual?: ModVisual;
 };
 
@@ -181,6 +210,52 @@ export const MODS: ModDef[] = [
     desc: 'Counts as any face for combo detection (chooses best).',
     wildcard: true, rarity: 'legendary',
     visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse' },
+  },
+  // ─── Phase 5b: combo / round / ante / galaxy aware mods ────────────────
+  // Visuals reuse existing materialKeys so the renderer doesn't need new
+  // assets — picked by feel (anchor uses backstop's vault feel, keystone
+  // borrows crown's gold). New material/triggerFx work tracked separately.
+  {
+    id: 'anchor', name: 'Anchor', icon: '⚓',
+    desc: '+15 chips when this die is part of a combo set.',
+    pairedFaceChips: 15,
+    visual: { materialKey: 'backstop', accentColor: '#88ddff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'keystone', name: 'Keystone', icon: '◆',
+    desc: '×1.4 mult when this die has the highest face among scoring dice.',
+    keystoneMult: 1.4,
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
+  },
+  {
+    id: 'astrolabe', name: 'Astrolabe', icon: '✺',
+    desc: '+3 chips per combo level on the played hand.',
+    chipsPerComboLevel: 3,
+    visual: { materialKey: 'sharpened', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'pressure', name: 'Pressure', icon: '⏲',
+    desc: '+5 chips per remaining hand this round.',
+    chipsPerHandLeft: 5,
+    visual: { materialKey: 'amplify', accentColor: '#ff7847', triggerFx: 'pulse' },
+  },
+  {
+    id: 'risk', name: 'Risk', icon: '⚡',
+    desc: '+6 mult on face 6. -3 mult on face 1.',
+    riskHighMult: 6, riskLowMult: 3,
+    visual: { materialKey: 'high_roller', accentColor: '#ffd84a', triggerFx: 'pulse' },
+  },
+  {
+    id: 'singularity', name: 'Singularity', icon: '●',
+    desc: '×2 mult — but only on Ante 4 or higher.',
+    singularityAnte: 4, singularityMult: 2,
+    visual: { materialKey: 'crown', accentColor: '#cc88ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'refinery', name: 'Refinery', icon: '◇',
+    desc: '+1 shard when scored as part of Two Pair or Full House.',
+    refineryComboIds: ['two_pair', 'full_house'], refineryShards: 1,
+    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
   },
 ];
 

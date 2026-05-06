@@ -131,11 +131,22 @@ export const rollHandler: ActionHandler = (a, s) => {
       let shardBonus = 0;
       const modFiredEvents: GameEventEmission[] = [];
       const finalFaces = fakeResult.finalFaces;
+      // Refinery (Phase 5b): mods that grant shards conditionally on the
+      // played combo id. Gated by `refineryComboIds`; ignored when the
+      // pipeline didn't surface a combo (degenerate hand).
+      const playedComboId = final.combo?.id;
       workingState.run.diceMods.forEach((mods, dieIdx) => {
         for (const id of mods) {
           const def = lookupMod(id);
           if (def?.shardsBonus) {
             shardBonus += def.shardsBonus;
+            modFiredEvents.push({
+              type: 'onModFired',
+              payload: { dieIdx, modId: id, faceValue: finalFaces[dieIdx] ?? 0 },
+            });
+          }
+          if (def?.refineryShards && playedComboId && def.refineryComboIds?.includes(playedComboId)) {
+            shardBonus += def.refineryShards;
             modFiredEvents.push({
               type: 'onModFired',
               payload: { dieIdx, modId: id, faceValue: finalFaces[dieIdx] ?? 0 },
