@@ -317,7 +317,13 @@ export class Dice3D {
     // (Z=HOLD_Z) reads in the lower half.
     this.camera.position.set(0, 14, 0.001);
     this.camera.up.set(0, 0, -1);    // screen +Y → world -Z (rolling tray at -Z = upper)
-    this.camera.lookAt(0, 0, 0);
+    // Look slightly past the rolling tray center toward the hold strip so
+    // the entire play area (tray top at world Z=-4, hold strip bottom near
+    // Z=+5.7) lands centered on the canvas. Z=+0.85 is the midpoint of
+    // that span. Without this offset, the hold strip projects to ~85% of
+    // the canvas height which on phone landscape (small canvas h) puts it
+    // behind the ActionBar; with the offset it sits ~79%, clearly above.
+    this.camera.lookAt(0, 0, 0.85);
 
     this.scene.add(new THREE.AmbientLight(0x9577ff, 0.55));
     const key = new THREE.DirectionalLight(0xffffff, 1.0);
