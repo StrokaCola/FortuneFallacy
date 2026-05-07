@@ -15,6 +15,7 @@ import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { ScoreExplain } from '../hud/ScoreExplain';
 import { AstralHint } from '../hud/AstralHint';
+import { RoundDebugOverlay } from '../hud/RoundDebugOverlay';
 import { useScoreDisplay } from '../hud/useScoreDisplay';
 import {
   selectHandsLeft, selectRerollsLeft, selectIsBoss,
@@ -71,6 +72,7 @@ export function Round() {
       <ScoreExplain />
 
       <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} />
+      <RoundDebugOverlay />
     </div>
   );
 }
