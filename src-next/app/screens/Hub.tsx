@@ -58,11 +58,10 @@ export function Hub() {
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      // Tight viewports (landscape phones, ~360px tall) drop enough
-      // header copy that the layout fits without scrolling. On larger
-      // viewports keep the auto-scroll fallback so over-tall content
-      // (long flavor copy, many constellation rows) stays accessible.
-      overflowY: tight ? 'hidden' : 'auto',
+      // Tight viewports allow scroll as a safety net — the layout below
+      // shrinks aggressively, but the Begin button must always be
+      // reachable even on the shortest phone landscape browsers.
+      overflowY: 'auto',
       overflowX: 'hidden',
     }}>
       <TopBar
@@ -143,12 +142,15 @@ export function Hub() {
               className="panel-strong has-tip"
               style={{
                 // Tight: shrink width so 3 cards fit a 640px landscape
-                // phone (3*200 + 2*8 = 616 < 640). Wider viewports keep
+                // phone (3*180 + 2*8 = 556 < 640). Wider viewports keep
                 // the original 240px design size.
-                width: tight ? 'clamp(150px, 30vw, 200px)' : CARD_W,
+                width: tight ? 'clamp(140px, 28vw, 180px)' : CARD_W,
                 // Card height clamps with viewport so on short landscape
-                // phones the three trial cards plus action bar all fit.
-                height: tight ? 'clamp(150px, 60vh, 200px)' : 'clamp(240px, 50vh, 320px)',
+                // phones the three trial cards plus action bar all fit
+                // *and* the inline Begin button stays inside the card.
+                // 180 px max (vs 200 previously) gives 36 CSS more room
+                // for the action bar + URL bar overhead.
+                height: tight ? 'clamp(140px, 45vh, 180px)' : 'clamp(240px, 50vh, 320px)',
                 padding: tight ? 12 : 20, position: 'relative',
                 border: cur ? `2px solid ${accent}` : (isBoss ? '1px solid rgba(226,51,74,0.5)' : '1px solid rgba(149,119,255,0.3)'),
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
@@ -163,12 +165,16 @@ export function Hub() {
                   inset: tight ? 10 : 20,
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                 }}>
-                  <div className="f-mono uc" style={{
-                    fontSize: 9, letterSpacing: '0.3em',
-                    color: cur ? accent : locked ? '#7a6fa6' : '#bba8ff',
-                  }}>
-                    trial {String(i + 1).padStart(2, '0')}
-                  </div>
+                  {/* "trial 01" label drops on tight so the Begin button
+                      below the target number stays inside the card. */}
+                  {!tight && (
+                    <div className="f-mono uc" style={{
+                      fontSize: 9, letterSpacing: '0.3em',
+                      color: cur ? accent : locked ? '#7a6fa6' : '#bba8ff',
+                    }}>
+                      trial {String(i + 1).padStart(2, '0')}
+                    </div>
+                  )}
                   <div className="f-display" style={{
                     fontSize: tight ? 13 : compact ? 16 : 18,
                     color: '#f3f0ff', marginTop: tight ? 2 : 6,
@@ -195,7 +201,7 @@ export function Hub() {
                   }}>
                     {cleared
                       ? <ClearedNode color={b.tierColor} />
-                      : <TierSigil tier={i} size={tight ? 48 : 96} animate={cur ? 'idle' : 'none'} />}
+                      : <TierSigil tier={i} size={tight ? 36 : 96} animate={cur ? 'idle' : 'none'} />}
                   </div>
                   <div style={{ marginTop: 'auto', textAlign: 'center', width: '100%' }}>
                     <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.2em', color: '#bba8ff' }}>target</div>
@@ -280,7 +286,7 @@ export function Hub() {
             cards at every viewport size. */}
         <div style={{
           display: 'flex',
-          gap: tight ? 6 : 12,
+          gap: tight ? 4 : 12,
           flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: 'calc(100% - 40px)',
           marginTop: tight ? 0 : 4,
@@ -289,7 +295,7 @@ export function Hub() {
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}
-              style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
               ⚒ Forge
               <span className="tip tip-above">
                 <span className="tip-title">Star Forge</span>
@@ -301,7 +307,7 @@ export function Hub() {
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
               onClick={() => dispatch({ type: 'SKIP_BLIND' })}
-              style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
               ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
               <span className="tip tip-above">
                 <span className="tip-title">Skip Trial</span>
@@ -312,7 +318,7 @@ export function Hub() {
           <button
             className="btn btn-ghost mat-interactive has-tip tap"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-            style={tight ? { fontSize: 11, padding: '6px 10px' } : undefined}>
+            style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
             ← Title
             <span className="tip tip-above">
               <span className="tip-title">Return to Title</span>
