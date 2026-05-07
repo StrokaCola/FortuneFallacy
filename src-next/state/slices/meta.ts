@@ -18,6 +18,17 @@ export type MetaSlice = {
     bosses: string[];
     consumables: string[];
   };
+  // Cosmic Dust: meta-currency awarded per blind clear / run end. Persists
+  // across runs. Spent at the Astral Forge on permanent perks. See
+  // data/astralPerks.ts and core/round/transitions.ts (award sites).
+  cosmicDust: number;
+  // Lifetime dust earned (never decremented on spend). Used for prestige
+  // milestones in the Astral Forge.
+  cosmicDustLifetime: number;
+  // Ids of unlocked Astral Perks. Each perk is a one-time purchase that
+  // applies a permanent passive effect to all future runs. See
+  // core/run/applyAstralPerks.ts for the apply layer.
+  astralPerks: string[];
 };
 
 // All constellations are seeded as unlocked while the gameplay-side
@@ -48,4 +59,7 @@ export const initialMetaSlice = (): MetaSlice => ({
     bosses: [],
     consumables: [],
   },
+  cosmicDust: 0,
+  cosmicDustLifetime: 0,
+  astralPerks: [],
 });

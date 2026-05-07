@@ -40,6 +40,11 @@ export function applySavedToInitial(s: GameState): GameState {
   // Defensive defaults for fields added after a player's first save.
   mergedMeta.stakeProgress = mergedMeta.stakeProgress ?? {};
   mergedMeta.challengeWins = mergedMeta.challengeWins ?? [];
+  // Cosmic Dust + Astral Perks (added 2026-05). Older saves predate these
+  // fields; default to a fresh-player state.
+  mergedMeta.cosmicDust = mergedMeta.cosmicDust ?? 0;
+  mergedMeta.cosmicDustLifetime = mergedMeta.cosmicDustLifetime ?? 0;
+  mergedMeta.astralPerks = mergedMeta.astralPerks ?? [];
   const savedDisc = mergedMeta.discovered ?? {};
   mergedMeta.discovered = {
     catalysts: savedDisc.catalysts ?? [],

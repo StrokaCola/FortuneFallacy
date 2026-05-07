@@ -10,6 +10,14 @@ import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '.
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
+import { rerollDiscount } from '../../core/run/applyAstralPerks';
+
+// Effective reroll cost: BASE − astral perk discounts (floor 0). Free Refresh
+// voucher overrides everything to 0.
+function initialRerollCost(s: GameState): number {
+  if (freeShopReroll(s)) return 0;
+  return Math.max(0, BASE_REROLL_COST - rerollDiscount(s));
+}
 
 // 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
 // in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
@@ -159,7 +167,7 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (stakeContext(s).shopDisabled) return { state: s, events: [] };
       const offers = rollOffers(s);
       return {
-        state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: freeShopReroll(s) ? 0 : BASE_REROLL_COST }, ui: { ...s.ui, screen: 'shop' } },
+        state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: initialRerollCost(s) }, ui: { ...s.ui, screen: 'shop' } },
         events: [{ type: 'onShopOpened', payload: { offers } }],
       };
     }

@@ -77,12 +77,16 @@ describe('BUST_BLIND', () => {
     expect(r.events).toBeDefined();
   });
 
-  it('emits onRunEnded with won=false', () => {
+  it('emits onRunEnded with won=false (and onDustEarned)', () => {
     const r = roundHandler({ type: 'BUST_BLIND' }, baseState());
-    expect(r.events).toHaveLength(1);
-    expect(r.events[0]!.type).toBe('onRunEnded');
-    const payload = (r.events[0] as { type: 'onRunEnded'; payload: { won: boolean } }).payload;
+    // bustBlind awards a small consolation Cosmic Dust grant alongside
+    // the run-end event.
+    expect(r.events).toHaveLength(2);
+    const ended = r.events.find((e) => e.type === 'onRunEnded');
+    expect(ended).toBeDefined();
+    const payload = (ended as { type: 'onRunEnded'; payload: { won: boolean } }).payload;
     expect(payload.won).toBe(false);
+    expect(r.events.find((e) => e.type === 'onDustEarned')).toBeDefined();
   });
 });
 

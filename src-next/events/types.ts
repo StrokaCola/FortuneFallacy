@@ -95,6 +95,10 @@ export type GameEventMap = {
   onPackPicked:        { galaxyId: string; remainingPicks: number };
   onPackClosed:        { kind: string; pickedCount: number; skippedCount: number };
   onGalaxyDiscovered:  { galaxyId: string };
+  // Cosmic Dust: emitted when dust is awarded by clearBlind/bustBlind/win.
+  // `delta` is positive for grants, `total` is meta.cosmicDust after the grant.
+  onDustEarned:        { delta: number; total: number; reason: 'clear' | 'bust' | 'win' };
+  onAstralPerkBought:  { perkId: string; cost: number };
 };
 
 export type GameEventEmission = {
