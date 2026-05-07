@@ -20,7 +20,7 @@ export type ConstellationModifiers = {
   startingShards?: number;
   comboCountBonus?: number;       // raise count thresholds (Mensa)
   straightLenBonus?: number;      // shift straight thresholds (Triumvirate -2 / Mensa +1)
-  chainCap?: number;              // override chain cap (default 8)
+  chainCap?: number;              // override chain cap (default 4)
   chainStep?: number;             // override chain step (default 0.25)
   chainNeverBreaks?: boolean;
   baseChipsMult?: number;         // multiply combo base chips (Eclipse 0.25)
@@ -95,14 +95,19 @@ export const CONSTELLATIONS: Constellation[] = [
     flavor: 'Three d20: a captain and her crew.',
     rules: [
       'Three d20 dice',
-      'Combos disabled — score = captain × (1 + 0.75 × catalysts) + crew',
+      'Combos disabled — score = captain × (1 + 1.0 × catalysts) + crew',
       'Captain = highest face this hand; crew = the others',
       'Forge & mods disabled, +2 catalyst slots',
     ],
     dice: [d20Plain(), d20Plain(), d20Plain()],
     modifiers: {
       scoringMode: 'captain_crew',
-      faceMultiplierPerCatalyst: 0.75,
+      // 0.75 → 1.0 per the 2026-05-07 audit: Argo had 0% A1 clear in the sim
+      // because each catalyst added too little weight relative to the d20 face
+      // ceiling. With perCat=1.0, each catalyst doubles the captain's
+      // contribution at +1, tripling at +2 — restores competitive scoring
+      // without removing the catalyst-dependence that defines the constellation.
+      faceMultiplierPerCatalyst: 1.0,
       forgeDisabled: true,
       modsDisabled: true,
       catalystSlotBonus: 2,
@@ -163,10 +168,12 @@ export const CONSTELLATIONS: Constellation[] = [
       'Five dice with faces [1,2,3,4,5,WILD]',
       'WILD becomes whatever value maximises your combo at score time',
       'Base chips & mult ×0.5 (WILD-driven combos hit hard already)',
-      'Chain cap reduced to 4',
     ],
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
-    modifiers: { chainCap: 4, baseChipsMult: 0.5, baseMultMult: 0.5 },
+    // chainCap: 4 was Ophiuchus's punishment but matches the new default
+    // (post-2026-05-07 audit) — removed as identity. Constellation may want a
+    // fresh drawback to maintain its high-risk identity; flagged in audit.
+    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5 },
     glyph: [
       { x: 20, y: 55 }, { x: 38, y: 35 }, { x: 50, y: 60 },
       { x: 65, y: 35 }, { x: 85, y: 55 },

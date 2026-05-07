@@ -96,8 +96,8 @@ describe('evaluation phase — held-only base scoring', () => {
 describe('evaluation phase — captain-crew (Argo)', () => {
   it('captain rides catalyst mult, crew adds flat chips', () => {
     // Argo, three d20s rolled [12, 7, 3]. captain = 12, crew = 7+3 = 10.
-    // catalysts: [a, b] → catMult = 1 + 0.75*2 = 2.5.
-    // chips = 12*2.5 + 10 = 40. mult stays 1 so chain math still scales it.
+    // catalysts: [a, b] → catMult = 1 + 1.0*2 = 3.0.
+    // chips = 12*3.0 + 10 = 46. mult stays 1 so chain math still scales it.
     const ctx = makeCtx([12, 7, 3], [0, 1, 2], {
       constellationId: 'argo',
       catalysts: ['x', 'y'],
@@ -105,7 +105,7 @@ describe('evaluation phase — captain-crew (Argo)', () => {
     const out = evaluation(ctx);
     expect(out.combo?.id).toBe('argo_captain');
     expect(out.combo?.tier).toBe(0);
-    expect(out.chips).toBe(40);
+    expect(out.chips).toBe(46);
     expect(out.mult).toBe(1);
     expect(out.combo?.scoringFaces).toEqual([12, 7, 3]);
   });
@@ -118,13 +118,13 @@ describe('evaluation phase — captain-crew (Argo)', () => {
   });
 
   it('single die: captain = the die, crew = 0', () => {
-    // Only one die scored: chips = 20*2.5 + 0 = 50 with two catalysts.
+    // Only one die scored: chips = 20*3.0 + 0 = 60 with two catalysts.
     const ctx = makeCtx([20, 5, 1], [0], {
       constellationId: 'argo',
       catalysts: ['x', 'y'],
     });
     const out = evaluation(ctx);
-    expect(out.chips).toBe(50);
+    expect(out.chips).toBe(60);
   });
 });
 

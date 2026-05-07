@@ -166,7 +166,7 @@ type ChainState = { len: number; tier: number };
 
 function applyChain(currTier: number, prev: ChainState, c: Constellation): { mult: number; next: ChainState } {
   const mods = c.modifiers ?? {};
-  const cap = mods.chainCap ?? 8;
+  const cap = mods.chainCap ?? 4;
   const step = mods.chainStep ?? 0.25;
   const neverBreaks = !!mods.chainNeverBreaks;
   let len: number;
@@ -212,9 +212,15 @@ function simulateRun(
     chainSamples: [],
     busts: 0,
   };
-  // Rough catN ramp — same shape used by the existing per-hand sim's Argo
-  // analysis: ~1 catalyst per 1.5 cleared blinds, capped at 8.
-  const catCount = (cleared: number) => Math.min(8, Math.floor(cleared * 0.6));
+  // Catalyst-stack ramp. Constellations with a `catalystSlotBonus` (e.g.
+  // Argo at +2) reward catalyst-heavy strategies, so we model their owners
+  // as buying more aggressively. Slot bonus also acts as a floor at A1 since
+  // an Argo player typically prioritizes catalysts in the first shop visit.
+  const slotBonus = c.modifiers?.catalystSlotBonus ?? 0;
+  const ramp = slotBonus > 0 ? 1.0 : 0.6;
+  const floor = slotBonus > 0 ? Math.min(2, slotBonus) : 0;
+  const catCount = (cleared: number) =>
+    Math.min(8, floor + Math.floor(cleared * ramp));
 
   for (let blindIdx = 0; blindIdx < ANTES * BLINDS_PER_ANTE; blindIdx++) {
     const ante = Math.floor(blindIdx / BLINDS_PER_ANTE) + 1;
@@ -302,7 +308,7 @@ function simulateCell(c: Constellation, stake: Stake, profile: BuildProfile): Ce
   const chainPeaks: number[] = [];
   let capHits = 0;
   let capSamples = 0;
-  const chainCap = c.modifiers?.chainCap ?? 8;
+  const chainCap = c.modifiers?.chainCap ?? 4;
   const chainStep = c.modifiers?.chainStep ?? 0.25;
   const capMult = 1 + chainStep * Math.max(0, chainCap - 1);
 
@@ -400,7 +406,7 @@ describe('balance simulation: full-run win-rate ladder', () => {
     lines.push('  ' + '-'.repeat(48));
     for (const c of CONSTELLATIONS) {
       const cell = allCells.find((x) => x.constId === c.id && x.stakeId === 'spark' && x.profileId === 'scaling')!;
-      const cap = c.modifiers?.chainCap ?? 8;
+      const cap = c.modifiers?.chainCap ?? 4;
       const step = c.modifiers?.chainStep ?? 0.25;
       const capMult = 1 + step * Math.max(0, cap - 1);
       lines.push(`  ${c.id.padEnd(13)}  ${fmt(capMult)}      ${fmt(cell.chain.meanPeak)}    ${pct(cell.chain.capHitRate)}`);

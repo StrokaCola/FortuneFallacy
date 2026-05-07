@@ -27,10 +27,10 @@ describe('applyChain', () => {
     expect(r.broke).toBe(true);
   });
 
-  it('caps at 8', () => {
-    const r = applyChain(8, 8, 8);
-    expect(r.chainLen).toBe(8);
-    expect(r.chainMult).toBe(1 + 0.25 * 7);
+  it('caps at 4 (default)', () => {
+    const r = applyChain(8, 4, 8);
+    expect(r.chainLen).toBe(4);
+    expect(r.chainMult).toBe(1 + 0.25 * 3);
   });
 });
 

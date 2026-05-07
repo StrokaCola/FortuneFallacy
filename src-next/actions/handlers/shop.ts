@@ -59,7 +59,7 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random);
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts);
   for (const id of catalystIds) {
     const edition = rollCatalystEdition(Math.random);
     offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
