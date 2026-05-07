@@ -94,7 +94,7 @@ function Card({ c, compact, tight, progressId }: { c: Constellation; compact: bo
         border: '1px solid rgba(149,119,255,0.25)',
         borderRadius: 12,
         display: 'flex', flexDirection: 'column', gap: tight ? 4 : compact ? 6 : 10,
-        minHeight: tight ? 160 : compact ? 240 : 320,
+        minHeight: tight ? 190 : compact ? 240 : 320,
       }}>
       <Glyph points={c.glyph} accent={accent} tight={tight} />
       <div className="f-display" style={{
@@ -108,20 +108,23 @@ function Card({ c, compact, tight, progressId }: { c: Constellation; compact: bo
       }}>
         {describeDiceSpec(c.dice)}
       </div>
-      {/* Flavor + rules drop on tight — the dice spec + stake row + Begin
-          button carry enough info to pick. Long copy is for desktop. */}
+      {/* Flavor stays on tight — it's the one-line pitch ("The classic
+          five-string sky.") that helps the player choose. The bullet
+          rules list still drops on tight since it's longer mechanical
+          detail that fights for vertical space. */}
+      <div style={{
+        fontSize: tight ? 11 : compact ? 13 : 11,
+        color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3,
+      }}>
+        {c.flavor}
+      </div>
       {!tight && (
-        <>
-          <div style={{ fontSize: compact ? 13 : 11, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3 }}>
-            {c.flavor}
-          </div>
-          <ul style={{
-            marginTop: 4, paddingLeft: 18, marginBottom: 0,
-            fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
-          }}>
-            {c.rules.map((r, i) => <li key={i}>{r}</li>)}
-          </ul>
-        </>
+        <ul style={{
+          marginTop: 4, paddingLeft: 18, marginBottom: 0,
+          fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
+        }}>
+          {c.rules.map((r, i) => <li key={i}>{r}</li>)}
+        </ul>
       )}
 
       {/* Stake row */}

@@ -317,13 +317,12 @@ export class Dice3D {
     // (Z=HOLD_Z) reads in the lower half.
     this.camera.position.set(0, 14, 0.001);
     this.camera.up.set(0, 0, -1);    // screen +Y → world -Z (rolling tray at -Z = upper)
-    // Look slightly past the rolling tray center toward the hold strip so
-    // the entire play area (tray top at world Z=-4, hold strip bottom near
-    // Z=+5.7) lands centered on the canvas. Z=+0.85 is the midpoint of
-    // that span. Without this offset, the hold strip projects to ~85% of
-    // the canvas height which on phone landscape (small canvas h) puts it
-    // behind the ActionBar; with the offset it sits ~79%, clearly above.
-    this.camera.lookAt(0, 0, 0.85);
+    // World origin is the canvas (= visible play area) center. The
+    // canvas is now sized to the play region between TopBar and
+    // ActionBar via CSS vars, so no Z offset is needed to keep the
+    // hold strip clear of the HUD bars — it just lands inside the
+    // canvas naturally.
+    this.camera.lookAt(0, 0, 0);
 
     this.scene.add(new THREE.AmbientLight(0x9577ff, 0.55));
     const key = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -440,13 +439,39 @@ export class Dice3D {
 
     this.buildDice();
 
+    // The canvas is sized to the play area via --hud-top-h / --hud-bottom-h
+    // CSS vars; those vars change when TopBar / ActionBar mount or the
+    // browser URL bar shows/hides, but no `resize` event fires. Watch the
+    // canvas rect directly with ResizeObserver to re-sync the buffer +
+    // ortho frustum whenever its CSS box changes. Wrap the callback in
+    // requestAnimationFrame so the resize work returns before the next
+    // layout commit — otherwise the browser logs "ResizeObserver loop
+    // completed with undelivered notifications" (see PR #125).
+    let canvasObserver: ResizeObserver | null = null;
+    let resizeRaf: number | null = null;
+    const scheduleResize = () => {
+      if (resizeRaf != null) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        this.applyViewportSize();
+      });
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+      canvasObserver = new ResizeObserver(scheduleResize);
+      canvasObserver.observe(this.canvas);
+    }
+
     this.unsubscribers.push(
-      // Tier 2: resize the renderer + recompute the orthographic frustum
-      // whenever the stage dimensions change (rotate, address-bar, etc).
-      // The canvas is `inset: 0` on top of the full stage and its size is
-      // driven by getStageSize() in applyViewportSize, so a stage-resize
-      // listener is the only sync we need.
+      // Window-level resize/orientationchange — triggers applyViewportSize
+      // even on browsers where the canvas ResizeObserver isn't enough
+      // (e.g. some mobile-Safari quirks where rotate doesn't immediately
+      // reflow the canvas).
       onStageResize(() => this.applyViewportSize()),
+      () => {
+        if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+        resizeRaf = null;
+        if (canvasObserver) { canvasObserver.disconnect(); canvasObserver = null; }
+      },
       store.subscribe((s, prev) => {
         // Re-sync the renderer + frustum when entering the round screen.
         // The canvas was `display: none` until now so its CSS box was 0,
@@ -773,20 +798,19 @@ export class Dice3D {
   // would shift off-center on viewports where horizontal safe-area
   // insets exist (e.g. Galaxy in landscape with a camera punch hole).
   private applyViewportSize(): void {
-    const w = Math.max(1, window.innerWidth || 1);
-    const h = Math.max(1, window.innerHeight || 1);
+    // The canvas is positioned to the play area between TopBar and
+    // ActionBar via CSS vars, so its bounding rect IS the play area.
+    // Source the buffer from the canvas rect (not the full viewport)
+    // so world Z=0 lands at the visible play-area center automatically.
+    const rect = this.canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width  || window.innerWidth));
+    const h = Math.max(1, Math.round(rect.height || window.innerHeight));
     this.renderer.setSize(w, h, false);
-    // On tight viewports the HUD bars (TopBar ~80 CSS, ActionBar ~50)
-    // eat ~25% of the canvas height and ~5% of the width before the
-    // browser's URL bar / gesture nav also encroach. We zoom OUT
-    // slightly (larger ortho) on those viewports so the play area
-    // (rolling tray + hold strip, ~9.7 world units tall) lands fully
-    // inside the HUD-bounded visible region rather than letting the
-    // hold strip ride right against — or behind — the ActionBar.
-    // The thresholds match useIsTightStage: width<720 || height<600.
-    const tight = w < 720 || h < 600;
-    const ortho = tight ? 8.5 : 7.5;
+    const ortho = 7.5;
     const aspect = w / h;
+    // Anchor the SHORTER axis to 2*ortho world units so dice render
+    // at a consistent CSS pixel size on portrait + landscape; the
+    // longer axis extends proportionally to fit more world.
     const orthoX = ortho * Math.max(1, aspect);
     const orthoY = ortho * Math.max(1, 1 / aspect);
     this.camera.left   = -orthoX;
