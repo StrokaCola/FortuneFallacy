@@ -6,6 +6,7 @@ import { screenTab } from './ScreenTab';
 import { traceTab } from './TraceTab';
 import { audioTab } from './AudioTab';
 import { scoringTab } from './ScoringTab';
+import { perfTab } from './PerfTab';
 
 export type DevTab = {
   id: string;
@@ -13,4 +14,4 @@ export type DevTab = {
   render: () => ReactNode;
 };
 
-export const tabs: DevTab[] = [stateTab, flagsTab, seedTab, screenTab, traceTab, audioTab, scoringTab];
+export const tabs: DevTab[] = [stateTab, flagsTab, seedTab, screenTab, traceTab, audioTab, scoringTab, perfTab];

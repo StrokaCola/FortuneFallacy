@@ -2,6 +2,7 @@ import { store, type GameState } from './store';
 import { safeReadJSON, safeWriteJSON } from './storage';
 import { migrateRetheme } from './migrations/v1_retheme';
 import { SEEDED_UNLOCKS } from './slices/meta';
+import { begin as perfBegin } from '../devtools/perf';
 
 const KEY = 'ff_next_save';
 
@@ -19,8 +20,10 @@ export function startPersistence(): () => void {
     if (timer != null) return;
     timer = window.setTimeout(() => {
       timer = null;
+      const end = perfBegin('persistence');
       const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
       safeWriteJSON(KEY, snapshot);
+      end();
     }, 400);
   });
 }
