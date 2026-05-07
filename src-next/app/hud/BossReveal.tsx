@@ -70,7 +70,8 @@ export function BossReveal() {
         // Cap to viewport so the reveal panel never overflows on
         // landscape phones; preserves the original 440×600 on desktop.
         width: 'min(440px, calc(100vw - 32px))',
-        height: 'min(600px, calc(100vh - 32px))',
+        // 100dvh tracks the visible viewport on mobile browsers.
+        height: 'min(600px, calc(100dvh - 32px))',
         position: 'relative',
         animation: 'float-y 4s ease-in-out infinite',
       }}>

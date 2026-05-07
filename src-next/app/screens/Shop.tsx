@@ -4,6 +4,7 @@ import { useStore, type GameState } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
 import { SellButton } from '../hud/SellButton';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
@@ -137,6 +138,7 @@ const selectConsumables = (s: GameState) => s.run.consumables;
 const accent = '#7be3ff';
 
 export function Shop() {
+  const tight = useIsTightStage();
   const shards   = useStore(selectShards);
   const offers   = useStore(selectShopOffers);
   const rerollCost = useStore(selectShopRerollCost);
@@ -190,23 +192,37 @@ export function Shop() {
 
       <div style={{
         position: 'absolute', left: '50%',
-        top: 'calc(var(--hud-top-h, 134px) + 46px)',
+        top: `calc(var(--hud-top-h, 134px) + ${tight ? 24 : 46}px)`,
         transform: 'translateX(-50%)',
         textAlign: 'center', zIndex: 4,
+        width: tight ? 'calc(100% - 32px)' : 'auto',
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
           ◇ exchange ◇
         </div>
-        <div className="f-display" style={{ fontSize: 36, color: '#f3f0ff', marginTop: 8 }}>
+        <div className="f-display" style={{
+          // clamp shrinks to 22px on a ~370px-wide phone (6vw), grows back to 36px on desktop.
+          fontSize: 'clamp(20px, 6vw, 36px)',
+          color: '#f3f0ff', marginTop: tight ? 4 : 8,
+          whiteSpace: 'nowrap',
+        }}>
           The Celestial Bazaar
         </div>
       </div>
 
       <div style={{
         position: 'absolute', left: '50%',
-        top: 'calc(var(--hud-top-h, 134px) + 156px)',
+        // Tight stage uses a smaller hero title so we can pull the offers up.
+        top: `calc(var(--hud-top-h, 134px) + ${tight ? 88 : 156}px)`,
         transform: 'translateX(-50%)',
-        display: 'flex', gap: 18, zIndex: 4,
+        display: 'flex',
+        flexDirection: tight ? 'column' : 'row',
+        gap: tight ? 12 : 18,
+        zIndex: 4,
+        // On tight portrait we stack vertically; cap width to viewport so cards
+        // never push the container past the right edge.
+        width: tight ? 'min(360px, calc(100vw - 24px))' : 'auto',
+        alignItems: tight ? 'stretch' : 'flex-start',
       }}>
         {offers.length === 0 && (
           <div className="f-mono panel" style={{ color: '#bba8ff', padding: '24px 36px' }}>— sold out —</div>
@@ -235,10 +251,15 @@ export function Shop() {
           return (
             <div
               key={`${offerVersion}-${i}`}
-              className="card-wobble"
+              // Skip the wobble idle animation on tight portrait — reading a
+              // vertically stacked column is harder when each card is drifting.
+              className={tight ? '' : 'card-wobble'}
               style={{
                 position: 'relative',
-                animation: `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both, card-wobble 3.4s ease-in-out ${i * 70 + 320}ms infinite`,
+                animation: tight
+                  ? `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both`
+                  : `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both, card-wobble 3.4s ease-in-out ${i * 70 + 320}ms infinite`,
+                width: tight ? '100%' : 'auto',
               }}
             >
               {ringIntensity > 0 && (
@@ -257,7 +278,11 @@ export function Shop() {
               onMouseEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
               style={{
-                width: 180, height: 250, padding: 14,
+                // Tight portrait: full-width card; height auto so descriptions wrap.
+                width: tight ? '100%' : 180,
+                height: tight ? 'auto' : 250,
+                minHeight: tight ? 200 : undefined,
+                padding: 14,
                 border: cardBorder,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 cursor: affordable ? 'pointer' : 'not-allowed',
@@ -351,8 +376,17 @@ export function Shop() {
       />
 
       <div style={{
-        position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5, alignItems: 'center',
+        position: 'absolute', left: '50%',
+        // Lift the bar above the bottom HUD on tight stage so it doesn't sit
+        // on top of the Collection panel beneath it.
+        bottom: tight ? `calc(var(--hud-bottom-h, 60px) + 12px)` : 28,
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        flexDirection: tight ? 'column-reverse' : 'row',
+        gap: tight ? 8 : 12,
+        zIndex: 5,
+        alignItems: 'center',
+        width: tight ? 'min(360px, calc(100vw - 24px))' : 'auto',
       }}>
         <button
           className="btn mat-interactive has-tip"
@@ -462,6 +496,7 @@ function CollectionPanel({
   ownedMods: string[];
   voucherSellBlock: (id: string) => string | null;
 }) {
+  const tight = useIsTightStage();
   const catRows = catalysts.map((id, index) => {
     const c = lookupCatalyst(id);
     return {
@@ -514,15 +549,20 @@ function CollectionPanel({
   return (
     <div className="panel" style={{
       position: 'absolute', left: '50%',
-      // Sit just above the action bar; tracks ActionBar height so the
-      // collection panel never overlaps it on tighter viewports.
-      bottom: 'calc(var(--hud-bottom-h, 60px) + 32px)',
+      // Sit above the action bar — on tight stage the Reroll/Next Trial buttons
+      // stack vertically and take ~100px, so push the panel up further.
+      bottom: tight
+        ? `calc(var(--hud-bottom-h, 60px) + 120px)`
+        : 'calc(var(--hud-bottom-h, 60px) + 32px)',
       transform: 'translateX(-50%)',
-      width: 'min(1100px, calc(100vw - 60px))',
+      width: tight ? 'min(360px, calc(100vw - 24px))' : 'min(1100px, calc(100vw - 60px))',
       // Tier 2: was `min(220px, calc(100vh - 600px))` which collapses to
       // 0 below 820px tall. Use clamp so it always shows at least 80px
-      // and grows up to 220 when there's room.
-      maxHeight: 'clamp(80px, calc(100vh - 540px), 220px)',
+      // and grows up to 220 when there's room. Use 100dvh for address-bar
+      // resilience on mobile.
+      maxHeight: tight
+        ? 'clamp(60px, calc(100dvh - 600px), 140px)'
+        : 'clamp(80px, calc(100dvh - 540px), 220px)',
       padding: '12px 18px', zIndex: 4, overflowY: 'auto',
     }}>
       <div className="f-mono uc" style={{
@@ -567,10 +607,14 @@ const HAND_LEVEL_ROWS: { id: string; label: string }[] = [
 ];
 
 function HandLevelsPanel({ comboLevels }: { comboLevels: Record<string, number> }) {
+  const tight = useIsTightStage();
   const rows = HAND_LEVEL_ROWS
     .map((r) => ({ ...r, lvl: comboLevels[r.id] ?? 0, bonus: GALAXY_BONUS[r.id] }))
     .filter((r) => r.lvl > 0);
   if (rows.length === 0) return null;
+  // On tight portrait the right-aligned absolute panel collides with the
+  // stacked offers — hide it; players can still see hand levels on Round.
+  if (tight) return null;
   return (
     <div className="panel" style={{
       position: 'absolute', right: 24,

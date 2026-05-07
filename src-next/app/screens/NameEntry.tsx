@@ -33,7 +33,7 @@ export function NameEntry() {
           <div
             className="f-display"
             style={{
-              fontSize: 56,
+              fontSize: 'clamp(32px, 11vw, 56px)',
               lineHeight: 1,
               color: '#f3f0ff',
               textShadow: '0 0 32px rgba(123,227,255,0.45)',

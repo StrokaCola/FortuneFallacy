@@ -110,7 +110,7 @@ export function Settings() {
           <div className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.5em', color: '#bba8ff' }}>
             ◇ preferences ◇
           </div>
-          <div className="f-display" style={{ fontSize: 32, color: '#f3f0ff', marginTop: 6 }}>
+          <div className="f-display" style={{ fontSize: 'clamp(22px, 6vw, 32px)', color: '#f3f0ff', marginTop: 6 }}>
             Settings
           </div>
         </div>

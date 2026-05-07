@@ -75,7 +75,8 @@ export function PauseMenu() {
           padding: tight ? 14 : 24,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: tight ? 8 : 14,
-          maxHeight: tight ? 'calc(100vh - 24px)' : '88vh',
+          // 100dvh tracks the visible viewport (Chrome/Safari mobile address bar).
+          maxHeight: tight ? 'calc(100dvh - 24px)' : '88dvh',
           // On phone landscape the slider rows + travel gate can still
           // overflow; let the modal scroll internally rather than the page.
           overflowY: 'auto',

@@ -75,7 +75,10 @@ export function PackOverlay() {
       <div className="f-mono uc" style={{ fontSize: 11, color: accent, letterSpacing: '0.4em' }}>
         ◇ booster ◇
       </div>
-      <div className="f-display" style={{ fontSize: 36, color: '#f3f0ff', marginTop: 8 }}>
+      <div className="f-display" style={{
+        fontSize: 'clamp(22px, 7vw, 36px)', color: '#f3f0ff', marginTop: 8,
+        textAlign: 'center', maxWidth: 'calc(100% - 24px)',
+      }}>
         {title}
       </div>
       <div style={{
