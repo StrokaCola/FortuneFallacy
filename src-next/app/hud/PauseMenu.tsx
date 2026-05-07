@@ -6,6 +6,7 @@ import * as audioSettings from '../../audio/audioSettings';
 import { RunInfoPanel } from './RunInfoPanel';
 import { Z } from './zLayers';
 import { useFocusTrap } from './useFocusTrap';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 const selectPaused = (s: GameState) => s.ui.paused;
 const selectRunActive = (s: GameState) =>
@@ -25,6 +26,7 @@ function readSliders(): Sliders {
 export function PauseMenu() {
   const paused = useStore(selectPaused);
   const runActive = useStore(selectRunActive);
+  const tight = useIsTightStage();
   const [sliders, setSliders] = useState<Sliders>(readSliders);
   const [tab, setTab] = useState<Tab>('menu');
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -64,13 +66,25 @@ export function PauseMenu() {
       <div
         className="panel-strong"
         style={{
-          width: tab === 'info' ? 520 : 440, padding: 24,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-          maxHeight: '88vh',
+          // Cap width to viewport on tight phones so the modal doesn't
+          // touch the screen edges, and shrink padding/gap so the whole
+          // dialog fits without overflowing the viewport bottom.
+          width: tight
+            ? `min(${tab === 'info' ? 460 : 380}px, calc(100vw - 24px))`
+            : (tab === 'info' ? 520 : 440),
+          padding: tight ? 14 : 24,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: tight ? 8 : 14,
+          maxHeight: tight ? 'calc(100vh - 24px)' : '88vh',
+          // On phone landscape the slider rows + travel gate can still
+          // overflow; let the modal scroll internally rather than the page.
+          overflowY: 'auto',
         }}
       >
         <div className="f-display" style={{
-          fontSize: 24, color: '#f5c451', letterSpacing: '0.4em',
+          fontSize: tight ? 16 : 24,
+          color: '#f5c451',
+          letterSpacing: tight ? '0.3em' : '0.4em',
         }}>
           ◇ PAUSED ◇
         </div>
@@ -86,14 +100,14 @@ export function PauseMenu() {
           <>
             <button
               className="btn btn-primary mat-interactive tap"
-              style={{ width: 220 }}
+              style={{ width: tight ? 180 : 220 }}
               onClick={onResume}
               data-autofocus
             >
               Resume
             </button>
 
-            <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: '4px 0' }} />
+            <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: tight ? '2px 0' : '4px 0' }} />
 
             <div className="f-mono uc" style={{
               fontSize: 10, letterSpacing: '0.3em', color: '#bba8ff',
@@ -113,13 +127,13 @@ export function PauseMenu() {
               ◈ TRAVEL
             </div>
 
-            <PortalGate size={72} label="Travel" />
+            <PortalGate size={tight ? 48 : 72} label="Travel" />
 
-            <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: '4px 0' }} />
+            <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: tight ? '2px 0' : '4px 0' }} />
 
             <button
               className="btn btn-ghost mat-interactive tap"
-              style={{ width: 220 }}
+              style={{ width: tight ? 180 : 220 }}
               onClick={onBackToTitle}
             >
               ← Back to Title
