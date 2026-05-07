@@ -3,6 +3,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { useStore, store } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 // Match PauseMenu's notion of "run in progress" — also count an active
 // round (mid-hand) so a fresh-launch with `score === 0 && goalIdx === 0`
@@ -25,6 +26,7 @@ export function Title() {
   const score = useStore(selectScore);
   const constellationId = useStore(selectConstellationId);
   const highScores = useStore(selectHighScores);
+  const tight = useIsTightStage();
   // Derived in render — the underlying array reference is stable, so this
   // recomputes only when highScores actually changes.
   const best = highScores.length === 0
@@ -34,27 +36,58 @@ export function Title() {
   // the previous structured selector.
   void score;
 
+  // Tight viewports (phone landscape, narrow phones) shrink everything
+  // so the title screen fits without scrolling. The "Fortune Fallacy"
+  // header drops from clamp(48px, 12vw, 96px) ≈ 96px on a 1170-wide
+  // viewport down to clamp(28px, 6vw, 56px), cutting the two-word
+  // stack in half. Buttons / margins / ornament shrink in lockstep.
+  const titleFontSize = tight ? 'clamp(28px, 6vw, 56px)' : 'clamp(48px, 12vw, 96px)';
+  const taglineMarginBottom = tight ? 12 : 24;
+  const ornamentMargin = tight ? '16px auto 0' : '40px auto 0';
+  const ornamentW = tight ? 160 : 240;
+  const ornamentH = tight ? 40 : 60;
+  const buttonsMarginTop = tight ? 14 : 36;
+  const buttonsGap = tight ? 8 : 12;
+  const primaryBtnWidth = tight ? 180 : 240;
+  const ghostBtnWidth = tight ? 160 : 200;
+  const portalSize = tight ? 48 : 72;
+  const portalMarginTop = tight ? 8 : 18;
+  const versionMarginTop = tight ? 18 : 60;
+
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden', padding: 16 }}>
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'grid', placeItems: 'center',
+      textAlign: 'center', pointerEvents: 'auto',
+      // Tight viewports lock scrolling — the layout below shrinks
+      // enough to fit. Wider viewports keep the auto-scroll fallback
+      // for the (rare) case where decorative copy still overflows.
+      overflowY: tight ? 'hidden' : 'auto',
+      overflowX: 'hidden',
+      padding: tight ? 8 : 16,
+    }}>
       <div>
         <div className="f-mono uc" style={{
-          fontSize: 11, color: '#7be3ff', letterSpacing: '0.6em', marginBottom: 24,
+          fontSize: tight ? 9 : 11,
+          color: '#7be3ff',
+          letterSpacing: tight ? '0.45em' : '0.6em',
+          marginBottom: taglineMarginBottom,
           opacity: 0,
           animation: 'titleStutter 1.4s steps(20, end) 200ms forwards',
           overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block',
         }}>
           ◇ the gambler's fallacy, weaponized ◇
         </div>
-        <div className="f-display" style={{ fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: 1, color: '#f3f0ff',
+        <div className="f-display" style={{ fontSize: titleFontSize, lineHeight: 1, color: '#f3f0ff',
           textShadow: '0 0 40px rgba(123,227,255,0.5), 0 0 80px rgba(149,119,255,0.4)' }}>
           Fortune
         </div>
-        <div className="f-display" style={{ fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: 1, color: '#7be3ff',
+        <div className="f-display" style={{ fontSize: titleFontSize, lineHeight: 1, color: '#7be3ff',
           textShadow: '0 0 40px rgba(123,227,255,0.6)', fontStyle: 'italic' }}>
           Fallacy
         </div>
 
-        <svg viewBox="0 0 240 60" width="240" height="60" style={{ display: 'block', margin: '40px auto 0' }}>
+        <svg viewBox="0 0 240 60" width={ornamentW} height={ornamentH} style={{ display: 'block', margin: ornamentMargin }}>
           {[
             { x: 30,  y: 30 },
             { x: 80,  y: 18 },
@@ -84,10 +117,10 @@ export function Title() {
           ))}
         </svg>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 36, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: buttonsGap, marginTop: buttonsMarginTop, alignItems: 'center' }}>
           <button
             className="btn btn-primary mat-interactive tap"
-            style={{ width: 240 }}
+            style={{ width: primaryBtnWidth }}
             onClick={() => {
               if (hasRun) {
                 const ok = window.confirm(
@@ -103,7 +136,7 @@ export function Title() {
             <>
               <button
                 className="btn btn-ghost tap"
-                style={{ width: 240 }}
+                style={{ width: primaryBtnWidth }}
                 onClick={() => {
                   // If we paused mid-round and bailed to title, resume the
                   // game state back to playing. Toggle pause off via the
@@ -128,36 +161,51 @@ export function Title() {
               best ◆ {best.score.toLocaleString()} · {best.name}
             </div>
           )}
-          <button
-            className="btn btn-ghost tap"
-            style={{ width: 200 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'codex' })}>
-            Codex
-          </button>
-          <button
-            className="btn btn-ghost tap"
-            style={{ width: 200 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
-            Challenges
-          </button>
-          <button
-            className="btn btn-ghost tap"
-            style={{ width: 200 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
-            Records
-          </button>
-          <button
-            className="btn btn-ghost tap"
-            style={{ width: 200 }}
-            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })}>
-            Settings
-          </button>
-          <div style={{ marginTop: 18 }}>
-            <PortalGate size={72} label="Travel" />
+          {/* On tight viewports, fold the four secondary buttons into a
+              two-row wrap so they take half the vertical space. */}
+          <div style={{
+            display: 'flex',
+            flexDirection: tight ? 'row' : 'column',
+            flexWrap: tight ? 'wrap' : 'nowrap',
+            gap: buttonsGap,
+            justifyContent: 'center',
+            maxWidth: tight ? 360 : undefined,
+          }}>
+            <button
+              className="btn btn-ghost tap"
+              style={{ width: ghostBtnWidth }}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'codex' })}>
+              Codex
+            </button>
+            <button
+              className="btn btn-ghost tap"
+              style={{ width: ghostBtnWidth }}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
+              Challenges
+            </button>
+            <button
+              className="btn btn-ghost tap"
+              style={{ width: ghostBtnWidth }}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
+              Records
+            </button>
+            <button
+              className="btn btn-ghost tap"
+              style={{ width: ghostBtnWidth }}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })}>
+              Settings
+            </button>
           </div>
+          {/* Decorative portal gate is hidden on tight viewports —
+              players can still travel via the Hub or pause menu. */}
+          {!tight && (
+            <div style={{ marginTop: portalMarginTop }}>
+              <PortalGate size={portalSize} label="Travel" />
+            </div>
+          )}
         </div>
 
-        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#9577ff', marginTop: 60, opacity: 0.7 }}>
+        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#9577ff', marginTop: versionMarginTop, opacity: 0.7 }}>
           v 0.42 · seed ⟨LYRA-VII⟩
         </div>
       </div>
