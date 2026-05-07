@@ -448,6 +448,15 @@ export class Dice3D {
       // listener is the only sync we need.
       onStageResize(() => this.applyViewportSize()),
       store.subscribe((s, prev) => {
+        // Re-sync the renderer + frustum when entering the round screen.
+        // The canvas was `display: none` until now so its CSS box was 0,
+        // and any earlier applyViewportSize calls used window.innerWidth/
+        // innerHeight as a fallback — but if those were stale (e.g. URL
+        // bar animation hadn't settled), the buffer/aspect could be off.
+        // Re-running on screen entry guarantees the camera is fresh.
+        if (s.ui.screen === 'round' && prev.ui.screen !== 'round') {
+          this.applyViewportSize();
+        }
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
         // grow/shrink the 3D scene accordingly before any other sync runs.
@@ -754,24 +763,18 @@ export class Dice3D {
   }
 
   // Tier 2: keep the WebGL drawing buffer + ortho frustum in sync with
-  // the stage size. We deliberately use getStageSize() (viewport minus
-  // safe-area insets) instead of the canvas's getBoundingClientRect,
-  // because the canvas rect can briefly collapse to 0 during screen
-  // transitions when CSS-var-driven layouts are mid-update — which would
-  // leave the drawing buffer at 1×1 and the dice invisible. Stage size
-  // is the same dimension #stage-root resolves to, so the canvas (which
-  // is `inset: 0` inside stage-root) always matches.
-  //
-  // Frustum sizing: ortho=7.5 was tuned for the 1280×800 design where
-  // the short axis (800) showed 2*7.5=15 world units, so 1 world unit
-  // ≈ 53 CSS px (a die at 0.85 ≈ 45 CSS px). To keep that physical-size
-  // intent on any aspect ratio — phones especially, where if we stayed
-  // tied to canvas height we'd render dice 1.5–2× bigger — we anchor
-  // the SHORT axis to 2*ortho world units and let the long axis extend
-  // proportionally. The tray (8 × 14 world units) then fits inside the
-  // 15-unit short axis at every viewport.
+  // the viewport. We use window.innerWidth/innerHeight directly (rather
+  // than getStageSize, which subtracts safe-area insets) so the buffer
+  // dimensions match the canvas's CSS box exactly — the canvas is
+  // `inset: 0` of #stage-root which spans the full viewport, so its CSS
+  // size is innerWidth × innerHeight. If we instead sized the buffer
+  // to the smaller stage size, the buffer would be stretched
+  // non-uniformly into the wider canvas box and the rendered scene
+  // would shift off-center on viewports where horizontal safe-area
+  // insets exist (e.g. Galaxy in landscape with a camera punch hole).
   private applyViewportSize(): void {
-    const { w, h } = getStageSize();
+    const w = Math.max(1, window.innerWidth || 1);
+    const h = Math.max(1, window.innerHeight || 1);
     this.renderer.setSize(w, h, false);
     const ortho = 7.5;
     const aspect = w / h;
