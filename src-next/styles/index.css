@@ -67,14 +67,21 @@ html, body {
 }
 
 #three-next {
-  /* Dice canvas covers the full stage. The HUD overlays (TopBar,
-     ActionBar, CatalystStrip, etc.) sit on top via #next-root and
-     position themselves around the play area using the --hud-top-h
-     and --hud-bottom-h CSS vars. The canvas itself stays full-size
-     so its CSS box can never collapse if a HUD ref reports a
-     transient/extreme height during a screen transition. */
+  /* Dice canvas occupies the play area between TopBar and ActionBar.
+     The HUD components (TopBar, ActionBar) self-measure into
+     --hud-top-h / --hud-bottom-h via useReportHudHeight, so the
+     canvas tracks the visible play region exactly. world Z=0 (rolling
+     tray center) lands at the canvas center, which is what the
+     orthographic camera projects to. min-height: 200px guards
+     against the HUD vars momentarily summing past the stage height
+     during a screen transition (e.g. an old TopBar's cleanup hasn't
+     run before the new TopBar's effect mounts). */
   position: absolute;
-  inset: 0;
+  top:    var(--hud-top-h, 0px);
+  bottom: var(--hud-bottom-h, 0px);
+  left:   0;
+  right:  0;
+  min-height: 200px;
   z-index: 3;
   pointer-events: none;
   display: none;
