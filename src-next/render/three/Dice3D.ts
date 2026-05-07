@@ -755,15 +755,26 @@ export class Dice3D {
   // leave the drawing buffer at 1×1 and the dice invisible. Stage size
   // is the same dimension #stage-root resolves to, so the canvas (which
   // is `inset: 0` inside stage-root) always matches.
+  //
+  // Frustum sizing: ortho=7.5 was tuned for the 1280×800 design where
+  // the short axis (800) showed 2*7.5=15 world units, so 1 world unit
+  // ≈ 53 CSS px (a die at 0.85 ≈ 45 CSS px). To keep that physical-size
+  // intent on any aspect ratio — phones especially, where if we stayed
+  // tied to canvas height we'd render dice 1.5–2× bigger — we anchor
+  // the SHORT axis to 2*ortho world units and let the long axis extend
+  // proportionally. The tray (8 × 14 world units) then fits inside the
+  // 15-unit short axis at every viewport.
   private applyViewportSize(): void {
     const { w, h } = getStageSize();
     this.renderer.setSize(w, h, false);
     const ortho = 7.5;
     const aspect = w / h;
-    this.camera.left   = -ortho * aspect;
-    this.camera.right  =  ortho * aspect;
-    this.camera.top    =  ortho;
-    this.camera.bottom = -ortho;
+    const orthoX = ortho * Math.max(1, aspect);
+    const orthoY = ortho * Math.max(1, 1 / aspect);
+    this.camera.left   = -orthoX;
+    this.camera.right  =  orthoX;
+    this.camera.top    =  orthoY;
+    this.camera.bottom = -orthoY;
     this.camera.updateProjectionMatrix();
   }
 
