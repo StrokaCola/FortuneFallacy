@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Z } from './zLayers';
+import { store } from '../../state/store';
 
-function isPhonePortrait(): boolean {
+// Phones now play in PORTRAIT (was landscape). Phone screens are designed
+// for portrait usage, and the dice tray + HUD have plenty of room when
+// the long axis is vertical. Coarse-pointer (touch) devices in landscape
+// with a short viewport (height < 600 CSS) get the rotate prompt.
+//
+// Desktop (no coarse pointer) is unaffected — landscape continues to be
+// the default and only orientation that matters there.
+function isPhoneLandscape(): boolean {
   if (typeof window === 'undefined') return false;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   if (!coarse) return false;
-  return window.innerWidth < window.innerHeight && window.innerWidth < 900;
+  // Wider than tall AND short viewport — typical phone landscape.
+  return window.innerWidth > window.innerHeight && window.innerHeight < 600;
 }
 
 export function OrientationGate() {
-  const [locked, setLocked] = useState(isPhonePortrait);
+  const [locked, setLocked] = useState(isPhoneLandscape);
 
   useEffect(() => {
-    const update = () => setLocked(isPhonePortrait());
+    const update = () => setLocked(isPhoneLandscape());
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     return () => {
@@ -24,7 +33,17 @@ export function OrientationGate() {
   useEffect(() => {
     const three = document.getElementById('three-next');
     if (!three) return;
-    if (locked) three.classList.remove('active');
+    if (locked) {
+      three.classList.remove('active');
+    } else {
+      // Releasing the lock (user rotated to the supported orientation)
+      // — re-sync the canvas's .active class with the current screen.
+      // main.tsx only flips it on screen-change, so without this branch
+      // the canvas stays display:none after a landscape→portrait rotate
+      // mid-trial and the dice never reappear.
+      const screen = store.getState().ui.screen;
+      three.classList.toggle('active', screen === 'round');
+    }
   }, [locked]);
 
   if (!locked) return null;
@@ -49,6 +68,10 @@ export function OrientationGate() {
     >
       <div
         style={{
+          // Portrait-shaped phone outline (was landscape: 64×100, swap
+          // to 100×64 via aspect — actually keep the 64×100 portrait
+          // shape and animate the existing landscape→portrait rotation
+          // hint backward).
           width: 64,
           height: 100,
           border: '3px solid #9577ff',
@@ -62,12 +85,15 @@ export function OrientationGate() {
         Rotate Device
       </div>
       <div style={{ fontSize: 14, opacity: 0.7, fontFamily: "'Exo 2', sans-serif", letterSpacing: 0 }}>
-        FortuneFallacy plays in landscape.
+        FortuneFallacy plays in portrait on mobile.
       </div>
       <style>{`
+        /* Hint goes from portrait → landscape → portrait, mirroring the
+           rotation the user needs to perform (we're showing what
+           they're currently holding, and how to rotate it). */
         @keyframes rotateHint {
-          0%, 40%, 100% { transform: rotate(0deg); }
-          60%, 80% { transform: rotate(-90deg); }
+          0%, 40%, 100% { transform: rotate(90deg); }
+          60%, 80% { transform: rotate(0deg); }
         }
       `}</style>
     </div>
