@@ -139,8 +139,8 @@ textarea:focus-visible,
 /* Tight viewports (narrow phones, landscape phones with tall browser
    chrome) shrink primary/ghost buttons so the action bar doesn't eat
    a third of the screen. Mirrors useIsTightStage's breakpoints
-   (width<720 || height<520). 44px tap target preserved by .tap. */
-@media (max-width: 719px), (max-height: 519px) {
+   (width<720 || height<600). 44px tap target preserved by .tap. */
+@media (max-width: 719px), (max-height: 599px) {
   .btn-primary { padding: 8px 16px; font-size: 13px; }
   .btn-ghost   { padding: 6px 12px; font-size: 11px; }
 }

@@ -26,14 +26,20 @@ describe('useIsCompactStage', () => {
     expect(captured).toBe(true);
   });
 
+  it('returns true when innerHeight < 700 (phone landscape)', () => {
+    setViewport(1200, 540);
+    render(<Probe />);
+    expect(captured).toBe(true);
+  });
+
   it('returns false at the desktop threshold', () => {
-    setViewport(1200);
+    setViewport(1200, 1080);
     render(<Probe />);
     expect(captured).toBe(false);
   });
 
   it('updates on resize events', () => {
-    setViewport(1200);
+    setViewport(1200, 1080);
     render(<Probe />);
     expect(captured).toBe(false);
     act(() => {
@@ -51,7 +57,13 @@ describe('useIsTightStage', () => {
     expect(capturedTight).toBe(true);
   });
 
-  it('returns true when height < 520', () => {
+  it('returns true when height < 600 (phone landscape at DPR=2)', () => {
+    setViewport(1170, 540);
+    render(<TightProbe />);
+    expect(capturedTight).toBe(true);
+  });
+
+  it('returns true when height is well below threshold', () => {
     setViewport(1200, 480);
     render(<TightProbe />);
     expect(capturedTight).toBe(true);

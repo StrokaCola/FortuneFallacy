@@ -4,47 +4,61 @@ import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
 import { useStore, type GameState } from '../../state/store';
-import { useIsCompactStage } from '../hooks/useIsCompactStage';
+import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
 
 export function ConstellationSelect() {
   const compact = useIsCompactStage();
+  const tight = useIsTightStage();
   const stakeProgress = useStore(selectStakeProgress);
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      overflow: 'auto', padding: compact ? '20px 12px' : '36px 24px',
+      // Tight viewports lock vertical scroll — the layout below shrinks
+      // to fit. Wider viewports keep auto-scroll for the (rare) case
+      // where a tall card description still overflows.
+      overflow: tight ? 'hidden auto' : 'auto',
+      padding: tight ? '6px 8px' : compact ? '20px 12px' : '36px 24px',
     }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-        <div className="f-mono uc" style={{
-          fontSize: compact ? 12 : 11, color: '#7be3ff', letterSpacing: '0.5em', marginBottom: 8,
-        }}>
-          ◇ choose your constellation ◇
-        </div>
+        {/* Decorative header subtitle drops on tight to free vertical space. */}
+        {!tight && (
+          <div className="f-mono uc" style={{
+            fontSize: compact ? 12 : 11, color: '#7be3ff', letterSpacing: '0.5em', marginBottom: 8,
+          }}>
+            ◇ choose your constellation ◇
+          </div>
+        )}
         <div className="f-display" style={{
-          fontSize: compact ? 32 : 44, color: '#f3f0ff', marginBottom: 4,
+          fontSize: tight ? 18 : compact ? 32 : 44,
+          color: '#f3f0ff',
+          marginBottom: tight ? 2 : 4,
           textShadow: '0 0 30px rgba(123,227,255,0.4)',
         }}>
           Pick your dice
         </div>
-        <div className="f-mono" style={{ fontSize: compact ? 13 : 12, color: '#bba8ff', marginBottom: compact ? 16 : 28, opacity: 0.8 }}>
-          Each constellation rolls a different set of dice for the entire run.
-        </div>
+        {/* Subtitle drops on tight. */}
+        {!tight && (
+          <div className="f-mono" style={{ fontSize: compact ? 13 : 12, color: '#bba8ff', marginBottom: compact ? 16 : 28, opacity: 0.8 }}>
+            Each constellation rolls a different set of dice for the entire run.
+          </div>
+        )}
 
         <div style={{
           display: 'grid',
           // Use min(target, 100%) so a single card on a 320px viewport
           // collapses to viewport width instead of overflowing.
-          gridTemplateColumns: `repeat(auto-fit, minmax(min(${compact ? 220 : 260}px, 100%), 1fr))`,
-          gap: compact ? 10 : 14,
-          marginBottom: compact ? 16 : 28,
+          gridTemplateColumns: `repeat(auto-fit, minmax(min(${tight ? 180 : compact ? 220 : 260}px, 100%), 1fr))`,
+          gap: tight ? 6 : compact ? 10 : 14,
+          marginBottom: tight ? 8 : compact ? 16 : 28,
         }}>
           {CONSTELLATIONS.map((c) => (
             <Card
               key={c.id}
               c={c}
               compact={compact}
+              tight={tight}
               progressId={stakeProgress[c.id] ?? null}
             />
           ))}
@@ -52,7 +66,7 @@ export function ConstellationSelect() {
 
         <button
           className="btn btn-ghost mat-interactive"
-          style={{ width: 200 }}
+          style={{ width: tight ? 140 : 200 }}
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
           ← Back
         </button>
@@ -61,7 +75,7 @@ export function ConstellationSelect() {
   );
 }
 
-function Card({ c, compact, progressId }: { c: Constellation; compact: boolean; progressId: string | null }) {
+function Card({ c, compact, tight, progressId }: { c: Constellation; compact: boolean; tight: boolean; progressId: string | null }) {
   const accent = '#7be3ff';
   // Highest stake the player has cleared for this constellation. Stakes up to
   // and including (cleared + 1) are playable. Spark is always playable.
@@ -75,31 +89,40 @@ function Card({ c, compact, progressId }: { c: Constellation; compact: boolean; 
       className="panel mat-interactive"
       style={{
         textAlign: 'left',
-        padding: compact ? 12 : 16,
+        padding: tight ? 8 : compact ? 12 : 16,
         background: 'rgba(15,9,37,0.6)',
         border: '1px solid rgba(149,119,255,0.25)',
         borderRadius: 12,
-        display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10,
-        minHeight: compact ? 240 : 320,
+        display: 'flex', flexDirection: 'column', gap: tight ? 4 : compact ? 6 : 10,
+        minHeight: tight ? 160 : compact ? 240 : 320,
       }}>
-      <Glyph points={c.glyph} accent={accent} />
-      <div className="f-display" style={{ fontSize: compact ? 22 : 18, color: '#f3f0ff', lineHeight: 1.1 }}>
+      <Glyph points={c.glyph} accent={accent} tight={tight} />
+      <div className="f-display" style={{
+        fontSize: tight ? 16 : compact ? 22 : 18,
+        color: '#f3f0ff', lineHeight: 1.1,
+      }}>
         {c.name}
       </div>
       <div className="f-mono uc" style={{
-        fontSize: compact ? 11 : 9, letterSpacing: '0.18em', color: '#f5c451',
+        fontSize: tight ? 9 : compact ? 11 : 9, letterSpacing: '0.18em', color: '#f5c451',
       }}>
         {describeDiceSpec(c.dice)}
       </div>
-      <div style={{ fontSize: compact ? 13 : 11, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3 }}>
-        {c.flavor}
-      </div>
-      <ul style={{
-        marginTop: 4, paddingLeft: 18, marginBottom: 0,
-        fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
-      }}>
-        {c.rules.map((r, i) => <li key={i}>{r}</li>)}
-      </ul>
+      {/* Flavor + rules drop on tight — the dice spec + stake row + Begin
+          button carry enough info to pick. Long copy is for desktop. */}
+      {!tight && (
+        <>
+          <div style={{ fontSize: compact ? 13 : 11, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3 }}>
+            {c.flavor}
+          </div>
+          <ul style={{
+            marginTop: 4, paddingLeft: 18, marginBottom: 0,
+            fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
+          }}>
+            {c.rules.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+        </>
+      )}
 
       {/* Stake row */}
       <div style={{
@@ -156,9 +179,9 @@ function Card({ c, compact, progressId }: { c: Constellation; compact: boolean; 
   );
 }
 
-function Glyph({ points, accent }: { points: { x: number; y: number }[]; accent: string }) {
+function Glyph({ points, accent, tight }: { points: { x: number; y: number }[]; accent: string; tight?: boolean }) {
   return (
-    <svg viewBox="0 0 100 100" width="100%" height="60" style={{ display: 'block' }}>
+    <svg viewBox="0 0 100 100" width="100%" height={tight ? 36 : 60} style={{ display: 'block' }}>
       {points.map((p, i, arr) => (
         <g key={i}>
           {i < arr.length - 1 && (
