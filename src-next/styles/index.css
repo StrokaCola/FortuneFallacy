@@ -266,6 +266,8 @@ textarea:focus-visible,
   100% { transform: translate(-50%, -72px) scale(0.95); opacity: 0; }
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+/* Mobile bottom-sheet entrance — slides up from below the viewport. */
+@keyframes sheetSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
 /* Reduced-motion: collapses all savored animations to short cross-fade.
    Applied via .reduce-motion class on <html> (set by useMotion hook in Task 7),

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
@@ -139,6 +139,7 @@ const accent = '#7be3ff';
 
 export function Shop() {
   const tight = useIsTightStage();
+  const [collectionOpen, setCollectionOpen] = useState(false);
   const shards   = useStore(selectShards);
   const offers   = useStore(selectShopOffers);
   const rerollCost = useStore(selectShopRerollCost);
@@ -174,7 +175,18 @@ export function Shop() {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div style={{
+      position: 'absolute', inset: 0, pointerEvents: 'auto',
+      overflowY: 'auto', overflowX: 'hidden',
+      // On tight portrait the hero/offers/action bar all flow inline below
+      // the TopBar instead of being absolute. Top padding clears the TopBar;
+      // bottom padding clears the safe-area inset.
+      ...(tight ? {
+        paddingTop: 'calc(var(--hud-top-h, 134px) + 12px)',
+        paddingBottom: 'calc(var(--hud-bottom-h, 0px) + 24px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+      } : null),
+    }}>
       <TopBar
         ante={ante}
         blind="Bazaar"
@@ -190,12 +202,15 @@ export function Shop() {
       />
       <PauseButton />
 
-      <div style={{
+      <div style={tight ? {
+        // In-flow on tight portrait: the parent flex column places it.
+        textAlign: 'center', zIndex: 4,
+        width: 'calc(100% - 32px)',
+      } : {
         position: 'absolute', left: '50%',
-        top: `calc(var(--hud-top-h, 134px) + ${tight ? 24 : 46}px)`,
+        top: 'calc(var(--hud-top-h, 134px) + 46px)',
         transform: 'translateX(-50%)',
         textAlign: 'center', zIndex: 4,
-        width: tight ? 'calc(100% - 32px)' : 'auto',
       }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
           ◇ exchange ◇
@@ -210,19 +225,15 @@ export function Shop() {
         </div>
       </div>
 
-      <div style={{
+      <div style={tight ? {
+        // In-flow on tight: parent flex column positions us.
+        display: 'flex', flexDirection: 'column', gap: 12, zIndex: 4,
+        width: 'min(360px, calc(100vw - 24px))', alignItems: 'stretch',
+      } : {
         position: 'absolute', left: '50%',
-        // Tight stage uses a smaller hero title so we can pull the offers up.
-        top: `calc(var(--hud-top-h, 134px) + ${tight ? 88 : 156}px)`,
+        top: 'calc(var(--hud-top-h, 134px) + 156px)',
         transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: tight ? 'column' : 'row',
-        gap: tight ? 12 : 18,
-        zIndex: 4,
-        // On tight portrait we stack vertically; cap width to viewport so cards
-        // never push the container past the right edge.
-        width: tight ? 'min(360px, calc(100vw - 24px))' : 'auto',
-        alignItems: tight ? 'stretch' : 'flex-start',
+        display: 'flex', gap: 18, zIndex: 4,
       }}>
         {offers.length === 0 && (
           <div className="f-mono panel" style={{ color: '#bba8ff', padding: '24px 36px' }}>— sold out —</div>
@@ -366,27 +377,31 @@ export function Shop() {
 
       <HandLevelsPanel comboLevels={comboLevels} />
 
-      <CollectionPanel
-        catalysts={catalysts}
-        catalystEditions={catalystEditions}
-        vouchers={vouchers}
-        consumables={consumables}
-        ownedMods={ownedMods}
-        voucherSellBlock={voucherSellBlock}
-      />
+      {/* Desktop renders Collection inline; tight portrait surfaces it via
+          a bottom-sheet triggered from the action bar (see CollectionSheet). */}
+      {!tight && (
+        <CollectionPanel
+          catalysts={catalysts}
+          catalystEditions={catalystEditions}
+          vouchers={vouchers}
+          consumables={consumables}
+          ownedMods={ownedMods}
+          voucherSellBlock={voucherSellBlock}
+        />
+      )}
 
-      <div style={{
-        position: 'absolute', left: '50%',
-        // Lift the bar above the bottom HUD on tight stage so it doesn't sit
-        // on top of the Collection panel beneath it.
-        bottom: tight ? `calc(var(--hud-bottom-h, 60px) + 12px)` : 28,
+      <div style={tight ? {
+        // In-flow at the bottom of the scroll on tight portrait. Sits below
+        // every offer; user scrolls to find it. A Collection button opens
+        // a bottom sheet with owned upgrades — see CollectionSheet.
+        display: 'flex', flexDirection: 'column-reverse', gap: 8,
+        zIndex: 5, alignItems: 'stretch',
+        width: 'min(360px, calc(100vw - 24px))',
+        marginTop: 8,
+      } : {
+        position: 'absolute', left: '50%', bottom: 28,
         transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: tight ? 'column-reverse' : 'row',
-        gap: tight ? 8 : 12,
-        zIndex: 5,
-        alignItems: 'center',
-        width: tight ? 'min(360px, calc(100vw - 24px))' : 'auto',
+        display: 'flex', gap: 12, zIndex: 5, alignItems: 'center',
       }}>
         <button
           className="btn mat-interactive has-tip"
@@ -405,6 +420,20 @@ export function Shop() {
           ↻ Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
           <span className="tip tip-above">Replace all current offers with a new set. Cost rises by 1 each reroll this visit.</span>
         </button>
+        {tight && (
+          <button
+            className="btn mat-interactive has-tip"
+            onClick={() => setCollectionOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={collectionOpen}
+          >
+            ☰ Collection{' '}
+            <span className="f-mono num" style={{ color: '#bba8ff' }}>
+              {catalysts.length + vouchers.length + consumables.length + ownedMods.length}
+            </span>
+            <span className="tip tip-above">View and sell owned catalysts, mods, vouchers, and consumables.</span>
+          </button>
+        )}
         <button
           className="btn btn-primary mat-interactive has-tip"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
@@ -413,6 +442,18 @@ export function Shop() {
           <span className="tip tip-above">Leave the Bazaar and return to the Tribunal of Stars.</span>
         </button>
       </div>
+
+      {tight && collectionOpen && (
+        <CollectionSheet
+          catalysts={catalysts}
+          catalystEditions={catalystEditions}
+          vouchers={vouchers}
+          consumables={consumables}
+          ownedMods={ownedMods}
+          voucherSellBlock={voucherSellBlock}
+          onClose={() => setCollectionOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -486,17 +527,19 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
   );
 }
 
-function CollectionPanel({
-  catalysts, catalystEditions, vouchers, consumables, ownedMods, voucherSellBlock,
-}: {
+// Inputs shared by every Collection surface (desktop panel + tight bottom sheet).
+type CollectionInputs = {
   catalysts: string[];
   catalystEditions: Record<string, CatalystEdition>;
   vouchers: string[];
   consumables: string[];
   ownedMods: string[];
   voucherSellBlock: (id: string) => string | null;
-}) {
-  const tight = useIsTightStage();
+};
+
+function buildCollectionRows({
+  catalysts, catalystEditions, vouchers, consumables, ownedMods, voucherSellBlock,
+}: CollectionInputs) {
   const catRows = catalysts.map((id, index) => {
     const c = lookupCatalyst(id);
     return {
@@ -543,28 +586,16 @@ function CollectionPanel({
       rarity: m?.rarity,
     };
   });
-
   const isEmpty = catalysts.length + vouchers.length + consumables.length + ownedMods.length === 0;
+  return { catRows, voucherRows, consRows, modRows, isEmpty };
+}
 
+// Shared body rendered by both the desktop CollectionPanel and the tight
+// CollectionSheet. Header + the four typed rows.
+function CollectionBody(props: CollectionInputs) {
+  const { catRows, voucherRows, consRows, modRows, isEmpty } = buildCollectionRows(props);
   return (
-    <div className="panel" style={{
-      position: 'absolute', left: '50%',
-      // Sit above the action bar — on tight stage the Reroll/Next Trial buttons
-      // stack vertically and take ~100px, so push the panel up further.
-      bottom: tight
-        ? `calc(var(--hud-bottom-h, 60px) + 120px)`
-        : 'calc(var(--hud-bottom-h, 60px) + 32px)',
-      transform: 'translateX(-50%)',
-      width: tight ? 'min(360px, calc(100vw - 24px))' : 'min(1100px, calc(100vw - 60px))',
-      // Tier 2: was `min(220px, calc(100vh - 600px))` which collapses to
-      // 0 below 820px tall. Use clamp so it always shows at least 80px
-      // and grows up to 220 when there's room. Use 100dvh for address-bar
-      // resilience on mobile.
-      maxHeight: tight
-        ? 'clamp(60px, calc(100dvh - 600px), 140px)'
-        : 'clamp(80px, calc(100dvh - 540px), 220px)',
-      padding: '12px 18px', zIndex: 4, overflowY: 'auto',
-    }}>
+    <>
       <div className="f-mono uc" style={{
         fontSize: 10, letterSpacing: '0.32em', color: '#bba8ff', marginBottom: 10,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -587,6 +618,94 @@ function CollectionPanel({
           <CollectionRow kindLabel="mods (inventory)" kind="mod" items={modRows} emptyHint="no mods (attached mods sit in the Forge)" />
         </div>
       )}
+    </>
+  );
+}
+
+// Bottom sheet for tight portrait. Slides up from the viewport bottom; tap
+// backdrop or close button to dismiss. Position fixed so it tracks the
+// viewport, not the scroll container — fixes the "Collection floats in the
+// middle of the page" bug we hit with absolute-bottom positioning.
+function CollectionSheet(props: CollectionInputs & { onClose: () => void }) {
+  // Lock body scroll while sheet is open; restore on unmount.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') props.onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [props]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Your collection"
+      onClick={props.onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(7,5,26,0.7)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        zIndex: 60, pointerEvents: 'auto',
+        animation: 'fadein 200ms ease-out both',
+      }}
+    >
+      <div
+        className="panel"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(440px, 100%)',
+          maxHeight: '70dvh',
+          padding: '14px 18px 18px',
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          overflowY: 'auto',
+          paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
+          animation: 'sheetSlide 220ms cubic-bezier(0.2,0.8,0.2,1) both',
+        }}
+      >
+        {/* Drag handle (cosmetic — taps still close via backdrop). */}
+        <div style={{
+          width: 36, height: 4, borderRadius: 2,
+          background: 'rgba(149,119,255,0.4)',
+          margin: '0 auto 10px',
+        }} />
+        <button
+          onClick={props.onClose}
+          aria-label="Close collection"
+          className="f-mono"
+          style={{
+            position: 'absolute', top: 10, right: 12,
+            width: 28, height: 28, borderRadius: 6,
+            background: 'rgba(15,9,37,0.6)',
+            border: '1px solid rgba(149,119,255,0.4)',
+            color: '#bba8ff', fontSize: 14, cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+        <CollectionBody {...props} />
+      </div>
+    </div>
+  );
+}
+
+function CollectionPanel(props: CollectionInputs) {
+  // Desktop-only after the 2026-05-07 portrait pass — tight stage uses
+  // CollectionSheet (bottom-sheet modal) instead. Render-gated at the call
+  // site in Shop().
+  return (
+    <div className="panel" style={{
+      position: 'absolute', left: '50%',
+      bottom: 'calc(var(--hud-bottom-h, 60px) + 32px)',
+      transform: 'translateX(-50%)',
+      width: 'min(1100px, calc(100vw - 60px))',
+      // 100dvh tracks the visible viewport on mobile browsers.
+      maxHeight: 'clamp(80px, calc(100dvh - 540px), 220px)',
+      padding: '12px 18px', zIndex: 4, overflowY: 'auto',
+    }}>
+      <CollectionBody {...props} />
     </div>
   );
 }
