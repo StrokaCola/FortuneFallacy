@@ -29,6 +29,14 @@ export type MetaSlice = {
   // applies a permanent passive effect to all future runs. See
   // core/run/applyAstralPerks.ts for the apply layer.
   astralPerks: string[];
+  // First-run onboarding. `seen` is the list of coachmark ids the player
+  // has dismissed; `dismissed` short-circuits all coachmarks (Skip All).
+  // Settings exposes a "Replay tutorial" affordance that resets both fields.
+  // See app/onboarding/coachmarks.ts for the registry.
+  onboarding: {
+    seen: string[];
+    dismissed: boolean;
+  };
 };
 
 // All constellations are seeded as unlocked while the gameplay-side
@@ -62,4 +70,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   cosmicDust: 0,
   cosmicDustLifetime: 0,
   astralPerks: [],
+  onboarding: { seen: [], dismissed: false },
 });

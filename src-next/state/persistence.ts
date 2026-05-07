@@ -45,6 +45,15 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedMeta.cosmicDust = mergedMeta.cosmicDust ?? 0;
   mergedMeta.cosmicDustLifetime = mergedMeta.cosmicDustLifetime ?? 0;
   mergedMeta.astralPerks = mergedMeta.astralPerks ?? [];
+  // Onboarding (added 2026-05). Legacy saves with no field default to a
+  // fresh-player tour state. Players already past their first runs get the
+  // tour anyway — that's the price of not tracking save versions; the cost
+  // is one popup per screen the first time after upgrade.
+  const savedOnb = mergedMeta.onboarding ?? {};
+  mergedMeta.onboarding = {
+    seen: savedOnb.seen ?? [],
+    dismissed: savedOnb.dismissed ?? false,
+  };
   const savedDisc = mergedMeta.discovered ?? {};
   mergedMeta.discovered = {
     catalysts: savedDisc.catalysts ?? [],

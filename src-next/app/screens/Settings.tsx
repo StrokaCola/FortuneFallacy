@@ -125,6 +125,23 @@ export function Settings() {
 
         <MotionToggle pref={pref} />
 
+        <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>tutorial</span>
+          <button
+            type="button"
+            className="btn btn-ghost mat-interactive tap"
+            onClick={() => {
+              dispatch({ type: 'RESET_ONBOARDING' });
+              sfxPlay('uiClick');
+            }}
+            style={{ fontSize: 11, padding: '8px 14px' }}
+          >
+            Replay tutorial
+          </button>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 12, flexWrap: 'wrap' }}>
           <button
             type="button"
