@@ -776,7 +776,16 @@ export class Dice3D {
     const w = Math.max(1, window.innerWidth || 1);
     const h = Math.max(1, window.innerHeight || 1);
     this.renderer.setSize(w, h, false);
-    const ortho = 7.5;
+    // On tight viewports the HUD bars (TopBar ~80 CSS, ActionBar ~50)
+    // eat ~25% of the canvas height and ~5% of the width before the
+    // browser's URL bar / gesture nav also encroach. We zoom OUT
+    // slightly (larger ortho) on those viewports so the play area
+    // (rolling tray + hold strip, ~9.7 world units tall) lands fully
+    // inside the HUD-bounded visible region rather than letting the
+    // hold strip ride right against — or behind — the ActionBar.
+    // The thresholds match useIsTightStage: width<720 || height<600.
+    const tight = w < 720 || h < 600;
+    const ortho = tight ? 8.5 : 7.5;
     const aspect = w / h;
     const orthoX = ortho * Math.max(1, aspect);
     const orthoY = ortho * Math.max(1, 1 / aspect);
