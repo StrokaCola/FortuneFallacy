@@ -1,20 +1,25 @@
 import { dispatch } from '../../actions/dispatch';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 export function PauseButton() {
+  const tight = useIsTightStage();
   return (
     <button
       onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}
       className="f-mono tap"
       style={{
         position: 'absolute',
-        // Sit just below TopBar's bottom edge so the pause control follows
-        // it when TopBar wraps onto more rows on narrow viewports.
+        // Desktop tucks the button under TopBar by 24px for a "ducked" look.
+        // On tight portrait that overlap fights the TREASURY chip's catalyst
+        // label — push the button cleanly BELOW TopBar instead.
         // `max(80px, …)` guards against screens that don't mount a
         // TopBar (Forge) where --hud-top-h stays 0; the calc would
         // otherwise resolve to a negative top.
-        top: 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
-        right: 18,
+        top: tight
+          ? 'max(80px, calc(var(--hud-top-h, 110px) + 8px))'
+          : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
+        right: tight ? 12 : 18,
         zIndex: Z.hudControl,
         width: 44,
         height: 44,

@@ -76,7 +76,8 @@ function BreakdownModal({ lastCtx, onClose }: { lastCtx: LastScoringCtx; onClose
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 540, maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100vh - 64px)',
+          // 100dvh tracks the visible viewport on mobile browsers.
+          maxHeight: 'calc(100dvh - 64px)',
           padding: 24,
           display: 'flex', flexDirection: 'column', gap: 16,
           overflow: 'hidden',

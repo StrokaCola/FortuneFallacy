@@ -7,6 +7,7 @@ import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
 import { PauseButton } from '../hud/PauseButton';
 import { SellButton } from '../hud/SellButton';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { getDiceSpec } from '../../core/run/diceContext';
 import {
   selectAnte, selectShards, selectCatalysts, selectMaxCatalystSlots, selectOwnedMods,
@@ -31,6 +32,7 @@ const selectMaxMod = (s: GameState) => maxModSlots(s);
 export function Forge() {
   const dice = useStore(selectDice);
   const diceMods = useStore(selectDiceMods);
+  const tight = useIsTightStage();
   const ante = useStore(selectAnte);
   const shards = useStore(selectShards);
   const catalysts = useStore(selectCatalysts);
@@ -83,11 +85,20 @@ export function Forge() {
       </div>
       <PauseButton />
 
-      <div style={{ position: 'absolute', left: '50%', top: 130, transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4 }}>
+      <div style={{
+        position: 'absolute', left: '50%',
+        top: tight ? 80 : 130,
+        transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4,
+        width: tight ? 'calc(100% - 32px)' : 'auto',
+      }}>
         <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
           ◇ etch a mod ◇
         </div>
-        <div className="f-display" style={{ fontSize: 32, color: '#f3f0ff', marginTop: 6 }}>
+        <div className="f-display" style={{
+          fontSize: 'clamp(20px, 6vw, 32px)',
+          color: '#f3f0ff', marginTop: tight ? 4 : 6,
+          whiteSpace: 'nowrap',
+        }}>
           The Star Forge
         </div>
       </div>
@@ -95,7 +106,9 @@ export function Forge() {
       {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
           Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens. */}
       <div style={{
-        position: 'absolute', left: '50%', top: 220, transform: 'translateX(-50%)',
+        position: 'absolute', left: '50%',
+        top: tight ? 150 : 220,
+        transform: 'translateX(-50%)',
         display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
         flexWrap: 'wrap', justifyContent: 'center',
         maxWidth: 'calc(100% - 40px)',
@@ -104,8 +117,12 @@ export function Forge() {
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
           {/* Selected die orbit */}
-          <div className="panel" style={{ width: 360, height: 360, position: 'relative', display: 'grid', placeItems: 'center' }}>
-            <svg width="320" height="320" viewBox="0 0 320 320" style={{ position: 'absolute' }}>
+          <div className="panel" style={{
+            width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+            height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+            position: 'relative', display: 'grid', placeItems: 'center',
+          }}>
+            <svg width={tight ? 280 : 320} height={tight ? 280 : 320} viewBox="0 0 320 320" style={{ position: 'absolute' }}>
               <circle cx="160" cy="160" r="140" stroke="rgba(149,119,255,0.3)" strokeWidth="1" fill="none" strokeDasharray="4 6" />
               <g className="forge-orbit" style={{ transformOrigin: 'center' }}>
                 {[0, 90, 180, 270].map((a) => {
@@ -115,7 +132,7 @@ export function Forge() {
                 })}
               </g>
             </svg>
-            <DieView face={selectedFace} size={140} style="celestial" shape={selectedShape} faceValues={diceSpec[selectedDie]?.faces} mods={selectedMods} />
+            <DieView face={selectedFace} size={tight ? 112 : 140} style="celestial" shape={selectedShape} faceValues={diceSpec[selectedDie]?.faces} mods={selectedMods} />
             <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
               <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
                 die {selectedDie + 1} · {slots.length}/{maxSlots} mods
@@ -125,8 +142,9 @@ export function Forge() {
 
           {/* Die selector strip */}
           <div style={{
-            width: 360,
+            width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             display: 'flex', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 4,
           }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
@@ -177,7 +195,7 @@ export function Forge() {
           {/* Attached mods detach row */}
           {slots.length > 0 && (
             <div style={{
-              width: 360,
+              width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
               display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
             }}>
               {slots.map((rid, idx) => {
@@ -208,7 +226,10 @@ export function Forge() {
         </div>
 
         {/* Right column: mod inventory */}
-        <div style={{ width: 'min(380px, 100%)', height: 440 }}>
+        <div style={{
+          width: 'min(380px, calc(100vw - 32px))',
+          height: tight ? 360 : 440,
+        }}>
           <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between' }}>
               <span>◈ mod inventory</span>
@@ -405,7 +426,12 @@ export function Forge() {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)' }}>
+      <div style={{
+        position: 'absolute', left: '50%',
+        bottom: tight ? `calc(var(--hud-bottom-h, 60px) + 12px)` : 28,
+        transform: 'translateX(-50%)',
+        zIndex: 5,
+      }}>
         <button className="btn btn-primary mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
           ✓ Done
         </button>

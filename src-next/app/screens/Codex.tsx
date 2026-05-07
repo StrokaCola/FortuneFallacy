@@ -47,7 +47,7 @@ export function Codex() {
             ◇ catalogue ◇
           </div>
           <div className="f-display" style={{
-            fontSize: 40, color: '#f3f0ff', marginTop: 4,
+            fontSize: 'clamp(24px, 7vw, 40px)', color: '#f3f0ff', marginTop: 4,
             textShadow: '0 0 30px rgba(123,227,255,0.4)',
           }}>
             Codex

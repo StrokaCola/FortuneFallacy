@@ -151,6 +151,9 @@ export function TopBar({
       <div className="panel" style={{
         padding: tight ? '8px 12px' : '14px 18px',
         minWidth: tight ? 0 : 200,
+        // Cap on tight portrait so the panel never pushes past the viewport
+        // edge when its content (catalysts/vouchers badges) wraps.
+        maxWidth: tight ? 160 : 'none',
         pointerEvents: 'auto',
       }}>
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
