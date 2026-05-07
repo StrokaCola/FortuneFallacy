@@ -111,12 +111,12 @@ Save snapshot includes full `run`, `meta`, `round`, `ui`. `meta` accumulates `hi
 4. ✅ Cached rects + scroll/visibility invalidation in `sharedRenderer.ts`
 5. ✅ DPR-cap + antialias tiering for low-end mobile
 
-### Recommended follow-ups (out of scope for this audit, per the cutoff)
-- **B1 retune:** soften Ante 2 targets OR boost Ante 2 shop generosity — needs designer call.
-- **B2 Argo:** grant 2 starting catalysts, OR rebalance `faceMultiplierPerCatalyst`. Designer call.
-- **B3 chain cap:** lower `CHAIN_MAX_DEFAULT` from 8 to 4 (single-line change in `core/scoring/constellationChain.ts`), OR carry chain across blinds. The former is a 5-minute change; the latter is a meaningful design shift.
-- **B5 shop archetype tagging:** add an `archetype` field to catalysts and bias Ante 1 draw to deliver a coherent starting build.
-- **P5 persistence trim:** measure with the new PerfTab; if blob >50kb, move persist trigger to phase transitions.
+### Recommended follow-ups (originally out of scope — addressed in branch `claude/balance-tuning-pass`)
+- **B1 retune** ✅ **Landed** — Ante 2 base targets `[1200, 2000, 3500]` → `[1000, 1600, 2800]` (~17–20% cut). `data/blinds.ts`.
+- **B2 Argo** ✅ **Landed** — `faceMultiplierPerCatalyst: 0.75 → 1.0`. `data/constellations.ts`.
+- **B3 chain cap** ✅ **Landed** — `CHAIN_MAX_DEFAULT: 8 → 4`. Ophiuchus's redundant `chainCap: 4` modifier dropped (now identity); flagged for a fresh drawback in a future tuning pass. `core/scoring/constellationChain.ts`, `data/constellations.ts`.
+- **B5 archetype tagging + Ante 1 bias** ✅ **Landed** — `CatalystArchetype` field on all 44 catalysts (`combo` / `face` / `economy` / `scaling` / `mods` / `timing` / `utility`). `drawWeightedCatalysts` accepts `ownedCatalysts` and tilts subsequent picks toward shared archetypes (70% bias rate). Test verifies ≥75% of 3-catalyst Ante 1 draws contain ≥2 of the same archetype. `data/catalysts.ts`, `core/shop/catalystDraw.ts`, `actions/handlers/shop.ts`.
+- **P5 persistence trim** ✅ **Measured — no action needed.** Worst-case blob (full discovery + max catalyst stack + 7 dice × 4 mods + 10 high scores + every voucher) = **5.11 kb**. Well below the 50 kb threshold. Current 400 ms-debounced delta save is fine. `state/persistence.size.test.ts`.
 
 ### Explicitly out of scope
 - Rewrites of `evaluation.ts` / `store.ts` / scoring pipeline architecture
@@ -152,4 +152,29 @@ Manual perf check:
 4. Note `persistence blob` size — flag if >50 kb.
 5. Open Chrome DevTools mobile emulator (Pixel 5 + 4× CPU throttle); repeat. Frame-time p95 target: <33 ms during a roll.
 
-All sims green, full suite (952 tests) passes. No public API changes.
+All sims green, full suite (955 tests) passes. No public API changes.
+
+---
+
+## Follow-up sim outputs (post-tuning, branch `claude/balance-tuning-pass`)
+
+After B1+B2+B3 + the sim's Argo slot-bonus aware catalyst ramp, Spark/scaling clear rates:
+
+| Constellation | A1 (was→now) | A2 (was→now) | A3 (was→now) | A4 |
+|---|---|---|---|---|
+| Lyra | 100 → 100% | 36 → 38% | 1 → 5% | 0 → 0% |
+| Mensa | 97 → 97% | 33 → 34% | 2 → 3% | 0 → 0% |
+| Fibonacci | 100 → 100% | 63 → 65% | 6 → 16% | 0 → 0% |
+| Eclipse | 100 → 100% | 52 → 54% | 0 → 1% | 0 → 0% |
+| Argo | **0 → 21%** | 0 → 0% | 0 → 0% | 0 → 0% |
+| Triumvirate | 94 → 94% | 3 → 4% | 0 → 0% | 0 → 0% |
+| Polyhedra | 92 → 92% | 7 → 7% | 0 → 0% | 0 → 0% |
+| Ophiuchus | 98 → 98% | 28 → 30% | 0 → 0% | 0 → 0% |
+
+Synergy build (Lyra @ Spark): A2 82 → 83%, **A3 27 → 38%**, A4 1 → 1%. The A3 mid-game window opened up materially while A1/A2 stayed within the same band — exactly what the soften+bump combo intended.
+
+Chain-cap-mult dropped from 2.75 → 1.75 across the board (all constellations now share the cap-of-4 default). Realized peak still ~1.43–1.50, so the cap is reachable only with the Open Mic voucher (4-hand blinds). Flagged in the audit as the remaining minor issue; a future option is carrying chain across blinds.
+
+Argo deserves a separate note: jumping from 0 → 21% A1 confirms the perCat=1.0 bump moved the floor, but the constellation still demands a strong opening shop. The B5 archetype-bias work helps — first shop now consistently delivers a coherent kit — but Argo's slot bonus + perCat math means it's still the highest-skill-floor constellation.
+
+P5 verdict: persistence blob is **5.11 kb** worst-case — current debounce policy is correct, no migration needed.

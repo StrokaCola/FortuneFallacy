@@ -14,7 +14,10 @@ export const BLIND_DEFS: BlindDef[] = [
 
 export const ANTE_BASE_TARGETS: number[][] = [
   [300,   600,   1000 ],
-  [1200,  2000,  3500 ],
+  // Ante 2 softened ~20% (was [1200, 2000, 3500]) per the 2026-05-07 perf+balance
+  // audit — the A1→A2 cliff of 4× was the dominant balance issue: clear-rate
+  // dropped from ~98% A1 to ~36% A2 even with a mid-game catalyst stack.
+  [1000,  1600,  2800 ],
   [4000,  6000,  10000],
   [12000, 16000, 30000],
 ];

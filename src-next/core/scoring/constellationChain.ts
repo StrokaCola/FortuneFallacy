@@ -1,4 +1,9 @@
-const CHAIN_MAX_DEFAULT = 8;
+// Lowered 8 → 4 per the 2026-05-07 audit: chain length is bounded by hands
+// per blind (3 base, 4 with Open Mic voucher), so a cap of 8 was unreachable.
+// At 4 the cap is touchable on a stretched build, and Ophiuchus's `chainCap: 4`
+// modifier becomes a redundant identity (kept for documentation; flavor text
+// still references it).
+const CHAIN_MAX_DEFAULT = 4;
 const CHAIN_STEP_DEFAULT = 0.25;
 
 export type ChainResult = {

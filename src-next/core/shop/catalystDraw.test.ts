@@ -80,4 +80,53 @@ describe('drawWeightedCatalysts', () => {
     const out = drawWeightedCatalysts(1, 3, unlocks, rng);
     expect(out).toEqual(['all_band']);
   });
+
+  it('archetype bias: subsequent draws lean toward owned catalysts', () => {
+    // With many trials, a draw seeded with a 'combo' catalyst should
+    // produce mostly combo offers due to the 70% bias rate.
+    const ownedCombo = ['stratifier']; // archetype=combo
+    const ownedFace = ['six_bias'];    // archetype=face
+    let comboMatches = 0;
+    let faceMatches = 0;
+    const TRIALS = 1000;
+    for (let i = 0; i < TRIALS; i++) {
+      const seed = i + 1;
+      const rngCombo = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const rngFace  = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offerCombo = drawWeightedCatalysts(1, 1, [], rngCombo, ownedCombo);
+      const offerFace  = drawWeightedCatalysts(1, 1, [], rngFace,  ownedFace);
+      const cMeta = CATALYST_META.find((m) => m.id === offerCombo[0]);
+      const fMeta = CATALYST_META.find((m) => m.id === offerFace[0]);
+      if (cMeta?.archetype === 'combo') comboMatches++;
+      if (fMeta?.archetype === 'face')  faceMatches++;
+    }
+    // Without bias, expected matches ≈ frac of pool with that archetype
+    // (well below 70%). With bias, we expect ≥50% of draws to match.
+    expect(comboMatches / TRIALS).toBeGreaterThan(0.5);
+    expect(faceMatches / TRIALS).toBeGreaterThan(0.5);
+  });
+
+  it('archetype bias: empty owned catalysts produces a coherent starter when count=3', () => {
+    // Even with no owned catalysts, the first draw seeds the bias for the
+    // remaining picks. A coherent starter trio is one where ≥2 of the 3
+    // share an archetype. Across many trials this should be the common case.
+    let coherent = 0;
+    const TRIALS = 200;
+    for (let i = 0; i < TRIALS; i++) {
+      const seed = i + 1;
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offers = drawWeightedCatalysts(3, 1, [], rng);
+      const archetypes = offers.map((id) => CATALYST_META.find((m) => m.id === id)?.archetype);
+      const counts = new Map<string, number>();
+      for (const a of archetypes) {
+        if (!a) continue;
+        counts.set(a, (counts.get(a) ?? 0) + 1);
+      }
+      const max = Math.max(0, ...counts.values());
+      if (max >= 2) coherent++;
+    }
+    // Without bias, P(2+ share archetype out of 3 from 7 archetypes) is
+    // moderate but not dominant. With bias, expect >75% coherent.
+    expect(coherent / TRIALS).toBeGreaterThan(0.75);
+  });
 });

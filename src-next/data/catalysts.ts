@@ -1,3 +1,22 @@
+// Build archetypes — drives the Ante 1 shop coherence bias (see
+// `core/shop/catalystDraw.ts`). Catalysts that play together in a synergistic
+// build share an archetype. Optional — uncategorized catalysts ignore the bias.
+//   combo:   pays off specific combo tiers (Stratifier, Tetrad, Apex, ...)
+//   face:    pays off specific face values (Six Bias, Iron Six, Prime Pact, ...)
+//   economy: shard economy plays (Shard Sink, Stipend, Usurer, ...)
+//   scaling: grows over time (Tempo, Compounding Bias, Prime Resonance, ...)
+//   mods:    rewards mod density / synergy (Conductor, Encore, Harmonic, ...)
+//   timing:  rewards specific hand cadence (Quorum, Patience, Metronome, ...)
+//   utility: lifecycle / non-pipeline (Silver Tongue, Audit, Dust-Off)
+export type CatalystArchetype =
+  | 'combo'
+  | 'face'
+  | 'economy'
+  | 'scaling'
+  | 'mods'
+  | 'timing'
+  | 'utility';
+
 export type CatalystMeta = {
   id: string;
   name: string;
@@ -6,161 +25,162 @@ export type CatalystMeta = {
   desc: string;
   flavor?: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
+  archetype?: CatalystArchetype;
 };
 
 export const CATALYST_META: CatalystMeta[] = [
   { id: 'stratifier',     name: 'Stratifier',     icon: '👁',  color: '#cc88ff',
-    desc: 'Full House → Mult ×2',          flavor: 'Three plus two. The shape pays.', rarity: 'uncommon' },
+    desc: 'Full House → Mult ×2',          flavor: 'Three plus two. The shape pays.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'chaos_theory',   name: 'Chaos Theory',   icon: '∞',   color: '#44ddff',
-    desc: 'Straights → +5 Mult',           flavor: 'Order from disorder. +5 for the trick.', rarity: 'uncommon' },
+    desc: 'Straights → +5 Mult',           flavor: 'Order from disorder. +5 for the trick.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'six_bias',       name: 'Six Bias',       icon: '📈',  color: '#b088ff',
-    desc: 'Each 6 → +4 Chips',             flavor: 'Instrument loaded. Top of range pays.', rarity: 'common'   },
+    desc: 'Each 6 → +4 Chips',             flavor: 'Instrument loaded. Top of range pays.', rarity: 'common', archetype: 'face' },
   { id: 'twin_sample',    name: 'Twin Sample',    icon: '🔢',  color: '#ff9944',
-    desc: 'Two Pair → Chips ×2',           flavor: 'Both samples agree. Confidence doubled.', rarity: 'uncommon' },
+    desc: 'Two Pair → Chips ×2',           flavor: 'Both samples agree. Confidence doubled.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'cold_hand',      name: 'Cold Hand',      icon: '💬',  color: '#c0c8ff',
-    desc: 'Chance → +4 Mult',              flavor: "No pattern? The book says you're due. The book is wrong, but you score anyway.", rarity: 'common'   },
+    desc: 'Chance → +4 Mult',              flavor: "No pattern? The book says you're due. The book is wrong, but you score anyway.", rarity: 'common', archetype: 'combo' },
   { id: 'entropy_index',  name: 'Entropy Index',  icon: '◈',   color: '#a080c0',
-    desc: 'Each unique face → ×1.25 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare'    },
+    desc: 'Each unique face → ×1.25 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare', archetype: 'face' },
   { id: 'compounding_bias', name: 'Compounding Bias', icon: '∆', color: '#88ddff',
     desc: 'Each cleared trial: +0.05× mult permanently. Resets on bust.',
-    flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon' },
+    flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'last_throw', name: 'Last Throw', icon: '🔔', color: '#ff7847',
     desc: 'Last hand of round: +25 chips.',
-    flavor: 'House always pays the closer.', rarity: 'common' },
+    flavor: 'House always pays the closer.', rarity: 'common', archetype: 'timing' },
   { id: 'patience_counter', name: 'Patience Counter', icon: '⏳', color: '#cc88ff',
     desc: 'Every 5th hand of run: ×3 mult (this hand only).',
-    flavor: 'Wait. Then strike.', rarity: 'rare' },
+    flavor: 'Wait. Then strike.', rarity: 'rare', archetype: 'timing' },
   { id: 'catalyst_bench', name: 'Catalyst Bench', icon: '⌗', color: '#a080c0',
     desc: '+1 mult per other catalyst owned.',
-    flavor: 'Crowded table tilts faster.', rarity: 'uncommon' },
+    flavor: 'Crowded table tilts faster.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'shard_sink', name: 'Shard Sink', icon: '◈', color: '#f5c451',
     desc: 'Spend 1 shard before scoring: ×1.5 mult. Skips if 0 shards.',
-    flavor: 'Pay to play. Pays back.', rarity: 'common' },
+    flavor: 'Pay to play. Pays back.', rarity: 'common', archetype: 'economy' },
   { id: 'stipend', name: 'Stipend', icon: '💠', color: '#f5c451',
     desc: '+1 shard at the start of each hand (caps at 6 shards).',
-    flavor: 'Steady drip. Fills the cup before it fills the grave.', rarity: 'uncommon' },
+    flavor: 'Steady drip. Fills the cup before it fills the grave.', rarity: 'uncommon', archetype: 'economy' },
   { id: 'recursive_sink', name: 'Recursive Sink', icon: '◇', color: '#f5c451',
     desc: 'When Shard Sink primes, pay 1 more shard for an extra ×1.25 mult.',
-    flavor: 'A deeper cut. The vein keeps giving.', rarity: 'rare' },
+    flavor: 'A deeper cut. The vein keeps giving.', rarity: 'rare', archetype: 'economy' },
   { id: 'encore', name: 'Encore', icon: '⤾', color: '#bba8ff',
     desc: 'The last scoring die\'s mods fire one extra time (chips/mult).',
-    flavor: 'The crowd demands it.', rarity: 'rare' },
+    flavor: 'The crowd demands it.', rarity: 'rare', archetype: 'mods' },
   { id: 'phase_shift', name: 'Phase-Shift', icon: '⊚', color: '#bba8ff',
     desc: 'Mirror Pair, Conduit, Crescendo, Pip Charge each gain +1 per instance.',
-    flavor: 'Tilt the lattice; the threads sing one note louder.', rarity: 'uncommon' },
+    flavor: 'Tilt the lattice; the threads sing one note louder.', rarity: 'uncommon', archetype: 'mods' },
   { id: 'iron_six', name: 'Iron Six', icon: '⬢', color: '#ffd84a',
     desc: 'Each scoring 6 also grants +1 mult.',
-    flavor: 'Heavy at the top of the range.', rarity: 'common' },
+    flavor: 'Heavy at the top of the range.', rarity: 'common', archetype: 'face' },
   { id: 'solar_flare', name: 'Solar Flare', icon: '☀', color: '#ff7847',
     desc: '3+ scoring dice show 5 or 6 → ×1.5 mult.',
-    flavor: 'High pressure ignites. The sky bleaches.', rarity: 'uncommon' },
+    flavor: 'High pressure ignites. The sky bleaches.', rarity: 'uncommon', archetype: 'face' },
   { id: 'tempo', name: 'Tempo', icon: '♪', color: '#5be8a4',
     desc: 'Each consecutive higher-tier hand: +0.5× mult, capping at ×3.0.',
-    flavor: 'Each measure climbs. Don\'t miss the beat.', rarity: 'uncommon' },
+    flavor: 'Each measure climbs. Don\'t miss the beat.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'conductor', name: 'Conductor', icon: '⌘', color: '#bba8ff',
     desc: 'Full hand scores: +20 chips × distinct mods across scoring dice.',
-    flavor: 'Every section accounted for.', rarity: 'rare' },
+    flavor: 'Every section accounted for.', rarity: 'rare', archetype: 'mods' },
   { id: 'quorum', name: 'Quorum', icon: '⫶', color: '#cc88ff',
     desc: 'Same combo as last hand: chips ×1.5. 3rd in a row: also mult ×1.5.',
-    flavor: 'Repeat until the verdict holds.', rarity: 'uncommon' },
+    flavor: 'Repeat until the verdict holds.', rarity: 'uncommon', archetype: 'timing' },
 
   // Phase 3 additions — combo-tribal coverage. Pairs up with the Galaxy
   // system: a Whirlpool / triplet_engine / levels_levy spike now has a
   // complete deck-building lane.
   { id: 'pair_dynamo', name: 'Pair Dynamo', icon: '⚊', color: '#7be3ff',
     desc: 'One Pair → +5 Mult.',
-    flavor: 'The simplest match still spins the wheel.', rarity: 'common' },
+    flavor: 'The simplest match still spins the wheel.', rarity: 'common', archetype: 'combo' },
   { id: 'triplet_engine', name: 'Triplet Engine', icon: '⚙', color: '#cc88ff',
     desc: 'Three of a Kind → Mult ×1.75.',
-    flavor: 'Three sealed prongs, one current.', rarity: 'uncommon' },
+    flavor: 'Three sealed prongs, one current.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'magnitude', name: 'Magnitude', icon: '✺', color: '#ffd84a',
     desc: 'Large Straight → Chips ×2 and Mult ×1.5.',
-    flavor: 'A clean line through the dark, scaled.', rarity: 'rare' },
+    flavor: 'A clean line through the dark, scaled.', rarity: 'rare', archetype: 'combo' },
 
   // Face-tribal commons. Cheap pickups that reward die-bias playstyles.
   { id: 'prime_pact', name: 'Prime Pact', icon: 'ℙ', color: '#5be8a4',
     desc: 'Each scoring 2, 3, or 5 → +2 Chips.',
-    flavor: 'The indivisible pay first.', rarity: 'common' },
+    flavor: 'The indivisible pay first.', rarity: 'common', archetype: 'face' },
   { id: 'even_keeled', name: 'Even Keeled', icon: '◎', color: '#88ddff',
     desc: 'All scoring dice even → Chips ×1.5.',
-    flavor: 'Symmetry rewards the patient.', rarity: 'common' },
+    flavor: 'Symmetry rewards the patient.', rarity: 'common', archetype: 'face' },
   { id: 'odd_voice', name: 'Odd Voice', icon: '◌', color: '#cc88ff',
     desc: 'All scoring dice odd → Mult ×1.5.',
-    flavor: 'Off-beats carry farther in thin air.', rarity: 'common' },
+    flavor: 'Off-beats carry farther in thin air.', rarity: 'common', archetype: 'face' },
 
   // Economy rare — Stipend / Shard Sink decks finally have a payoff scaler.
   { id: 'usurer', name: 'Usurer', icon: '⛁', color: '#f5c451',
     desc: 'Each shard above 10 → +1 Mult (uncapped).',
-    flavor: 'The vault grows louder.', rarity: 'rare' },
+    flavor: 'The vault grows louder.', rarity: 'rare', archetype: 'economy' },
 
   // Galaxy-aware rare — pays you for committing to galaxies. Should be
   // cheap to slot mid-run alongside any Galaxy strategy.
   { id: 'levels_levy', name: "Level's Levy", icon: '✸', color: '#cc88ff',
     desc: 'Each combo level on the played hand → +1 Mult.',
-    flavor: 'The galaxies remember.', rarity: 'rare' },
+    flavor: 'The galaxies remember.', rarity: 'rare', archetype: 'scaling' },
 
   // Legendary showcase — once-per-round tier-up. Unlocks after the player
   // has held 4 catalysts simultaneously in any run (meta-progression).
   { id: 'all_band', name: 'All-Band', icon: '⌬', color: '#ff7847',
     desc: 'Once per round: this hand scores as if it were the next tier higher.',
-    flavor: 'Frequency leaks. The judge upgrades the verdict.', rarity: 'legendary' },
+    flavor: 'Frequency leaks. The judge upgrades the verdict.', rarity: 'legendary', archetype: 'combo' },
 
   // Phase 5 additions — completes the combo-tribal lane (one catalyst per
   // hand-type) and rounds out the math/scaling band.
   { id: 'straight_signal', name: 'Straight Signal', icon: '↗', color: '#5be8a4',
     desc: 'Small Straight → +6 Mult.',
-    flavor: 'Four steps in tune. The fifth lifts.', rarity: 'uncommon' },
+    flavor: 'Four steps in tune. The fifth lifts.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'tetrad', name: 'Tetrad', icon: '⊞', color: '#ff7847',
     desc: 'Four of a Kind → Chips ×3.',
-    flavor: 'Four corners, one frequency.', rarity: 'rare' },
+    flavor: 'Four corners, one frequency.', rarity: 'rare', archetype: 'combo' },
   { id: 'apex', name: 'Apex', icon: '✦', color: '#ffd84a',
     desc: 'Five of a Kind → Mult ×3, plus +1 Mult per matching scoring die.',
-    flavor: 'Every face the same. Every face higher.', rarity: 'rare' },
+    flavor: 'Every face the same. Every face higher.', rarity: 'rare', archetype: 'combo' },
   { id: 'chance_doctrine', name: 'Chance Doctrine', icon: '?', color: '#c0c8ff',
     desc: 'Chance hand → +20 Chips and +4 Mult per scoring die.',
-    flavor: 'When nothing matches, score everything.', rarity: 'uncommon' },
+    flavor: 'When nothing matches, score everything.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'low_choir', name: 'Low Choir', icon: '⫯', color: '#88ddff',
     desc: 'Each scoring face ≤2 → +3 Mult.',
-    flavor: 'Bass register. Carries farther.', rarity: 'uncommon' },
+    flavor: 'Bass register. Carries farther.', rarity: 'uncommon', archetype: 'face' },
   { id: 'harmonic', name: 'Harmonic', icon: '∿', color: '#bba8ff',
     desc: 'Each mod id repeated across dice → +25 Chips, ×1.25 Mult.',
-    flavor: 'Two strings tuned same. The room rings.', rarity: 'rare' },
+    flavor: 'Two strings tuned same. The room rings.', rarity: 'rare', archetype: 'mods' },
   { id: 'metronome', name: 'Metronome', icon: '♩', color: '#5be8a4',
     desc: 'Odd hand → Chips ×1.5. Even hand → Mult ×1.5.',
-    flavor: 'Tick. Tock. Both pay.', rarity: 'rare' },
+    flavor: 'Tick. Tock. Both pay.', rarity: 'rare', archetype: 'timing' },
   { id: 'prime_resonance', name: 'Prime Resonance', icon: 'ℜ', color: '#a080c0',
     desc: 'Mult raised to the power 1.05 per scoring die.',
-    flavor: 'Exponentials wear thin clothing.', rarity: 'rare' },
+    flavor: 'Exponentials wear thin clothing.', rarity: 'rare', archetype: 'scaling' },
 
   // Phase 5d — non-pipeline catalysts: their effects fire in lifecycle
   // hooks (skip-blind, sell-refund) rather than the per-hand upgrades pass.
   { id: 'silver_tongue', name: 'Silver Tongue', icon: '✎', color: '#a4d4ff',
     desc: 'When you skip a blind, gain 2 random consumables.',
-    flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon' },
+    flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon', archetype: 'utility' },
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
     desc: 'Sell value of catalysts +50%.',
-    flavor: 'A clean uninstall pays out.', rarity: 'common' },
+    flavor: 'A clean uninstall pays out.', rarity: 'common', archetype: 'utility' },
 
   // Phase 5e — lifecycle catalysts (need round-state counters or hooks).
   { id: 'crescendo_run', name: 'Crescendo Run', icon: '↗', color: '#5be8a4',
     desc: '×2 Mult after 3+ rolls in a round without locking a die.',
-    flavor: 'The pace builds. Don\'t hold back.', rarity: 'uncommon' },
+    flavor: 'The pace builds. Don\'t hold back.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'shard_lung', name: 'Shard Lung', icon: '⛁', color: '#f5c451',
     desc: 'Round start: +shards equal to ante. Score: spend half shards for +Mult.',
-    flavor: 'Inhale. Exhale. The vault pays the breath.', rarity: 'uncommon' },
+    flavor: 'Inhale. Exhale. The vault pays the breath.', rarity: 'uncommon', archetype: 'economy' },
 
   // Phase 5f — bust-hook + mod-density catalysts.
   { id: 'audit', name: 'Audit', icon: '☷', color: '#a4d4ff',
     desc: 'On bust: refund 50% of shards spent on catalysts this run. Self-destructs.',
-    flavor: 'The ledger closes. Some debts unwind.', rarity: 'uncommon' },
+    flavor: 'The ledger closes. Some debts unwind.', rarity: 'uncommon', archetype: 'utility' },
   { id: 'gilding_press', name: 'Gilding Press', icon: '⊟', color: '#f5c451',
     desc: 'The first mod on each scoring die fires twice for chips.',
-    flavor: 'A second strike on every plate.', rarity: 'uncommon' },
+    flavor: 'A second strike on every plate.', rarity: 'uncommon', archetype: 'mods' },
 
   // Phase 5g — wide-hand bonus.
   { id: 'mod_gravity', name: 'Mod Gravity', icon: '◐', color: '#cc88ff',
     desc: '+5 Mult when 4 or more dice score this hand.',
-    flavor: 'Mass attracts mass. The crowd tilts.', rarity: 'uncommon' },
+    flavor: 'Mass attracts mass. The crowd tilts.', rarity: 'uncommon', archetype: 'mods' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {
