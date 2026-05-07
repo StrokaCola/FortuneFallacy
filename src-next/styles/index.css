@@ -70,17 +70,23 @@ html, body {
   /* Dice canvas occupies the play area between TopBar and ActionBar.
      The HUD components (TopBar, ActionBar) self-measure into
      --hud-top-h / --hud-bottom-h via useReportHudHeight, so the
-     canvas tracks the visible play region exactly. world Z=0 (rolling
-     tray center) lands at the canvas center, which is what the
-     orthographic camera projects to. min-height: 200px guards
-     against the HUD vars momentarily summing past the stage height
-     during a screen transition (e.g. an old TopBar's cleanup hasn't
-     run before the new TopBar's effect mounts). */
+     canvas tracks the visible play region exactly.
+
+     We use `width: 100%` + `height: calc(100% - top - bottom)` rather
+     than the more obvious `top + bottom + left + right` because
+     <canvas> is a CSS-replaced element. Per CSS2 spec 10.3.8, an
+     abs-positioned replaced element with `width: auto` falls back to
+     its INTRINSIC width (= the canvas.width attribute, set by
+     Three.js setSize). Each setSize then resizes the buffer based on
+     the previous rect, the rect grows by pixelRatio, ResizeObserver
+     fires again — runaway exponential growth (observed on Samsung
+     Internet: rect ballooned to ~12M px before saturating). Setting
+     width/height explicitly avoids the intrinsic fallback. */
   position: absolute;
-  top:    var(--hud-top-h, 0px);
-  bottom: var(--hud-bottom-h, 0px);
-  left:   0;
-  right:  0;
+  top:  var(--hud-top-h, 0px);
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px));
   min-height: 200px;
   z-index: 3;
   pointer-events: none;
