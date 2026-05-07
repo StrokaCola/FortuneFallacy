@@ -148,11 +148,15 @@ export function TopBar({
         </span>
       </div>
 
-      <div className="panel" style={{ padding: '14px 18px', minWidth: 200, pointerEvents: 'auto' }}>
+      <div className="panel" style={{
+        padding: tight ? '8px 12px' : '14px 18px',
+        minWidth: tight ? 0 : 200,
+        pointerEvents: 'auto',
+      }}>
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
         <div className="has-tip" style={{ display: 'flex', alignItems: 'baseline', gap: 8, position: 'relative' }}>
-          <Sigil kind="star" size={20} color="#f5c451" />
-          <div className="f-display num" style={{ fontSize: 32, color: '#f5c451', fontWeight: 700 }}>{shards}</div>
+          <Sigil kind="star" size={tight ? 14 : 20} color="#f5c451" />
+          <div className="f-display num" style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}>{shards}</div>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
           <span className="tip">
             <span className="tip-title">Shards ◆</span>
