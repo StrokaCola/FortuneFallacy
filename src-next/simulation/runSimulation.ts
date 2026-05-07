@@ -4,6 +4,7 @@ import { mulberry32 } from '../core/rng';
 import { store } from '../state/store';
 import { hasDebuff } from '../core/round/debuffs';
 import { runRapierSim, ensureRapier } from './rapierSim';
+import { begin as perfBegin } from '../devtools/perf';
 import type { SimulationRequest, SimulationResult } from '../events/types';
 
 const SETTLE_MS = 600;
@@ -11,7 +12,9 @@ const SETTLE_MS = 600;
 export function startSimRunner(): () => void {
   void ensureRapier();
   return bus.on('onSimulationStart', ({ request }) => {
+    const end = perfBegin('runSimulation');
     runSim(request).then((result) => {
+      end();
       dispatch({ type: 'ROLL_SETTLED', result });
     });
   });
