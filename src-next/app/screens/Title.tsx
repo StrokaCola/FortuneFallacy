@@ -180,6 +180,12 @@ export function Title() {
             <button
               className="btn btn-ghost tap"
               style={{ width: ghostBtnWidth }}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'astral_forge' })}>
+              Astral Forge
+            </button>
+            <button
+              className="btn btn-ghost tap"
+              style={{ width: ghostBtnWidth }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
               Challenges
             </button>

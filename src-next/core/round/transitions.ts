@@ -9,6 +9,7 @@ import { stakeContext, rerollsPerHand } from '../run/stakeContext';
 import { stakeIndex } from '../../data/stakes';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
+import { firstBlindExtraHands } from '../run/applyAstralPerks';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
@@ -57,7 +58,10 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     ? BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id
     : def.name.toLowerCase().replace(/\s+/g, '_');
   const baseHandsMax = 3;
-  const handsMax = Math.max(1, baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta);
+  // First Breath astral perk: +N hands on the very first blind of the run
+  // (goalIdx === 0). Stacks with vouchers and stake hands deltas.
+  const firstBlindBonus = s.run.goalIdx === 0 ? firstBlindExtraHands(s) : 0;
+  const handsMax = Math.max(1, baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus);
   // Build the dice array sized to whatever the active constellation declares.
   // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
   const spec = getDiceSpec(s);
@@ -118,6 +122,14 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   const nextGoal = s.run.goalIdx + 1;
   const nextAnte = Math.floor(nextGoal / 3) + 1;
   const won = nextGoal >= 12;
+
+  // Cosmic Dust: per-blind award of (1 + currentAnte) so ante 1 → 2, … ante 4
+  // → 5 dust. Win bonus of 15 × stakeIndex stacks on top of the final blind
+  // award. Conservative starting rate; tune via tools/sim/dustEarn.ts and
+  // docs/sim-data/dust_earn.csv.
+  const dustForBlind = 1 + s.run.ante;
+  const winBonus = won ? 15 * Math.max(1, stakeIndex(s.run.stakeId) + 1) : 0;
+  const dustGained = dustForBlind + winBonus;
   const highScores = won ? pushHighScore(s, s.round.score) : s.meta.highScores;
   // On a successful run, record the cleared stake for this constellation
   // so the next stake unlocks. Tied per-constellation so stake progress on
@@ -126,6 +138,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   const challengeWins = won && s.run.challengeId
     ? Array.from(new Set([...s.meta.challengeWins, s.run.challengeId]))
     : s.meta.challengeWins;
+  const newDustTotal = (s.meta.cosmicDust ?? 0) + dustGained;
   const events: GameEventEmission[] = [
     {
       type: 'onBlindCleared',
@@ -141,6 +154,10 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         },
       },
     },
+    {
+      type: 'onDustEarned',
+      payload: { delta: dustGained, total: newDustTotal, reason: won ? 'win' : 'clear' },
+    },
   ];
   if (won) {
     events.push({
@@ -153,6 +170,12 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       },
     });
   }
+  const baseMeta = won ? { ...s.meta, highScores, stakeProgress, challengeWins } : s.meta;
+  const nextMeta = {
+    ...baseMeta,
+    cosmicDust: newDustTotal,
+    cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+  };
   return {
     state: {
       ...s,
@@ -168,7 +191,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       shop: { ...s.shop, offers: [] },
       // Challenge overlays can disable the bazaar entirely; skip straight to hub.
       ui: { ...s.ui, screen: won ? 'win' : (stakeContext(s).shopDisabled ? 'hub' : 'shop') },
-      meta: won ? { ...s.meta, highScores, stakeProgress, challengeWins } : s.meta,
+      meta: nextMeta,
     },
     events,
   };
@@ -206,6 +229,11 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
     const { audit: _dropped, ...rest } = editionsAfterAudit;
     editionsAfterAudit = rest;
   }
+  // Cosmic Dust: small consolation award on bust so even failed runs feel
+  // like progress toward the meta layer. Scales mildly with how far the
+  // player got: 1 dust + 1 per cleared goal.
+  const dustGained = 1 + s.run.goalIdx;
+  const newDustTotal = (s.meta.cosmicDust ?? 0) + dustGained;
   return {
     state: {
       ...s,
@@ -220,7 +248,12 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         catalysts: catalystsAfterAudit,
         catalystEditions: editionsAfterAudit,
       },
-      meta: { ...s.meta, highScores },
+      meta: {
+        ...s.meta,
+        highScores,
+        cosmicDust: newDustTotal,
+        cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+      },
     },
     events: [
       {
@@ -231,6 +264,10 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
           ante: s.run.ante,
           constellation: s.run.constellationId,
         },
+      },
+      {
+        type: 'onDustEarned',
+        payload: { delta: dustGained, total: newDustTotal, reason: 'bust' },
       },
     ],
   };

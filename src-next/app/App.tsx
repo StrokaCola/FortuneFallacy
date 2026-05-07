@@ -23,6 +23,7 @@ import { NameEntry } from './screens/NameEntry';
 import { Settings } from './screens/Settings';
 import { Codex } from './screens/Codex';
 import { ChallengeSelect } from './screens/ChallengeSelect';
+import { AstralForge } from './screens/AstralForge';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -49,11 +50,11 @@ export function App() {
       screenMusic.stop();
       return;
     }
-    if (screen === 'title' || screen === 'nameentry' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores') {
-      // win/scores reuse hub track; constellation_select and nameentry reuse title track.
+    if (screen === 'title' || screen === 'nameentry' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores' || screen === 'astral_forge') {
+      // win/scores reuse hub track; constellation_select, nameentry, astral_forge reuse title track.
       const target: ScreenId =
         (screen === 'win' || screen === 'scores') ? 'hub'
-        : (screen === 'constellation_select' || screen === 'nameentry') ? 'title'
+        : (screen === 'constellation_select' || screen === 'nameentry' || screen === 'astral_forge') ? 'title'
         : screen;
       screenMusic.start(target);
     }
@@ -69,7 +70,7 @@ export function App() {
       }
       // Meta screens — Escape returns to Title. Title itself ignores Escape
       // because there is no parent screen.
-      if (cur === 'codex' || cur === 'challenges' || cur === 'scores' || cur === 'settings') {
+      if (cur === 'codex' || cur === 'challenges' || cur === 'scores' || cur === 'settings' || cur === 'astral_forge') {
         dispatch({ type: 'SET_SCREEN', screen: 'title' });
       }
     };
@@ -118,6 +119,7 @@ export function App() {
             {screen === 'settings' && <Settings />}
             {screen === 'codex' && <Codex />}
             {screen === 'challenges' && <ChallengeSelect />}
+            {screen === 'astral_forge' && <AstralForge />}
           </ScreenTransition>
           <BossReveal />
           <ArrivalToast />

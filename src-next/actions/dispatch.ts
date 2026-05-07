@@ -16,6 +16,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   SET_SCREEN: metaHandler,
   SET_PLAYER_NAME: metaHandler,
   TOGGLE_PAUSE: metaHandler,
+  BUY_ASTRAL_PERK: metaHandler,
   ROLL_REQUESTED: rollHandler,
   REROLL_REQUESTED: rollHandler,
   ROLL_SETTLED: rollHandler,

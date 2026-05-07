@@ -65,7 +65,16 @@ export function getBaseScoreMults(state: GameState): { chips: number; mult: numb
 }
 
 export function getCatalystSlotBonus(state: GameState): number {
-  return modsOf(state).catalystSlotBonus ?? 0;
+  // Constellation modifier + Wider Orbit astral perk both contribute. Astral
+  // perks are imported via require to avoid a circular import with
+  // applyAstralPerks.ts (which can transitively import diceContext through
+  // applyConstellation in the future).
+  const constMod = modsOf(state).catalystSlotBonus ?? 0;
+  let perkBonus = 0;
+  for (const id of (state.meta.astralPerks ?? [])) {
+    if (id === 'wider_orbit') perkBonus += 1;
+  }
+  return constMod + perkBonus;
 }
 
 export function isForgeDisabled(state: GameState): boolean {

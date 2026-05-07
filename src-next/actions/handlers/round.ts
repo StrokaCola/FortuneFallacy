@@ -4,6 +4,7 @@ import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
 import { applyConstellation } from '../../core/run/applyConstellation';
+import { applyAstralPerksToNewRun } from '../../core/run/applyAstralPerks';
 import { lookupConstellation } from '../../data/constellations';
 
 export const roundHandler: ActionHandler = (a, s) => {
@@ -19,11 +20,16 @@ export const roundHandler: ActionHandler = (a, s) => {
     case 'NEW_RUN': {
       const constellation = lookupConstellation(a.constellationId);
       const baseRun = applyConstellation(initialRunSlice(), constellation);
-      const run = {
+      const withStake = {
         ...baseRun,
         stakeId: a.stakeId ?? 'spark',
         challengeId: a.challengeId ?? '',
       };
+      // Apply any owned Astral Perk start-of-run effects (extra shards,
+      // starting consumable, etc.). Read-side perks (reroll discount, slot
+      // capacity, first-blind hands, boss reveal) resolve at compute time
+      // from meta.astralPerks — they don't mutate the run slice here.
+      const run = applyAstralPerksToNewRun(withStake, s.meta.astralPerks);
       return {
         state: {
           ...s,
