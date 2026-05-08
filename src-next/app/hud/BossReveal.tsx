@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
-import { BOSS_BLINDS } from '../../data/blinds';
+import { BOSS_BLINDS, BOSS_CINEMATIC_FLAVOR } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
@@ -112,7 +112,7 @@ export function BossReveal() {
           textShadow: `0 0 16px ${def.color}99`,
           opacity: 0,
         }}>
-          ◇ something approaches ◇
+          ◇ {BOSS_CINEMATIC_FLAVOR[def.id] ?? 'something approaches'} ◇
         </div>
       </div>
     );

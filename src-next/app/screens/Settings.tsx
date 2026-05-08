@@ -3,6 +3,7 @@ import { dispatch } from '../../actions/dispatch';
 import * as audioSettings from '../../audio/audioSettings';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
 import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
+import { getColorblindPref, setColorblindPref, subscribeColorblind } from '../visual/colorblind';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
 
@@ -47,6 +48,43 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
         style={{ accentColor: '#7be3ff', width: '100%' }}
       />
     </label>
+  );
+}
+
+// Colorblind preset toggle. v1 ships a single high-contrast preset
+// safe across the three common CVDs (deuteranopia / protanopia /
+// tritanopia) plus shape redundancy on rarity badges. Per-CVD
+// presets can layer on later.
+function ColorblindToggle() {
+  const [pref, setPref] = useState(getColorblindPref());
+  useEffect(() => subscribeColorblind(() => setPref(getColorblindPref())), []);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>colorblind palette</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Colorblind palette preference">
+        {[
+          { id: 'off', label: 'Default', hint: 'Original hue-driven palette' },
+          { id: 'high_contrast', label: 'High contrast', hint: 'High-luminance palette + shape redundancy on rarity badges' },
+        ].map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setColorblindPref(o.id as 'off' | 'high_contrast')}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -207,6 +245,8 @@ export function Settings() {
         <HapticsToggle pref={hapticsPref} />
 
         <CaptionsToggle />
+
+        <ColorblindToggle />
 
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 

@@ -50,13 +50,21 @@ function pickFromRarity(
   excluded: ReadonlySet<string>,
   rng: () => number,
   preferredArchetypes?: ReadonlySet<CatalystArchetype>,
+  constellationId?: string,
 ): string | null {
   const order: (keyof RarityWeights)[] = ['legendary', 'rare', 'uncommon', 'common'];
   const startIdx = order.indexOf(rarity);
   for (let i = startIdx; i < order.length; i++) {
     const tier = order[i]!;
     const pool = CATALYST_META.filter(
-      (m) => m.rarity === tier && !excluded.has(m.id) && isLegendaryUnlocked(m, unlocks),
+      (m) =>
+        m.rarity === tier &&
+        !excluded.has(m.id) &&
+        isLegendaryUnlocked(m, unlocks) &&
+        // Constellation-locked catalysts only spawn when the active
+        // constellation matches their requirement. Catalysts without a
+        // requirement are universally available.
+        (m.requiresConstellation == null || m.requiresConstellation === constellationId),
     );
     if (pool.length === 0) continue;
 
@@ -95,6 +103,7 @@ export function drawWeightedCatalysts(
   unlocks: readonly string[],
   rng: () => number,
   ownedCatalysts: readonly string[] = [],
+  constellationId?: string,
 ): string[] {
   const weights = rarityWeightsForAnte(ante);
   const out: string[] = [];
@@ -103,7 +112,7 @@ export function drawWeightedCatalysts(
   for (let i = 0; i < count; i++) {
     const tier = rollRarity(weights, rng);
     const bias = preferred.size > 0 ? preferred : undefined;
-    const id = pickFromRarity(tier, unlocks, excluded, rng, bias);
+    const id = pickFromRarity(tier, unlocks, excluded, rng, bias, constellationId);
     if (!id) break;
     out.push(id);
     excluded.add(id);

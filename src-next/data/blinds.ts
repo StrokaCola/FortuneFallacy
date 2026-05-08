@@ -51,6 +51,25 @@ export type BossBlind = {
   description: string;
   debuffs: string[];
   sigil: { viewBox: string; groups: SigilGroup[] };
+  // Per-boss flavor line shown during the BossReveal dread phase. Each
+  // boss gets its own "the void approaches" — pluto's bones, ceres's
+  // belt, etc. Falls back to a generic line if absent.
+  cinematicFlavor?: string;
+};
+
+// Per-boss cinematic flavor — looked up by id from the BOSS_BLINDS
+// table. Kept separate so the table itself stays narrow per row and
+// the flavor strings are easy to author without scrolling through the
+// SVG path data.
+export const BOSS_CINEMATIC_FLAVOR: Record<string, string> = {
+  pluto:    'the gambler\'s bones rattle',
+  ceres:    'the belt closes around you',
+  triton:   'the flyby begins',
+  phobos:   'orbit decays · the chain rusts',
+  callisto: 'the cratered silence opens',
+  eris:     'the unmaker arrives first',
+  charon:   'the ferryman holds your shards',
+  sedna:    'the slot is wider than you remember',
 };
 
 export type TierSigilDef = {

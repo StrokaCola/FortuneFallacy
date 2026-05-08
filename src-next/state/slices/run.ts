@@ -84,6 +84,14 @@ export type RunSlice = {
     // bonus). Pre-bust/win baseline. Accumulated in core/round/transitions.ts
     // alongside the meta-currency mutation. Reset on NEW_RUN.
     dustEarned: number;
+    // Per-catalyst fire counter — increments once per onUpgradeTriggered
+    // event whose id resolves to a catalyst (via catalystIdFromEvent).
+    // Drives the Awakening visual layer: a catalyst at or above its
+    // awaken threshold (data/catalysts.ts AWAKENING_THRESHOLDS) gets
+    // a "★ AWAKENED" badge on the strip + tooltip uplift. Mechanical
+    // amplification is intentionally a v2 follow-up — needs balance
+    // playtesting before adding multiplicative power.
+    catalystFires: Record<string, number>;
   };
   // Audit (mid-run risk event) — true once the player has resolved the
   // ante-3 audit modal (either gambled or skipped). Stays false through
@@ -148,6 +156,7 @@ export const initialRunSlice = (): RunSlice => ({
     peakCombo: null,
     catalystChips: {},
     dustEarned: 0,
+    catalystFires: {},
   },
   auditResolved: false,
 });

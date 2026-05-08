@@ -98,6 +98,13 @@ export function applySavedToInitial(s: GameState): GameState {
   if (typeof mergedRun.runStats.dustEarned !== 'number') {
     mergedRun.runStats = { ...mergedRun.runStats, dustEarned: 0 };
   }
+  // catalystFires (added late 2026-05) — defensive default for legacy
+  // saves that have runStats but no fire counter. The Awakening badge
+  // simply won't show until the player triggers a fresh fire after
+  // upgrading; safer than reconstructing fires from chip totals.
+  if (!mergedRun.runStats.catalystFires) {
+    mergedRun.runStats = { ...mergedRun.runStats, catalystFires: {} };
+  }
   // Audit modal trigger — added 2026-05. Legacy saves default to false
   // so the modal fires on the next ante-3 entry; that's a small cost
   // that's better than losing the chance to surface the event at all

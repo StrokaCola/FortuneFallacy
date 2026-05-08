@@ -14,6 +14,7 @@ import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { startAchievementListener } from './core/achievements/listener';
 import { startDiceLandShake } from './app/visual/diceLandShake';
+import { applyColorblindClass } from './app/visual/colorblind';
 import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
 import './styles/index.css';
@@ -57,6 +58,7 @@ installButtonJuice();
 startLeaderboard();
 startAchievementListener();
 startDiceLandShake();
+applyColorblindClass();
 ensureAudioAfterGesture();
 
 const sfxUnlockEvents = ['pointerdown', 'touchend', 'click', 'keydown'] as const;

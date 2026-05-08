@@ -305,8 +305,8 @@ function addDustToRunStats(
   prev: GameState['run']['runStats'] | undefined,
   delta: number,
 ): GameState['run']['runStats'] {
-  const base = prev ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0 };
-  return { ...base, dustEarned: (base.dustEarned ?? 0) + delta };
+  const base = prev ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {} };
+  return { ...base, catalystFires: base.catalystFires ?? {}, dustEarned: (base.dustEarned ?? 0) + delta };
 }
 
 // Daily attempt recorder. Keeps the BEST score for the day and stamps

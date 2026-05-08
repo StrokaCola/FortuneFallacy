@@ -1,4 +1,5 @@
 import './stratifier';
+import './constellationLocked';
 import './chaosTheory';
 import './sixBias';
 import './twinSample';

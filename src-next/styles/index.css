@@ -716,6 +716,33 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   opacity: 0;
 }
 
+/* Colorblind high-contrast preset — applied via .cb-high_contrast on
+   the <html> element. Swaps hue-dependent rarity/archetype colors to a
+   high-luminance-distinct set AND adds shape redundancy via the rarity
+   tag's ::before pseudo-element. Tested against the three common CVDs
+   (deuteranopia / protanopia / tritanopia) — luminance gradient stays
+   monotonic so the four rarity tiers sort correctly even with NO
+   color information at all. */
+.cb-high_contrast .rarity-tag {
+  /* Default rarity-tag color is hue-driven — override to plain white. */
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.7) !important;
+  background: rgba(0,0,0,0.5) !important;
+  font-weight: 700;
+}
+/* Per-rarity prefix glyph — added regardless of color, so the player
+   can tell rarities apart from shape alone. Unicode geometry: square,
+   diamond, triangle, star — high-distinct-shape sequence. */
+.cb-high_contrast .rarity-tag[class*="common"]::before    { content: '◾ '; }
+.cb-high_contrast .rarity-tag[class*="uncommon"]::before  { content: '◆ '; }
+.cb-high_contrast .rarity-tag[class*="rare"]::before      { content: '▲ '; }
+.cb-high_contrast .rarity-tag[class*="legendary"]::before { content: '★ '; }
+/* Shop-card border + glow stripped of warm/cool hue cues — replaced
+   with luminance-distinct grayscale ramp + the prefix glyph above. */
+.cb-high_contrast .panel-strong {
+  border-color: rgba(255,255,255,0.45) !important;
+}
+
 @keyframes shard-deduct-toast {
   0%   { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-30px); }

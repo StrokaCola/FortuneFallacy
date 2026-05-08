@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
-import { lookupCatalyst } from '../../data/catalysts';
+import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
@@ -18,6 +18,10 @@ const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
 const selectHandsPlayed = (s: GameState) => s.run.handsPlayed;
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectActive = (s: GameState) => s.round.active;
+const EMPTY_CONTRIB: Record<string, number> = {};
+const selectCatalystChips = (s: GameState) => s.run.runStats?.catalystChips ?? EMPTY_CONTRIB;
+const EMPTY_FIRES: Record<string, number> = {};
+const selectCatalystFires = (s: GameState) => s.run.runStats?.catalystFires ?? EMPTY_FIRES;
 
 const PULSE_DURATION_MS = 380;
 const PULSE_DURATION_LEGENDARY_MS = 540;
@@ -45,6 +49,8 @@ export function CatalystStrip() {
   const wide = useIsWideMode();
   const handsLeft = useStore(selectHandsLeft);
   const roundActive = useStore(selectActive);
+  const catalystChips = useStore(selectCatalystChips);
+  const catalystFires = useStore(selectCatalystFires);
 
   const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | undefined>>({});
   const [floaters, setFloaters] = useState<FloaterRecord[]>([]);
@@ -346,6 +352,26 @@ export function CatalystStrip() {
                   {handsPlayed % 5}/5
                 </div>
               )}
+              {/* Awakening — visible once the catalyst has fired enough
+                  times this run. Pure cosmetic in v1; mechanical
+                  multipliers gated behind playtest data. */}
+              {(() => {
+                const fires = catalystFires[id] ?? 0;
+                const threshold = awakeningThreshold(id);
+                const awakened = isAwakened(id, fires);
+                if (threshold == null) return null;
+                return awakened ? (
+                  <div className="awakened-badge has-tip" style={{
+                    position: 'absolute', bottom: 4, right: 4, zIndex: 3,
+                    fontSize: 11, fontWeight: 700,
+                    color: '#f5c451',
+                    textShadow: '0 0 8px #f5c451, 0 0 14px rgba(245,196,81,0.6)',
+                    background: 'rgba(15,9,37,0.85)',
+                    padding: '1px 4px', borderRadius: 4,
+                    border: '1px solid #f5c451aa',
+                  }}>★</div>
+                ) : null;
+              })()}
             </div>
             {/* Ring bursts emanate from the card center on each fire. Live
                 outside the inner card div so overflow: hidden doesn't clip
@@ -396,6 +422,34 @@ export function CatalystStrip() {
               <span className="tip-title">{c.name}</span>
               {c.desc}
               {c.flavor && <span className="tip-flavor">{c.flavor}</span>}
+              {(catalystChips[id] ?? 0) > 0 && (
+                <span style={{
+                  display: 'block', marginTop: 6,
+                  color: '#7be3ff',
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: 10,
+                }}>
+                  ◇ contributed +{Math.round(catalystChips[id] ?? 0).toLocaleString()} chips this run
+                </span>
+              )}
+              {(() => {
+                const fires = catalystFires[id] ?? 0;
+                const threshold = awakeningThreshold(id);
+                if (threshold == null) return null;
+                const awakened = fires >= threshold;
+                return (
+                  <span style={{
+                    display: 'block', marginTop: 4,
+                    color: awakened ? '#f5c451' : '#bba8ff',
+                    fontFamily: '"JetBrains Mono", monospace',
+                    fontSize: 10,
+                  }}>
+                    {awakened
+                      ? `★ Awakened — ${fires} fires this run`
+                      : `Awakening: ${fires} / ${threshold} fires`}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         );

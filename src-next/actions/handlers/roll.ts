@@ -300,14 +300,16 @@ function updateRunStats(
 ): RunSlice['runStats'] {
   // Defensive: persistence has a default but a freshly-cloned state from
   // tests may pass undefined. Treat missing as a zero-baseline stat block.
-  const base = prev ?? { peakHand: 0, peakCombo: null, catalystChips: {} };
+  const base: RunSlice['runStats'] = prev ?? {
+    peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {},
+  };
   const peakHand = Math.max(base.peakHand, handTotal);
   const peakCombo = handTotal > base.peakHand ? comboId : base.peakCombo;
   const catalystChips: Record<string, number> = { ...base.catalystChips };
+  const catalystFires: Record<string, number> = { ...(base.catalystFires ?? {}) };
   for (const ev of events) {
     if (ev.type !== 'onUpgradeTriggered') continue;
     const dChips = ev.payload.deltaChips ?? 0;
-    if (dChips === 0) continue;
 
     // Resonance events split contribution evenly between both halves of
     // the pair. This way each catalyst's bar in the postmortem reflects
@@ -318,15 +320,32 @@ function updateRunStats(
     if (resonanceId) {
       const pair = lookupResonance(resonanceId);
       if (!pair) continue;
-      const halfChips = dChips / 2;
-      catalystChips[pair.a] = (catalystChips[pair.a] ?? 0) + halfChips;
-      catalystChips[pair.b] = (catalystChips[pair.b] ?? 0) + halfChips;
+      // Resonance fires count toward BOTH halves' fire counters since
+      // the pair effect requires both halves to be present. Awakening
+      // a catalyst via consistent resonance use is a real player
+      // strategy — counting both sides reflects that.
+      catalystFires[pair.a] = (catalystFires[pair.a] ?? 0) + 1;
+      catalystFires[pair.b] = (catalystFires[pair.b] ?? 0) + 1;
+      if (dChips !== 0) {
+        const halfChips = dChips / 2;
+        catalystChips[pair.a] = (catalystChips[pair.a] ?? 0) + halfChips;
+        catalystChips[pair.b] = (catalystChips[pair.b] ?? 0) + halfChips;
+      }
       continue;
     }
 
     const id = catalystIdFromEvent(ev.payload.id);
     if (!id) continue;
-    catalystChips[id] = (catalystChips[id] ?? 0) + dChips;
+    catalystFires[id] = (catalystFires[id] ?? 0) + 1;
+    if (dChips !== 0) {
+      catalystChips[id] = (catalystChips[id] ?? 0) + dChips;
+    }
   }
-  return { peakHand, peakCombo, catalystChips };
+  return {
+    peakHand,
+    peakCombo,
+    catalystChips,
+    catalystFires,
+    dustEarned: base.dustEarned ?? 0,
+  };
 }
