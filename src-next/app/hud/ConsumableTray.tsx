@@ -5,6 +5,7 @@ import { lookupConsumable } from '../../core/consumables';
 import { hasDebuff } from '../../core/round/debuffs';
 import { SellButton } from './SellButton';
 import { Z } from './zLayers';
+import { useIsWideMode } from '../hooks/useIsCompactStage';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -13,6 +14,7 @@ const selectConsumablesLocked = (s: GameState) => hasDebuff(s, 'consumables_lock
 export function ConsumableTray() {
   const items = useStore(selectConsumables);
   const diceCount = useStore(selectDiceCount);
+  const wide = useIsWideMode();
   const locked = useStore(selectConsumablesLocked);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
 
@@ -43,7 +45,10 @@ export function ConsumableTray() {
         // TopBar's bottom edge so the row never collides with a wrapped TopBar.
         top: 'calc(var(--hud-top-h, 134px) + 8px)',
         right: 18,
-        display: 'flex', gap: 8, zIndex: Z.hud, pointerEvents: 'auto',
+        // Wide-mode: vertical right rail to mirror the catalyst left rail.
+        display: 'flex',
+        flexDirection: wide ? 'column' : 'row',
+        gap: 8, zIndex: Z.hud, pointerEvents: 'auto',
       }}>
         {items.map((id, i) => {
           const def = lookupConsumable(id);

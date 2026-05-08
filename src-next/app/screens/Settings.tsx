@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import * as audioSettings from '../../audio/audioSettings';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
+import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
 
@@ -25,6 +26,12 @@ function useMotionPrefState(): MotionPref {
   return p;
 }
 
+function useHapticsPrefState(): HapticsPref {
+  const [p, setP] = useState<HapticsPref>(getHapticsPref());
+  useEffect(() => subscribeHapticsPref(() => setP(getHapticsPref())), []);
+  return p;
+}
+
 function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const pct = Math.round(value * 100);
   return (
@@ -40,6 +47,41 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
         style={{ accentColor: '#7be3ff', width: '100%' }}
       />
     </label>
+  );
+}
+
+function HapticsToggle({ pref }: { pref: HapticsPref }) {
+  const opts: { id: HapticsPref; label: string; hint: string }[] = [
+    { id: 'on',  label: 'On',  hint: 'Always buzz on key moments' },
+    { id: 'os',  label: 'Match system', hint: 'Buzz unless Reduce Motion is on' },
+    { id: 'off', label: 'Off', hint: 'No vibration' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>haptics</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Haptics preference">
+        {opts.map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setHapticsPref(o.id)}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -81,6 +123,7 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
 export function Settings() {
   const audio = useAudio();
   const pref = useMotionPrefState();
+  const hapticsPref = useHapticsPrefState();
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref, true);
 
@@ -124,6 +167,8 @@ export function Settings() {
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 
         <MotionToggle pref={pref} />
+
+        <HapticsToggle pref={hapticsPref} />
 
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 

@@ -4,6 +4,7 @@ import { lookupCatalyst } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
+import { useIsWideMode } from '../hooks/useIsCompactStage';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -23,6 +24,7 @@ export function CatalystStrip() {
   const catalystEditions = useStore(selectCatalystEditions);
   const compoundingStacks = useStore(selectCompoundingStacks);
   const handsPlayed = useStore(selectHandsPlayed);
+  const wide = useIsWideMode();
   const handsLeft = useStore(selectHandsLeft);
   const roundActive = useStore(selectActive);
 
@@ -78,7 +80,12 @@ export function CatalystStrip() {
       // rows on narrow viewports.
       top: 'calc(var(--hud-top-h, 134px) + 8px)',
       left: 18,
-      display: 'flex', gap: 8, zIndex: 4,
+      // Wide-mode (desktop landscape, ≥1280×760): turn the row into a
+      // left rail so catalysts use the otherwise-empty side margin and
+      // 6+ cards don't run off the play area horizontally.
+      display: 'flex',
+      flexDirection: wide ? 'column' : 'row',
+      gap: 8, zIndex: 4,
     }}>
       {catalysts.map((id, i) => {
         const c = lookupCatalyst(id);
