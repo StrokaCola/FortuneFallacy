@@ -95,15 +95,15 @@ describe('face_value (each scoring 4 → +3 chips, +1 mult)', () => {
   });
 });
 
-describe('first_strike (first hand of run → +50 chips, +5 mult)', () => {
-  it('fires on hand 0 of run', () => {
-    const ctx = makeCtx({ chips: 0, mult: 1, handsPlayed: 0 });
+describe('first_strike (first scoring hand of each blind → +50 chips, +5 mult)', () => {
+  it('fires when no hand has scored this blind yet', () => {
+    const ctx = makeCtx({ chips: 0, mult: 1, firstHandPlayed: false });
     const out = findCat('first_strike').apply(ctx);
     expect(out.chips).toBe(50);
     expect(out.mult).toBe(6);
   });
-  it('no-op after the first hand', () => {
-    const ctx = makeCtx({ chips: 0, mult: 1, handsPlayed: 1 });
+  it('no-op once a hand has already scored this blind', () => {
+    const ctx = makeCtx({ chips: 0, mult: 1, firstHandPlayed: true });
     const out = findCat('first_strike').apply(ctx);
     expect(out.chips).toBe(0);
     expect(out.mult).toBe(1);
@@ -185,7 +185,7 @@ describe('high_roller (each scoring 5/6 → +2 chips, +1 mult)', () => {
   });
 });
 
-describe('royal_flush (five_kind / lg_straight → +200 chips, ×2 mult)', () => {
+describe('royal_flush (four_kind / five_kind / lg_straight → +200 chips, ×2 mult)', () => {
   it('fires on five_kind', () => {
     const ctx = makeCtx({
       combo: { id: 'five_kind', tier: 8, baseChips: 100, baseMult: 20, scoringFaces: [] },
@@ -194,6 +194,15 @@ describe('royal_flush (five_kind / lg_straight → +200 chips, ×2 mult)', () =>
     const out = findCat('royal_flush').apply(ctx);
     expect(out.chips).toBe(300);
     expect(out.mult).toBe(10);
+  });
+  it('fires on four_kind', () => {
+    const ctx = makeCtx({
+      combo: { id: 'four_kind', tier: 7, baseChips: 60, baseMult: 12, scoringFaces: [] },
+      chips: 60, mult: 6,
+    });
+    const out = findCat('royal_flush').apply(ctx);
+    expect(out.chips).toBe(260);
+    expect(out.mult).toBe(12);
   });
   it('fires on lg_straight', () => {
     const ctx = makeCtx({

@@ -1,11 +1,11 @@
 catalystId,rarity,archetype,meanScoreControl,meanScoreTreatment,deltaScore,deltaScorePct,meanAnteControl,meanAnteTreatment,deltaAnte,winRateControl,winRateTreatment,deltaWinRate
 eclipse_pact,legendary,combo,172,983,811,471.4,1,1.04,0.04,0,0,0
+first_strike,common,scaling,172,675,503,292,1,1,0,0,0,0
 prism_lens,uncommon,combo,172,404,232,134.7,1,1,0,0,0,0
 lucky_streak,common,combo,172,397,225,130.6,1,1,0,0,0,0
 entropy_index,rare,face,172,296,124,72,1,1,0,0,0,0
 pair_dynamo,common,combo,172,281,109,63.3,1,1,0,0,0,0
 low_choir,uncommon,face,172,244,72,41.8,1,1,0,0,0,0
-first_strike,common,scaling,172,233,60,35.1,1,1,0,0,0,0
 all_band,legendary,combo,172,231,59,34.2,1,1,0.01,0,0,0
 metronome,rare,timing,172,225,53,30.9,1,1,0,0,0,0
 last_throw,common,timing,172,225,53,30.8,1,1,0,0,0,0
@@ -28,7 +28,7 @@ prime_pact,common,face,172,181,9,5,1,1,0,0,0,0
 streak_seeker,uncommon,timing,172,180,8,4.6,1,1,0,0,0,0
 dice_master,uncommon,utility,172,179,7,4.2,1,1,0,0,0,0
 economy_engine,rare,economy,172,177,5,2.8,1,1,0,0,0,0
-compounding_bias,uncommon,scaling,172,173,1,0.5,1,1,0,0,0,0
+compounding_bias,uncommon,scaling,172,175,3,1.8,1,1,0,0,0,0
 cold_hand,common,combo,172,172,0,0.1,1,1,0,0,0,0
 solar_flare,uncommon,face,172,172,0,-0.2,1,1,0,0,0,0
 usurer,rare,economy,172,172,-1,-0.4,1,1,0,0,0,0
@@ -52,6 +52,6 @@ dust_off,common,utility,172,171,-1,-0.7,1,1,0,0,0,0
 crescendo_run,uncommon,scaling,172,171,-1,-0.7,1,1,0,0,0,0
 audit,uncommon,utility,172,171,-1,-0.7,1,1,0,0,0,0
 gilding_press,uncommon,mods,172,171,-1,-0.7,1,1,0,0,0,0
-royal_flush,rare,combo,172,171,-1,-0.7,1,1,0,0,0,0
 tetrad,rare,combo,172,168,-4,-2.4,1,1,0,0,0,0
 mod_gravity,uncommon,mods,172,168,-4,-2.4,1,1,0,0,0,0
+royal_flush,rare,combo,172,168,-4,-2.4,1,1,0,0,0,0
