@@ -4,8 +4,9 @@ import {
   selectGoalIdx, selectDice, selectHandsLeft, selectRerollsLeft, selectPingCount,
   selectChainLen, selectChainTier, selectRoundActive, selectBlindId, selectIsBoss,
   selectShopOffers, selectShopRerollCost, selectCatalysts, selectVouchers,
-  selectPlayerName, selectTensionFromState,
+  selectPlayerName, selectTensionFromState, selectAccent,
 } from './selectors';
+import { lookupConstellation } from '../data/constellations';
 import type { GameState } from './store';
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
@@ -93,5 +94,33 @@ describe('selectTensionFromState', () => {
     const tMany = selectTensionFromState(manyHands);
     const tFew = selectTensionFromState(fewHands);
     expect(tFew).toBeGreaterThanOrEqual(tMany);
+  });
+});
+
+describe('selectAccent', () => {
+  it('returns the constellation color when not on a boss blind', () => {
+    const base = makeState();
+    const notBoss = { ...base, round: { ...base.round, isBoss: false } } as unknown as GameState;
+    expect(selectAccent(notBoss)).toBe(lookupConstellation('lyra').color);
+  });
+
+  it('returns boss red regardless of constellation when on a boss blind', () => {
+    const base = makeState({ round: { ...makeState().round, isBoss: true } } as unknown as Partial<GameState>);
+    expect(selectAccent(base)).toBe('#e2334a');
+  });
+
+  it('switches color per constellation', () => {
+    const base = makeState();
+    const argo = { ...base,
+      run: { ...base.run, constellationId: 'argo' },
+      round: { ...base.round, isBoss: false },
+    } as unknown as GameState;
+    const mensa = { ...base,
+      run: { ...base.run, constellationId: 'mensa' },
+      round: { ...base.round, isBoss: false },
+    } as unknown as GameState;
+    expect(selectAccent(argo)).toBe(lookupConstellation('argo').color);
+    expect(selectAccent(mensa)).toBe(lookupConstellation('mensa').color);
+    expect(selectAccent(argo)).not.toBe(selectAccent(mensa));
   });
 });

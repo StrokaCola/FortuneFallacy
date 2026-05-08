@@ -1,6 +1,7 @@
 import type { GameState } from './store';
 import { selectTension, type TensionInputs } from '../audio/heat';
 import { maxCatalystSlots } from '../core/vouchers';
+import { lookupConstellation } from '../data/constellations';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
 export const selectScore       = (s: GameState) => s.round.score;
@@ -17,6 +18,15 @@ export const selectChainTier  = (s: GameState) => s.round.chainTier;
 export const selectRoundActive = (s: GameState) => s.round.active;
 export const selectBlindId    = (s: GameState) => s.round.blindId;
 export const selectIsBoss     = (s: GameState) => s.round.isBoss;
+
+// Run-wide accent color. Boss debuffs override the constellation tint
+// (red trumps everything — players need to recognise boss state at a
+// glance) so this is intentionally a derived selector rather than a
+// raw read off run.constellationId.
+export function selectAccent(s: GameState): string {
+  if (s.round.isBoss) return '#e2334a';
+  return lookupConstellation(s.run.constellationId).color;
+}
 export const selectShopOffers = (s: GameState) => s.shop.offers;
 export const selectShopRerollCost = (s: GameState) => s.shop.rerollCost;
 export const selectPendingPack = (s: GameState) => s.shop.pendingPack;

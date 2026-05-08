@@ -37,6 +37,15 @@ export type Constellation = {
   name: string;
   flavor: string;
   rules: string[];
+  // Identity tint used as the run-wide accent color (TopBar Astrolabe,
+  // ComboBanner border/glow, Round action-bar arrows). Avoid the four
+  // semantically reserved colors that already mean something:
+  //   #f5c451 (gold)    — target crossed / "TARGET BEAT" stamp
+  //   #ff7847 (orange)  — multiplier tier 0
+  //   #cc88ff (magenta) — multiplier tier 1 / generic beat tint
+  //   #e2334a (crimson) — boss debuff (overrides constellation accent)
+  // Keep above ~50% luminance so the color reads on the dark backdrop.
+  color: string;
   dice: DiceSpec;
   startingCatalysts?: string[];
   startingMods?: string[];
@@ -57,6 +66,7 @@ export const CONSTELLATIONS: Constellation[] = [
     name: 'Lyra, the Lyre',
     flavor: 'The classic five-string sky.',
     rules: ['Five standard d6 dice', 'No rule changes'],
+    color: '#7be3ff',
     dice: Array.from({ length: 5 }, () => d6Plain()),
     glyph: [{ x: 15, y: 50 }, { x: 35, y: 30 }, { x: 50, y: 60 }, { x: 70, y: 35 }, { x: 88, y: 55 }],
   },
@@ -69,6 +79,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Match thresholds raised: Five-of-a-Kind needs 6 matching, Four needs 5',
       'Straight thresholds raised by 1',
     ],
+    color: '#c084fc',
     dice: Array.from({ length: 7 }, () => d6Plain()),
     modifiers: { comboCountBonus: 1, straightLenBonus: 1 },
     glyph: [
@@ -85,6 +96,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Four/Five-of-a-Kind impossible',
       'Straight thresholds drop by 2 (Small=2, Large=3)',
     ],
+    color: '#fbbf24',
     dice: [d12Plain(), d12Plain(), d12Plain()],
     modifiers: { straightLenBonus: -2 },
     glyph: [{ x: 25, y: 50 }, { x: 50, y: 30 }, { x: 75, y: 50 }],
@@ -99,6 +111,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Captain = highest face this hand; crew = the others',
       'Forge & mods disabled, +2 catalyst slots',
     ],
+    color: '#34d399',
     dice: [d20Plain(), d20Plain(), d20Plain()],
     modifiers: {
       scoringMode: 'captain_crew',
@@ -123,6 +136,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Two 1s on every die — pairs trivialise',
       'Face 8 carries most of the chips',
     ],
+    color: '#fb7185',
     dice: Array.from({ length: 5 }, () => dN([...FIBONACCI_FACES], { label: 'fib' })),
     glyph: [
       { x: 20, y: 60 }, { x: 30, y: 40 }, { x: 45, y: 30 },
@@ -138,6 +152,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Combos easy to land but base chips & mult ×0.5',
       'Still leans on mods to clear later antes.',
     ],
+    color: '#e5e7eb',
     dice: Array.from({ length: 5 }, () => dN([...ECLIPSE_FACES], { label: '0/1' })),
     modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5 },
     glyph: [
@@ -154,6 +169,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Some dice cannot reach high faces — plan accordingly',
       'Match logic unchanged; straight detection adapts',
     ],
+    color: '#60a5fa',
     dice: [d4Plain(), d6Plain(), d8Plain(), d10Plain(), d12Plain()],
     glyph: [
       { x: 15, y: 65 }, { x: 33, y: 35 }, { x: 50, y: 60 },
@@ -169,6 +185,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'WILD becomes whatever value maximises your combo at score time',
       'Base chips & mult ×0.5 (WILD-driven combos hit hard already)',
     ],
+    color: '#a78bfa',
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
     // chainCap: 4 was Ophiuchus's punishment but matches the new default
     // (post-2026-05-07 audit) — removed as identity. Constellation may want a
