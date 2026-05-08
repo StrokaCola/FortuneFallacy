@@ -6,7 +6,7 @@ import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
-import { catalystIdFromEvent } from './catalystEventId';
+import { catalystIdFromEvent } from '../../core/upgrades/eventId';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).

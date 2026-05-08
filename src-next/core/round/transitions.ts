@@ -191,6 +191,9 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         goalIdx: nextGoal,
         ante: nextAnte,
         compoundingStacks: s.run.compoundingStacks + 1,
+        // Track dust gained THIS run for the postmortem celebration line.
+        // Mirrors the meta.cosmicDust grant above so the two stay in sync.
+        runStats: addDustToRunStats(s.run.runStats, dustGained),
       },
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
@@ -253,6 +256,10 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         shards: s.run.shards + auditRefund,
         catalysts: catalystsAfterAudit,
         catalystEditions: editionsAfterAudit,
+        // Bust still earns a small consolation dust grant — track it for
+        // the postmortem so the player sees they made progress even on a
+        // failed run.
+        runStats: addDustToRunStats(s.run.runStats, dustGained),
       },
       meta: {
         ...s.meta,
@@ -282,6 +289,17 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       },
     ],
   };
+}
+
+// Roll dust earned into the run-scoped telemetry block. Tolerant of
+// older save shapes that predate the field — defaults missing fields
+// to a fresh-baseline rather than crashing the postmortem.
+function addDustToRunStats(
+  prev: GameState['run']['runStats'] | undefined,
+  delta: number,
+): GameState['run']['runStats'] {
+  const base = prev ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0 };
+  return { ...base, dustEarned: (base.dustEarned ?? 0) + delta };
 }
 
 // Daily attempt recorder. Keeps the BEST score for the day and stamps

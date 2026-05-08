@@ -65,6 +65,26 @@ export type RunSlice = {
   // partition. Format: 'YYYY-MM-DD' (UTC). See online/dailyChallenge.ts.
   // Daily runs disable astral perks for fair leaderboard comparison.
   dailyDate: string | null;
+  // Per-run telemetry. Aggregated in actions/handlers/roll.ts (SCORE_HAND)
+  // by walking the pipeline's onUpgradeTriggered events. Read by the
+  // post-run Postmortem to celebrate the player's peak moment + show
+  // which catalysts carried their build. Resets on NEW_RUN.
+  runStats: {
+    // Best total single-hand score across the run.
+    peakHand: number;
+    // Combo id at the peak hand (e.g. 'four_kind', 'lg_straight').
+    peakCombo: string | null;
+    // Total chips contributed per catalyst id, summed across all hands.
+    // Edition fires (`edition:foil@stratifier`) and catalyst-driven mod
+    // re-fires (`gilding_press@N`, `encore`) attribute back to the
+    // owning catalyst via catalystIdFromEvent. Pure mod fires (`mod:*`)
+    // are excluded — those credit no catalyst.
+    catalystChips: Record<string, number>;
+    // Cosmic Dust gained THIS run (positive sum across blinds + win
+    // bonus). Pre-bust/win baseline. Accumulated in core/round/transitions.ts
+    // alongside the meta-currency mutation. Reset on NEW_RUN.
+    dustEarned: number;
+  };
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -117,4 +137,10 @@ export const initialRunSlice = (): RunSlice => ({
   stakeId: 'spark',
   challengeId: '',
   dailyDate: null,
+  runStats: {
+    peakHand: 0,
+    peakCombo: null,
+    catalystChips: {},
+    dustEarned: 0,
+  },
 });

@@ -9,6 +9,8 @@ import { recursiveSinkActive } from '../../core/upgrades/catalysts/recursiveSink
 import { grantStipend } from '../../core/upgrades/catalysts/stipend';
 import { updateComboStreaks } from '../../core/round/comboStreak';
 import type { GameEventEmission } from '../../events/types';
+import { catalystIdFromEvent } from '../../core/upgrades/eventId';
+import type { RunSlice } from '../../state/slices/run';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -169,6 +171,12 @@ export const rollHandler: ActionHandler = (a, s) => {
         workingState.run,
         final.combo ? { id: final.combo.id, tier: final.combo.tier } : null,
       );
+      const newRunStats = updateRunStats(
+        workingState.run.runStats,
+        final.events,
+        final.total,
+        final.combo?.id ?? null,
+      );
       const baseState = {
         ...workingState,
         run: {
@@ -176,6 +184,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           ...streakUpdates,
           shards: shardBonus > 0 ? workingState.run.shards + shardBonus : workingState.run.shards,
           handsPlayed: workingState.run.handsPlayed + 1,
+          runStats: newRunStats,
         },
         round: {
           ...workingState.round,
@@ -252,3 +261,35 @@ export const rollHandler: ActionHandler = (a, s) => {
       return { state: s, events: [] };
   }
 };
+
+// Per-hand telemetry roll-up. Walks the pipeline's events for the just-
+// scored hand and attributes each catalyst's chip contribution to its
+// owner via the catalyst-id prefix rules. Pure mod fires (`mod:*`) are
+// filtered out by catalystIdFromEvent → the postmortem credits only
+// catalysts. Returns a fresh runStats with the new totals merged in.
+//
+// Edition stamps and catalyst-driven mod re-fires (gilding_press@N,
+// encore) collapse onto the owning catalyst — a Stratifier with foil
+// edition shows ONE bar in the postmortem, not two.
+function updateRunStats(
+  prev: RunSlice['runStats'],
+  events: GameEventEmission[],
+  handTotal: number,
+  comboId: string | null,
+): RunSlice['runStats'] {
+  // Defensive: persistence has a default but a freshly-cloned state from
+  // tests may pass undefined. Treat missing as a zero-baseline stat block.
+  const base = prev ?? { peakHand: 0, peakCombo: null, catalystChips: {} };
+  const peakHand = Math.max(base.peakHand, handTotal);
+  const peakCombo = handTotal > base.peakHand ? comboId : base.peakCombo;
+  const catalystChips: Record<string, number> = { ...base.catalystChips };
+  for (const ev of events) {
+    if (ev.type !== 'onUpgradeTriggered') continue;
+    const id = catalystIdFromEvent(ev.payload.id);
+    if (!id) continue;
+    const dChips = ev.payload.deltaChips ?? 0;
+    if (dChips === 0) continue;
+    catalystChips[id] = (catalystChips[id] ?? 0) + dChips;
+  }
+  return { peakHand, peakCombo, catalystChips };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { catalystIdFromEvent } from './catalystEventId';
+import { catalystIdFromEvent } from './eventId';
 
 describe('catalystIdFromEvent', () => {
   it('returns the id unchanged for a plain catalyst fire', () => {

@@ -73,6 +73,20 @@ export function applySavedToInitial(s: GameState): GameState {
   // Legacy saves default to null (= a regular run) so they don't accidentally
   // submit to today's daily leaderboard on next clear/bust.
   mergedRun.dailyDate = mergedRun.dailyDate ?? null;
+  // runStats (added 2026-05) accumulates per-catalyst contribution for the
+  // postmortem screen. Legacy saves default to a fresh-run zero; the
+  // postmortem just shows fewer details for a partially-completed legacy run.
+  mergedRun.runStats = mergedRun.runStats ?? {
+    peakHand: 0,
+    peakCombo: null,
+    catalystChips: {},
+    dustEarned: 0,
+  };
+  // Defensive: an older save with runStats but no dustEarned (added later
+  // in 2026-05) shouldn't crash the postmortem on first load.
+  if (typeof mergedRun.runStats.dustEarned !== 'number') {
+    mergedRun.runStats = { ...mergedRun.runStats, dustEarned: 0 };
+  }
   // Defensive defaults for fields that might be missing in older saves but
   // are read by selectors in tight render paths. Without these, selectors
   // that fall back to a fresh `{}`/`[]` literal cause useSyncExternalStore

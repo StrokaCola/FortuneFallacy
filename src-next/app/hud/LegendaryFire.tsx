@@ -3,7 +3,7 @@ import { bus } from '../../events/bus';
 import { useStore, type GameState } from '../../state/store';
 import { lookupCatalyst } from '../../data/catalysts';
 import { sfxPlay } from '../../audio/sfx';
-import { catalystIdFromEvent } from './catalystEventId';
+import { catalystIdFromEvent } from '../../core/upgrades/eventId';
 
 const FLASH_DURATION_MS = 720;
 const COOLDOWN_MS = 380;
