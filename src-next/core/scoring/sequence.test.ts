@@ -61,6 +61,48 @@ describe('buildScoreSequence — tier selection', () => {
     expect(breathIdx).toBeLessThan(boomIdx);
   });
 
+  it('mult-slam chain accelerates: each successive slam has a shorter gap', () => {
+    // Four mults so the accelerando is visible. Use mid tier (predictable
+    // gap) — the per-iteration formula is `baseGap * 0.9^index`, floored
+    // at 65% of base. With baseGap=400 this gives 400, 360, 324, 292.
+    const seq = buildScoreSequence(
+      baseInput({
+        finalTotal: 50,
+        comboBonus: 10,
+        mults: [
+          { label: 'a', value: 2 }, { label: 'b', value: 2 },
+          { label: 'c', value: 2 }, { label: 'd', value: 2 },
+        ],
+      }),
+      baseCtx({ target: 100 }),
+    );
+    const slams = seq.beats.filter((b) => b.kind === 'mult-slam');
+    expect(slams).toHaveLength(4);
+    // Gaps between consecutive slam timestamps must be monotonically
+    // non-increasing (each ≤ previous). Some equality is fine if the
+    // floor kicks in.
+    const gaps = slams.slice(1).map((s, i) => s.t - slams[i]!.t);
+    for (let i = 1; i < gaps.length; i++) {
+      expect(gaps[i]!).toBeLessThanOrEqual(gaps[i - 1]!);
+    }
+    // Last slam should be strictly faster than first (no degenerate flat
+    // chain). Tolerate small rounding noise.
+    expect(gaps[gaps.length - 1]!).toBeLessThan(gaps[0]!);
+  });
+
+  it('mult-slam ampScale rises with chain index (deeper slams hit harder)', () => {
+    const seq = buildScoreSequence(
+      baseInput({
+        mults: [{ label: 'a', value: 2 }, { label: 'b', value: 2 }, { label: 'c', value: 2 }],
+      }),
+      baseCtx({ target: 100 }),
+    );
+    const slams = seq.beats.filter((b) => b.kind === 'mult-slam') as Array<{ ampScale: number }>;
+    expect(slams).toHaveLength(3);
+    expect(slams[1]!.ampScale).toBeGreaterThan(slams[0]!.ampScale);
+    expect(slams[2]!.ampScale).toBeGreaterThan(slams[1]!.ampScale);
+  });
+
   it('emits cross-target on the FIRST beat that crosses target, never twice', () => {
     const seq = buildScoreSequence(
       baseInput({
