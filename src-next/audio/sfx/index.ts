@@ -58,8 +58,49 @@ import.meta.hot?.dispose(() => {
   sfxSettingsUnsub = null;
 });
 
+// Per-cue minimum gap (ms) before another play is allowed. Only listed
+// cues are throttled; everything else fires immediately. Hover/sweep
+// cues need this — sliding the mouse across N offers in a row was
+// queueing N cardFlips that auditioned as a stutter. Click and
+// transactional cues stay un-throttled because the player triggered
+// them deliberately.
+const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
+  uiHover: 80,
+  cardFlip: 90,
+};
+const lastPlayedAt: Partial<Record<SfxId, number>> = {};
+
+// Test-only escape hatch so specs can reset internal throttle state and
+// bypass the bank-init guard without exporting a public reset.
+export const __sfxTestHooks = {
+  resetThrottle(): void {
+    for (const k of Object.keys(lastPlayedAt) as SfxId[]) {
+      delete lastPlayedAt[k];
+    }
+  },
+  getLastPlayedAt(): Partial<Record<SfxId, number>> {
+    return { ...lastPlayedAt };
+  },
+};
+
+// Test-only: lets specs install a stub bank so sfxPlay's `if (!bank)`
+// guard doesn't short-circuit in unit tests. Production paths go
+// through sfxInit which mutates `bank` from null on its own.
+export function __setBankForTest(b: SynthBank | LegacySynthBank | null): void {
+  bank = b;
+}
+
 export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
   if (!bank) return;
+  // Throttle gate — drops the second of two close-together plays of the
+  // same cue. Doesn't queue them; the second sound is just cancelled.
+  const gap = SPAMMABLE_GAP_MS[id];
+  if (gap != null) {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const last = lastPlayedAt[id] ?? 0;
+    if (now - last < gap) return;
+    lastPlayedAt[id] = now;
+  }
   const v = legacyMode ? legacyVoices : voices;
   try {
     switch (id) {
