@@ -1,0 +1,76 @@
+
+ RUN  v4.1.5 /home/user/FortuneFallacy
+
+stdout | src-next/data/balance.fullrun.sim.test.ts > balance simulation: full-run win-rate ladder > reports per-(constellation × stake × profile) clear rates over 200 runs/cell
+
+=== Full-run win-rate ladder ===
+(200 runs per cell, 4 antes × 3 trials, seeded)
+
+--- Per-ante clear rate, Spark stake, "scaling" build ---
+  constellation  A1   A2   A3   A4
+  ----------------------------------------
+  lyra           100%   38%    5%    0%
+  mensa           97%   34%    3%    0%
+  triumvirate     94%    4%    0%    0%
+  argo            21%    0%    0%    0%
+  fibonacci      100%   65%   16%    0%
+  eclipse        100%   54%    1%    0%
+  polyhedra       92%    7%    0%    0%
+  ophiuchus       98%   30%    0%    0%
+
+--- Stake difficulty curve, Lyra constellation, "scaling" build ---
+  stake       A1   A2   A3   A4   any-clear
+  ---------------------------------------------
+  spark       100%   38%    5%    0%     26%
+  ember       100%   31%    3%    0%     22%
+  pyre         99%   27%    1%    0%     21%
+  beacon       74%    1%    0%    0%      8%
+  nova         69%    1%    0%    0%      8%
+  supernova    59%    1%    0%    0%      7%
+
+--- Build profile impact, Lyra @ Spark ---
+  profile                                 A1   A2   A3   A4
+  ------------------------------------------------------------
+  bare (no catalysts)                     100%    5%    0%    0%
+  early (1-2 catalysts)                   100%   17%    0%    0%
+  scaling (mid-game stack)                100%   38%    5%    0%
+  synergy (strong build)                  100%   83%   38%    1%
+
+--- Chain multiplier realization (Spark, scaling profile) ---
+  constellation  cap-mult  mean-peak  cap-hit%
+  ------------------------------------------------
+  lyra            1.75       1.43      0%
+  mensa           1.75       1.43      0%
+  triumvirate     1.75       1.44      0%
+  argo            1.75       1.50      0%
+  fibonacci       1.75       1.39      0%
+  eclipse         1.75       1.41      0%
+  polyhedra       1.75       1.46      0%
+  ophiuchus       1.75       1.44      0%
+
+--- Outlier flags ---
+  [STAKE] lyra: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] mensa: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] triumvirate: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] argo: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] fibonacci: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] eclipse: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] polyhedra: Spark A4 clear only   0% (target ≥50%)
+  [STAKE] ophiuchus: Spark A4 clear only   0% (target ≥50%)
+  [CHAIN] lyra: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] mensa: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] triumvirate: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] argo: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] fibonacci: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] eclipse: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] polyhedra: cap-hit-rate   0% (cap is dead weight)
+  [CHAIN] ophiuchus: cap-hit-rate   0% (cap is dead weight)
+
+
+ ✓ src-next/data/balance.fullrun.sim.test.ts > balance simulation: full-run win-rate ladder > reports per-(constellation × stake × profile) clear rates over 200 runs/cell 1823ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  15:34:24
+   Duration  2.97s (transform 128ms, setup 0ms, import 160ms, tests 1.83s, environment 805ms)
+

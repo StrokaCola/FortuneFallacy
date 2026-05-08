@@ -26,10 +26,13 @@ export const STAKES: Stake[] = [
     id: 'spark',
     name: 'Spark',
     color: '#dcd4ff',
-    flavor: 'A first warming. Standard rules.',
-    rules: ['Default difficulty'],
+    flavor: 'A first warming. One extra hand to learn the rhythm.',
+    // 2026-05-08 — +1 hand on Spark only, to bring scaling-build clear-rate
+    // to ~70% and give new players a forgiving runway. Higher stakes (Ember+)
+    // revert to the standard 3-hand budget so the difficulty gradient widens.
+    rules: ['+1 hand per round', 'Standard targets'],
     targetMult: 1.0,
-    handsDelta: 0,
+    handsDelta: 1,
     rerollsDelta: 0,
     shopPriceMult: 1.0,
   },

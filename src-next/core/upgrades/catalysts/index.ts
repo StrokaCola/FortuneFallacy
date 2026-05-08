@@ -44,6 +44,22 @@ import './shardLung';
 import './gildingPress';
 import './modGravity';
 
+// 2026-05-08 balance pack — 12 catalysts added to lift Spark clear-rate
+// to ~70% per the simulation harness in balance.fullrun.sim.test.ts.
+// Deliberately overtuned per design direction.
+import './luckyStreak';
+import './faceValue';
+import './firstStrike';
+import './momentum';
+import './diceMaster';
+import './prismLens';
+import './streakSeeker';
+import './novaBurst';
+import './highRoller';
+import './royalFlush';
+import './economyEngine';
+import './eclipsePact';
+
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
   'twin_sample', 'cold_hand', 'entropy_index',
@@ -69,5 +85,10 @@ export const CATALYST_IDS = [
   'audit', 'gilding_press',
   // Phase 5g — wide-scoring bonus.
   'mod_gravity',
+  // 2026-05-08 balance pack
+  'lucky_streak', 'face_value', 'first_strike',
+  'momentum', 'dice_master', 'prism_lens',
+  'streak_seeker', 'nova_burst', 'high_roller',
+  'royal_flush', 'economy_engine', 'eclipse_pact',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

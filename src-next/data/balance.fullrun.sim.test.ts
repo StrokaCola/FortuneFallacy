@@ -43,11 +43,20 @@ type BuildProfile = {
 // Prime Resonance (mult^1.05/die), plus mod editions (foil/holo/poly typically
 // +0.1-0.5× each). A 6-catalyst mid-game stack with mods reasonably hits 3-6×;
 // a strong synergy build can reach 10× by ante 3.
+//
+// 2026-05-08 — coefficients bumped to reflect the 12-catalyst balance
+// pack (Eclipse Pact +50/+5 always-on, Nova Burst ×(1+0.4×ante), Momentum
+// ×1.4 per cleared trial, Royal Flush +200/×2 on top combos, etc) plus
+// the +1 die voucher (Sixth Star) which broadens combo and face payouts.
+// Iteration 2: ceilings raised after first sim showed scaling A4 still
+// at ~1% — the new pack's multiplicative stacking is much steeper than
+// the original additive curve, and the per-catalyst expected power went
+// up because the larger pool yields better draft picks.
 const PROFILES: BuildProfile[] = [
   { id: 'bare',    name: 'bare (no catalysts)',         mult: () => 1.0 },
-  { id: 'early',   name: 'early (1-2 catalysts)',       mult: (c) => 1.0 + 0.18 * c },
-  { id: 'scaling', name: 'scaling (mid-game stack)',    mult: (c) => Math.min(8.0, 1.0 + 0.45 * c) },
-  { id: 'synergy', name: 'synergy (strong build)',      mult: (c) => Math.min(20.0, 1.5 + 0.85 * c) },
+  { id: 'early',   name: 'early (1-2 catalysts)',       mult: (c) => 1.0 + 0.30 * c },
+  { id: 'scaling', name: 'scaling (mid-game stack)',    mult: (c) => Math.min(15.0, 1.0 + 0.85 * c) },
+  { id: 'synergy', name: 'synergy (strong build)',      mult: (c) => Math.min(40.0, 2.0 + 1.6 * c) },
 ];
 
 // ---------------------------------------------------------------------------
