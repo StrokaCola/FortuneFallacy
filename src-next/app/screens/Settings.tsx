@@ -50,6 +50,42 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
   );
 }
 
+// Sound captions toggle — accessibility for deaf/HoH players. Local
+// state mirrors localStorage via subscribe so the radio reflects the
+// stored value immediately on mount.
+function CaptionsToggle() {
+  const [enabled, setEnabled] = useState(audioSettings.getCaptionsEnabled());
+  useEffect(() => audioSettings.subscribeCaptions(() => setEnabled(audioSettings.getCaptionsEnabled())), []);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>sound captions</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Sound captions preference">
+        {[
+          { id: 'on',  label: 'On',  hint: 'Floating text labels for every gameplay sound', val: true },
+          { id: 'off', label: 'Off', hint: 'No captions', val: false },
+        ].map((o) => {
+          const active = enabled === o.val;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => audioSettings.setCaptionsEnabled(o.val)}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function HapticsToggle({ pref }: { pref: HapticsPref }) {
   const opts: { id: HapticsPref; label: string; hint: string }[] = [
     { id: 'on',  label: 'On',  hint: 'Always buzz on key moments' },
@@ -169,6 +205,8 @@ export function Settings() {
         <MotionToggle pref={pref} />
 
         <HapticsToggle pref={hapticsPref} />
+
+        <CaptionsToggle />
 
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 

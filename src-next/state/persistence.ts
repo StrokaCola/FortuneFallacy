@@ -98,6 +98,11 @@ export function applySavedToInitial(s: GameState): GameState {
   if (typeof mergedRun.runStats.dustEarned !== 'number') {
     mergedRun.runStats = { ...mergedRun.runStats, dustEarned: 0 };
   }
+  // Audit modal trigger — added 2026-05. Legacy saves default to false
+  // so the modal fires on the next ante-3 entry; that's a small cost
+  // that's better than losing the chance to surface the event at all
+  // for a returning player.
+  mergedRun.auditResolved = mergedRun.auditResolved ?? false;
   // Defensive defaults for fields that might be missing in older saves but
   // are read by selectors in tight render paths. Without these, selectors
   // that fall back to a fresh `{}`/`[]` literal cause useSyncExternalStore

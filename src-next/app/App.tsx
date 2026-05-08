@@ -5,6 +5,8 @@ import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
 import { DailyLoginComet } from './hud/DailyLoginComet';
+import { SoundCaptions } from './hud/SoundCaptions';
+import { AuditEvent } from './hud/AuditEvent';
 import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
@@ -134,6 +136,8 @@ export function App() {
           <ArrivalToast />
           <AchievementToast />
           <DailyLoginComet />
+          <SoundCaptions />
+          <AuditEvent />
           <Particles />
         </div>
 

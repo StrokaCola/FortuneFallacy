@@ -10,6 +10,8 @@ import { stakeIndex } from '../../data/stakes';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
 import { firstBlindExtraHands } from '../run/applyAstralPerks';
+import { pickVoidstorm } from './voidstorms';
+import { mulberry32 } from '../rng';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
@@ -75,6 +77,10 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // equal to the current ante. Pure round-start grant; the score-time spend
   // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
   const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
+  // Voidstorm — derived from the run seed mixed with goalIdx so each blind
+  // gets a stable but distinct roll. Boss blinds always skip.
+  const stormRng = mulberry32((s.run.seed ^ (s.run.goalIdx * 0x9e3779b1)) >>> 0);
+  const voidstormId = pickVoidstorm(() => stormRng.next(), isBoss);
   return {
     state: {
       ...s,
@@ -92,6 +98,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         rerollsLeft: rerollsPerHand(s),
         dice,
         scoringOrder,
+        voidstormId,
       },
     },
     events: isBoss

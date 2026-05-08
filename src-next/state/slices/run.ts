@@ -85,6 +85,10 @@ export type RunSlice = {
     // alongside the meta-currency mutation. Reset on NEW_RUN.
     dustEarned: number;
   };
+  // Audit (mid-run risk event) — true once the player has resolved the
+  // ante-3 audit modal (either gambled or skipped). Stays false through
+  // antes 1 and 2 so the modal pops on ante 3 entry.
+  auditResolved: boolean;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -145,4 +149,5 @@ export const initialRunSlice = (): RunSlice => ({
     catalystChips: {},
     dustEarned: 0,
   },
+  auditResolved: false,
 });

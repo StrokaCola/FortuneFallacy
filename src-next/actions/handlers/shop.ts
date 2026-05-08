@@ -5,6 +5,7 @@ import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModS
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
+import { sellTriggerFor } from '../../core/shop/sellTriggers';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
@@ -384,16 +385,24 @@ export const shopHandler: ActionHandler = (a, s) => {
         // Drop the edition stamp (if any) so a re-bought catalyst with
         // the same id doesn't inherit the prior edition.
         const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};
-        return {
-          state: {
-            ...s,
-            run: {
-              ...s.run,
-              shards: s.run.shards + refund,
-              catalysts: removeAt(s.run.catalysts, a.index),
-              catalystEditions: remainingEditions,
-            },
+        // Build the post-removal state first; sell-trigger effects then
+        // observe and mutate THAT (so e.g. compounding-bias clears its
+        // own stacks even though the catalyst is already gone).
+        const afterRemoval: GameState = {
+          ...s,
+          run: {
+            ...s.run,
+            shards: s.run.shards + refund,
+            catalysts: removeAt(s.run.catalysts, a.index),
+            catalystEditions: remainingEditions,
           },
+        };
+        const trigger = sellTriggerFor(id);
+        const finalState: GameState = trigger
+          ? { ...afterRemoval, run: { ...afterRemoval.run, ...trigger.apply(afterRemoval) } }
+          : afterRemoval;
+        return {
+          state: finalState,
           events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
         };
       }

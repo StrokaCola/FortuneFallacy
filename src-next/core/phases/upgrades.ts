@@ -4,6 +4,7 @@ import { hasDebuff } from '../round/debuffs';
 import { applyDieModStep } from '../mods/applyDieModStep';
 import { editionBonus } from '../upgrades/editions';
 import { applyResonances } from '../upgrades/resonance';
+import { applyVoidstorm } from '../round/voidstorms';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -69,6 +70,11 @@ export const upgrades: PhaseFn = (ctx) => {
   if (!catalystsBlocked) {
     next = applyResonances(next);
   }
+
+  // Voidstorm: per-blind chip/mult tilt. NOT skipped under
+  // catalysts-blocked — voidstorms are world-state, not catalyst-derived,
+  // so a Callisto debuff doesn't suppress them.
+  next = applyVoidstorm(next);
 
   return next;
 };

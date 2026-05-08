@@ -45,6 +45,10 @@ export type RoundSlice = {
   // subsequent qualifying hands within the same trial. Resets on
   // START_BLIND alongside the counter.
   hotStreakFiredThisBlind: boolean;
+  // Voidstorm — per-blind modifier ID picked at START_BLIND. ~25% of
+  // non-boss blinds roll one. See core/round/voidstorms.ts. Null when
+  // no storm is active.
+  voidstormId: string | null;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -84,4 +88,5 @@ export const initialRoundSlice = (): RoundSlice => ({
   scoringOrder: [0, 1, 2, 3, 4],
   hotHandsInRow: 0,
   hotStreakFiredThisBlind: false,
+  voidstormId: null,
 });

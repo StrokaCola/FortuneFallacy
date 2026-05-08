@@ -36,6 +36,7 @@ export type Action =
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
   | { type: 'CLAIM_DAILY_LOGIN'; date: string }
+  | { type: 'RESOLVE_AUDIT'; choice: 'gamble' | 'skip' }
   | { type: 'SEE_COACHMARK'; id: string }
   | { type: 'SKIP_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' };

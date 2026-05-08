@@ -9,6 +9,7 @@ import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
 import { LegendaryFire } from '../hud/LegendaryFire';
 import { HotStreakBanner } from '../hud/HotStreakBanner';
+import { VoidstormBadge } from '../hud/VoidstormBadge';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
 import { ClearShardsToast } from '../hud/ClearShardsToast';
@@ -84,6 +85,7 @@ export function Round() {
       <CatalystStrip />
       <LegendaryFire />
       <HotStreakBanner />
+      <VoidstormBadge />
       <ShardDeductToast />
       <ShardGainToast />
       <ClearShardsToast />

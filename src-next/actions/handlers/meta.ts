@@ -60,6 +60,29 @@ export const metaHandler: ActionHandler = (a, s) => {
         state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false } } },
         events: [],
       };
+    case 'RESOLVE_AUDIT': {
+      // Mid-run risk event at start of ante 3. 'gamble' is a 50/50
+      // coin flip: win → +shards (double current), lose → -shards
+      // (half current, floor 1). 'skip' costs a flat 5 shards. Pure
+      // function here; the modal screen drives the choice.
+      if (s.run.auditResolved) return { state: s, events: [] };
+      const cur = s.run.shards;
+      let nextShards = cur;
+      if (a.choice === 'gamble') {
+        // Deterministic-ish coin flip seeded from run.seed + handsPlayed
+        // so two players gambling on the same seed don't get different
+        // results. Mulberry-style hash without pulling in the helper.
+        const h = ((s.run.seed ^ (s.run.handsPlayed * 0x9e3779b1) ^ 0xdeadbeef) >>> 0);
+        const win = (h % 2) === 0;
+        nextShards = win ? cur * 2 : Math.max(1, Math.floor(cur / 2));
+      } else {
+        nextShards = Math.max(0, cur - 5);
+      }
+      return {
+        state: { ...s, run: { ...s.run, shards: nextShards, auditResolved: true } },
+        events: [],
+      };
+    }
     case 'CLAIM_DAILY_LOGIN': {
       // Idempotent — claiming for the same date twice is a silent no-op
       // so the visual layer doesn't have to track whether it already
