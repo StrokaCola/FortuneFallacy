@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
-import { lookupConsumable } from '../../core/consumables';
+import { lookupConsumable, consumableRarity } from '../../core/consumables';
 import { hasDebuff } from '../../core/round/debuffs';
 import { SellButton } from './SellButton';
 import { Z } from './zLayers';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
+import { KindFrame } from '../visual/upgradeKindFrames';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -77,10 +78,16 @@ export function ConsumableTray() {
                 }}>
                   {def.type}
                 </div>
-                <div style={{
-                  fontSize: 28, color,
-                  filter: `drop-shadow(0 0 6px ${color}80)`,
-                }}>{def.icon}</div>
+                <KindFrame
+                  kind="consumable"
+                  rarity={consumableRarity(def.type)}
+                  size={42}
+                >
+                  <span style={{
+                    color,
+                    filter: `drop-shadow(0 0 6px ${color}80)`,
+                  }}>{def.icon}</span>
+                </KindFrame>
                 <div className="f-mono uc" style={{
                   fontSize: 7, letterSpacing: '0.14em', color: '#dcd4ff',
                   textAlign: 'center', lineHeight: 1.1,

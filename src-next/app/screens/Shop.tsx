@@ -22,6 +22,9 @@ import { sfxPlay } from '../../audio/sfx';
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import type { CatalystEdition } from '../../state/slices/run';
+import { consumableRarity } from '../../core/consumables';
+import { KindFrame, type UpgradeKind } from '../visual/upgradeKindFrames';
+import { RARITY_COLORS, type Rarity } from '../visual/rarityStyles';
 
 // Stable empty-object fallback so the selector returns a consistent ref
 // across renders (avoids useSyncExternalStore tear-loops).
@@ -72,7 +75,6 @@ function EditionBadge({ edition }: { edition: CatalystEdition }) {
   );
 }
 
-type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string; rarity?: Rarity };
 
 function offerMeta(kind: string, id: string): Meta {
@@ -88,11 +90,12 @@ function offerMeta(kind: string, id: string): Meta {
       color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
       desc: c?.description ?? '',
       kindLabel: c?.type ?? 'calibration',
+      rarity: c ? consumableRarity(c.type) : undefined,
     };
   }
   if (kind === 'voucher') {
     const v = lookupVoucher(id);
-    return { name: v?.name ?? id, icon: '◆', color: '#f5c451', desc: v?.description ?? '', kindLabel: 'voucher' };
+    return { name: v?.name ?? id, icon: '◆', color: '#f5c451', desc: v?.description ?? '', kindLabel: 'voucher', rarity: v?.rarity };
   }
   if (kind === 'mod') {
     const m = lookupMod(id);
@@ -109,12 +112,20 @@ function offerMeta(kind: string, id: string): Meta {
     const p = lookupPack(id);
     const isManeuver = id === 'maneuver';
     const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : isManeuver ? '⤴' : '✦';
+    // Pack rarity derived from tier: galactic = common, stellar = uncommon,
+    // maneuver = rare, anything else (future stellar+) = legendary.
+    const packRarity: Rarity =
+      id === 'galactic' ? 'common'
+      : id === 'stellar' ? 'uncommon'
+      : isManeuver ? 'rare'
+      : 'legendary';
     return {
       name: p?.name ?? id,
       icon: tier,
       color: isManeuver ? '#7be3ff' : '#cc88ff',
       desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Booster pack.',
       kindLabel: 'booster',
+      rarity: packRarity,
       flavor: isManeuver
         ? 'Tactical maneuvers — shape the next hand.'
         : 'Levels up the hand types you choose.',
@@ -123,14 +134,9 @@ function offerMeta(kind: string, id: string): Meta {
   return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
 }
 
-// Per-rarity ring color + label. Legendary uses ember/orange paired with the
-// holographic foil sweep — see styles/index.css `.ff-holo` and `.legendary-aura`.
-const RARITY_COLORS: Record<Rarity, string> = {
-  common:    '#7be3ff',
-  uncommon:  '#cc88ff',
-  rare:      '#f5c451',
-  legendary: '#ff7847',
-};
+// Rarity tokens live in `app/visual/rarityStyles.ts`. Imported above so all
+// four upgrade-rendering surfaces (Shop card, CatalystStrip, ConsumableTray,
+// Codex) share the same palette and helpers.
 
 const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectConsumables = (s: GameState) => s.run.consumables;
@@ -323,15 +329,22 @@ export function Shop() {
                 }}>
                   {m.kindLabel}{m.rarity ? ` · ${m.rarity}` : ''}
                 </div>
-                <div style={{
-                  width: 84, height: 84, borderRadius: 12, marginTop: 8,
-                  background: `radial-gradient(circle at 30% 25%, ${c}40, rgba(15,9,37,0.9) 75%)`,
-                  border: `1px solid ${c}80`,
-                  display: 'grid', placeItems: 'center',
-                  fontSize: 40, color: c,
-                  filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
-                  position: 'relative',
-                }}>{m.icon}</div>
+                <div style={{ marginTop: 8 }}>
+                  <KindFrame
+                    kind={o.kind as UpgradeKind}
+                    rarity={m.rarity ?? null}
+                    accentColor={m.rarity ? undefined : c}
+                    size={84}
+                  >
+                    {/* Icon keeps the offer's own color (catalyst tint, mod
+                        accent, etc.) so identity stays visible inside the
+                        rarity-tinted silhouette. */}
+                    <span style={{
+                      color: c,
+                      filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
+                    }}>{m.icon}</span>
+                  </KindFrame>
+                </div>
                 <div className="f-head" style={{
                   fontSize: 14, color: '#f3f0ff', marginTop: 12, textAlign: 'center',
                   textShadow: isLegendary ? `0 0 8px ${ringColor}80` : undefined,
@@ -503,12 +516,16 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
                 }}
               >
                 {isLegendary && <div className="ff-holo" style={{ borderRadius: 6, opacity: 0.55 }} />}
-                <span style={{
-                  width: 26, height: 26, borderRadius: 4,
-                  background: `${it.color}25`, border: `1px solid ${it.color}80`,
-                  display: 'grid', placeItems: 'center', color: it.color, fontSize: 14,
-                  position: 'relative', zIndex: 2,
-                }}>{it.icon}</span>
+                <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex' }}>
+                  <KindFrame
+                    kind={kind as UpgradeKind}
+                    rarity={it.rarity ?? null}
+                    accentColor={it.rarity ? undefined : it.color}
+                    size={28}
+                  >
+                    <span style={{ color: it.color }}>{it.icon}</span>
+                  </KindFrame>
+                </span>
                 <span className="f-mono" style={{
                   fontSize: 11, color: '#f3f0ff', flex: 1, minWidth: 0,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -565,6 +582,7 @@ function buildCollectionRows({
       desc: v?.description ?? '',
       icon: '◆',
       color: '#f5c451',
+      rarity: v?.rarity,
       disabled: !!block,
       disabledReason: block ?? undefined,
     };
@@ -577,6 +595,7 @@ function buildCollectionRows({
       desc: c?.description ?? '',
       icon: c?.icon ?? '◇',
       color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
+      rarity: c ? consumableRarity(c.type) : undefined,
     };
   });
   const modRows = ownedMods.map((id, index) => {

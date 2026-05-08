@@ -6,9 +6,11 @@ import { MODS } from '../../core/mods';
 import { VOUCHERS } from '../../data/vouchers';
 import { CONSTELLATIONS } from '../../data/constellations';
 import { BOSS_BLINDS } from '../../data/blinds';
-import { CONSUMABLES } from '../../core/consumables';
+import { CONSUMABLES, consumableRarity } from '../../core/consumables';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
+import { KindFrame } from '../visual/upgradeKindFrames';
+import { RARITY_COLORS } from '../visual/rarityStyles';
 
 type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses';
 
@@ -24,12 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
 const selectDiscovered = (s: GameState) => s.meta.discovered;
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
 
-const RARITY_COLORS: Record<string, string> = {
-  common: '#7be3ff',
-  uncommon: '#cc88ff',
-  rare: '#f5c451',
-  legendary: '#ff7847',
-};
+// RARITY_COLORS now lives in app/visual/rarityStyles.ts (shared with Shop).
 
 export function Codex() {
   const [tab, setTab] = useState<Tab>('catalysts');
@@ -152,7 +149,9 @@ function CatalystGrid({ discovered }: { discovered: string[] }) {
         return (
           <Cell key={c.id} locked={!seen} accent={accent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 22, color: c.color }}>{seen ? c.icon : '◇'}</span>
+              <KindFrame kind="catalyst" rarity={seen ? c.rarity : null} size={32}>
+                <span style={{ color: seen ? c.color : '#6a6080' }}>{seen ? c.icon : '◇'}</span>
+              </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>
                   <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{c.name}</div>
@@ -188,7 +187,9 @@ function ModGrid({ discovered }: { discovered: string[] }) {
         return (
           <Cell key={m.id} locked={!seen} accent={accent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20, color: accent }}>{seen ? m.icon : '⫶'}</span>
+              <KindFrame kind="mod" rarity={seen ? m.rarity : null} size={32}>
+                <span style={{ color: seen ? accent : '#6a6080' }}>{seen ? m.icon : '⫶'}</span>
+              </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>
                   <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{m.name}</div>
@@ -215,15 +216,26 @@ function VoucherGrid({ discovered }: { discovered: string[] }) {
     <>
       {VOUCHERS.map((v) => {
         const seen = discovered.includes(v.id);
+        const accent = RARITY_COLORS[v.rarity];
         return (
-          <Cell key={v.id} locked={!seen} accent="#f5c451">
-            {seen ? (
-              <>
-                <div className="f-head" style={{ fontSize: 14, color: '#f5c451' }}>◆ {v.name}</div>
-                <div style={{ fontSize: 11, color: '#dcd4ff', marginTop: 6, lineHeight: 1.4 }}>{v.description}</div>
-              </>
-            ) : (
-              <LockedTitle />
+          <Cell key={v.id} locked={!seen} accent={accent}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <KindFrame kind="voucher" rarity={seen ? v.rarity : null} size={32}>
+                <span style={{ color: seen ? '#f5c451' : '#6a6080' }}>◆</span>
+              </KindFrame>
+              {seen ? (
+                <div style={{ flex: 1 }}>
+                  <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{v.name}</div>
+                  <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.24em', color: accent }}>
+                    {v.rarity}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ flex: 1 }}><LockedTitle /></div>
+              )}
+            </div>
+            {seen && (
+              <div style={{ fontSize: 11, color: '#dcd4ff', marginTop: 6, lineHeight: 1.4 }}>{v.description}</div>
             )}
           </Cell>
         );
@@ -244,7 +256,9 @@ function ConsumableGrid({ discovered }: { discovered: string[] }) {
         return (
           <Cell key={c.id} locked={!seen} accent={tint}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20, color: tint }}>{seen ? (c.icon ?? '◇') : '◇'}</span>
+              <KindFrame kind="consumable" rarity={seen ? consumableRarity(c.type) : null} size={32}>
+                <span style={{ color: seen ? tint : '#6a6080' }}>{seen ? (c.icon ?? '◇') : '◇'}</span>
+              </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>
                   <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{c.name}</div>
