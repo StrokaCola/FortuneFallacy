@@ -66,6 +66,14 @@ export function startAudioBridge(): () => void {
     bus.on('onLockToggled', () => sfxModule.sfxPlay('lockTap')),
     bus.on('onOfferBought', () => sfxModule.sfxPlay('buy')),
     bus.on('onUpgradeSold', () => sfxModule.sfxPlay('buy')),
+    // Astral Forge spend — same kind of "transaction confirmed" beat as
+    // a shop purchase, just at the meta layer. Reusing 'buy' keeps the
+    // soundscape coherent without authoring a new sample.
+    bus.on('onAstralPerkBought', () => sfxModule.sfxPlay('buy')),
+    // Dust earned at end-of-blind. Quieter than 'win' (which already
+    // fires for the clear) so the two cues don't pile on top of each
+    // other — comboChime is a softer bell.
+    bus.on('onDustEarned', () => sfxModule.sfxPlay('comboChime')),
     bus.on('onModFired', ({ modId }) => {
       const def = lookupMod(modId);
       const trigger = def?.visual?.triggerFx;
