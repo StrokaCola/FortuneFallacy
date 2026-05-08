@@ -5,6 +5,7 @@ import { TopBar } from '../hud/TopBar';
 import { useReportHudHeight } from '../hud/useReportHudHeight';
 import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
+import { LegendaryFire } from '../hud/LegendaryFire';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
 import { ClearShardsToast } from '../hud/ClearShardsToast';
@@ -60,6 +61,7 @@ export function Round() {
       <PauseButton />
 
       <CatalystStrip />
+      <LegendaryFire />
       <ShardDeductToast />
       <ShardGainToast />
       <ClearShardsToast />
