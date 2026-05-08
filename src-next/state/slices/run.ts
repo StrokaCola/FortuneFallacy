@@ -60,6 +60,11 @@ export type RunSlice = {
   // Optional Challenge id when this run was started from ChallengeSelect.
   // Empty string = standard run. Challenge modifiers stack on top of stake.
   challengeId: string;
+  // Daily-challenge marker. When non-null, this run was started from the
+  // daily seed and its score should submit to the daily-leaderboard
+  // partition. Format: 'YYYY-MM-DD' (UTC). See online/dailyChallenge.ts.
+  // Daily runs disable astral perks for fair leaderboard comparison.
+  dailyDate: string | null;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -111,4 +116,5 @@ export const initialRunSlice = (): RunSlice => ({
   catalystShardSpend: 0,
   stakeId: 'spark',
   challengeId: '',
+  dailyDate: null,
 });

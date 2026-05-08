@@ -175,6 +175,12 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     ...baseMeta,
     cosmicDust: newDustTotal,
     cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+    // Daily run completion: only the WON path of a clearBlind ends the run
+    // (the player just cleared the final boss). Record/update the daily
+    // history entry so the Title screen shows today's status.
+    dailyHistory: won && s.run.dailyDate
+      ? recordDailyAttempt(s.meta.dailyHistory ?? {}, s, true)
+      : (baseMeta.dailyHistory ?? {}),
   };
   return {
     state: {
@@ -253,6 +259,11 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         highScores,
         cosmicDust: newDustTotal,
         cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+        // Daily bust: record the attempt so the Title shows "today done"
+        // even if the player didn't clear. Best-score-of-day semantics.
+        dailyHistory: s.run.dailyDate
+          ? recordDailyAttempt(s.meta.dailyHistory ?? {}, s, false)
+          : (s.meta.dailyHistory ?? {}),
       },
     },
     events: [
@@ -271,6 +282,31 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       },
     ],
   };
+}
+
+// Daily attempt recorder. Keeps the BEST score for the day and stamps
+// `cleared: true` once any attempt clears (so a later sub-clear bust
+// doesn't downgrade a prior win). No-op if the run isn't daily.
+function recordDailyAttempt(
+  history: GameState['meta']['dailyHistory'],
+  s: GameState,
+  cleared: boolean,
+): GameState['meta']['dailyHistory'] {
+  const date = s.run.dailyDate;
+  if (!date) return history;
+  const prev = history[date];
+  const score = s.round.score;
+  const ante = s.run.ante;
+  // Keep best score; preserve a previous clear even on a fresh worse attempt.
+  const next = {
+    score: Math.max(prev?.score ?? 0, score),
+    cleared: prev?.cleared || cleared,
+    ante: Math.max(prev?.ante ?? 0, ante),
+    constellation: s.run.constellationId,
+    stake: s.run.stakeId,
+    playedAt: Date.now(),
+  };
+  return { ...history, [date]: next };
 }
 
 function pushHighScore(s: GameState, score: number) {

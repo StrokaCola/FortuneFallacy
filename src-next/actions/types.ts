@@ -22,7 +22,7 @@ export type Action =
   | { type: 'START_BLIND' }
   | { type: 'CLEAR_BLIND' }
   | { type: 'BUST_BLIND' }
-  | { type: 'NEW_RUN'; constellationId?: string; stakeId?: string; challengeId?: string }
+  | { type: 'NEW_RUN'; constellationId?: string; stakeId?: string; challengeId?: string; daily?: boolean }
   | { type: 'GRANT_CONSUMABLE'; id: string }
   | { type: 'DISCARD_CONSUMABLE'; index: number }
   | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }

@@ -62,9 +62,17 @@ export function applySavedToInitial(s: GameState): GameState {
     bosses: savedDisc.bosses ?? [],
     consumables: savedDisc.consumables ?? [],
   };
+  // Daily Challenge history (added 2026-05). Legacy saves predate this field;
+  // default to an empty record so the Title screen treats every prior date
+  // as "never attempted". See online/dailyChallenge.ts.
+  mergedMeta.dailyHistory = mergedMeta.dailyHistory ?? {};
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
+  // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.
+  // Legacy saves default to null (= a regular run) so they don't accidentally
+  // submit to today's daily leaderboard on next clear/bust.
+  mergedRun.dailyDate = mergedRun.dailyDate ?? null;
   // Defensive defaults for fields that might be missing in older saves but
   // are read by selectors in tight render paths. Without these, selectors
   // that fall back to a fresh `{}`/`[]` literal cause useSyncExternalStore

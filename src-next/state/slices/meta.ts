@@ -37,6 +37,19 @@ export type MetaSlice = {
     seen: string[];
     dismissed: boolean;
   };
+  // Daily Challenge history. Keyed by 'YYYY-MM-DD' (UTC), so today's
+  // entry tells the Title screen whether the daily has already been
+  // attempted. Best score for the day overwrites previous attempts;
+  // `cleared` flips true on the first successful win. See
+  // online/dailyChallenge.ts and core/round/transitions.ts.
+  dailyHistory: Record<string, {
+    score: number;
+    cleared: boolean;
+    ante: number;
+    constellation: string;
+    stake: string;
+    playedAt: number;
+  }>;
 };
 
 // All constellations are seeded as unlocked while the gameplay-side
@@ -71,4 +84,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   cosmicDustLifetime: 0,
   astralPerks: [],
   onboarding: { seen: [], dismissed: false },
+  dailyHistory: {},
 });

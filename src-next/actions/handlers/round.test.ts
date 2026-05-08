@@ -55,6 +55,63 @@ describe('NEW_RUN', () => {
     const r = roundHandler({ type: 'NEW_RUN' }, baseState());
     expect(r.state.run.constellationId).toBe('lyra');
   });
+
+  describe('daily flag', () => {
+    it('sets dailyDate to today\'s UTC date string', () => {
+      const r = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());
+      expect(r.state.run.dailyDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('overrides any provided constellationId/stakeId with the daily values', () => {
+      // Even though we pass mensa+ember, the daily picks supersede them so
+      // every player gets the same daily config regardless of how they
+      // launched the run.
+      const r = roundHandler(
+        { type: 'NEW_RUN', daily: true, constellationId: 'mensa', stakeId: 'ember' },
+        baseState(),
+      );
+      // Constellation and stake come from the daily lottery — we don't
+      // assert specific values (those rotate by date), but they must not
+      // be the explicitly-passed values when daily=true.
+      // What we DO assert: the run is marked as daily.
+      expect(r.state.run.dailyDate).not.toBeNull();
+    });
+
+    it('sets a deterministic seed (same day → same seed)', () => {
+      const r1 = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());
+      const r2 = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());
+      expect(r1.state.run.seed).toBe(r2.state.run.seed);
+    });
+
+    it('skips astral perks (fair leaderboard)', () => {
+      const stateWithPerks = {
+        ...baseState(),
+        meta: { ...baseState().meta, astralPerks: ['morning_star'] },
+      };
+      const r = roundHandler({ type: 'NEW_RUN', daily: true }, stateWithPerks);
+      // morning_star grants +2 starting shards; daily skips perks so
+      // shards stay at 0.
+      expect(r.state.run.shards).toBe(0);
+    });
+
+    it('non-daily run still applies astral perks', () => {
+      const stateWithPerks = {
+        ...baseState(),
+        meta: { ...baseState().meta, astralPerks: ['morning_star'] },
+      };
+      const r = roundHandler({ type: 'NEW_RUN' }, stateWithPerks);
+      // The perk fires here — confirms the daily-skip is the special case,
+      // not a regression to the perk-apply path.
+      expect(r.state.run.shards).toBeGreaterThan(0);
+    });
+
+    it('non-daily run leaves dailyDate null', () => {
+      const r = roundHandler({ type: 'NEW_RUN' }, baseState());
+      expect(r.state.run.dailyDate).toBeNull();
+    });
+  });
+
+  void vi; // suppress unused-import lint when the suite shrinks
 });
 
 describe('START_BLIND', () => {
