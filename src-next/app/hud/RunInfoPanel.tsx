@@ -143,26 +143,33 @@ export function RunInfoPanel() {
               const eC = ed ? editionColor(ed) : null;
               return (
                 <div key={`${id}-${i}`} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '4px 8px', borderRadius: 6,
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                  padding: '6px 8px', borderRadius: 6,
                   background: 'rgba(15,9,37,0.7)',
                   border: `1px solid ${c.color}55`,
                 }}>
-                  <span style={{ fontSize: 16, color: c.color, width: 22, textAlign: 'center' }}>{c.icon}</span>
-                  <span className="f-head" style={{ fontSize: 12, color: '#f3f0ff', flex: 1 }}>
-                    {c.name}
-                  </span>
-                  {ed && eC && (
-                    <span className="f-mono uc" style={{
-                      fontSize: 8, padding: '1px 5px', borderRadius: 3,
-                      color: eC, border: `1px solid ${eC}88`, background: `${eC}22`,
-                    }}>
-                      {editionLabel(ed).slice(0, 4).toLowerCase()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16, color: c.color, width: 22, textAlign: 'center' }}>{c.icon}</span>
+                    <span className="f-head" style={{ fontSize: 12, color: '#f3f0ff', flex: 1 }}>
+                      {c.name}
                     </span>
+                    {ed && eC && (
+                      <span className="f-mono uc" style={{
+                        fontSize: 8, padding: '1px 5px', borderRadius: 3,
+                        color: eC, border: `1px solid ${eC}88`, background: `${eC}22`,
+                      }}>
+                        {editionLabel(ed).slice(0, 4).toLowerCase()}
+                      </span>
+                    )}
+                    <span className="f-mono uc" style={{ fontSize: 8, color: '#9577ff' }}>
+                      {c.rarity}
+                    </span>
+                  </div>
+                  {c.desc && (
+                    <div style={{ fontSize: 10, color: '#bba8ff', lineHeight: 1.4, paddingLeft: 30 }}>
+                      {c.desc}
+                    </div>
                   )}
-                  <span className="f-mono uc" style={{ fontSize: 8, color: '#9577ff' }}>
-                    {c.rarity}
-                  </span>
                 </div>
               );
             })}
@@ -206,11 +213,18 @@ export function RunInfoPanel() {
             {consumables.map((id, i) => {
               const c = lookupConsumable(id);
               return (
-                <span key={`${id}-${i}`} className="f-mono uc" style={{
+                <span key={`${id}-${i}`} className="f-mono uc has-tip" style={{
                   fontSize: 9, padding: '4px 8px', borderRadius: 4,
                   color: '#7be3ff', border: '1px solid #7be3ff66', background: 'rgba(123,227,255,0.08)',
+                  position: 'relative', cursor: 'help',
                 }}>
                   {c?.icon ?? '◇'} {c?.name ?? id}
+                  {c?.description && (
+                    <span className="tip tip-above" style={{ textTransform: 'none', textAlign: 'left', maxWidth: 240 }}>
+                      <span className="tip-title">{c.name}</span>
+                      {c.description}
+                    </span>
+                  )}
                 </span>
               );
             })}
@@ -244,12 +258,20 @@ export function RunInfoPanel() {
                       const eC = ed ? editionColor(ed) : null;
                       const accent = m?.visual?.accentColor ?? '#bba8ff';
                       return (
-                        <span key={j} className="f-mono uc" style={{
+                        <span key={j} className="f-mono uc has-tip" style={{
                           fontSize: 9, padding: '2px 6px', borderRadius: 3,
                           color: accent, border: `1px solid ${accent}66`, background: `${accent}14`,
+                          position: 'relative', cursor: 'help',
                         }}>
                           {m?.icon ?? '⫶'} {m?.name ?? mid}
                           {eC && <span style={{ marginLeft: 4, color: eC }}>·{editionLabel(ed!).slice(0, 2).toLowerCase()}</span>}
+                          {m?.desc && (
+                            <span className="tip tip-above" style={{ textTransform: 'none', textAlign: 'left', maxWidth: 240 }}>
+                              <span className="tip-title">{m.name}</span>
+                              {m.desc}
+                              {ed && <span style={{ display: 'block', marginTop: 4, color: eC ?? '#bba8ff', fontSize: 9 }}>edition: {editionLabel(ed)}</span>}
+                            </span>
+                          )}
                         </span>
                       );
                     })}

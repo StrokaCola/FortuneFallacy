@@ -25,6 +25,7 @@ import { Codex } from './screens/Codex';
 import { ChallengeSelect } from './screens/ChallengeSelect';
 import { AstralForge } from './screens/AstralForge';
 import { CoachmarkController } from './onboarding/CoachmarkController';
+import { installLongPressTooltips } from './ui/longPressTip';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -42,6 +43,11 @@ export function App() {
 
   useEffect(() => {
     ensureAudioAfterGesture();
+  }, []);
+
+  useEffect(() => {
+    const handle = installLongPressTooltips();
+    return () => handle.dispose();
   }, []);
 
   useEffect(() => {
