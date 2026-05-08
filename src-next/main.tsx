@@ -8,6 +8,7 @@ import { store, setStateRaw } from './state/store';
 import { applySavedToInitial, startPersistence } from './state/persistence';
 import { startDiscoveryBridge } from './state/discoveryBridge';
 import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from './audio/audioBridge';
+import { startHapticsBridge } from './app/haptics/hapticsBridge';
 import { sfxInit } from './audio/sfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
@@ -47,6 +48,7 @@ if (portal?.fromPortal) {
 
 startSimRunner();
 startAudioBridge();
+startHapticsBridge();
 startDiscoveryBridge();
 startPersistence();
 installButtonJuice();
