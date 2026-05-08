@@ -41,6 +41,7 @@ export function TopBar({
   voucherCount = 0,
   vouchers = [],
   accent = '#7be3ff',
+  tense = false,
 }: {
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
   target?: number; score?: number;
@@ -48,6 +49,10 @@ export function TopBar({
   voucherCount?: number;
   vouchers?: string[];
   accent?: string;
+  // Last-throw warning. When true, the score readout pulses red so the
+  // player can't miss that the next hand needs to clear or they bust.
+  // Driven from Round.tsx based on (hands === 1 && score < target).
+  tense?: boolean;
 }) {
   const stakeId = useStore(selectStakeId);
   const challengeId = useStore(selectChallengeId);
@@ -95,8 +100,13 @@ export function TopBar({
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
-              className="f-display num"
-              style={{ fontSize: scoreFontSize, lineHeight: 1, color: '#f3f0ff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              className={`f-display num${tense ? ' last-throw-warn' : ''}`}
+              style={{
+                fontSize: scoreFontSize, lineHeight: 1,
+                color: tense ? '#ff4d6d' : '#f3f0ff',
+                fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                textShadow: tense ? '0 0 18px rgba(255,77,109,0.65)' : undefined,
+              }}
               aria-live="polite"
               aria-atomic="true"
               title={isCompactScore ? scoreFmt.full : undefined}

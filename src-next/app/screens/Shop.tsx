@@ -22,6 +22,7 @@ import { sfxPlay } from '../../audio/sfx';
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import type { CatalystEdition } from '../../state/slices/run';
+import { pairsCompletedBy } from '../../data/resonances';
 import { consumableRarity } from '../../core/consumables';
 import { KindFrame, type UpgradeKind } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS, type Rarity } from '../visual/rarityStyles';
@@ -357,6 +358,39 @@ export function Shop() {
                   {m.name}
                   {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
                 </div>
+                {/* Resonance hint — pulses gold when this offer would
+                    complete a pair with an already-owned catalyst.
+                    Subtle on purpose: no number, just "you have a buddy
+                    for this" so synergy stays a discovery for the player. */}
+                {o.kind === 'catalyst' && (() => {
+                  const completed = pairsCompletedBy(o.id, catalysts);
+                  if (completed.length === 0) return null;
+                  return (
+                    <div className="f-mono uc has-tip" style={{
+                      position: 'relative',
+                      marginTop: 4,
+                      fontSize: 9, letterSpacing: '0.24em',
+                      color: '#ffd84a',
+                      textShadow: '0 0 8px rgba(255,216,74,0.65)',
+                      animation: 'shopSynergyPulse 1.6s ease-in-out infinite',
+                    }}>
+                      ✦ resonance
+                      <span className="tip">
+                        <span className="tip-title">Resonance Available</span>
+                        Buying this completes {completed.length === 1 ? 'a pair' : `${completed.length} pairs`} with what you already own.
+                        {completed.map((p) => (
+                          <span key={p.id} style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#ffd84a',
+                          }}>
+                            ▸ {p.name}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div style={{
                   fontFamily: '"Exo 2", sans-serif',
                   fontSize: 11, color: '#bba8ff', marginTop: 6, textAlign: 'center', lineHeight: 1.4, flex: 1,

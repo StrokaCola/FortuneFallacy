@@ -104,6 +104,11 @@ export type GameEventMap = {
   // display name + dust grant so listeners don't need to lookup the
   // table themselves.
   onAchievementUnlocked: { achievementId: string; dust: number; name: string };
+  // Fired once per blind when the player hits 3 consecutive hands above
+  // the per-hand-share threshold (target × 2/3). Drives the Hot Streak
+  // banner. Sticky for the rest of the blind so subsequent hot hands
+  // don't re-fire the banner.
+  onHotStreak: { length: number };
 };
 
 export type GameEventEmission = {

@@ -5,6 +5,7 @@ import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { TierSigil } from '../visual/TierSigil';
+import { currentPrestigeTier, nextPrestigeTier } from '../../data/prestigeTiers';
 import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
   selectEffectiveCatalystSlotsUsed,
@@ -18,6 +19,7 @@ import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
+const selectCosmicDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime ?? 0;
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -40,6 +42,9 @@ export function Hub() {
   const constellationId = useStore(selectConstellationId);
   const constellation = lookupConstellation(constellationId);
   const forgeDisabled = useStore(selectForgeDisabled);
+  const lifetimeDust = useStore(selectCosmicDustLifetime);
+  const prestige = currentPrestigeTier(lifetimeDust);
+  const next = nextPrestigeTier(lifetimeDust);
   const compact = useIsCompactStage();
   const tight = useIsTightStage();
 
@@ -121,6 +126,46 @@ export function Hub() {
         }}>
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
+
+        {/* Prestige badge — derived from meta.cosmicDustLifetime. Surfaces
+            the player's lifetime ascension tier and the gap to the next.
+            Wanderer tier (everyone's starting state) renders muted so it
+            doesn't draw the eye for new players. */}
+        {!tight && (
+          <div className="f-mono uc has-tip" style={{
+            position: 'relative',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '4px 10px', borderRadius: 999,
+            border: `1px solid ${prestige.color}66`,
+            background: `${prestige.color}14`,
+            fontSize: 9, letterSpacing: '0.32em',
+            color: prestige.color,
+            cursor: 'help',
+          }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              textShadow: prestige.id === 'wanderer'
+                ? undefined
+                : `0 0 8px ${prestige.color}88`,
+            }}>{prestige.glyph}</span>
+            <span>stargazer · {prestige.name}</span>
+            <span className="tip">
+              <span className="tip-title">Stargazer Tier · {prestige.name}</span>
+              Lifetime Cosmic Dust: {lifetimeDust.toLocaleString()}.
+              {next ? (
+                <span style={{ display: 'block', marginTop: 4, color: next.tier.color }}>
+                  ▸ {next.gap.toLocaleString()} more dust to {next.tier.name}.
+                </span>
+              ) : (
+                <span style={{ display: 'block', marginTop: 4, color: '#ff7847' }}>
+                  ▸ Highest tier reached. The cosmos has no further to climb.
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* The constellation thread is 3×240+2×26=772px wide and never
             fits on a 640px landscape phone — drop it on tight. */}

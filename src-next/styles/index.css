@@ -484,6 +484,65 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   60%  { transform: translate(50%, 4px) scale(1.02); opacity: 1; }
   100% { transform: translate(50%, 0) scale(1); opacity: 1; }
 }
+
+/* Shop synergy hint — gentle pulse on the "✦ resonance" label when a
+   shop offer would complete a Resonance pair with an already-owned
+   catalyst. Hue stays gold so it reads as "free value here". */
+@keyframes shopSynergyPulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.06); }
+}
+
+/* "The Pull" — first-roll-of-blind dwell. The Roll button collapses to
+   a brighter, slightly compressed state during the 520ms anticipation
+   window. Color shift toward ember reads as "winding up". */
+.btn.is-pulling {
+  animation: pull-dwell 520ms ease-out forwards;
+  pointer-events: none;
+  filter: brightness(1.15) saturate(1.2);
+}
+@keyframes pull-dwell {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(245,196,81,0.0); }
+  35%  { transform: scale(0.96); box-shadow: 0 0 24px 0 rgba(245,196,81,0.45); }
+  100% { transform: scale(1.04); box-shadow: 0 0 36px 4px rgba(245,196,81,0.0); }
+}
+.reduce-motion .btn.is-pulling {
+  animation: none;
+  filter: none;
+}
+
+/* Last-throw tension — applied to the TopBar score readout when only 1
+   hand remains and the player is below target. Sustained pulse keeps
+   the urgency present until the hand resolves; reduce-motion users
+   still get the red tint and shadow but no animation. */
+.last-throw-warn {
+  animation: last-throw-pulse 1.1s ease-in-out infinite;
+}
+@keyframes last-throw-pulse {
+  0%, 100% { text-shadow: 0 0 12px rgba(255,77,109,0.55); transform: scale(1); }
+  50%      { text-shadow: 0 0 28px rgba(255,77,109,0.95), 0 0 56px rgba(255,77,109,0.5); transform: scale(1.04); }
+}
+.reduce-motion .last-throw-warn {
+  animation: none;
+}
+
+/* "Hot Streak" celebration banner — center-screen entry with overshoot,
+   sustained pulse, then exit fade. Fires once per blind on a 3-hand
+   over-threshold streak. */
+@keyframes hot-streak-in {
+  0%   { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  60%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+@keyframes hot-streak-out {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -52%) scale(0.9); opacity: 0; }
+}
+.reduce-motion .f-mono.uc[style*="shopSynergyPulse"] {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
 .reduce-motion .mat-crystal[style*="achievement-toast-in"] {
   animation: none !important;
   opacity: 1 !important;

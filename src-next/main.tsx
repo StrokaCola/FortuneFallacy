@@ -13,6 +13,7 @@ import { sfxInit } from './audio/sfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { startAchievementListener } from './core/achievements/listener';
+import { startDiceLandShake } from './app/visual/diceLandShake';
 import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
 import './styles/index.css';
@@ -55,6 +56,7 @@ startPersistence();
 installButtonJuice();
 startLeaderboard();
 startAchievementListener();
+startDiceLandShake();
 ensureAudioAfterGesture();
 
 const sfxUnlockEvents = ['pointerdown', 'touchend', 'click', 'keydown'] as const;

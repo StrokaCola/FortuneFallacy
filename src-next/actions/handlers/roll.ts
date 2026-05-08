@@ -178,6 +178,18 @@ export const rollHandler: ActionHandler = (a, s) => {
         final.total,
         final.combo?.id ?? null,
       );
+      // Hot Streak: a hand is "hot" when it scores above its fair share
+      // (target × 2/3 — twice what a single hand would need to clear in
+      // 3 hands). Resets to 0 on any miss. Three in a row triggers the
+      // celebration banner; sticky once fired so the banner doesn't
+      // re-emit on the 4th and 5th hots.
+      const target = workingState.round.target;
+      const isHotHand = target > 0 && final.total >= (target * 2 / 3);
+      const hotHandsInRow = isHotHand
+        ? (workingState.round.hotHandsInRow ?? 0) + 1
+        : 0;
+      const hotStreakFiredThisBlind = workingState.round.hotStreakFiredThisBlind ?? false;
+      const shouldFireHotStreak = hotHandsInRow >= 3 && !hotStreakFiredThisBlind;
       const baseState = {
         ...workingState,
         run: {
@@ -199,6 +211,8 @@ export const rollHandler: ActionHandler = (a, s) => {
           shardSinkPrimedThisHand: false,
           recursiveSinkPrimedThisHand: false,
           tithePrimedThisHand: 0,
+          hotHandsInRow,
+          hotStreakFiredThisBlind: hotStreakFiredThisBlind || shouldFireHotStreak,
           lastScoringCtx: {
             combo: final.combo ?? null,
             chips: final.chips ?? 0,
@@ -213,6 +227,12 @@ export const rollHandler: ActionHandler = (a, s) => {
         },
       };
       const baseEvents = [...final.events, ...modFiredEvents];
+      if (shouldFireHotStreak) {
+        baseEvents.push({
+          type: 'onHotStreak',
+          payload: { length: hotHandsInRow },
+        });
+      }
 
       let pendingRoundEnd: 'clear' | 'bust' | null = null;
       if (workingState.round.active && newScore >= workingState.round.target && workingState.round.target > 0) {
