@@ -7,7 +7,7 @@ export type Beat =
   | { kind: 'mult-slam';     t: number; label: string; multiplier: number; pitchSemis: number; ampScale: number; tint?: 'gold' | 'magenta' }
   | { kind: 'cross-target';  t: number; runningTotal: number; target: number }
   | { kind: 'hold-breath';   t: number; durMs: number }
-  | { kind: 'boom';          t: number; finalTotal: number; crossedTarget: boolean }
+  | { kind: 'boom';          t: number; finalTotal: number; crossedTarget: boolean; megaRatio?: number }
   | { kind: 'bail';          t: number; runningTotal: number; target: number };
 
 export type SequenceTier = 'short' | 'mid' | 'full';

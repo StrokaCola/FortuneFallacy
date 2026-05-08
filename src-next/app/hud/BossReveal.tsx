@@ -5,9 +5,18 @@ import { BossSigil } from '../visual/BossSigil';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
 import { triggerShake } from '../visual/screenShake';
+import { audioEngine } from '../../audio/AudioEngine';
+import { DUCK_PRESETS } from '../../audio/duckEnvelope';
 import { Z } from './zLayers';
 
-type Reveal = { id: string; ts: number; ante: number };
+type RevealPhase = 'dread' | 'reveal';
+type Reveal = { id: string; ts: number; ante: number; phase: RevealPhase };
+
+// "Void approaches" pre-reveal — the music ducks, the screen darkens
+// from the edges inward, and a low drone sting plays. Then the full
+// reveal panel slams in. Tuned tight (1100ms) so the boss anticipation
+// hits without slowing the loop too far. See plan §5.2.
+const DREAD_DURATION_MS = 1100;
 
 export function BossReveal() {
   const [reveal, setReveal] = useState<Reveal | null>(null);
@@ -27,12 +36,24 @@ export function BossReveal() {
 
   useEffect(() => {
     const off = bus.on('onBossRevealed', ({ blindId, ante }) => {
-      setReveal({ id: blindId, ts: Date.now(), ante });
-      sfxPlay('sigilDraw');
-      triggerShake('big');
-      const sting1 = setTimeout(() => sfxPlay('sigilDraw'), 350);
-      const sting2 = setTimeout(() => sfxPlay('sigilDraw'), 700);
-      const auto   = setTimeout(() => dismiss(), 3200);
+      // Phase 1: void approaches. Darken edges, duck music, low drone.
+      // The reveal panel itself doesn't render yet — the screen
+      // becomes a frame of dread before the boss lands.
+      setReveal({ id: blindId, ts: Date.now(), ante, phase: 'dread' });
+      audioEngine.duck(DUCK_PRESETS.holdBreath(DREAD_DURATION_MS));
+      sfxPlay('bossSting');
+
+      const dreadEnd = setTimeout(() => {
+        // Phase 2: actual reveal. Slam in with the existing sigil
+        // sequence on top of the established mood.
+        setReveal((cur) => cur ? { ...cur, phase: 'reveal' } : null);
+        sfxPlay('sigilDraw');
+        triggerShake('big');
+      }, DREAD_DURATION_MS);
+      const sting1 = setTimeout(() => sfxPlay('sigilDraw'), DREAD_DURATION_MS + 350);
+      const sting2 = setTimeout(() => sfxPlay('sigilDraw'), DREAD_DURATION_MS + 700);
+      const auto   = setTimeout(() => dismiss(), DREAD_DURATION_MS + 3200);
+      timersRef.current.add(dreadEnd);
       timersRef.current.add(sting1);
       timersRef.current.add(sting2);
       timersRef.current.add(auto);
@@ -52,6 +73,50 @@ export function BossReveal() {
   const def = BOSS_BLINDS.find((b) => b.id === reveal.id);
   if (!def) return null;
   const anomalyIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
+
+  // Phase 1: dread. Edges darken inward; sigil silhouettes faintly in
+  // the center. Player can still tap to skip ahead to the panel.
+  if (reveal.phase === 'dread') {
+    return (
+      <div
+        onClick={() => {
+          // Skipping the dread → jump to reveal phase immediately.
+          setReveal((cur) => cur ? { ...cur, phase: 'reveal' } : null);
+        }}
+        role="presentation"
+        aria-hidden
+        className="boss-dread-overlay"
+        style={{
+          position: 'absolute', inset: 0,
+          pointerEvents: 'auto', zIndex: Z.bannerBoss,
+          cursor: 'pointer',
+        }}>
+        <div className="boss-dread-vignette" style={{
+          position: 'absolute', inset: 0,
+          background: `radial-gradient(ellipse at center, transparent 0%, transparent 35%, rgba(3,2,12,0.85) 75%, ${def.color}55 100%)`,
+        }} />
+        <div className="boss-dread-silhouette" style={{
+          position: 'absolute', inset: 0,
+          display: 'grid', placeItems: 'center',
+          opacity: 0.18,
+          filter: `drop-shadow(0 0 24px ${def.color}88)`,
+        }}>
+          <BossSigil boss={def} size={240} animate="none" glow />
+        </div>
+        <div className="f-mono uc boss-dread-label" style={{
+          position: 'absolute',
+          left: '50%', bottom: '12%',
+          transform: 'translateX(-50%)',
+          fontSize: 11, letterSpacing: '0.5em',
+          color: def.color,
+          textShadow: `0 0 16px ${def.color}99`,
+          opacity: 0,
+        }}>
+          ◇ something approaches ◇
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

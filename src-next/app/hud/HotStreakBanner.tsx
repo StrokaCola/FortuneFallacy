@@ -34,6 +34,7 @@ export function HotStreakBanner() {
   return (
     <div
       aria-hidden
+      className="hot-streak-banner"
       style={{
         position: 'absolute',
         top: '38%', left: '50%',

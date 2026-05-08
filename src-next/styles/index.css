@@ -538,6 +538,132 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   100% { transform: translate(-50%, -52%) scale(0.9); opacity: 0; }
 }
+.reduce-motion .hot-streak-banner {
+  animation: none !important;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+/* Boss "void approaches" pre-reveal — vignette closes inward, silhouette
+   pulses faintly, label fades up. The whole sequence runs about 1.1s
+   then yields to the existing reveal panel. */
+.boss-dread-overlay {
+  animation: boss-dread-overlay-in 220ms ease-out;
+}
+.boss-dread-vignette {
+  animation: boss-dread-vignette-close 1100ms cubic-bezier(0.4, 0, 0.6, 1) both;
+}
+.boss-dread-silhouette {
+  animation: boss-dread-silhouette-pulse 1100ms ease-in-out both;
+}
+.boss-dread-label {
+  animation: boss-dread-label-up 1100ms ease-out 200ms both;
+}
+@keyframes boss-dread-overlay-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes boss-dread-vignette-close {
+  0%   { opacity: 0; transform: scale(1.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes boss-dread-silhouette-pulse {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 0.18; transform: scale(1); }
+  100% { opacity: 0.32; transform: scale(1.04); }
+}
+@keyframes boss-dread-label-up {
+  0%   { opacity: 0; transform: translate(-50%, 12px); }
+  60%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+.reduce-motion .boss-dread-vignette,
+.reduce-motion .boss-dread-silhouette,
+.reduce-motion .boss-dread-label,
+.reduce-motion .boss-dread-overlay {
+  animation: none;
+  opacity: 1;
+}
+
+/* Apex combo banner — scale-in with overshoot for tier-6+ combos. The
+   wreath orbits slowly so it doesn't compete with the boom animation. */
+@keyframes apex-banner-in {
+  0%   { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  60%  { transform: translateX(-50%) scale(1.08); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+@keyframes apex-wreath-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* Apex shimmer — same gradient sweep as the legendary card foil but
+   tuned for the wider banner aspect ratio. */
+.apex-banner-shimmer {
+  position: relative;
+}
+.apex-banner-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 30%,
+    rgba(245,196,81,0.18) 48%,
+    rgba(255,120,71,0.22) 52%,
+    transparent 70%);
+  background-size: 200% 100%;
+  mix-blend-mode: screen;
+  animation: apex-shimmer-sweep 3.2s linear infinite;
+  border-radius: inherit;
+}
+@keyframes apex-shimmer-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.reduce-motion .apex-banner-shimmer::after,
+.reduce-motion svg[style*="apex-wreath-spin"] {
+  animation: none !important;
+}
+
+/* Mega-boom hit-stop — applied to #stage-root for 480-720ms when the
+   score lands at ≥3× target. Chromatic aberration via filter chain;
+   the slight scale-up gives the moment camera-punch weight. */
+#stage-root.mega-boom {
+  animation: mega-boom-freeze 480ms ease-out;
+  /* Filter pulse rides on top of the existing transform shake without
+     stomping it because it's a separate property. */
+}
+#stage-root.mega-boom-deep {
+  animation: mega-boom-freeze 720ms cubic-bezier(0.15, 0.7, 0.3, 1);
+}
+@keyframes mega-boom-freeze {
+  0% {
+    filter: none;
+    transform: scale(1);
+  }
+  20% {
+    filter:
+      drop-shadow(-3px 0 0 rgba(123,227,255,0.55))
+      drop-shadow(3px 0 0 rgba(255,77,109,0.55))
+      brightness(1.15) saturate(1.4);
+    transform: scale(1.02);
+  }
+  60% {
+    filter:
+      drop-shadow(-1.5px 0 0 rgba(123,227,255,0.3))
+      drop-shadow(1.5px 0 0 rgba(255,77,109,0.3))
+      brightness(1.05);
+    transform: scale(1.01);
+  }
+  100% {
+    filter: none;
+    transform: scale(1);
+  }
+}
+.reduce-motion #stage-root.mega-boom,
+.reduce-motion #stage-root.mega-boom-deep {
+  animation: none;
+}
 .reduce-motion .f-mono.uc[style*="shopSynergyPulse"] {
   animation: none !important;
   opacity: 1 !important;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { store, type GameState } from '../../state/store';
 import { Z } from './zLayers';
+import { sfxPlay } from '../../audio/sfx';
 
 // Floating "+N ◇" toast triggered by any shard-gain during a round (mod
 // shardsBonus, refinery, stipend, etc.). Watches the store so we don't have
@@ -34,6 +35,21 @@ export function ShardGainToast() {
       if (screen !== 'round' && screen !== 'hub') return;
       const id = toastId++;
       setToasts((t) => [...t, { id, amount: delta }]);
+      // Per-coin clinks — discrete chipTick per shard with rising pitch,
+      // capped at MAX_CLINKS so a +20 blind-clear bonus doesn't burst
+      // the voice pool. Light pitch jitter + spacing variance so the
+      // sequence sounds organic instead of a clean arpeggio.
+      const MAX_CLINKS = 8;
+      const clinkCount = Math.min(MAX_CLINKS, delta);
+      for (let i = 0; i < clinkCount; i++) {
+        const baseHz = 540 + i * 28;
+        const jitter = (Math.random() - 0.5) * 18;
+        const t = setTimeout(() => {
+          sfxPlay('chipTick', { freq: baseHz + jitter, gain: 0.55 });
+          timersRef.current.delete(t);
+        }, i * (32 + Math.random() * 14));
+        timersRef.current.add(t);
+      }
       const timer = setTimeout(() => {
         setToasts((t) => t.filter((x) => x.id !== id));
         timersRef.current.delete(timer);
