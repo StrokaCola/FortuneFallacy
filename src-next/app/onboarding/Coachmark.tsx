@@ -4,8 +4,14 @@
 //
 // Mounted by CoachmarkController.tsx — this component is "dumb": given an
 // active CoachmarkDef, render the bubble.
+//
+// Portaled to #stage-root so the bubble escapes #next-root's stacking
+// context (z-index: 2) and stacks above #three-next (z-index: 3, the
+// dice canvas). Without the portal the bubble's inline z-index is
+// trapped inside next-root and gets covered by the dice.
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { dispatch } from '../../actions/dispatch';
 import type { CoachmarkDef } from './coachmarks';
 
@@ -64,7 +70,10 @@ export function Coachmark({ def }: { def: CoachmarkDef }) {
   // Arrow x relative to bubble: centered on anchor, clamped within bubble.
   const arrowX = Math.max(16, Math.min(BUBBLE_W - 16, anchorCenterX - left));
 
-  return (
+  // Portal target — fall back to body if #stage-root is missing (tests).
+  const portalRoot = document.getElementById('stage-root') ?? document.body;
+
+  const bubble = (
     <div
       role="dialog"
       aria-label="Tutorial hint"
@@ -128,4 +137,6 @@ export function Coachmark({ def }: { def: CoachmarkDef }) {
       />
     </div>
   );
+
+  return createPortal(bubble, portalRoot);
 }
