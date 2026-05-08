@@ -10,7 +10,7 @@
 //
 // Everything is vanilla — no build step, no bundler, no framework.
 
-const REGISTRY_URL = 'https://callumhyoung.github.io/gamejam/games.json';
+const REGISTRY_URL = 'https://callumhyoung.github.io/gamejam/jam1.json';
 
 // Hardcoded fallback used if the registry fetch fails (offline, CORS, rate-limited).
 // Add a couple of known jam games here so your portals still work.
