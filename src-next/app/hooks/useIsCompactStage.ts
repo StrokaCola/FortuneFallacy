@@ -55,3 +55,34 @@ export function useIsTightStage(): boolean {
 
   return tight;
 }
+
+// Wide-mode: desktop landscape viewports with enough room to break out
+// of the mobile-first vertical stack. The original layout centres the
+// dice tray on a 1280-wide stage; on actual desktop monitors that
+// leaves wasted starfield to either side. Wide-mode opts the catalyst
+// strip into a vertical left rail (component checks this hook), which
+// frees the top-right area and gives the play surface breathing room.
+//
+// Threshold is generous on width (≥1280px) but also requires ≥760px
+// height so split-screen / half-window setups aren't promoted into a
+// layout that needs vertical space for the rail.
+function computeWide(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth >= 1280 && window.innerHeight >= 760;
+}
+
+export function useIsWideMode(): boolean {
+  const [wide, setWide] = useState(computeWide);
+
+  useEffect(() => {
+    const update = () => setWide(computeWide());
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  return wide;
+}
