@@ -74,6 +74,9 @@ export function applySavedToInitial(s: GameState): GameState {
     unlocked: savedAchievements.unlocked ?? [],
     unlockedAt: savedAchievements.unlockedAt ?? {},
   };
+  // Daily login (added 2026-05). Legacy saves default to "never logged
+  // in" so the comet fires on first visit after upgrading.
+  mergedMeta.dailyLogin = mergedMeta.dailyLogin ?? { lastDate: null };
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';

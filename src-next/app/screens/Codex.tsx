@@ -81,31 +81,34 @@ export function Codex() {
         {tab === 'achievements' ? (
           <AchievementsView unlocked={achievements.unlocked} />
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 10,
-            marginBottom: 24,
-          }}>
-            {tab === 'catalysts' && (
-              <CatalystGrid discovered={discovered.catalysts} />
-            )}
-            {tab === 'mods' && (
-              <ModGrid discovered={discovered.mods} />
-            )}
-            {tab === 'vouchers' && (
-              <VoucherGrid discovered={discovered.vouchers} />
-            )}
-            {tab === 'consumables' && (
-              <ConsumableGrid discovered={discovered.consumables} />
-            )}
-            {tab === 'constellations' && (
-              <ConstellationGrid stakeProgress={stakeProgress} />
-            )}
-            {tab === 'bosses' && (
-              <BossGrid discovered={discovered.bosses} />
-            )}
-          </div>
+          <>
+            <CodexProgressHeader tab={tab} discovered={discovered} stakeProgress={stakeProgress} />
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: 10,
+              marginBottom: 24,
+            }}>
+              {tab === 'catalysts' && (
+                <CatalystGrid discovered={discovered.catalysts} />
+              )}
+              {tab === 'mods' && (
+                <ModGrid discovered={discovered.mods} />
+              )}
+              {tab === 'vouchers' && (
+                <VoucherGrid discovered={discovered.vouchers} />
+              )}
+              {tab === 'consumables' && (
+                <ConsumableGrid discovered={discovered.consumables} />
+              )}
+              {tab === 'constellations' && (
+                <ConstellationGrid stakeProgress={stakeProgress} />
+              )}
+              {tab === 'bosses' && (
+                <BossGrid discovered={discovered.bosses} />
+              )}
+            </div>
+          </>
         )}
 
         <div style={{ textAlign: 'center', marginTop: 18 }}>
@@ -116,6 +119,78 @@ export function Codex() {
             ← Back
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Per-tab progress strip — "X / Y discovered" with a colored bar.
+// Drives the codex completion rewards: tooltip on hover lists the
+// matching achievement(s) so the player sees the dust payoff for
+// finishing the set. Constellations tab shows highest-stake-cleared
+// counts instead of discovery (the table doesn't track discovery for
+// that kind, since constellations are picked at run start).
+function CodexProgressHeader({
+  tab,
+  discovered,
+  stakeProgress,
+}: {
+  tab: Tab;
+  discovered: GameState['meta']['discovered'];
+  stakeProgress: GameState['meta']['stakeProgress'];
+}) {
+  let label: string;
+  let count: number;
+  let total: number;
+  switch (tab) {
+    case 'catalysts':
+      label = 'catalysts'; count = discovered.catalysts.length; total = CATALYST_META.length; break;
+    case 'mods':
+      label = 'mods'; count = discovered.mods.length; total = MODS.length; break;
+    case 'vouchers':
+      label = 'vouchers'; count = discovered.vouchers.length; total = VOUCHERS.length; break;
+    case 'consumables':
+      label = 'consumables'; count = discovered.consumables.length; total = CONSUMABLES.length; break;
+    case 'bosses':
+      label = 'bosses'; count = discovered.bosses.length; total = BOSS_BLINDS.length; break;
+    case 'constellations':
+      label = 'constellations cleared';
+      count = Object.keys(stakeProgress).length;
+      total = CONSTELLATIONS.length;
+      break;
+    default:
+      return null;
+  }
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  const isFull = count >= total;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      padding: '8px 14px', borderRadius: 8,
+      background: 'rgba(15,9,37,0.6)',
+      border: `1px solid ${isFull ? '#f5c45166' : 'rgba(123,227,255,0.2)'}`,
+      marginBottom: 14,
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 10, letterSpacing: '0.32em',
+        color: isFull ? '#f5c451' : '#bba8ff',
+        flexShrink: 0,
+      }}>
+        ◇ {label}
+      </div>
+      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{
+          width: `${pct}%`, height: '100%',
+          background: isFull ? 'linear-gradient(90deg, #f5c451, #ff7847)' : 'linear-gradient(90deg, #7be3ff, #cc88ff)',
+          boxShadow: isFull ? '0 0 12px rgba(245,196,81,0.6)' : '0 0 8px rgba(123,227,255,0.45)',
+          transition: 'width 400ms ease-out',
+        }} />
+      </div>
+      <div className="f-mono num" style={{
+        fontSize: 12, color: isFull ? '#f5c451' : '#f3f0ff',
+        fontWeight: 700, flexShrink: 0,
+      }}>
+        {count} / {total}
       </div>
     </div>
   );

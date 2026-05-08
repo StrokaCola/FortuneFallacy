@@ -24,6 +24,9 @@ import type { GameEventEmission } from '../events/types';
 import { CATALYST_META } from './catalysts';
 import { activeResonances, RESONANCES } from './resonances';
 import { stakeIndex } from './stakes';
+import { MODS } from '../core/mods';
+import { VOUCHERS } from './vouchers';
+import { BOSS_BLINDS } from './blinds';
 
 export type AchievementCategory =
   | 'first_steps'
@@ -273,6 +276,27 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover every catalyst in the codex.',
     dust: 150, category: 'codex',
     check: (s) => (s.meta.discovered?.catalysts ?? []).length >= CATALYST_META.length,
+  },
+  {
+    id: 'codex_mods_full',
+    name: 'Lattice Reader',
+    description: 'Discover every mod in the codex.',
+    dust: 100, category: 'codex',
+    check: (s) => (s.meta.discovered?.mods ?? []).length >= MODS.length,
+  },
+  {
+    id: 'codex_vouchers_full',
+    name: 'Coupon Collector',
+    description: 'Discover every voucher in the codex.',
+    dust: 50, category: 'codex',
+    check: (s) => (s.meta.discovered?.vouchers ?? []).length >= VOUCHERS.length,
+  },
+  {
+    id: 'codex_bosses_full',
+    name: 'All Names Known',
+    description: 'Discover every boss debuff in the codex.',
+    dust: 75, category: 'codex',
+    check: (s) => (s.meta.discovered?.bosses ?? []).length >= BOSS_BLINDS.length,
   },
 
   // ---------- Risk (4) ----------

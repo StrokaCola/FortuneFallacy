@@ -52,8 +52,8 @@ function baseState(overrides: Partial<{
 }
 
 describe('ACHIEVEMENTS table', () => {
-  it('has exactly 50 ascensions', () => {
-    expect(ACHIEVEMENTS).toHaveLength(50);
+  it('has 53 ascensions across 10 categories', () => {
+    expect(ACHIEVEMENTS).toHaveLength(53);
   });
 
   it('has unique ids across the table', () => {

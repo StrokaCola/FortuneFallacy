@@ -84,6 +84,11 @@ export function startAudioBridge(): () => void {
         case 'backstop':  sfxModule.sfxPlay('modBackstop'); break;
       }
     }),
+    // Forge moments. Attach is a louder confirm; detach is the lighter
+    // "swap" sound. Both ride the existing modAttach/modDetach voices
+    // that were authored but previously unwired.
+    bus.on('onModAttached', () => sfxModule.sfxPlay('modAttach')),
+    bus.on('onModDetached', () => sfxModule.sfxPlay('modDetach')),
   ];
 
   let lastTension = -1;

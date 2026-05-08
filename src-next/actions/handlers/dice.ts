@@ -56,7 +56,7 @@ export const diceHandler: ActionHandler = (a, s) => {
           ...s,
           run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
         },
-        events: [],
+        events: [{ type: 'onModAttached', payload: { dieIdx: a.dieIdx, modId: a.modId } }],
       };
     }
     case 'DETACH_MOD': {
@@ -81,7 +81,9 @@ export const diceHandler: ActionHandler = (a, s) => {
           ...s,
           run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
         },
-        events: [],
+        events: detachedId
+          ? [{ type: 'onModDetached', payload: { dieIdx: a.dieIdx, modId: detachedId } }]
+          : [],
       };
     }
     case 'FORGE_MOD': {

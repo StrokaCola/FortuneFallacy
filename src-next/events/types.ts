@@ -109,6 +109,12 @@ export type GameEventMap = {
   // banner. Sticky for the rest of the blind so subsequent hot hands
   // don't re-fire the banner.
   onHotStreak: { length: number };
+  // Mod attached to a die in the Forge. Drives the attach SFX + a small
+  // visual pulse on the die that just received the mod.
+  onModAttached: { dieIdx: number; modId: string };
+  // Mod removed from a die — fires the detach SFX so the swap reads as
+  // a real two-step interaction.
+  onModDetached: { dieIdx: number; modId: string };
 };
 
 export type GameEventEmission = {

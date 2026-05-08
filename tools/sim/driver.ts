@@ -28,6 +28,10 @@ export interface RunRecord {
   shopRerolls: number;
   bustReason: string;
   combosPlayed: Record<string, number>;
+  // Catalyst ids owned at run end. Captured so downstream sims (build
+  // diversity index, top-builds report, etc.) can analyse what builds
+  // actually clear vs which sit in the long tail.
+  finalCatalysts: string[];
   perBlind: Array<{
     ante: number;
     blindIdx: number;
@@ -76,6 +80,7 @@ export function driveRun(seed: number, opts: DriveOptions): RunRecord {
     shopRerolls: 0,
     bustReason: 'unknown',
     combosPlayed: {},
+    finalCatalysts: [],
     perBlind: [],
     actionLog: [],
   };
@@ -112,6 +117,7 @@ export function driveRun(seed: number, opts: DriveOptions): RunRecord {
       record.finalAnte = s.run.ante;
       record.goalsCleared = s.run.goalIdx;
       record.bustReason = screen === 'win' ? 'won' : (record.perBlind.at(-1)?.outcome === 'bust' ? 'target_miss' : 'unknown');
+      record.finalCatalysts = [...s.run.catalysts];
       detach();
       return record;
     }

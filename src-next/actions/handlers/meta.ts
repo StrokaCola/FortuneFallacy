@@ -60,6 +60,30 @@ export const metaHandler: ActionHandler = (a, s) => {
         state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false } } },
         events: [],
       };
+    case 'CLAIM_DAILY_LOGIN': {
+      // Idempotent — claiming for the same date twice is a silent no-op
+      // so the visual layer doesn't have to track whether it already
+      // dispatched. Dust grant rides the standard onDustEarned channel
+      // so the audio bridge plays the chime.
+      const cur = s.meta.dailyLogin?.lastDate ?? null;
+      if (cur === a.date) return { state: s, events: [] };
+      const dustGained = 5;
+      const dustTotal = (s.meta.cosmicDust ?? 0) + dustGained;
+      return {
+        state: {
+          ...s,
+          meta: {
+            ...s.meta,
+            dailyLogin: { lastDate: a.date },
+            cosmicDust: dustTotal,
+            cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+          },
+        },
+        events: [
+          { type: 'onDustEarned', payload: { delta: dustGained, total: dustTotal, reason: 'win' } },
+        ],
+      };
+    }
     case 'UNLOCK_ACHIEVEMENT': {
       const def = lookupAchievement(a.achievementId);
       if (!def) return { state: s, events: [] };
