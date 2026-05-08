@@ -252,22 +252,55 @@ export function transitionWipe(bank: SynthBank): void {
 }
 
 // ---- multSlam ---------------------------------------------------------------
+// Was: a single 16th-note kick at the beat freq. Sample bank's MembraneSynth
+// has a 500ms decay envelope, but a 16n trigger only releases ~60ms of it —
+// the body never sounded. Now layered: a low sub-thud an octave below the
+// beat freq for weight, the kick at full body, plus the FM bells from
+// castBoom riding the same pitch for harmonic ring. Total perceived volume
+// rises with `gain` (chain depth) so deeper chains hit harder.
 export function multSlam(bank: SynthBank, opts: VoiceOpts & { freq?: number; gain?: number } = {}): void {
   const t = jitteredTime();
   const hz = opts.freq ?? 220;
   const gain = opts.gain ?? 1;
-  bank.castBoom.kick.volume.value = vol('multSlam', -10 + Math.log2(gain) * 6);
-  bank.castBoom.kick.triggerAttackRelease(hz, '16n', t);
-  triggerDuck(bank.buses, 4, 60, 120);
+  // Sub thud: octave-down kick that fades into the room. Gives chest impact
+  // without crowding the on-pitch attack — its frequency is far enough below
+  // the kick that they don't beat against each other.
+  bank.castBoom.kick.volume.value = vol('multSlamSub', -14 + Math.log2(gain) * 6);
+  bank.castBoom.kick.triggerAttackRelease(Math.max(45, hz / 2), '8n', t);
+  // On-pitch kick: slightly louder than before (-10 → -8 base) and 8th-note
+  // duration so the pitch decay actually sounds. Triggered 18ms after the
+  // sub so the two transients don't smear into one mushy click.
+  bank.castBoom.kick.volume.value = vol('multSlam', -8 + Math.log2(gain) * 6);
+  bank.castBoom.kick.triggerAttackRelease(hz, '8n', t + 0.018);
+  // Harmonic ring: castBoom's FM bells one octave above, soft, so the slam
+  // has a sustaining tail rather than just a transient. Gain-scaled so
+  // small slams stay percussive and big ones bloom.
+  bank.castBoom.bells.volume.value = vol('multSlamRing', -22 + Math.log2(gain) * 4);
+  bank.castBoom.bells.triggerAttackRelease(hz * 2, '4n', t + 0.012);
+  // Stronger duck so the slam reads as the loudest event in its window.
+  triggerDuck(bank.buses, 4, 80, 160);
 }
 
 // ---- comboChime -------------------------------------------------------------
+// Was: two 8n pings on lockTap (a 50ms decay FMSynth — basically a
+// notification blip). Now uses combo.bells, the proper FM bell PolySynth
+// authored for this purpose, with a triadic stack and a low fundamental
+// octaves below for body. Result feels celebratory rather than terse.
 export function comboChime(bank: SynthBank): void {
   const t = jitteredTime();
   const root = pickPent(7) * centsToRatio(jitterCents());
-  bank.lockTap.ping.volume.value = vol('comboChime', -14);
-  bank.lockTap.ping.triggerAttackRelease(root, '8n', t);
-  bank.lockTap.ping.triggerAttackRelease(root * 1.5, '8n', t + 0.04);
+  // Triadic bell stack — root, perfect fifth, octave — plays as one chord
+  // rather than two sequential pings. The PolySynth handles voicing.
+  bank.combo.bells.volume.value = vol('comboChimeBells', -12);
+  bank.combo.bells.triggerAttackRelease([root, root * 1.5, root * 2], '4n', t);
+  // Sub fundamental — half the root, much quieter — adds chest body so
+  // the chime doesn't float on top of the mix as a thin sparkle.
+  bank.castBoom.kick.volume.value = vol('comboChimeSub', -22);
+  bank.castBoom.kick.triggerAttackRelease(Math.max(55, root / 4), '8n', t);
+  // Tiny lockTap shimmer one beat later for the "second tick" feel of the
+  // original, but at lower volume so the bell stack remains the focal point.
+  bank.lockTap.ping.volume.value = vol('comboChimeShimmer', -20);
+  bank.lockTap.ping.triggerAttackRelease(root * 3, '16n', t + 0.06);
 }
 
 // ---- targetCross ------------------------------------------------------------

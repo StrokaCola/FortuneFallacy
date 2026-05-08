@@ -239,23 +239,34 @@ function buildUpgradePath(
     }
   }
 
-  // Chain mult-slam (only entry remaining in mults, if applicable)
-  const multGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
+  // Chain mult-slam: progressively shorter gaps as the chain deepens, so a
+  // long mult chain crescendos into a drumroll instead of clicking past at
+  // a flat tempo. Floor at 65% of the base gap so the last slams stay
+  // distinct (a uniform-pace chain felt clunky in playtests). Pitch climbs
+  // 2 semis per slam as before; ampScale rises with pitch and slam index
+  // so deeper slams hit harder both audibly and emotionally.
+  const baseMultGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
+  const minMultGap = Math.round(baseMultGap * 0.65);
   let multSemis = 12;
-  for (const m of input.mults) {
+  for (let mi = 0; mi < input.mults.length; mi++) {
+    const m = input.mults[mi]!;
     runningMult *= m.value;
+    // Linear shortening: each slam ~10% faster than the previous, clamped.
+    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.9, mi)));
     beats.push({
       kind: 'mult-slam',
       t,
       label: m.label,
       multiplier: m.value,
       pitchSemis: multSemis,
-      ampScale: 1 + (multSemis - 12) * 0.1,
+      // Boost amp by pitch-climb (existing) plus a small per-index ramp,
+      // so a 4-mult chain peaks ~30% louder on the last slam vs the first.
+      ampScale: 1 + (multSemis - 12) * 0.1 + mi * 0.08,
       tint: m.tint,
     });
     checkCross();
     multSemis += 2;
-    t += multGap;
+    t += gap;
   }
 
   // Hold-breath
@@ -328,24 +339,28 @@ function buildLegacyPath(
     t += comboGap;
   }
 
-  // Mult-slams — data-driven (no fake slams when mults array is empty)
-  const multGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
+  // Mult-slams — data-driven, with the same accelerando + amp ramp as the
+  // chain-mult path above. See `mults` loop earlier for the rationale.
+  const baseMultGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
+  const minMultGap = Math.round(baseMultGap * 0.65);
   let multSemis = 12;
-  for (const m of input.mults) {
+  for (let mi = 0; mi < input.mults.length; mi++) {
+    const m = input.mults[mi]!;
     const before = running;
     running = Math.round(running * m.value);
+    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.9, mi)));
     beats.push({
       kind: 'mult-slam',
       t,
       label: m.label,
       multiplier: m.value,
       pitchSemis: multSemis,
-      ampScale: 1 + (multSemis - 12) * 0.1,
+      ampScale: 1 + (multSemis - 12) * 0.1 + mi * 0.08,
       tint: m.tint,
     });
     checkCross(before);
     multSemis += 2;
-    t += multGap;
+    t += gap;
   }
 
   // Hold-breath — ALWAYS emitted before boom on non-reduced-motion / non-bail paths
