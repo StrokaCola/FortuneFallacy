@@ -34,6 +34,7 @@ export type Action =
   | { type: 'SKIP_PACK' }
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
+  | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
   | { type: 'SEE_COACHMARK'; id: string }
   | { type: 'SKIP_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' };

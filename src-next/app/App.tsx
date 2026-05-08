@@ -3,6 +3,7 @@ import { DevConsole } from '../devtools/DevConsole';
 import { useScoreSequenceController } from './hud/scoreSequenceController';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
+import { AchievementToast } from './hud/AchievementToast';
 import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
@@ -130,6 +131,7 @@ export function App() {
           </ScreenTransition>
           <BossReveal />
           <ArrivalToast />
+          <AchievementToast />
           <Particles />
         </div>
 

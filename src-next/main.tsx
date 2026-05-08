@@ -12,6 +12,7 @@ import { startHapticsBridge } from './app/haptics/hapticsBridge';
 import { sfxInit } from './audio/sfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
+import { startAchievementListener } from './core/achievements/listener';
 import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
 import './styles/index.css';
@@ -53,6 +54,7 @@ startDiscoveryBridge();
 startPersistence();
 installButtonJuice();
 startLeaderboard();
+startAchievementListener();
 ensureAudioAfterGesture();
 
 const sfxUnlockEvents = ['pointerdown', 'touchend', 'click', 'keydown'] as const;

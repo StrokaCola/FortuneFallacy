@@ -475,6 +475,21 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   100% { opacity: 0; transform: scale(1); }
 }
 
+/* Achievement unlock toast — slides down from the top edge with an
+   overshoot, settles, then fades on its own timer (4s default). The
+   stagger keeps the toast visually separate from any score animation
+   that might be wrapping up at unlock time. */
+@keyframes achievement-toast-in {
+  0%   { transform: translate(50%, -28px) scale(0.95); opacity: 0; }
+  60%  { transform: translate(50%, 4px) scale(1.02); opacity: 1; }
+  100% { transform: translate(50%, 0) scale(1); opacity: 1; }
+}
+.reduce-motion .mat-crystal[style*="achievement-toast-in"] {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translate(50%, 0) !important;
+}
+
 @keyframes shard-deduct-toast {
   0%   { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-30px); }

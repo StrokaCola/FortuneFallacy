@@ -9,10 +9,11 @@ import { BOSS_BLINDS } from '../../data/blinds';
 import { CONSUMABLES, consumableRarity } from '../../core/consumables';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS } from '../visual/rarityStyles';
 
-type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses';
+type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'achievements';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'catalysts', label: 'Catalysts' },
@@ -21,10 +22,13 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'consumables', label: 'Consumables' },
   { id: 'constellations', label: 'Constellations' },
   { id: 'bosses', label: 'Bosses' },
+  { id: 'achievements', label: 'Ascensions' },
 ];
 
 const selectDiscovered = (s: GameState) => s.meta.discovered;
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
+const EMPTY_ACHIEVEMENTS = { unlocked: [] as string[], unlockedAt: {} as Record<string, number> };
+const selectAchievements = (s: GameState) => s.meta.achievements ?? EMPTY_ACHIEVEMENTS;
 
 // RARITY_COLORS now lives in app/visual/rarityStyles.ts (shared with Shop).
 
@@ -32,6 +36,7 @@ export function Codex() {
   const [tab, setTab] = useState<Tab>('catalysts');
   const discovered = useStore(selectDiscovered);
   const stakeProgress = useStore(selectStakeProgress);
+  const achievements = useStore(selectAchievements);
 
   return (
     <div style={{
@@ -73,31 +78,35 @@ export function Codex() {
           ))}
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 10,
-          marginBottom: 24,
-        }}>
-          {tab === 'catalysts' && (
-            <CatalystGrid discovered={discovered.catalysts} />
-          )}
-          {tab === 'mods' && (
-            <ModGrid discovered={discovered.mods} />
-          )}
-          {tab === 'vouchers' && (
-            <VoucherGrid discovered={discovered.vouchers} />
-          )}
-          {tab === 'consumables' && (
-            <ConsumableGrid discovered={discovered.consumables} />
-          )}
-          {tab === 'constellations' && (
-            <ConstellationGrid stakeProgress={stakeProgress} />
-          )}
-          {tab === 'bosses' && (
-            <BossGrid discovered={discovered.bosses} />
-          )}
-        </div>
+        {tab === 'achievements' ? (
+          <AchievementsView unlocked={achievements.unlocked} />
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 10,
+            marginBottom: 24,
+          }}>
+            {tab === 'catalysts' && (
+              <CatalystGrid discovered={discovered.catalysts} />
+            )}
+            {tab === 'mods' && (
+              <ModGrid discovered={discovered.mods} />
+            )}
+            {tab === 'vouchers' && (
+              <VoucherGrid discovered={discovered.vouchers} />
+            )}
+            {tab === 'consumables' && (
+              <ConsumableGrid discovered={discovered.consumables} />
+            )}
+            {tab === 'constellations' && (
+              <ConstellationGrid stakeProgress={stakeProgress} />
+            )}
+            {tab === 'bosses' && (
+              <BossGrid discovered={discovered.bosses} />
+            )}
+          </div>
+        )}
 
         <div style={{ textAlign: 'center', marginTop: 18 }}>
           <button
@@ -331,5 +340,106 @@ function BossGrid({ discovered }: { discovered: string[] }) {
         );
       })}
     </>
+  );
+}
+
+function AchievementsView({ unlocked }: { unlocked: string[] }) {
+  const unlockedSet = new Set(unlocked);
+  const totalUnlocked = unlocked.length;
+  const totalCount = ACHIEVEMENTS.length;
+  return (
+    <div style={{ marginBottom: 24 }}>
+      {/* Header summary — at-a-glance progress for the player. */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        marginBottom: 16, padding: '8px 14px',
+        borderRadius: 8,
+        background: 'rgba(15,9,37,0.6)',
+        border: '1px solid rgba(245,196,81,0.3)',
+      }}>
+        <div className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.32em', color: '#bba8ff' }}>
+          ascensions cleared
+        </div>
+        <div className="f-display num" style={{ fontSize: 20, color: '#f5c451' }}>
+          {totalUnlocked} <span style={{ fontSize: 12, color: '#bba8ff' }}>/ {totalCount}</span>
+        </div>
+      </div>
+      {ACHIEVEMENT_CATEGORIES.map((category) => {
+        const inCategory = ACHIEVEMENTS.filter((a) => a.category === category.id);
+        if (inCategory.length === 0) return null;
+        const earnedHere = inCategory.filter((a) => unlockedSet.has(a.id)).length;
+        return (
+          <div key={category.id} style={{ marginBottom: 18 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <div className="f-mono uc" style={{
+                fontSize: 10, letterSpacing: '0.32em', color: '#7be3ff',
+              }}>
+                ◇ {category.label}
+              </div>
+              <div className="f-mono num" style={{ fontSize: 10, color: '#bba8ff' }}>
+                {earnedHere} / {inCategory.length}
+              </div>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: 8,
+            }}>
+              {inCategory.map((a) => {
+                const isUnlocked = unlockedSet.has(a.id);
+                // Hidden achievements stay opaque until earned: name and
+                // description are masked. Once unlocked, they reveal in
+                // full so the player gets the spoilery payoff.
+                const showDetails = isUnlocked || !a.hidden;
+                return (
+                  <div key={a.id} className="panel" style={{
+                    padding: 10, borderRadius: 8,
+                    border: `1px solid ${isUnlocked ? '#f5c45166' : 'rgba(149,119,255,0.18)'}`,
+                    background: isUnlocked ? 'rgba(35,28,12,0.55)' : 'rgba(15,9,37,0.5)',
+                    opacity: isUnlocked ? 1 : 0.66,
+                    minHeight: 64,
+                  }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                      gap: 8,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="f-head" style={{
+                          fontSize: 13,
+                          color: isUnlocked ? '#f5c451' : '#bba8ff',
+                          letterSpacing: '0.04em',
+                        }}>
+                          {showDetails ? a.name : '???'}
+                        </div>
+                        <div style={{
+                          fontSize: 11, color: '#dcd4ff', marginTop: 4, lineHeight: 1.35,
+                          opacity: showDetails ? 0.9 : 0.5,
+                        }}>
+                          {showDetails ? a.description : 'A hidden ascension. Find it the hard way.'}
+                        </div>
+                      </div>
+                      <div className="f-mono uc" style={{
+                        flexShrink: 0,
+                        fontSize: 9, letterSpacing: '0.18em',
+                        padding: '2px 6px', borderRadius: 4,
+                        color: isUnlocked ? '#f5c451' : '#7a6fa6',
+                        border: `1px solid ${isUnlocked ? '#f5c45188' : 'rgba(122,111,166,0.4)'}`,
+                        background: 'rgba(15,9,37,0.7)',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {isUnlocked ? '✓' : '◇'} {a.dust}◆
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

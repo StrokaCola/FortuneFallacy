@@ -99,6 +99,11 @@ export type GameEventMap = {
   // `delta` is positive for grants, `total` is meta.cosmicDust after the grant.
   onDustEarned:        { delta: number; total: number; reason: 'clear' | 'bust' | 'win' };
   onAstralPerkBought:  { perkId: string; cost: number };
+  // Fired once per achievement-unlock dispatch. Drives the celebration
+  // toast and any future SFX layer. Payload includes the achievement's
+  // display name + dust grant so listeners don't need to lookup the
+  // table themselves.
+  onAchievementUnlocked: { achievementId: string; dust: number; name: string };
 };
 
 export type GameEventEmission = {

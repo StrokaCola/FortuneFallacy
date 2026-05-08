@@ -50,6 +50,18 @@ export type MetaSlice = {
     stake: string;
     playedAt: number;
   }>;
+  // Achievements ("Ascensions"). Each entry is the id of an unlocked
+  // achievement; the data table lives in data/achievements.ts. The
+  // listener in core/achievements/listener.ts subscribes to bus events
+  // and dispatches UNLOCK_ACHIEVEMENT when a predicate fires. Already-
+  // unlocked ids are deduped at dispatch time. Each unlock grants
+  // cosmic dust per the table.
+  achievements: {
+    unlocked: string[];
+    // Last unlock timestamp keyed by id — drives the Codex sort and
+    // can support a "recently unlocked" surface in the future.
+    unlockedAt: Record<string, number>;
+  };
 };
 
 // All constellations are seeded as unlocked while the gameplay-side
@@ -85,4 +97,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   astralPerks: [],
   onboarding: { seen: [], dismissed: false },
   dailyHistory: {},
+  achievements: { unlocked: [], unlockedAt: {} },
 });

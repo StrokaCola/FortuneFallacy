@@ -66,6 +66,14 @@ export function applySavedToInitial(s: GameState): GameState {
   // default to an empty record so the Title screen treats every prior date
   // as "never attempted". See online/dailyChallenge.ts.
   mergedMeta.dailyHistory = mergedMeta.dailyHistory ?? {};
+  // Achievements (added 2026-05). Legacy saves default to a fresh-player
+  // empty set; the listener will re-evaluate predicates on the next
+  // event and unlock any retroactively-earned ones.
+  const savedAchievements = mergedMeta.achievements ?? {};
+  mergedMeta.achievements = {
+    unlocked: savedAchievements.unlocked ?? [],
+    unlockedAt: savedAchievements.unlockedAt ?? {},
+  };
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';

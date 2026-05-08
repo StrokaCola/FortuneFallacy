@@ -1,5 +1,6 @@
 import type { ActionHandler } from './types';
 import { lookupAstralPerk } from '../../data/astralPerks';
+import { lookupAchievement } from '../../data/achievements';
 
 export const metaHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -59,6 +60,49 @@ export const metaHandler: ActionHandler = (a, s) => {
         state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false } } },
         events: [],
       };
+    case 'UNLOCK_ACHIEVEMENT': {
+      const def = lookupAchievement(a.achievementId);
+      if (!def) return { state: s, events: [] };
+      const ach = s.meta.achievements ?? { unlocked: [], unlockedAt: {} };
+      // Already unlocked — silent no-op. The listener fires speculatively
+      // on every event, so this is the dedupe gate.
+      if (ach.unlocked.includes(a.achievementId)) return { state: s, events: [] };
+      const dustGained = def.dust;
+      const dustTotal = (s.meta.cosmicDust ?? 0) + dustGained;
+      return {
+        state: {
+          ...s,
+          meta: {
+            ...s.meta,
+            achievements: {
+              unlocked: [...ach.unlocked, a.achievementId],
+              unlockedAt: { ...ach.unlockedAt, [a.achievementId]: Date.now() },
+            },
+            cosmicDust: dustTotal,
+            cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+          },
+        },
+        events: [
+          {
+            type: 'onAchievementUnlocked',
+            payload: {
+              achievementId: a.achievementId,
+              dust: dustGained,
+              name: def.name,
+            },
+          },
+          // The dust grant rides the standard onDustEarned channel so the
+          // existing audio bridge plays the dust-earned chime. Reason
+          // 'win' is the closest existing variant for an unlock — a
+          // separate 'achievement' reason could come later if we want a
+          // distinct SFX.
+          {
+            type: 'onDustEarned',
+            payload: { delta: dustGained, total: dustTotal, reason: 'win' },
+          },
+        ],
+      };
+    }
     default:
       return { state: s, events: [] };
   }
