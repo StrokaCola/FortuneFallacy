@@ -14,8 +14,21 @@ function modsOf(state: GameState): ConstellationModifiers {
   return lookupConstellation(state.run.constellationId).modifiers ?? {};
 }
 
+// Extra-die voucher ('extra_die', 'Sixth Star') — appends a copy of the
+// constellation's last die to the spec when owned. Read inline (not via
+// vouchers/index.ts) to avoid a circular import: vouchers/index.ts
+// already imports getCatalystSlotBonus from this file.
+function bonusDiceCount(state: GameState): number {
+  return state.run.vouchers?.includes('extra_die') ? 1 : 0;
+}
+
 export function getDiceSpec(state: GameState): DiceSpec {
-  return lookupConstellation(state.run.constellationId).dice;
+  const base = lookupConstellation(state.run.constellationId).dice;
+  const bonus = bonusDiceCount(state);
+  if (bonus === 0) return base;
+  const last = base[base.length - 1];
+  if (!last) return base;
+  return [...base, ...Array.from({ length: bonus }, () => last)];
 }
 
 export function getDiceCount(state: GameState): number {

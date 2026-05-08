@@ -12,14 +12,19 @@ export const BLIND_DEFS: BlindDef[] = [
   { index: 2, name: 'Final Trial',   targetMult: 2.0, isBoss: true,  skipReward: 0 },
 ];
 
+// 2026-05-08 balance pass — sim showed 0% Spark A4 clear-rate at every
+// constellation under the "scaling" build profile; even the "synergy"
+// profile only cleared A4 at 1%. Targets dropped across the board to put
+// Spark within reach of a competent build (~70% A4 clear target). Higher
+// stakes (Ember+) untouched and grow harder via stake.targetMult.
+// Iteration 3: A3/A4 dropped further. A4 Final Trial dropped most (was the
+// single hardest gate in any run). The exponential targets-per-ante curve
+// is preserved (~3× per ante) but starts from a softer floor.
 export const ANTE_BASE_TARGETS: number[][] = [
-  [300,   600,   1000 ],
-  // Ante 2 softened ~20% (was [1200, 2000, 3500]) per the 2026-05-07 perf+balance
-  // audit — the A1→A2 cliff of 4× was the dominant balance issue: clear-rate
-  // dropped from ~98% A1 to ~36% A2 even with a mid-game catalyst stack.
-  [1000,  1600,  2800 ],
-  [4000,  6000,  10000],
-  [12000, 16000, 30000],
+  [250,   500,   800  ],
+  [700,   1100,  1800 ],
+  [1500,  2500,  4000 ],
+  [4500,  6500,  9000 ],
 ];
 
 export type SigilGroupClass =

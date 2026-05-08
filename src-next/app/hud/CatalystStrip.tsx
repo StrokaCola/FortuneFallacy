@@ -5,6 +5,7 @@ import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
+import { KindFrame } from '../visual/upgradeKindFrames';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -146,12 +147,29 @@ export function CatalystStrip() {
               )}
               <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff', position: 'relative', zIndex: 2 }}>catalyst</div>
               <div style={{
-                fontSize: 28, color: c.color,
-                filter: edition === 'poly' && eColor
-                  ? `drop-shadow(-1.5px 0 0 ${eColor}aa) drop-shadow(1.5px 0 0 ${c.color}aa) drop-shadow(0 0 6px ${c.color})`
-                  : `drop-shadow(0 0 6px ${c.color})`,
                 position: 'relative', zIndex: 2,
-              }}>{c.icon}</div>
+                // Poly edition keeps its chromatic-aberration outer wrapper so
+                // the silhouette + glyph both pick up the offset shadow.
+                filter: edition === 'poly' && eColor
+                  ? `drop-shadow(-1.5px 0 0 ${eColor}aa) drop-shadow(1.5px 0 0 ${c.color}aa)`
+                  : undefined,
+              }}>
+                <KindFrame
+                  kind="catalyst"
+                  // Rarity drives the hexagon stroke + glow. Legendary
+                  // already has the outer .legendary-aura on the tile, so
+                  // we suppress the silhouette's own glow there.
+                  rarity={isLegendary ? null : c.rarity ?? null}
+                  size={42}
+                >
+                  {/* Icon stays in the catalyst's identity color so each
+                      catalyst is recognizable independent of rarity. */}
+                  <span style={{
+                    color: c.color,
+                    filter: `drop-shadow(0 0 6px ${c.color})`,
+                  }}>{c.icon}</span>
+                </KindFrame>
+              </div>
               <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}>
                 {c.name.split(' ').pop()}
               </div>

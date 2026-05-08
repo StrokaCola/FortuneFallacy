@@ -74,8 +74,8 @@ describe('upgrades phase — Eris first-hand gate (firstHandPlayed)', () => {
       compoundingStacks: 2,
     });
     const out = upgrades(ctx);
-    // compounding_bias bonus = 4 * (1 + 2*0.05) = 4.4
-    expect(out.mult).toBeCloseTo(4.4, 5);
+    // compounding_bias bonus = 4 * (1 + 2*0.10) = 4.8
+    expect(out.mult).toBeCloseTo(4.8, 5);
   });
 
   it('roll_token-safe: handsLeft === handsMax does not retrigger Eris block once firstHandPlayed=true', () => {
@@ -91,8 +91,8 @@ describe('upgrades phase — Eris first-hand gate (firstHandPlayed)', () => {
       compoundingStacks: 1,
     });
     const out = upgrades(ctx);
-    // 4 * (1 + 0.05) = 4.2; if blocked would stay 4
-    expect(out.mult).toBeCloseTo(4.2, 5);
+    // 4 * (1 + 0.10) = 4.4; if blocked would stay 4
+    expect(out.mult).toBeCloseTo(4.4, 5);
   });
 
   it('non-Eris boss with firstHandPlayed=false does not block catalysts', () => {
@@ -104,7 +104,7 @@ describe('upgrades phase — Eris first-hand gate (firstHandPlayed)', () => {
       compoundingStacks: 2,
     });
     const out = upgrades(ctx);
-    expect(out.mult).toBeCloseTo(4.4, 5);
+    expect(out.mult).toBeCloseTo(4.8, 5);
   });
 });
 

@@ -110,3 +110,16 @@ export const CONSUMABLES: ConsumableDef[] = [
 export function lookupConsumable(id: string): ConsumableDef | undefined {
   return CONSUMABLES.find((c) => c.id === id);
 }
+
+// Derive a Rarity tier from the consumable's `type` field. Used by the
+// kind-frame visual pass so the four owned-consumable surfaces (shop
+// card, ConsumableTray, Codex, collection rows) all gain a rarity tint
+// without having to backfill every individual consumable definition.
+export function consumableRarity(
+  type: ConsumableDef['type'],
+): 'common' | 'uncommon' | 'rare' | 'legendary' {
+  if (type === 'calibration' || type === 'resource') return 'common';
+  if (type === 'galaxy') return 'uncommon';
+  // spectrals + maneuvers are the deepest payoffs in the consumable pool
+  return 'rare';
+}

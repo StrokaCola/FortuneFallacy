@@ -56,7 +56,10 @@ export function emptyStakeContext(): StakeContext {
 
 const BASE_REROLLS_PER_HAND = 2;
 
-/** Reroll budget per hand under the active stake/challenge. Floored at 0. */
+/** Reroll budget per hand under the active stake/challenge. Floored at 0.
+ *  Dice Master catalyst (if owned) grants +1; this is the only catalyst
+ *  that nudges reroll budget directly, so the read site stays cheap. */
 export function rerollsPerHand(s: GameState): number {
-  return Math.max(0, BASE_REROLLS_PER_HAND + stakeContext(s).rerollsDelta);
+  const catalystBonus = s.run.catalysts.includes('dice_master') ? 1 : 0;
+  return Math.max(0, BASE_REROLLS_PER_HAND + stakeContext(s).rerollsDelta + catalystBonus);
 }

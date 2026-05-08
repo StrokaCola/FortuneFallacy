@@ -11,6 +11,35 @@ import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
+import { getDiceSpec } from '../../core/run/diceContext';
+
+// When the extra_die voucher is purchased, pad the per-die parallel
+// arrays so their length matches the new dice spec. Mirrors how new
+// runs initialize these arrays — a missing entry would crash the
+// pipeline at the first roll because applyDieModStep indexes by die.
+function padDiceArraysAfterVoucher(state: GameState): GameState {
+  const spec = getDiceSpec(state);
+  const target = spec.length;
+  const dice = state.round.dice;
+  const diceMods = state.run.diceMods;
+  const diceModEditions = state.run.diceModEditions ?? [];
+  if (dice.length >= target && diceMods.length >= target && diceModEditions.length >= target) {
+    return state;
+  }
+  const padDice = [...dice];
+  while (padDice.length < target) {
+    padDice.push({ id: padDice.length, face: 1, locked: true });
+  }
+  const padMods = [...diceMods];
+  while (padMods.length < target) padMods.push([] as string[]);
+  const padModEds = [...diceModEditions];
+  while (padModEds.length < target) padModEds.push([] as (typeof diceModEditions)[number]);
+  return {
+    ...state,
+    run: { ...state.run, diceMods: padMods, diceModEditions: padModEds },
+    round: { ...state.round, dice: padDice },
+  };
+}
 
 // Effective reroll cost: BASE − astral perk discounts (floor 0). Free Refresh
 // voucher overrides everything to 0.
@@ -242,11 +271,16 @@ export const shopHandler: ActionHandler = (a, s) => {
         offer.kind === 'catalyst'
           ? (s.run.catalystShardSpend ?? 0) + offer.price
           : (s.run.catalystShardSpend ?? 0);
-      const bought: GameState = {
+      const boughtRaw: GameState = {
         ...s,
         run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions, catalystShardSpend },
         shop: { ...s.shop, offers: remaining },
       };
+      // Extra-die voucher: extend round.dice / run.diceMods / diceModEditions
+      // to match the new spec length so the pipeline doesn't read undefined.
+      const bought = offer.kind === 'voucher' && offer.id === 'extra_die'
+        ? padDiceArraysAfterVoucher(boughtRaw)
+        : boughtRaw;
       // Catalyst purchase may cross the 4-catalyst threshold for the first
       // time, unlocking the All-Band legendary in meta.unlocks.
       const withUnlock = offer.kind === 'catalyst' ? maybeUnlockAllBand(bought) : { state: bought, events: [] };
