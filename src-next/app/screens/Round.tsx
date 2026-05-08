@@ -22,7 +22,7 @@ import {
   selectHandsLeft, selectRerollsLeft,
   selectTarget, selectShards, selectAnte,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
-  selectAccent,
+  selectAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -35,6 +35,7 @@ export function Round() {
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
+  const usedCatalystSlots = useStore(selectEffectiveCatalystSlotsUsed);
   const vouchers = useStore(selectVouchers);
   const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
@@ -53,7 +54,7 @@ export function Round() {
         rerolls={rerolls}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
+        catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
         accent={accent}

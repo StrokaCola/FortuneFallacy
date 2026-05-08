@@ -1,6 +1,6 @@
 import type { GameState } from './store';
 import { selectTension, type TensionInputs } from '../audio/heat';
-import { maxCatalystSlots } from '../core/vouchers';
+import { maxCatalystSlots, effectiveCatalystSlotsUsed } from '../core/vouchers';
 import { lookupConstellation } from '../data/constellations';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
@@ -34,6 +34,11 @@ export const selectComboLevels = (s: GameState) => s.run.comboLevels;
 export const selectOwnedMods = (s: GameState) => s.run.ownedMods;
 export const selectCatalysts  = (s: GameState) => s.run.catalysts;
 export const selectMaxCatalystSlots = (s: GameState) => maxCatalystSlots(s);
+// Effective catalyst slots used: catalysts.length minus catalysts marked
+// 'void' edition (which take zero slots). Drives the slot fraction in
+// the TopBar so a void-stamped catalyst doesn't push the player past
+// their cap visually or mechanically.
+export const selectEffectiveCatalystSlotsUsed = (s: GameState) => effectiveCatalystSlotsUsed(s);
 export const selectVouchers   = (s: GameState) => s.run.vouchers;
 export const selectPlayerName = (s: GameState) => s.meta.playerName;
 export const selectUnlocks    = (s: GameState) => s.meta.unlocks;

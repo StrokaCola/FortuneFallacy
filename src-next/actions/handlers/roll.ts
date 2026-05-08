@@ -9,7 +9,8 @@ import { recursiveSinkActive } from '../../core/upgrades/catalysts/recursiveSink
 import { grantStipend } from '../../core/upgrades/catalysts/stipend';
 import { updateComboStreaks } from '../../core/round/comboStreak';
 import type { GameEventEmission } from '../../events/types';
-import { catalystIdFromEvent } from '../../core/upgrades/eventId';
+import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
+import { lookupResonance } from '../../data/resonances';
 import type { RunSlice } from '../../state/slices/run';
 
 export const rollHandler: ActionHandler = (a, s) => {
@@ -285,10 +286,26 @@ function updateRunStats(
   const catalystChips: Record<string, number> = { ...base.catalystChips };
   for (const ev of events) {
     if (ev.type !== 'onUpgradeTriggered') continue;
-    const id = catalystIdFromEvent(ev.payload.id);
-    if (!id) continue;
     const dChips = ev.payload.deltaChips ?? 0;
     if (dChips === 0) continue;
+
+    // Resonance events split contribution evenly between both halves of
+    // the pair. This way each catalyst's bar in the postmortem reflects
+    // both its own fires AND its share of the synergies it enabled —
+    // exactly the storytelling beat we want ("Conductor and Encore each
+    // carried this build").
+    const resonanceId = resonanceIdFromEvent(ev.payload.id);
+    if (resonanceId) {
+      const pair = lookupResonance(resonanceId);
+      if (!pair) continue;
+      const halfChips = dChips / 2;
+      catalystChips[pair.a] = (catalystChips[pair.a] ?? 0) + halfChips;
+      catalystChips[pair.b] = (catalystChips[pair.b] ?? 0) + halfChips;
+      continue;
+    }
+
+    const id = catalystIdFromEvent(ev.payload.id);
+    if (!id) continue;
     catalystChips[id] = (catalystChips[id] ?? 0) + dChips;
   }
   return { peakHand, peakCombo, catalystChips };

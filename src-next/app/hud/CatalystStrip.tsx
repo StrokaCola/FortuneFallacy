@@ -6,7 +6,8 @@ import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
-import { catalystIdFromEvent } from '../../core/upgrades/eventId';
+import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
+import { lookupResonance, activeResonances } from '../../data/resonances';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -32,6 +33,9 @@ type FloaterRecord = {
 };
 
 type RingRecord = { key: number; catalystId: string; color: string };
+
+const RESONANCE_RING_COLOR = '#ffd84a';
+const RESONANCE_FLOATER_TEXT_COLOR = '#ffd84a';
 
 export function CatalystStrip() {
   const catalysts = useStore(selectCatalysts);
@@ -62,6 +66,50 @@ export function CatalystStrip() {
 
     const off = bus.on('onUpgradeTriggered', (payload: { id: string; deltaChips: number; deltaMult: number }) => {
       const id = payload.id;
+
+      // Resonance: a hand-authored pair fired. Pulse BOTH halves with the
+      // legendary fire animation so the player sees the link visually,
+      // and float a single resonance label off the FIRST owned catalyst
+      // card (we don't double the floater — the player just saw "+5 mult"
+      // once, attributed to the named pair).
+      const resonanceId = resonanceIdFromEvent(id);
+      if (resonanceId) {
+        const pair = lookupResonance(resonanceId);
+        if (!pair) return;
+        const halves = [pair.a, pair.b].filter((cId) => catalysts.includes(cId));
+        for (const half of halves) {
+          setPulsing((s) => ({ ...s, [half]: 'fire-legendary' }));
+          track(() => {
+            setPulsing((s) => ({ ...s, [half]: undefined }));
+          }, PULSE_DURATION_LEGENDARY_MS);
+          const ringKey = ++ringKeyRef.current;
+          setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
+          track(() => {
+            setRings((rs) => rs.filter((r) => r.key !== ringKey));
+          }, RING_DURATION_MS);
+        }
+        // Single floater on the first owned half — shows the named beat
+        // ("Symphony +5 mult") rather than two anonymous deltas.
+        if (halves[0]) {
+          const dChips = payload.deltaChips ?? 0;
+          const dMult = payload.deltaMult ?? 0;
+          const parts: string[] = [pair.name];
+          if (dChips > 0) parts.push(`+${Math.round(dChips)}`);
+          if (dMult > 0) parts.push(`+${(Math.round(dMult * 10) / 10).toString().replace(/\.0$/, '')} mult`);
+          const floaterKey = ++floaterKeyRef.current;
+          setFloaters((fs) => [...fs, {
+            key: floaterKey,
+            catalystId: halves[0]!,
+            text: parts.join(' · '),
+            tone: 'mult',
+          }]);
+          track(() => {
+            setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
+          }, FLOATER_DURATION_MS);
+        }
+        return;
+      }
+
       // catalyst_bench is special: it ripples through every OTHER owned
       // catalyst with a chain pulse, so its fire payload itself stays
       // attributed to the bench card.
@@ -132,6 +180,15 @@ export function CatalystStrip() {
 
   if (catalysts.length === 0) return null;
 
+  // Set of catalyst ids that are currently half of an active resonance
+  // pair. Used to draw a "linked" gold accent on the card so players
+  // see synergies at a glance, not just on fire.
+  const linkedIds = new Set<string>();
+  for (const r of activeResonances(catalysts)) {
+    linkedIds.add(r.a);
+    linkedIds.add(r.b);
+  }
+
   return (
     <div style={{
       position: 'absolute',
@@ -171,13 +228,23 @@ export function CatalystStrip() {
         // double-shadow on the icon. Legendary already shimmers; if it ALSO
         // has an edition, we just add the per-edition border accent.
         const showHolo = edition === 'holo' || isLegendary;
+        const isLinked = linkedIds.has(id);
+        const isVoid = edition === 'void';
+        // Void edition wins the border slot — it's the most build-defining
+        // edition and needs the strongest visual grammar. Cosmic-purple
+        // double-pulse glow distinguishes it from poly's orange.
         const borderColor =
+          isVoid && eColor ? eColor :
           edition === 'foil' && eColor ? eColor :
           edition === 'poly' && eColor ? eColor :
-          isLegendary ? '#ff7847cc' : c.color + '80';
+          isLegendary ? '#ff7847cc' :
+          isLinked ? '#ffd84acc' :
+          c.color + '80';
         const extraShadow =
+          isVoid && eColor ? `0 0 22px ${eColor}cc, 0 0 44px ${eColor}66, ` :
           edition === 'foil' && eColor ? `0 0 18px ${eColor}88, ` :
           edition === 'poly' && eColor ? `0 0 14px ${eColor}88, ` :
+          isLinked ? '0 0 12px rgba(255,216,74,0.55), ' :
           '';
         return (
           <div
@@ -241,15 +308,18 @@ export function CatalystStrip() {
                   className="f-mono uc"
                   style={{
                     position: 'absolute', top: 3, left: 3, zIndex: 3,
-                    fontSize: 7, letterSpacing: '0.14em',
+                    fontSize: edition === 'void' ? 9 : 7,
+                    letterSpacing: '0.14em',
                     padding: '1px 3px', borderRadius: 3,
                     color: eColor,
                     background: 'rgba(15,9,37,0.85)',
                     border: `1px solid ${eColor}88`,
+                    fontWeight: edition === 'void' ? 700 : undefined,
+                    textShadow: edition === 'void' ? `0 0 6px ${eColor}` : undefined,
                   }}
                   title={`${edition} edition`}
                 >
-                  {edition.slice(0, 3)}
+                  {edition === 'void' ? '★' : edition.slice(0, 3)}
                 </div>
               )}
               {id === 'compounding_bias' && compoundingStacks > 0 && (

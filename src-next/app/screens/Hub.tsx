@@ -7,6 +7,7 @@ import { OrnateFrame } from '../visual/OrnateFrame';
 import { TierSigil } from '../visual/TierSigil';
 import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
+  selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
 import { lookupConstellation } from '../../data/constellations';
@@ -30,6 +31,7 @@ export function Hub() {
   const shards   = useStore(selectShards);
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
+  const usedCatalystSlots = useStore(selectEffectiveCatalystSlotsUsed);
   const vouchers = useStore(selectVouchers);
   const handsLeft = useStore(selectHandsLeft);
   const rerollsLeft = useStore(selectRerollsLeft);
@@ -72,7 +74,7 @@ export function Hub() {
         rerolls={rerollsLeft}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
+        catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
         accent={accent}

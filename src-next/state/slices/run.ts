@@ -93,7 +93,9 @@ export type RunSlice = {
 //   foil → +50 chips when this catalyst fires
 //   holo → +10 mult when this catalyst fires
 //   poly → ×1.5 to the catalyst's own contribution this trigger
-export type CatalystEdition = 'foil' | 'holo' | 'poly';
+//   void → costs ZERO catalyst slot (Balatro's Negative analog). Ultra-rare;
+//          adds no chip/mult bonus on its own — the slot saving IS the value.
+export type CatalystEdition = 'foil' | 'holo' | 'poly' | 'void';
 
 // Mod-tier editions. Same axes, smaller magnitudes than catalyst editions.
 //   foil → +20 chips when this mod fires

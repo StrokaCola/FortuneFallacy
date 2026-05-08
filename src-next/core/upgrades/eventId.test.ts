@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { catalystIdFromEvent } from './eventId';
+import { catalystIdFromEvent, resonanceIdFromEvent } from './eventId';
 
 describe('catalystIdFromEvent', () => {
   it('returns the id unchanged for a plain catalyst fire', () => {
@@ -29,5 +29,24 @@ describe('catalystIdFromEvent', () => {
 
   it('returns null for malformed edition events without an @', () => {
     expect(catalystIdFromEvent('edition:foil')).toBe(null);
+  });
+
+  it('returns null for resonance events (those go through resonanceIdFromEvent)', () => {
+    expect(catalystIdFromEvent('resonance:symphony')).toBe(null);
+    expect(catalystIdFromEvent('resonance:loaded_die')).toBe(null);
+  });
+});
+
+describe('resonanceIdFromEvent', () => {
+  it('extracts the pair id from a resonance fire event', () => {
+    expect(resonanceIdFromEvent('resonance:symphony')).toBe('symphony');
+    expect(resonanceIdFromEvent('resonance:loaded_die')).toBe('loaded_die');
+  });
+
+  it('returns null for non-resonance events', () => {
+    expect(resonanceIdFromEvent('stratifier')).toBe(null);
+    expect(resonanceIdFromEvent('mod:loaded@3')).toBe(null);
+    expect(resonanceIdFromEvent('edition:foil@stratifier')).toBe(null);
+    expect(resonanceIdFromEvent('')).toBe(null);
   });
 });

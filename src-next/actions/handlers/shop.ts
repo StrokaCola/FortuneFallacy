@@ -1,7 +1,7 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
 import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
-import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots } from '../../core/vouchers';
+import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
@@ -433,7 +433,7 @@ export const shopHandler: ActionHandler = (a, s) => {
         // Selling a voucher that grants a slot must not strand items above
         // the resulting cap. The caps are computed from current vouchers, so
         // a sell would shrink them by 1 in that direction.
-        if (id === 'bench' && s.run.catalysts.length > maxCatalystSlots(s) - 1) return { state: s, events: [] };
+        if (id === 'bench' && effectiveCatalystSlotsUsed(s) > maxCatalystSlots(s) - 1) return { state: s, events: [] };
         if (id === 'capacity' && s.run.consumables.length > maxConsumableSlots(s) - 1) return { state: s, events: [] };
         if (id === 'forged_links' && s.run.diceMods.some((slots) => slots.length > maxModSlots(s) - 1)) return { state: s, events: [] };
         const refund = sellRefund('voucher', id);

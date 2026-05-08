@@ -3,6 +3,7 @@ import { Phase, type PhaseFn, type PipelineCtx } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
 import { applyDieModStep } from '../mods/applyDieModStep';
 import { editionBonus } from '../upgrades/editions';
+import { applyResonances } from '../upgrades/resonance';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -59,6 +60,14 @@ export const upgrades: PhaseFn = (ctx) => {
   // the per-die mod loop AFTER applyModScoring has already finished.
   if (next.state.run.catalysts.includes('encore') && !catalystsBlocked) {
     next = applyEncore(next);
+  }
+
+  // Resonance: hand-authored pair bonuses fire once per hand AFTER the
+  // catalysts and mods have all contributed. Skipped under the same
+  // catalysts-blocked debuff that gates the main loop, since resonances
+  // are themselves catalyst-derived effects.
+  if (!catalystsBlocked) {
+    next = applyResonances(next);
   }
 
   return next;
