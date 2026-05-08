@@ -40,6 +40,27 @@ describe('constellation registry', () => {
     expect(lookupConstellation(undefined).id).toBe(CONSTELLATIONS[0]!.id);
   });
 
+  it('every entry declares an accent color', () => {
+    for (const c of CONSTELLATIONS) {
+      expect(c.color, `${c.id} missing color`).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+
+  it('accent colors are unique across constellations', () => {
+    const colors = CONSTELLATIONS.map((c) => c.color.toLowerCase());
+    expect(new Set(colors).size, 'duplicate accent color').toBe(colors.length);
+  });
+
+  it('accent colors avoid the four reserved semantic palette slots', () => {
+    // These hex values mean specific things in the scoring layer; using
+    // them as constellation tints would create false-positive reads
+    // (e.g., a Triumvirate banner glowing gold reads as "target crossed").
+    const reserved = new Set(['#f5c451', '#ff7847', '#cc88ff', '#e2334a']);
+    for (const c of CONSTELLATIONS) {
+      expect(reserved.has(c.color.toLowerCase()), `${c.id} uses reserved color`).toBe(false);
+    }
+  });
+
   it('every entry has a non-empty dice spec', () => {
     for (const c of CONSTELLATIONS) {
       expect(c.dice.length).toBeGreaterThan(0);

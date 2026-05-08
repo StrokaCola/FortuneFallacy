@@ -3,6 +3,14 @@ import { bus } from '../../events/bus';
 import { getStageSize } from '../../render/stage';
 import { Z } from './zLayers';
 
+// Reduce-motion gate: read once at the start of each handler so the
+// player's current preference is respected even if it changes mid-run.
+// We bail before mutating state so React doesn't re-render for nothing.
+function motionReduced(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('reduce-motion');
+}
+
 type Burst = { id: number; x: number; y: number; tier: number; color: string };
 type Shock = { id: number; x: number; y: number; scale: number };
 type FlyNum = { id: number; x: number; y: number; text: string; color: string };
@@ -19,6 +27,7 @@ export function Particles() {
 
   useEffect(() => {
     const off1 = bus.on('onComboDetected', ({ tier }) => {
+      if (motionReduced()) return;
       const { w, h } = getStageSize();
       const x = w / 2;
       const y = h / 2 - 80;
@@ -28,6 +37,7 @@ export function Particles() {
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 900);
     });
     const off3 = bus.on('onUpgradeTriggered', () => {
+      if (motionReduced()) return;
       const { w, h } = getStageSize();
       const x = w * 0.2 + Math.random() * w * 0.6;
       const y = h * 0.4 + Math.random() * 80;
@@ -36,6 +46,7 @@ export function Particles() {
       setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 700);
     });
     const off4 = bus.on('onScoreBeat', ({ beat }) => {
+      if (motionReduced()) return;
       if (beat.kind === 'mult-slam') {
         const { w, h } = getStageSize();
         const id = nextId++;

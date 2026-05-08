@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import type { Beat } from '../../core/scoring/types';
+import { formatNumber } from './scoreExplainData';
 
 const FADE_OUT_MS = 1200;
 
@@ -145,7 +146,7 @@ export function ScoreBreakdown() {
             textShadow: '0 0 18px rgba(123,227,255,0.55)',
           }}
         >
-          {chips}
+          {formatNumber(chips)}
         </div>
       </div>
       <div

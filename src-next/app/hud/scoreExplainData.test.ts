@@ -44,6 +44,19 @@ describe('formatNumber / formatDelta', () => {
     expect(formatNumber(1.5)).toBe('1.5');
   });
 
+  it('adds thousand-separator commas to integers ≥1000', () => {
+    expect(formatNumber(999)).toBe('999');
+    expect(formatNumber(1000)).toBe('1,000');
+    expect(formatNumber(12345)).toBe('12,345');
+    expect(formatNumber(1234567)).toBe('1,234,567');
+    expect(formatNumber(-50000)).toBe('-50,000');
+  });
+
+  it('keeps multiplier-style decimals raw (no comma decimal point)', () => {
+    expect(formatNumber(1.25)).toBe('1.25');
+    expect(formatNumber(2.5)).toBe('2.5');
+  });
+
   it('signs positive deltas and strips zeros', () => {
     expect(formatDelta(5)).toBe('+5');
     expect(formatDelta(-3)).toBe('-3');

@@ -18,16 +18,16 @@ import { AstralHint } from '../hud/AstralHint';
 import { RoundDebugOverlay } from '../hud/RoundDebugOverlay';
 import { useScoreDisplay } from '../hud/useScoreDisplay';
 import {
-  selectHandsLeft, selectRerollsLeft, selectIsBoss,
+  selectHandsLeft, selectRerollsLeft,
   selectTarget, selectShards, selectAnte,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
+  selectAccent,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
 export function Round() {
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
-  const isBoss   = useStore(selectIsBoss);
   const score    = useScoreDisplay();
   const target   = useStore(selectTarget);
   const shards   = useStore(selectShards);
@@ -37,7 +37,8 @@ export function Round() {
   const vouchers = useStore(selectVouchers);
   const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
-  const accent = isBoss ? '#e2334a' : '#7be3ff';
+  // Constellation accent (red on boss). See selectAccent in state/selectors.ts.
+  const accent = useStore(selectAccent);
 
   const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
 

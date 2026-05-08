@@ -124,8 +124,15 @@ function prettyId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Big numbers without thousands separators were unreadable in the
+// breakdown modal — "1234567" parses as gibberish at a glance.
+// Integers ≥1000 now get locale-formatted commas; multipliers
+// (typically <100, often fractional) keep their raw decimal form so
+// "1.25" doesn't become "1,25" under non-en locales.
 export function formatNumber(n: number): string {
-  if (Number.isInteger(n)) return String(n);
+  if (Number.isInteger(n)) {
+    return Math.abs(n) >= 1000 ? n.toLocaleString('en-US') : String(n);
+  }
   return (Math.round(n * 100) / 100).toString();
 }
 
