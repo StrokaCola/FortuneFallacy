@@ -193,12 +193,13 @@ textarea:focus-visible,
   display: block; margin-top: 6px; font-style: italic; color: #bba8ff; font-size: 10px;
 }
 @media (hover: hover) { .has-tip:hover .tip { opacity: 1; } }
-/* Touch parity: tooltip appears while the trigger is held (and on
-   keyboard focus). Quick taps don't linger long enough to read the
-   tooltip — that's intentional, the player wanted to actually use the
-   thing, not study it. To inspect, press and hold. */
+/* Touch parity: long-press to "stick" a tooltip open, tap elsewhere to
+   dismiss. The .tip-stuck class is applied by app/ui/longPressTip.ts on
+   hold; pure :active was unreliable because the tooltip vanished as soon
+   as the finger lifted, before the player could read it. Keyboard focus
+   still pops the tip for accessibility. */
+.has-tip.tip-stuck .tip { opacity: 1; }
 @media (hover: none) {
-  .has-tip:active .tip,
   .has-tip:focus-within .tip { opacity: 1; }
 }
 

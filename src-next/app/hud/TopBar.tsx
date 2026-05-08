@@ -181,11 +181,25 @@ export function TopBar({
             <span className="f-mono has-tip" style={{ fontSize: 10, color: '#bba8ff', padding: '2px 6px',
               border: '1px solid rgba(149,119,255,0.3)', borderRadius: 4, position: 'relative', cursor: 'help' }}>
               vouchers {voucherCount}
-              <span className="tip">
+              <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
                 <span className="tip-title">Vouchers</span>
-                {vouchers.length === 0
-                  ? 'Permanent run perks bought at the Bazaar.'
-                  : vouchers.map((id) => lookupVoucher(id)?.name ?? id).join(' · ')}
+                {vouchers.length === 0 ? (
+                  'Permanent run perks bought at the Bazaar.'
+                ) : (
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                    {vouchers.map((id) => {
+                      const v = lookupVoucher(id);
+                      return (
+                        <span key={id} style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: '#f3f0ff', fontSize: 11 }}>{v?.name ?? id}</span>
+                          {v?.description && (
+                            <span style={{ color: '#bba8ff', fontSize: 10, lineHeight: 1.35 }}>{v.description}</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
               </span>
             </span>
           )}
