@@ -264,7 +264,11 @@ export function Shop() {
               key={`${offerVersion}-${i}`}
               // Skip the wobble idle animation on tight portrait — reading a
               // vertically stacked column is harder when each card is drifting.
-              className={tight ? '' : 'card-wobble'}
+              // `has-tip` is on this outer wrapper (not the inner panel-strong)
+              // so the tooltip can escape the panel's overflow:hidden, which
+              // clips the legendary holo shimmer. Hover and the long-press
+              // controller both bubble through children to find this ancestor.
+              className={`has-tip${tight ? '' : ' card-wobble'}`}
               style={{
                 position: 'relative',
                 animation: tight
@@ -285,7 +289,7 @@ export function Shop() {
                 />
               )}
             <div
-              className={`panel-strong has-tip${isLegendary ? ' legendary-aura' : ''}`}
+              className={`panel-strong${isLegendary ? ' legendary-aura' : ''}`}
               onMouseEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
               style={{
@@ -353,23 +357,23 @@ export function Shop() {
                   </span>
                 </div>
               </div>
-              <span className="tip">
-                <span className="tip-title">{m.name}</span>
-                {m.desc}
-                {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
-                {o.edition && (o.kind === 'catalyst' || o.kind === 'mod') && (
-                  <span style={{
-                    display: 'block', marginTop: 6,
-                    color: editionColor(o.edition),
-                  }}>
-                    {editionLabel(o.edition)}: {editionBonusDescription(o.kind, o.edition)}
-                  </span>
-                )}
-                <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
-                  Buy ◆ {o.price} · sell back ◆ {refundIfBought}
-                </span>
-              </span>
             </div>
+            <span className="tip">
+              <span className="tip-title">{m.name}</span>
+              {m.desc}
+              {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
+              {o.edition && (o.kind === 'catalyst' || o.kind === 'mod') && (
+                <span style={{
+                  display: 'block', marginTop: 6,
+                  color: editionColor(o.edition),
+                }}>
+                  {editionLabel(o.edition)}: {editionBonusDescription(o.kind, o.edition)}
+                </span>
+              )}
+              <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
+                Buy ◆ {o.price} · sell back ◆ {refundIfBought}
+              </span>
+            </span>
             </div>
           );
         })}
