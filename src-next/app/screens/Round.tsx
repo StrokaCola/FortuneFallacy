@@ -72,6 +72,17 @@ export function Round() {
       <ScoreExplain />
 
       <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} />
+      {/* Invisible anchor for the post-first-roll "tap to lock" coachmark.
+          Sits roughly where the dice settle so the bubble points at them
+          rather than at the entire stage canvas. See app/onboarding/. */}
+      <div
+        data-coach="dice-tray"
+        aria-hidden
+        style={{
+          position: 'absolute', left: '50%', top: 'calc(var(--hud-top-h, 134px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.6)',
+          width: 1, height: 1, transform: 'translateX(-50%)', pointerEvents: 'none',
+        }}
+      />
       <RoundDebugOverlay />
     </div>
   );
@@ -102,6 +113,7 @@ function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; r
         </button>
       ) : (
         <button
+          data-coach="roll-btn"
           className="btn btn-ghost mat-interactive tap"
           disabled={hands === 0}
           onClick={() => dispatch({ type: 'ROLL_REQUESTED' })}>

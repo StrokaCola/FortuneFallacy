@@ -124,7 +124,7 @@ export function Hub() {
             fits on a 640px landscape phone — drop it on tight. */}
         {!tight && <ConstellationThread blinds={blinds} accent={accent} />}
 
-        <div style={{
+        <div data-coach="hub-blinds" style={{
           display: 'flex',
           gap: tight ? 8 : CARD_GAP,
           flexWrap: 'wrap', justifyContent: 'center',

@@ -33,6 +33,9 @@ export type Action =
   | { type: 'PICK_FROM_PACK'; galaxyIdx: number }
   | { type: 'SKIP_PACK' }
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
-  | { type: 'BUY_ASTRAL_PERK'; perkId: string };
+  | { type: 'BUY_ASTRAL_PERK'; perkId: string }
+  | { type: 'SEE_COACHMARK'; id: string }
+  | { type: 'SKIP_ONBOARDING' }
+  | { type: 'RESET_ONBOARDING' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

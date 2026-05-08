@@ -225,7 +225,7 @@ export function Shop() {
         </div>
       </div>
 
-      <div style={tight ? {
+      <div data-coach="shop-offers" style={tight ? {
         // In-flow on tight: parent flex column positions us.
         display: 'flex', flexDirection: 'column', gap: 12, zIndex: 4,
         width: 'min(360px, calc(100vw - 24px))', alignItems: 'stretch',

@@ -35,6 +35,30 @@ export const metaHandler: ActionHandler = (a, s) => {
         events: [{ type: 'onAstralPerkBought', payload: { perkId: a.perkId, cost: perk.cost } }],
       };
     }
+    case 'SEE_COACHMARK': {
+      const onb = s.meta.onboarding ?? { seen: [], dismissed: false };
+      if (onb.seen.includes(a.id)) return { state: s, events: [] };
+      return {
+        state: {
+          ...s,
+          meta: { ...s.meta, onboarding: { ...onb, seen: [...onb.seen, a.id] } },
+        },
+        events: [],
+      };
+    }
+    case 'SKIP_ONBOARDING': {
+      const onb = s.meta.onboarding ?? { seen: [], dismissed: false };
+      if (onb.dismissed) return { state: s, events: [] };
+      return {
+        state: { ...s, meta: { ...s.meta, onboarding: { ...onb, dismissed: true } } },
+        events: [],
+      };
+    }
+    case 'RESET_ONBOARDING':
+      return {
+        state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false } } },
+        events: [],
+      };
     default:
       return { state: s, events: [] };
   }

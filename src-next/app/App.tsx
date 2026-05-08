@@ -24,6 +24,7 @@ import { Settings } from './screens/Settings';
 import { Codex } from './screens/Codex';
 import { ChallengeSelect } from './screens/ChallengeSelect';
 import { AstralForge } from './screens/AstralForge';
+import { CoachmarkController } from './onboarding/CoachmarkController';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -129,6 +130,7 @@ export function App() {
         <OrientationGate />
         <PauseMenu />
         {pendingPack && <PackOverlay />}
+        <CoachmarkController />
         {import.meta.env.DEV && <DevConsole />}
       </div>
     </DiagnosticOverlay>
