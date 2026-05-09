@@ -9,15 +9,64 @@ function formatMult(m: number): string {
   return Number.isInteger(m) ? String(m) : m.toFixed(2);
 }
 
+// Slot-spin tween — rAF-driven roll-up from the previous mult to the
+// new one over MULT_TWEEN_MS. Restarts mid-tween if mult changes again,
+// so back-to-back slams chain visually instead of stalling on the
+// previous tween. Matches the audio pitch ladder cadence.
+const MULT_TWEEN_MS = 240;
+function easeOutQuart(t: number): number {
+  const u = 1 - t;
+  return 1 - u * u * u * u;
+}
+
+function useTweenedMult(target: number): number {
+  const [shown, setShown] = useState(target);
+  const shownRef = useRef(target);
+  const rafRef = useRef<number | null>(null);
+  shownRef.current = shown;
+
+  useEffect(() => {
+    if (shownRef.current === target) return;
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    const start = performance.now();
+    const from = shownRef.current;
+    const to = target;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / MULT_TWEEN_MS);
+      const eased = easeOutQuart(t);
+      const v = from + (to - from) * eased;
+      shownRef.current = v;
+      setShown(v);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        rafRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target]);
+
+  return shown;
+}
+
+// Four-tier color escalation for cumulative mult. Hue progresses
+// cyan-purple-magenta-ember-red so the player gets a continuous visual
+// signal as they stack mults — Balatro's "red mult bar" tradition,
+// but tied directly to magnitude bands rather than an arbitrary chain.
 function multTier(m: number): { color: string; glow: string; flash: string } {
-  if (m >= 8)  return { color: '#f5c451', glow: 'rgba(245,196,81,0.65)', flash: 'rgba(245,196,81,0.22)' };
+  if (m >= 16) return { color: '#ff4d6d', glow: 'rgba(255,77,109,0.75)',  flash: 'rgba(255,77,109,0.28)' };
+  if (m >= 8)  return { color: '#f5c451', glow: 'rgba(245,196,81,0.65)',  flash: 'rgba(245,196,81,0.22)' };
   if (m >= 4)  return { color: '#cc88ff', glow: 'rgba(204,136,255,0.6)',  flash: 'rgba(204,136,255,0.20)' };
-  return         { color: '#ff7847', glow: 'rgba(255,120,71,0.55)',  flash: 'rgba(255,120,71,0.18)' };
+  return         { color: '#ff7847', glow: 'rgba(255,120,71,0.55)',      flash: 'rgba(255,120,71,0.18)' };
 }
 
 function tierIndex(m: number): number {
-  if (m >= 8) return 2;
-  if (m >= 4) return 1;
+  if (m >= 16) return 3;
+  if (m >= 8)  return 2;
+  if (m >= 4)  return 1;
   return 0;
 }
 
@@ -30,6 +79,10 @@ export function ScoreBreakdown() {
   const [tierPulse, setTierPulse] = useState(0);
   const fadeTimerRef = useRef<number | null>(null);
   const prevTierRef = useRef(0);
+  // Slot-spin tween for the mult readout. mult is the snap-to value;
+  // displayedMult is what the digit shows, easing toward it over 240ms.
+  // Pairs with the multSlam SFX pitch ramp so the roll-up + audio cohere.
+  const displayedMult = useTweenedMult(mult);
 
   useEffect(() => {
     const clearFade = () => {
@@ -132,6 +185,13 @@ export function ScoreBreakdown() {
           padding: '14px 26px',
           borderRadius: 14,
           textAlign: 'center',
+          // Mult-tier escalation: as cumulative mult crosses 4×/8×/16×,
+          // the chips panel border + glow shift hue in sympathy with
+          // the mult readout, so the entire score strip reads as one
+          // escalating instrument rather than two independent panels.
+          borderColor: `${tier.color}66`,
+          boxShadow: tierIndex(mult) >= 1 ? `0 0 18px ${tier.glow}` : undefined,
+          transition: 'border-color 200ms ease, box-shadow 200ms ease',
           animation: chipsPulse > 0 ? 'chipsTickPop 240ms cubic-bezier(0.2, 1.4, 0.5, 1)' : undefined,
         }}
       >
@@ -153,9 +213,14 @@ export function ScoreBreakdown() {
         className="f-display"
         style={{
           fontSize: 48,
-          color: '#bba8ff',
+          // The × itself escalates with the mult tier — at 16× it reads
+          // as ember-red, matching the mult panel.
+          color: tierIndex(mult) >= 1 ? tier.color : '#bba8ff',
           alignSelf: 'center',
-          textShadow: '0 0 12px rgba(187,168,255,0.4)',
+          textShadow: tierIndex(mult) >= 1
+            ? `0 0 14px ${tier.glow}`
+            : '0 0 12px rgba(187,168,255,0.4)',
+          transition: 'color 200ms ease, text-shadow 200ms ease',
         }}
       >
         ×
@@ -201,7 +266,7 @@ export function ScoreBreakdown() {
               transition: 'color 200ms ease, text-shadow 200ms ease',
             }}
           >
-            {formatMult(mult)}
+            {formatMult(displayedMult)}
           </div>
         </div>
       </div>
