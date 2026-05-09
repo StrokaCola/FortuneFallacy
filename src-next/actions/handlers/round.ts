@@ -6,6 +6,7 @@ import { initialShopSlice } from '../../state/slices/shop';
 import { applyConstellation } from '../../core/run/applyConstellation';
 import { applyAstralPerksToNewRun } from '../../core/run/applyAstralPerks';
 import { lookupConstellation } from '../../data/constellations';
+import { getDailyChallenge } from '../../online/dailyChallenge';
 
 export const roundHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -18,18 +19,29 @@ export const roundHandler: ActionHandler = (a, s) => {
     case 'SKIP_BLIND':
       return skipBlind(s);
     case 'NEW_RUN': {
-      const constellation = lookupConstellation(a.constellationId);
+      // Daily challenge: deterministic seed + constellation + stake derived
+      // from today's UTC date so every player gets the same run on the same
+      // day. Astral perks are skipped on daily runs so leaderboards stay
+      // fair across players with different meta progression.
+      const daily = a.daily ? getDailyChallenge() : null;
+      const constellationId = daily?.constellationId ?? a.constellationId;
+      const constellation = lookupConstellation(constellationId);
       const baseRun = applyConstellation(initialRunSlice(), constellation);
       const withStake = {
         ...baseRun,
-        stakeId: a.stakeId ?? 'spark',
+        seed: daily?.seed ?? baseRun.seed,
+        stakeId: daily?.stakeId ?? a.stakeId ?? 'spark',
         challengeId: a.challengeId ?? '',
+        dailyDate: daily?.date ?? null,
       };
       // Apply any owned Astral Perk start-of-run effects (extra shards,
       // starting consumable, etc.). Read-side perks (reroll discount, slot
       // capacity, first-blind hands, boss reveal) resolve at compute time
       // from meta.astralPerks — they don't mutate the run slice here.
-      const run = applyAstralPerksToNewRun(withStake, s.meta.astralPerks);
+      // Daily runs skip perk application entirely for fair comparison.
+      const run = daily
+        ? withStake
+        : applyAstralPerksToNewRun(withStake, s.meta.astralPerks);
       return {
         state: {
           ...s,

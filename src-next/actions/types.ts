@@ -22,7 +22,7 @@ export type Action =
   | { type: 'START_BLIND' }
   | { type: 'CLEAR_BLIND' }
   | { type: 'BUST_BLIND' }
-  | { type: 'NEW_RUN'; constellationId?: string; stakeId?: string; challengeId?: string }
+  | { type: 'NEW_RUN'; constellationId?: string; stakeId?: string; challengeId?: string; daily?: boolean }
   | { type: 'GRANT_CONSUMABLE'; id: string }
   | { type: 'DISCARD_CONSUMABLE'; index: number }
   | { type: 'ATTACH_MOD'; dieIdx: number; modId: string }
@@ -34,6 +34,9 @@ export type Action =
   | { type: 'SKIP_PACK' }
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
+  | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
+  | { type: 'CLAIM_DAILY_LOGIN'; date: string }
+  | { type: 'RESOLVE_AUDIT'; choice: 'gamble' | 'skip' }
   | { type: 'SEE_COACHMARK'; id: string }
   | { type: 'SKIP_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' };

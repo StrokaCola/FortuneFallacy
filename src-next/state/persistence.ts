@@ -62,9 +62,59 @@ export function applySavedToInitial(s: GameState): GameState {
     bosses: savedDisc.bosses ?? [],
     consumables: savedDisc.consumables ?? [],
   };
+  // Daily Challenge history (added 2026-05). Legacy saves predate this field;
+  // default to an empty record so the Title screen treats every prior date
+  // as "never attempted". See online/dailyChallenge.ts.
+  mergedMeta.dailyHistory = mergedMeta.dailyHistory ?? {};
+  // Achievements (added 2026-05). Legacy saves default to a fresh-player
+  // empty set; the listener will re-evaluate predicates on the next
+  // event and unlock any retroactively-earned ones.
+  const savedAchievements = mergedMeta.achievements ?? {};
+  mergedMeta.achievements = {
+    unlocked: savedAchievements.unlocked ?? [],
+    unlockedAt: savedAchievements.unlockedAt ?? {},
+  };
+  // Daily login (added 2026-05). Legacy saves default to "never logged
+  // in" so the comet fires on first visit after upgrading.
+  mergedMeta.dailyLogin = mergedMeta.dailyLogin ?? { lastDate: null };
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
+  // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.
+  // Legacy saves default to null (= a regular run) so they don't accidentally
+  // submit to today's daily leaderboard on next clear/bust.
+  mergedRun.dailyDate = mergedRun.dailyDate ?? null;
+  // runStats (added 2026-05) accumulates per-catalyst contribution for the
+  // postmortem screen. Legacy saves default to a fresh-run zero; the
+  // postmortem just shows fewer details for a partially-completed legacy run.
+  mergedRun.runStats = mergedRun.runStats ?? {
+    peakHand: 0,
+    peakCombo: null,
+    catalystChips: {},
+    dustEarned: 0,
+  };
+  // Defensive: an older save with runStats but no dustEarned (added later
+  // in 2026-05) shouldn't crash the postmortem on first load.
+  if (typeof mergedRun.runStats.dustEarned !== 'number') {
+    mergedRun.runStats = { ...mergedRun.runStats, dustEarned: 0 };
+  }
+  // catalystFires (added late 2026-05) — defensive default for legacy
+  // saves that have runStats but no fire counter. The Awakening badge
+  // simply won't show until the player triggers a fresh fire after
+  // upgrading; safer than reconstructing fires from chip totals.
+  if (!mergedRun.runStats.catalystFires) {
+    mergedRun.runStats = { ...mergedRun.runStats, catalystFires: {} };
+  }
+  // peakHandSnapshot (added 2026-05) — null on legacy saves so the
+  // postmortem hides the replay button until the next hand is scored.
+  if (mergedRun.runStats.peakHandSnapshot === undefined) {
+    mergedRun.runStats = { ...mergedRun.runStats, peakHandSnapshot: null };
+  }
+  // Audit modal trigger — added 2026-05. Legacy saves default to false
+  // so the modal fires on the next ante-3 entry; that's a small cost
+  // that's better than losing the chance to surface the event at all
+  // for a returning player.
+  mergedRun.auditResolved = mergedRun.auditResolved ?? false;
   // Defensive defaults for fields that might be missing in older saves but
   // are read by selectors in tight render paths. Without these, selectors
   // that fall back to a fresh `{}`/`[]` literal cause useSyncExternalStore

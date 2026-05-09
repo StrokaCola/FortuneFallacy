@@ -109,6 +109,20 @@ export function ScoreMoment() {
           const gold = beat.crossedTarget;
           if (gold) triggerShake('big');
           const reduced = isReducedMotion();
+          // Mega-boom hit-stop: when the final score is ≥ 3× the target,
+          // freeze the stage with chromatic aberration for ~480ms so the
+          // big number actually LANDS. Above 8× we extend to 720ms.
+          // Reduced-motion users skip — the effect is purely cosmetic.
+          const ratio = beat.megaRatio ?? 0;
+          if (ratio >= 3 && !reduced) {
+            const stage = document.getElementById('stage-root');
+            if (stage) {
+              const tier = ratio >= 8 ? 'mega-boom-deep' : 'mega-boom';
+              stage.classList.add(tier);
+              const dur = ratio >= 8 ? 720 : 480;
+              schedule(() => stage.classList.remove(tier), dur);
+            }
+          }
           const useStars = gold && !reduced;
           const hold = gold ? HOLD_GOLD_MS : HOLD_BASE_MS;
 

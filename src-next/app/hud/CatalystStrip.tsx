@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
-import { lookupCatalyst } from '../../data/catalysts';
+import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
+import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
+import { lookupResonance, activeResonances } from '../../data/resonances';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -16,9 +18,28 @@ const selectCompoundingStacks = (s: GameState) => s.run.compoundingStacks;
 const selectHandsPlayed = (s: GameState) => s.run.handsPlayed;
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectActive = (s: GameState) => s.round.active;
+const EMPTY_CONTRIB: Record<string, number> = {};
+const selectCatalystChips = (s: GameState) => s.run.runStats?.catalystChips ?? EMPTY_CONTRIB;
+const EMPTY_FIRES: Record<string, number> = {};
+const selectCatalystFires = (s: GameState) => s.run.runStats?.catalystFires ?? EMPTY_FIRES;
 
-const PULSE_DURATION_MS = 320;
+const PULSE_DURATION_MS = 380;
+const PULSE_DURATION_LEGENDARY_MS = 540;
 const CHAIN_PULSE_STEP_MS = 80;
+const FLOATER_DURATION_MS = 900;
+const RING_DURATION_MS = 720;
+
+type FloaterRecord = {
+  key: number;
+  catalystId: string;
+  text: string;
+  tone: 'chips' | 'mult';
+};
+
+type RingRecord = { key: number; catalystId: string; color: string };
+
+const RESONANCE_RING_COLOR = '#ffd84a';
+const RESONANCE_FLOATER_TEXT_COLOR = '#ffd84a';
 
 export function CatalystStrip() {
   const catalysts = useStore(selectCatalysts);
@@ -28,9 +49,15 @@ export function CatalystStrip() {
   const wide = useIsWideMode();
   const handsLeft = useStore(selectHandsLeft);
   const roundActive = useStore(selectActive);
+  const catalystChips = useStore(selectCatalystChips);
+  const catalystFires = useStore(selectCatalystFires);
 
-  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'chain' | undefined>>({});
+  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | undefined>>({});
+  const [floaters, setFloaters] = useState<FloaterRecord[]>([]);
+  const [rings, setRings] = useState<RingRecord[]>([]);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const floaterKeyRef = useRef(0);
+  const ringKeyRef = useRef(0);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -43,8 +70,55 @@ export function CatalystStrip() {
       return t;
     };
 
-    const off = bus.on('onUpgradeTriggered', (payload: { id: string }) => {
+    const off = bus.on('onUpgradeTriggered', (payload: { id: string; deltaChips: number; deltaMult: number }) => {
       const id = payload.id;
+
+      // Resonance: a hand-authored pair fired. Pulse BOTH halves with the
+      // legendary fire animation so the player sees the link visually,
+      // and float a single resonance label off the FIRST owned catalyst
+      // card (we don't double the floater — the player just saw "+5 mult"
+      // once, attributed to the named pair).
+      const resonanceId = resonanceIdFromEvent(id);
+      if (resonanceId) {
+        const pair = lookupResonance(resonanceId);
+        if (!pair) return;
+        const halves = [pair.a, pair.b].filter((cId) => catalysts.includes(cId));
+        for (const half of halves) {
+          setPulsing((s) => ({ ...s, [half]: 'fire-legendary' }));
+          track(() => {
+            setPulsing((s) => ({ ...s, [half]: undefined }));
+          }, PULSE_DURATION_LEGENDARY_MS);
+          const ringKey = ++ringKeyRef.current;
+          setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
+          track(() => {
+            setRings((rs) => rs.filter((r) => r.key !== ringKey));
+          }, RING_DURATION_MS);
+        }
+        // Single floater on the first owned half — shows the named beat
+        // ("Symphony +5 mult") rather than two anonymous deltas.
+        if (halves[0]) {
+          const dChips = payload.deltaChips ?? 0;
+          const dMult = payload.deltaMult ?? 0;
+          const parts: string[] = [pair.name];
+          if (dChips > 0) parts.push(`+${Math.round(dChips)}`);
+          if (dMult > 0) parts.push(`+${(Math.round(dMult * 10) / 10).toString().replace(/\.0$/, '')} mult`);
+          const floaterKey = ++floaterKeyRef.current;
+          setFloaters((fs) => [...fs, {
+            key: floaterKey,
+            catalystId: halves[0]!,
+            text: parts.join(' · '),
+            tone: 'mult',
+          }]);
+          track(() => {
+            setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
+          }, FLOATER_DURATION_MS);
+        }
+        return;
+      }
+
+      // catalyst_bench is special: it ripples through every OTHER owned
+      // catalyst with a chain pulse, so its fire payload itself stays
+      // attributed to the bench card.
       if (id === 'catalyst_bench') {
         const others = catalysts.filter((c) => c !== 'catalyst_bench');
         others.forEach((otherId, i) => {
@@ -57,11 +131,50 @@ export function CatalystStrip() {
         });
         return;
       }
-      if (catalysts.includes(id)) {
-        setPulsing((s) => ({ ...s, [id]: 'fire' }));
+
+      const catalystId = catalystIdFromEvent(id);
+      if (!catalystId || !catalysts.includes(catalystId)) return;
+
+      const meta = lookupCatalyst(catalystId);
+      const isLegendary = meta?.rarity === 'legendary';
+      const pulseKind: 'fire' | 'fire-legendary' = isLegendary ? 'fire-legendary' : 'fire';
+      const pulseDuration = isLegendary ? PULSE_DURATION_LEGENDARY_MS : PULSE_DURATION_MS;
+
+      setPulsing((s) => ({ ...s, [catalystId]: pulseKind }));
+      track(() => {
+        setPulsing((s) => ({ ...s, [catalystId]: undefined }));
+      }, pulseDuration);
+
+      // Ring burst emanates from the card; lower-cost than the floater and
+      // fires for every catalyst contribution (incl. edition stamps).
+      const ringKey = ++ringKeyRef.current;
+      const ringColor = isLegendary ? '#ff9466' : meta?.color ?? '#7be3ff';
+      setRings((rs) => [...rs, { key: ringKey, catalystId, color: ringColor }]);
+      track(() => {
+        setRings((rs) => rs.filter((r) => r.key !== ringKey));
+      }, RING_DURATION_MS);
+
+      // Floater — only when there's a material delta. Skips silent fires
+      // (utility catalysts that mutate state without moving chips/mult)
+      // so the strip doesn't spam +0 toasts.
+      const dChips = payload.deltaChips ?? 0;
+      const dMult = payload.deltaMult ?? 0;
+      let text = '';
+      let tone: 'chips' | 'mult' = 'chips';
+      if (dChips !== 0) {
+        text = `+${Math.round(dChips)}`;
+        tone = 'chips';
+      } else if (dMult !== 0) {
+        const rounded = Math.round(dMult * 10) / 10;
+        text = `+${rounded.toString().replace(/\.0$/, '')} mult`;
+        tone = 'mult';
+      }
+      if (text) {
+        const floaterKey = ++floaterKeyRef.current;
+        setFloaters((fs) => [...fs, { key: floaterKey, catalystId, text, tone }]);
         track(() => {
-          setPulsing((s) => ({ ...s, [id]: undefined }));
-        }, PULSE_DURATION_MS);
+          setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
+        }, FLOATER_DURATION_MS);
       }
     });
     return () => {
@@ -72,6 +185,15 @@ export function CatalystStrip() {
   }, [catalysts]);
 
   if (catalysts.length === 0) return null;
+
+  // Set of catalyst ids that are currently half of an active resonance
+  // pair. Used to draw a "linked" gold accent on the card so players
+  // see synergies at a glance, not just on fire.
+  const linkedIds = new Set<string>();
+  for (const r of activeResonances(catalysts)) {
+    linkedIds.add(r.a);
+    linkedIds.add(r.b);
+  }
 
   return (
     <div style={{
@@ -97,10 +219,14 @@ export function CatalystStrip() {
           ? 'mat-telegraph-warn 1s ease-in-out infinite'
           : pulseKind === 'chain'
           ? `mat-chain-pulse ${PULSE_DURATION_MS}ms ease-out`
+          : pulseKind === 'fire-legendary'
+          ? `mat-pulse-fire-legendary ${PULSE_DURATION_LEGENDARY_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
           : pulseKind === 'fire'
-          ? `mat-pulse-fire ${PULSE_DURATION_MS}ms ease-out`
+          ? `mat-pulse-fire ${PULSE_DURATION_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
           : undefined;
         const isLegendary = c.rarity === 'legendary';
+        const cardFloaters = floaters.filter((f) => f.catalystId === id);
+        const cardRings = rings.filter((r) => r.catalystId === id);
         const edition = catalystEditions[id];
         const eColor = edition ? editionColor(edition) : null;
         // Holo edition gets the rainbow sweep already used for legendaries.
@@ -108,13 +234,23 @@ export function CatalystStrip() {
         // double-shadow on the icon. Legendary already shimmers; if it ALSO
         // has an edition, we just add the per-edition border accent.
         const showHolo = edition === 'holo' || isLegendary;
+        const isLinked = linkedIds.has(id);
+        const isVoid = edition === 'void';
+        // Void edition wins the border slot — it's the most build-defining
+        // edition and needs the strongest visual grammar. Cosmic-purple
+        // double-pulse glow distinguishes it from poly's orange.
         const borderColor =
+          isVoid && eColor ? eColor :
           edition === 'foil' && eColor ? eColor :
           edition === 'poly' && eColor ? eColor :
-          isLegendary ? '#ff7847cc' : c.color + '80';
+          isLegendary ? '#ff7847cc' :
+          isLinked ? '#ffd84acc' :
+          c.color + '80';
         const extraShadow =
+          isVoid && eColor ? `0 0 22px ${eColor}cc, 0 0 44px ${eColor}66, ` :
           edition === 'foil' && eColor ? `0 0 18px ${eColor}88, ` :
           edition === 'poly' && eColor ? `0 0 14px ${eColor}88, ` :
+          isLinked ? '0 0 12px rgba(255,216,74,0.55), ' :
           '';
         return (
           <div
@@ -178,15 +314,18 @@ export function CatalystStrip() {
                   className="f-mono uc"
                   style={{
                     position: 'absolute', top: 3, left: 3, zIndex: 3,
-                    fontSize: 7, letterSpacing: '0.14em',
+                    fontSize: edition === 'void' ? 9 : 7,
+                    letterSpacing: '0.14em',
                     padding: '1px 3px', borderRadius: 3,
                     color: eColor,
                     background: 'rgba(15,9,37,0.85)',
                     border: `1px solid ${eColor}88`,
+                    fontWeight: edition === 'void' ? 700 : undefined,
+                    textShadow: edition === 'void' ? `0 0 6px ${eColor}` : undefined,
                   }}
                   title={`${edition} edition`}
                 >
-                  {edition.slice(0, 3)}
+                  {edition === 'void' ? '★' : edition.slice(0, 3)}
                 </div>
               )}
               {id === 'compounding_bias' && compoundingStacks > 0 && (
@@ -213,11 +352,104 @@ export function CatalystStrip() {
                   {handsPlayed % 5}/5
                 </div>
               )}
+              {/* Awakening — visible once the catalyst has fired enough
+                  times this run. Pure cosmetic in v1; mechanical
+                  multipliers gated behind playtest data. */}
+              {(() => {
+                const fires = catalystFires[id] ?? 0;
+                const threshold = awakeningThreshold(id);
+                const awakened = isAwakened(id, fires);
+                if (threshold == null) return null;
+                return awakened ? (
+                  <div className="awakened-badge has-tip" style={{
+                    position: 'absolute', bottom: 4, right: 4, zIndex: 3,
+                    fontSize: 11, fontWeight: 700,
+                    color: '#f5c451',
+                    textShadow: '0 0 8px #f5c451, 0 0 14px rgba(245,196,81,0.6)',
+                    background: 'rgba(15,9,37,0.85)',
+                    padding: '1px 4px', borderRadius: 4,
+                    border: '1px solid #f5c451aa',
+                  }}>★</div>
+                ) : null;
+              })()}
             </div>
+            {/* Ring bursts emanate from the card center on each fire. Live
+                outside the inner card div so overflow: hidden doesn't clip
+                them as they expand. */}
+            {cardRings.map((r) => (
+              <div
+                key={`r-${r.key}`}
+                className="catalyst-fire-ring"
+                style={{
+                  position: 'absolute',
+                  top: 44, left: 32,
+                  width: 64, height: 64,
+                  borderRadius: '50%',
+                  border: `2px solid ${r.color}`,
+                  boxShadow: `0 0 18px ${r.color}, 0 0 36px ${r.color}88`,
+                  pointerEvents: 'none',
+                  transformOrigin: 'center',
+                  animation: `mat-fire-ring ${RING_DURATION_MS}ms cubic-bezier(0.15, 0.6, 0.3, 1) forwards`,
+                  zIndex: 5,
+                }}
+              />
+            ))}
+            {/* Delta floaters — "+24" or "+1.5 mult" rises off the card. */}
+            {cardFloaters.map((f) => (
+              <div
+                key={`f-${f.key}`}
+                className="catalyst-floater f-mono"
+                style={{
+                  position: 'absolute',
+                  left: 32, top: 18,
+                  pointerEvents: 'none',
+                  fontSize: f.tone === 'mult' ? 13 : 14,
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  color: f.tone === 'mult' ? '#ff7847' : '#7be3ff',
+                  textShadow: f.tone === 'mult'
+                    ? '0 0 12px rgba(255,120,71,0.95), 0 0 24px rgba(255,120,71,0.55)'
+                    : '0 0 12px rgba(123,227,255,0.95), 0 0 24px rgba(123,227,255,0.55)',
+                  whiteSpace: 'nowrap',
+                  animation: `catalyst-floater-up ${FLOATER_DURATION_MS}ms cubic-bezier(0.2, 1.0, 0.4, 1) forwards`,
+                  zIndex: 6,
+                }}
+              >
+                {f.text}
+              </div>
+            ))}
             <div className="tip">
               <span className="tip-title">{c.name}</span>
               {c.desc}
               {c.flavor && <span className="tip-flavor">{c.flavor}</span>}
+              {(catalystChips[id] ?? 0) > 0 && (
+                <span style={{
+                  display: 'block', marginTop: 6,
+                  color: '#7be3ff',
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: 10,
+                }}>
+                  ◇ contributed +{Math.round(catalystChips[id] ?? 0).toLocaleString()} chips this run
+                </span>
+              )}
+              {(() => {
+                const fires = catalystFires[id] ?? 0;
+                const threshold = awakeningThreshold(id);
+                if (threshold == null) return null;
+                const awakened = fires >= threshold;
+                return (
+                  <span style={{
+                    display: 'block', marginTop: 4,
+                    color: awakened ? '#f5c451' : '#bba8ff',
+                    fontFamily: '"JetBrains Mono", monospace',
+                    fontSize: 10,
+                  }}>
+                    {awakened
+                      ? `★ Awakened — ${fires} fires this run`
+                      : `Awakening: ${fires} / ${threshold} fires`}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         );

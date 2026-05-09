@@ -37,6 +37,38 @@ export type MetaSlice = {
     seen: string[];
     dismissed: boolean;
   };
+  // Daily Challenge history. Keyed by 'YYYY-MM-DD' (UTC), so today's
+  // entry tells the Title screen whether the daily has already been
+  // attempted. Best score for the day overwrites previous attempts;
+  // `cleared` flips true on the first successful win. See
+  // online/dailyChallenge.ts and core/round/transitions.ts.
+  dailyHistory: Record<string, {
+    score: number;
+    cleared: boolean;
+    ante: number;
+    constellation: string;
+    stake: string;
+    playedAt: number;
+  }>;
+  // Achievements ("Ascensions"). Each entry is the id of an unlocked
+  // achievement; the data table lives in data/achievements.ts. The
+  // listener in core/achievements/listener.ts subscribes to bus events
+  // and dispatches UNLOCK_ACHIEVEMENT when a predicate fires. Already-
+  // unlocked ids are deduped at dispatch time. Each unlock grants
+  // cosmic dust per the table.
+  achievements: {
+    unlocked: string[];
+    // Last unlock timestamp keyed by id — drives the Codex sort and
+    // can support a "recently unlocked" surface in the future.
+    unlockedAt: Record<string, number>;
+  };
+  // Daily login comet — last UTC date the player saw the daily-login
+  // grant. When today's date is newer, the next visit fires the
+  // celebration once and grants +5 cosmic dust. Pure retention loop;
+  // 5 dust is nominal so the goal is the click, not the value.
+  dailyLogin: {
+    lastDate: string | null; // 'YYYY-MM-DD' UTC, null if never
+  };
 };
 
 // All constellations are seeded as unlocked while the gameplay-side
@@ -71,4 +103,7 @@ export const initialMetaSlice = (): MetaSlice => ({
   cosmicDustLifetime: 0,
   astralPerks: [],
   onboarding: { seen: [], dismissed: false },
+  dailyHistory: {},
+  achievements: { unlocked: [], unlockedAt: {} },
+  dailyLogin: { lastDate: null },
 });

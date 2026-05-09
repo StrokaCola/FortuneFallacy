@@ -26,6 +26,10 @@ export type CatalystMeta = {
   flavor?: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
   archetype?: CatalystArchetype;
+  // Constellation-locked: when set, this catalyst only spawns in the
+  // shop pool when the active constellation matches. Drives build
+  // identity across constellations. See core/shop/catalystDraw.ts.
+  requiresConstellation?: string;
 };
 
 export const CATALYST_META: CatalystMeta[] = [
@@ -221,8 +225,87 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'eclipse_pact', name: 'Eclipse Pact', icon: '🌑', color: '#a080c0',
     desc: 'Every scoring hand: +50 chips, +5 mult.',
     flavor: 'Sign once. Score forever.', rarity: 'legendary', archetype: 'combo' },
+
+  // ─── Constellation-Locked Catalysts (Phase 7) ─────────────────
+  // One per playable constellation. Only appear in the shop pool when
+  // that constellation is active. Modest power baseline — the
+  // selection-restriction itself is part of the value.
+  { id: 'lyric_pulse', name: 'Lyric Pulse', icon: '🎼', color: '#7be3ff',
+    desc: 'One Pair → ×1.3 mult.',
+    flavor: 'The simplest match still hums in tune.',
+    rarity: 'uncommon', archetype: 'combo',
+    requiresConstellation: 'lyra' },
+  { id: 'crowded_table', name: 'Crowded Table', icon: '◫', color: '#cc88ff',
+    desc: 'Each scoring die past the fifth → +1 mult.',
+    flavor: 'Seven seats. Every chair pays.',
+    rarity: 'uncommon', archetype: 'face',
+    requiresConstellation: 'mensa' },
+  { id: 'three_sigil', name: 'Three Sigil', icon: '◬', color: '#cc88ff',
+    desc: 'Any straight → ×2 mult (Triumvirate scoring).',
+    flavor: 'Three carved lines. The third closes.',
+    rarity: 'rare', archetype: 'combo',
+    requiresConstellation: 'triumvirate' },
+  { id: 'captains_wage', name: "Captain's Wage", icon: '⚓', color: '#f5c451',
+    desc: 'Each scoring face ≥ 10 → +5 chips.',
+    flavor: 'The crew expects their cut.',
+    rarity: 'uncommon', archetype: 'face',
+    requiresConstellation: 'argo' },
+  { id: 'golden_ratio', name: 'Golden Ratio', icon: 'φ', color: '#f5c451',
+    desc: 'Each scoring 8 → +12 chips.',
+    flavor: 'Each step a perfect division.',
+    rarity: 'uncommon', archetype: 'face',
+    requiresConstellation: 'fibonacci' },
+  { id: 'penumbra', name: 'Penumbra', icon: '◐', color: '#a080c0',
+    desc: 'All scoring dice show the same value → ×3 mult.',
+    flavor: 'When every shadow aligns.',
+    rarity: 'rare', archetype: 'combo',
+    requiresConstellation: 'eclipse' },
+  { id: 'mosaic_bias', name: 'Mosaic Bias', icon: '⬡', color: '#5be8a4',
+    desc: '+0.5 mult per distinct die-shape this hand.',
+    flavor: 'Five shapes. Five voices. One verdict.',
+    rarity: 'uncommon', archetype: 'face',
+    requiresConstellation: 'polyhedra' },
+  { id: 'wildcard_waltz', name: 'Wildcard Waltz', icon: '✺', color: '#ff7847',
+    desc: 'Each scoring wildcard die → +25 chips.',
+    flavor: 'The wildcard always knows the steps.',
+    rarity: 'uncommon', archetype: 'face',
+    requiresConstellation: 'ophiuchus' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {
   return CATALYST_META.find((c) => c.id === id);
+}
+
+// Awakening — once a catalyst has fired N times in a single run, it
+// reads as "Awakened" with a ★ badge on the strip. v1 is purely
+// cosmetic; mechanical scaling will follow once playtesting confirms
+// the right multipliers per archetype. Key off the catalyst id with
+// undefined = not awakening-eligible.
+export const AWAKENING_THRESHOLDS: Record<string, number> = {
+  // High-fire-rate catalysts — these tick every hand or close to it,
+  // so 8 fires lands around mid-Ante 2.
+  six_bias: 8,
+  iron_six: 8,
+  pair_dynamo: 8,
+  cold_hand: 8,
+  // Build-defining catalysts that fire less frequently — lower bar
+  // (5) so the player can see awakening even on focused runs.
+  stratifier: 5,
+  triplet_engine: 5,
+  conductor: 5,
+  encore: 5,
+  // Scaling catalysts that gate naturally on hand count — pair their
+  // awakening with their natural progression.
+  tempo: 6,
+  patience_counter: 3,
+  compounding_bias: 4,
+};
+
+export function awakeningThreshold(id: string): number | undefined {
+  return AWAKENING_THRESHOLDS[id];
+}
+
+export function isAwakened(id: string, fires: number): boolean {
+  const t = AWAKENING_THRESHOLDS[id];
+  return t != null && fires >= t;
 }

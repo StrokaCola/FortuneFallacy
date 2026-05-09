@@ -3,6 +3,8 @@ import { Phase, type PhaseFn, type PipelineCtx } from '../pipeline/types';
 import { hasDebuff } from '../round/debuffs';
 import { applyDieModStep } from '../mods/applyDieModStep';
 import { editionBonus } from '../upgrades/editions';
+import { applyResonances } from '../upgrades/resonance';
+import { applyVoidstorm } from '../round/voidstorms';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -60,6 +62,19 @@ export const upgrades: PhaseFn = (ctx) => {
   if (next.state.run.catalysts.includes('encore') && !catalystsBlocked) {
     next = applyEncore(next);
   }
+
+  // Resonance: hand-authored pair bonuses fire once per hand AFTER the
+  // catalysts and mods have all contributed. Skipped under the same
+  // catalysts-blocked debuff that gates the main loop, since resonances
+  // are themselves catalyst-derived effects.
+  if (!catalystsBlocked) {
+    next = applyResonances(next);
+  }
+
+  // Voidstorm: per-blind chip/mult tilt. NOT skipped under
+  // catalysts-blocked — voidstorms are world-state, not catalyst-derived,
+  // so a Callisto debuff doesn't suppress them.
+  next = applyVoidstorm(next);
 
   return next;
 };

@@ -84,6 +84,19 @@ export function startAudioBridge(): () => void {
         case 'backstop':  sfxModule.sfxPlay('modBackstop'); break;
       }
     }),
+    // Forge moments. Attach is a louder confirm; detach is the lighter
+    // "swap" sound. Both ride the existing modAttach/modDetach voices
+    // that were authored but previously unwired.
+    bus.on('onModAttached', () => sfxModule.sfxPlay('modAttach')),
+    bus.on('onModDetached', () => sfxModule.sfxPlay('modDetach')),
+    // Sell-trigger payoff — castSwell + comboChime layered, same motif
+    // as the achievement-unlock toast since they're both "free reward
+    // landed" beats. Quieter on the chime so it doesn't clobber the
+    // shard-clink scheduler that fires alongside on the gain.
+    bus.on('onSellTrigger', () => {
+      sfxModule.sfxPlay('castSwell', { gain: 0.5 });
+      window.setTimeout(() => sfxModule.sfxPlay('comboChime', { gain: 0.85 }), 80);
+    }),
   ];
 
   let lastTension = -1;

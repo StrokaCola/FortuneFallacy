@@ -1,3 +1,18 @@
+// Snapshot of a single hand's scoring inputs, captured when peakHand
+// is set. Pure JSON so persistence + replay can serialize it. Mirrors
+// the scoring adapter's input shape (core/scoring/adapter.ts) — kept
+// inline to avoid a circular import with that module.
+export type PeakHandSnapshot = {
+  faces: number[];
+  dieIndices: number[];
+  comboLabel: string;
+  comboBonus: number;
+  baseMult: number;
+  upgrades: { label: string; chipDelta: number; multDelta: number; tint?: 'gold' | 'magenta' }[];
+  mults: { label: string; value: number; tint?: 'gold' | 'magenta' }[];
+  finalTotal: number;
+};
+
 export type RunSlice = {
   seed: number;
   shards: number;
@@ -60,6 +75,49 @@ export type RunSlice = {
   // Optional Challenge id when this run was started from ChallengeSelect.
   // Empty string = standard run. Challenge modifiers stack on top of stake.
   challengeId: string;
+  // Daily-challenge marker. When non-null, this run was started from the
+  // daily seed and its score should submit to the daily-leaderboard
+  // partition. Format: 'YYYY-MM-DD' (UTC). See online/dailyChallenge.ts.
+  // Daily runs disable astral perks for fair leaderboard comparison.
+  dailyDate: string | null;
+  // Per-run telemetry. Aggregated in actions/handlers/roll.ts (SCORE_HAND)
+  // by walking the pipeline's onUpgradeTriggered events. Read by the
+  // post-run Postmortem to celebrate the player's peak moment + show
+  // which catalysts carried their build. Resets on NEW_RUN.
+  runStats: {
+    // Best total single-hand score across the run.
+    peakHand: number;
+    // Combo id at the peak hand (e.g. 'four_kind', 'lg_straight').
+    peakCombo: string | null;
+    // Total chips contributed per catalyst id, summed across all hands.
+    // Edition fires (`edition:foil@stratifier`) and catalyst-driven mod
+    // re-fires (`gilding_press@N`, `encore`) attribute back to the
+    // owning catalyst via catalystIdFromEvent. Pure mod fires (`mod:*`)
+    // are excluded — those credit no catalyst.
+    catalystChips: Record<string, number>;
+    // Cosmic Dust gained THIS run (positive sum across blinds + win
+    // bonus). Pre-bust/win baseline. Accumulated in core/round/transitions.ts
+    // alongside the meta-currency mutation. Reset on NEW_RUN.
+    dustEarned: number;
+    // Per-catalyst fire counter — increments once per onUpgradeTriggered
+    // event whose id resolves to a catalyst (via catalystIdFromEvent).
+    // Drives the Awakening visual layer: a catalyst at or above its
+    // awaken threshold (data/catalysts.ts AWAKENING_THRESHOLDS) gets
+    // a "★ AWAKENED" badge on the strip + tooltip uplift. Mechanical
+    // amplification is intentionally a v2 follow-up — needs balance
+    // playtesting before adding multiplicative power.
+    catalystFires: Record<string, number>;
+    // Snapshot of the SequenceInput from the peak-scoring hand. Stored
+    // on every peakHand update; the postmortem uses it to replay the
+    // hand visually (uses the same buildScoreSequence + runScoreSequence
+    // pipeline as live scoring). null until the player has scored at
+    // least one hand. Plain JSON — survives persistence + load cycles.
+    peakHandSnapshot: PeakHandSnapshot | null;
+  };
+  // Audit (mid-run risk event) — true once the player has resolved the
+  // ante-3 audit modal (either gambled or skipped). Stays false through
+  // antes 1 and 2 so the modal pops on ante 3 entry.
+  auditResolved: boolean;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -68,7 +126,9 @@ export type RunSlice = {
 //   foil → +50 chips when this catalyst fires
 //   holo → +10 mult when this catalyst fires
 //   poly → ×1.5 to the catalyst's own contribution this trigger
-export type CatalystEdition = 'foil' | 'holo' | 'poly';
+//   void → costs ZERO catalyst slot (Balatro's Negative analog). Ultra-rare;
+//          adds no chip/mult bonus on its own — the slot saving IS the value.
+export type CatalystEdition = 'foil' | 'holo' | 'poly' | 'void';
 
 // Mod-tier editions. Same axes, smaller magnitudes than catalyst editions.
 //   foil → +20 chips when this mod fires
@@ -111,4 +171,14 @@ export const initialRunSlice = (): RunSlice => ({
   catalystShardSpend: 0,
   stakeId: 'spark',
   challengeId: '',
+  dailyDate: null,
+  runStats: {
+    peakHand: 0,
+    peakCombo: null,
+    catalystChips: {},
+    dustEarned: 0,
+    catalystFires: {},
+    peakHandSnapshot: null,
+  },
+  auditResolved: false,
 });

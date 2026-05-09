@@ -10,6 +10,8 @@ import { stakeIndex } from '../../data/stakes';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
 import { firstBlindExtraHands } from '../run/applyAstralPerks';
+import { pickVoidstorm } from './voidstorms';
+import { mulberry32 } from '../rng';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
@@ -75,6 +77,10 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // equal to the current ante. Pure round-start grant; the score-time spend
   // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
   const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
+  // Voidstorm — derived from the run seed mixed with goalIdx so each blind
+  // gets a stable but distinct roll. Boss blinds always skip.
+  const stormRng = mulberry32((s.run.seed ^ (s.run.goalIdx * 0x9e3779b1)) >>> 0);
+  const voidstormId = pickVoidstorm(() => stormRng.next(), isBoss);
   return {
     state: {
       ...s,
@@ -92,6 +98,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         rerollsLeft: rerollsPerHand(s),
         dice,
         scoringOrder,
+        voidstormId,
       },
     },
     events: isBoss
@@ -175,6 +182,12 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     ...baseMeta,
     cosmicDust: newDustTotal,
     cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+    // Daily run completion: only the WON path of a clearBlind ends the run
+    // (the player just cleared the final boss). Record/update the daily
+    // history entry so the Title screen shows today's status.
+    dailyHistory: won && s.run.dailyDate
+      ? recordDailyAttempt(s.meta.dailyHistory ?? {}, s, true)
+      : (baseMeta.dailyHistory ?? {}),
   };
   return {
     state: {
@@ -185,6 +198,9 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         goalIdx: nextGoal,
         ante: nextAnte,
         compoundingStacks: s.run.compoundingStacks + 1,
+        // Track dust gained THIS run for the postmortem celebration line.
+        // Mirrors the meta.cosmicDust grant above so the two stay in sync.
+        runStats: addDustToRunStats(s.run.runStats, dustGained),
       },
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
@@ -247,12 +263,21 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         shards: s.run.shards + auditRefund,
         catalysts: catalystsAfterAudit,
         catalystEditions: editionsAfterAudit,
+        // Bust still earns a small consolation dust grant — track it for
+        // the postmortem so the player sees they made progress even on a
+        // failed run.
+        runStats: addDustToRunStats(s.run.runStats, dustGained),
       },
       meta: {
         ...s.meta,
         highScores,
         cosmicDust: newDustTotal,
         cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+        // Daily bust: record the attempt so the Title shows "today done"
+        // even if the player didn't clear. Best-score-of-day semantics.
+        dailyHistory: s.run.dailyDate
+          ? recordDailyAttempt(s.meta.dailyHistory ?? {}, s, false)
+          : (s.meta.dailyHistory ?? {}),
       },
     },
     events: [
@@ -271,6 +296,50 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       },
     ],
   };
+}
+
+// Roll dust earned into the run-scoped telemetry block. Tolerant of
+// older save shapes that predate the field — defaults missing fields
+// to a fresh-baseline rather than crashing the postmortem.
+function addDustToRunStats(
+  prev: GameState['run']['runStats'] | undefined,
+  delta: number,
+): GameState['run']['runStats'] {
+  const base = prev ?? {
+    peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0,
+    catalystFires: {}, peakHandSnapshot: null,
+  };
+  return {
+    ...base,
+    catalystFires: base.catalystFires ?? {},
+    peakHandSnapshot: base.peakHandSnapshot ?? null,
+    dustEarned: (base.dustEarned ?? 0) + delta,
+  };
+}
+
+// Daily attempt recorder. Keeps the BEST score for the day and stamps
+// `cleared: true` once any attempt clears (so a later sub-clear bust
+// doesn't downgrade a prior win). No-op if the run isn't daily.
+function recordDailyAttempt(
+  history: GameState['meta']['dailyHistory'],
+  s: GameState,
+  cleared: boolean,
+): GameState['meta']['dailyHistory'] {
+  const date = s.run.dailyDate;
+  if (!date) return history;
+  const prev = history[date];
+  const score = s.round.score;
+  const ante = s.run.ante;
+  // Keep best score; preserve a previous clear even on a fresh worse attempt.
+  const next = {
+    score: Math.max(prev?.score ?? 0, score),
+    cleared: prev?.cleared || cleared,
+    ante: Math.max(prev?.ante ?? 0, ante),
+    constellation: s.run.constellationId,
+    stake: s.run.stakeId,
+    playedAt: Date.now(),
+  };
+  return { ...history, [date]: next };
 }
 
 function pushHighScore(s: GameState, score: number) {

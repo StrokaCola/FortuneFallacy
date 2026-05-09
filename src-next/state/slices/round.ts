@@ -36,6 +36,19 @@ export type RoundSlice = {
   // ×2 mult bonus at >= 3.
   rollsWithoutLock: number;
   scoringOrder: number[];
+  // Hot Streak tracking — counts consecutive hands that scored above
+  // the per-hand-share threshold (target * 2/3) in the current trial.
+  // Resets on START_BLIND and on any hand below threshold. Reaching 3
+  // emits onHotStreak and surfaces the celebration banner.
+  hotHandsInRow: number;
+  // Sticky once the streak fires, so we don't re-emit the banner on
+  // subsequent qualifying hands within the same trial. Resets on
+  // START_BLIND alongside the counter.
+  hotStreakFiredThisBlind: boolean;
+  // Voidstorm — per-blind modifier ID picked at START_BLIND. ~25% of
+  // non-boss blinds roll one. See core/round/voidstorms.ts. Null when
+  // no storm is active.
+  voidstormId: string | null;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -73,4 +86,7 @@ export const initialRoundSlice = (): RoundSlice => ({
   allBandUsedThisRound: false,
   rollsWithoutLock: 0,
   scoringOrder: [0, 1, 2, 3, 4],
+  hotHandsInRow: 0,
+  hotStreakFiredThisBlind: false,
+  voidstormId: null,
 });

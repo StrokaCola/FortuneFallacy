@@ -1,10 +1,15 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 import { TopBar } from '../hud/TopBar';
 import { useReportHudHeight } from '../hud/useReportHudHeight';
 import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
+import { LegendaryFire } from '../hud/LegendaryFire';
+import { HotStreakBanner } from '../hud/HotStreakBanner';
+import { VoidstormBadge } from '../hud/VoidstormBadge';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
 import { ClearShardsToast } from '../hud/ClearShardsToast';
@@ -21,7 +26,7 @@ import {
   selectHandsLeft, selectRerollsLeft,
   selectTarget, selectShards, selectAnte,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
-  selectAccent,
+  selectAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -34,9 +39,26 @@ export function Round() {
   const ante     = useStore(selectAnte);
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
+  const usedCatalystSlots = useStore(selectEffectiveCatalystSlotsUsed);
   const vouchers = useStore(selectVouchers);
   const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
+  const roundActive = useStore((s) => s.round.active);
+
+  // Last-throw warning: when only 1 hand remains and the player is short
+  // of the target, the score readout pulses red and a one-shot haptic
+  // fires on entry. Tightens the closer dramatically without forcing
+  // the player into the fail-loop music yet — the bust hasn't actually
+  // happened. Tracks edges so the haptic only triggers ONCE per entry.
+  const tense = roundActive && firstRollDone && hands === 1 && score < target && target > 0;
+  const wasTenseRef = useRef(false);
+  useEffect(() => {
+    if (tense && !wasTenseRef.current) {
+      playHaptic('tap');
+      sfxPlay('targetCross', { gain: 0.35 });
+    }
+    wasTenseRef.current = tense;
+  }, [tense]);
   // Constellation accent (red on boss). See selectAccent in state/selectors.ts.
   const accent = useStore(selectAccent);
 
@@ -52,14 +74,18 @@ export function Round() {
         rerolls={rerolls}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
+        catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
         accent={accent}
+        tense={tense}
       />
       <PauseButton />
 
       <CatalystStrip />
+      <LegendaryFire />
+      <HotStreakBanner />
+      <VoidstormBadge />
       <ShardDeductToast />
       <ShardGainToast />
       <ClearShardsToast />
@@ -89,12 +115,34 @@ export function Round() {
   );
 }
 
+// "The Pull" — first-roll-of-blind dwell time. Lets the audio swell and
+// the player's anticipation set BEFORE the dice fly. Slot-machine
+// cabinet language: the lever pulls, the chamber loads, then the spin.
+// Tuned so the dwell is felt but not annoying — short enough that a
+// determined speedrunner will barely notice on subsequent attempts.
+const PULL_DURATION_MS = 520;
+
 function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean }) {
   // Self-measure so the dice canvas can shrink to the play area above
   // this bar (#three-next reads --hud-bottom-h) and pinned overlays can
   // align upward from the bar's top edge.
   const ref = useRef<HTMLDivElement>(null);
   useReportHudHeight(ref, '--hud-bottom-h', 'bottom');
+  const [pulling, setPulling] = useState(false);
+
+  // Trigger The Pull on the first-roll path only. Reroll keeps the
+  // immediate-dispatch behavior — players get the dwell once per blind,
+  // not every reroll, so the rhythm of the loop stays brisk.
+  const triggerFirstRoll = () => {
+    if (pulling) return;
+    setPulling(true);
+    sfxPlay('castSwell', { gain: 0.85 });
+    window.setTimeout(() => {
+      dispatch({ type: 'ROLL_REQUESTED' });
+      setPulling(false);
+    }, PULL_DURATION_MS);
+  };
+
   return (
     <div
       ref={ref}
@@ -115,11 +163,11 @@ function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; r
       ) : (
         <button
           data-coach="roll-btn"
-          className="btn btn-ghost mat-interactive tap"
-          disabled={hands === 0}
-          onClick={() => dispatch({ type: 'ROLL_REQUESTED' })}>
+          className={`btn btn-ghost mat-interactive tap${pulling ? ' is-pulling' : ''}`}
+          disabled={hands === 0 || pulling}
+          onClick={triggerFirstRoll}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: accent }}>⤴</span> Roll
+            <span style={{ color: accent }}>⤴</span> {pulling ? 'Pulling…' : 'Roll'}
           </span>
         </button>
       )}

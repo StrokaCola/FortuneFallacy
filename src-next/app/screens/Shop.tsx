@@ -8,13 +8,13 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
-  selectComboLevels,
+  selectComboLevels, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { lookupCatalyst } from '../../data/catalysts';
 import { lookupConsumable } from '../../core/consumables';
 import { lookupVoucher } from '../../data/vouchers';
 import { lookupMod } from '../../core/mods';
-import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
+import { maxCatalystSlots, maxConsumableSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
 // PackOverlay is mounted at the App level so it shows whether the player
@@ -22,6 +22,7 @@ import { sfxPlay } from '../../audio/sfx';
 import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import type { CatalystEdition } from '../../state/slices/run';
+import { pairsCompletedBy } from '../../data/resonances';
 import { consumableRarity } from '../../core/consumables';
 import { KindFrame, type UpgradeKind } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS, type Rarity } from '../visual/rarityStyles';
@@ -39,6 +40,7 @@ function editionBonusDescription(kind: 'catalyst' | 'mod', edition: CatalystEdit
   if (kind === 'catalyst') {
     if (edition === 'foil') return '+50 chips on each fire';
     if (edition === 'holo') return '+10 mult on each fire';
+    if (edition === 'void') return 'Costs zero catalyst slots';
     return '+50% of own contribution';
   }
   if (edition === 'foil') return '+20 chips per fire';
@@ -53,6 +55,7 @@ function EditionBadge({ edition }: { edition: CatalystEdition }) {
   const tip =
     edition === 'foil' ? 'Foil — +50 chips when this catalyst fires.'
     : edition === 'holo' ? 'Holographic — +10 mult when this catalyst fires.'
+    : edition === 'void' ? 'Void — does not count against your catalyst slot cap.'
     : 'Polychrome — adds +50% of this catalyst\'s contribution each fire.';
   return (
     <span
@@ -61,15 +64,17 @@ function EditionBadge({ edition }: { edition: CatalystEdition }) {
         position: 'relative',
         marginLeft: 6,
         padding: '1px 5px',
-        fontSize: 8,
+        fontSize: edition === 'void' ? 11 : 8,
         letterSpacing: '0.18em',
         borderRadius: 3,
         color: c,
         border: `1px solid ${c}88`,
         background: `${c}22`,
+        fontWeight: edition === 'void' ? 700 : undefined,
+        textShadow: edition === 'void' ? `0 0 6px ${c}` : undefined,
       }}
     >
-      {editionLabel(edition).slice(0, 4).toLowerCase()}
+      {edition === 'void' ? '★' : editionLabel(edition).slice(0, 4).toLowerCase()}
       <span className="tip">{tip}</span>
     </span>
   );
@@ -153,6 +158,7 @@ export function Shop() {
   const catalysts = useStore(selectCatalysts);
   const catalystEditions = useStore(selectCatalystEditions);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
+  const usedCatalystSlots = useStore(selectEffectiveCatalystSlotsUsed);
   const vouchers = useStore(selectVouchers);
   const consumables = useStore(selectConsumables);
   const ownedMods = useStore(selectOwnedMods);
@@ -174,7 +180,7 @@ export function Shop() {
   }, [offers.length]);
 
   const voucherSellBlock = (id: string): string | null => {
-    if (id === 'bench' && catalysts.length > fakeStateNoBench) return 'Sell a catalyst first — your collection would exceed the slot cap.';
+    if (id === 'bench' && usedCatalystSlots > fakeStateNoBench) return 'Sell a catalyst first — your collection would exceed the slot cap.';
     if (id === 'capacity' && consumables.length > fakeStateNoCapacity) return 'Use a consumable first — your tray would exceed the slot cap.';
     if (id === 'forged_links' && diceMods.some((slots) => slots.length > fakeStateNoForgedLinks)) return 'Detach a mod in the Forge first — at least one die exceeds the post-sell mod cap.';
     return null;
@@ -201,7 +207,7 @@ export function Shop() {
         rerolls={rerolls}
         target={target}
         score={score}
-        catalystSlots={{ used: catalysts.length, max: maxCatalysts }}
+        catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
         accent={accent}
@@ -352,6 +358,39 @@ export function Shop() {
                   {m.name}
                   {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
                 </div>
+                {/* Resonance hint — pulses gold when this offer would
+                    complete a pair with an already-owned catalyst.
+                    Subtle on purpose: no number, just "you have a buddy
+                    for this" so synergy stays a discovery for the player. */}
+                {o.kind === 'catalyst' && (() => {
+                  const completed = pairsCompletedBy(o.id, catalysts);
+                  if (completed.length === 0) return null;
+                  return (
+                    <div className="f-mono uc has-tip" style={{
+                      position: 'relative',
+                      marginTop: 4,
+                      fontSize: 9, letterSpacing: '0.24em',
+                      color: '#ffd84a',
+                      textShadow: '0 0 8px rgba(255,216,74,0.65)',
+                      animation: 'shopSynergyPulse 1.6s ease-in-out infinite',
+                    }}>
+                      ✦ resonance
+                      <span className="tip">
+                        <span className="tip-title">Resonance Available</span>
+                        Buying this completes {completed.length === 1 ? 'a pair' : `${completed.length} pairs`} with what you already own.
+                        {completed.map((p) => (
+                          <span key={p.id} style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#ffd84a',
+                          }}>
+                            ▸ {p.name}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div style={{
                   fontFamily: '"Exo 2", sans-serif',
                   fontSize: 11, color: '#bba8ff', marginTop: 6, textAlign: 'center', lineHeight: 1.4, flex: 1,

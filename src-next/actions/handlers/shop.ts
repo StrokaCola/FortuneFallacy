@@ -1,10 +1,11 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
 import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
-import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots } from '../../core/vouchers';
+import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
+import { sellTriggerFor } from '../../core/shop/sellTriggers';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
@@ -96,7 +97,7 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts);
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId);
   for (const id of catalystIds) {
     const edition = rollCatalystEdition(Math.random);
     offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
@@ -384,18 +385,37 @@ export const shopHandler: ActionHandler = (a, s) => {
         // Drop the edition stamp (if any) so a re-bought catalyst with
         // the same id doesn't inherit the prior edition.
         const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};
-        return {
-          state: {
-            ...s,
-            run: {
-              ...s.run,
-              shards: s.run.shards + refund,
-              catalysts: removeAt(s.run.catalysts, a.index),
-              catalystEditions: remainingEditions,
-            },
+        // Build the post-removal state first; sell-trigger effects then
+        // observe and mutate THAT (so e.g. compounding-bias clears its
+        // own stacks even though the catalyst is already gone).
+        const afterRemoval: GameState = {
+          ...s,
+          run: {
+            ...s.run,
+            shards: s.run.shards + refund,
+            catalysts: removeAt(s.run.catalysts, a.index),
+            catalystEditions: remainingEditions,
           },
-          events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
         };
+        const trigger = sellTriggerFor(id);
+        const finalState: GameState = trigger
+          ? { ...afterRemoval, run: { ...afterRemoval.run, ...trigger.apply(afterRemoval) } }
+          : afterRemoval;
+        const events: GameEventEmission[] = [
+          { type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } },
+        ];
+        if (trigger) {
+          events.push({
+            type: 'onSellTrigger',
+            payload: {
+              catalystId: id,
+              label: trigger.label,
+              shardsBefore: afterRemoval.run.shards,
+              shardsAfter: finalState.run.shards,
+            },
+          });
+        }
+        return { state: finalState, events };
       }
       if (a.kind === 'consumable') {
         const id = s.run.consumables[a.index];
@@ -433,7 +453,7 @@ export const shopHandler: ActionHandler = (a, s) => {
         // Selling a voucher that grants a slot must not strand items above
         // the resulting cap. The caps are computed from current vouchers, so
         // a sell would shrink them by 1 in that direction.
-        if (id === 'bench' && s.run.catalysts.length > maxCatalystSlots(s) - 1) return { state: s, events: [] };
+        if (id === 'bench' && effectiveCatalystSlotsUsed(s) > maxCatalystSlots(s) - 1) return { state: s, events: [] };
         if (id === 'capacity' && s.run.consumables.length > maxConsumableSlots(s) - 1) return { state: s, events: [] };
         if (id === 'forged_links' && s.run.diceMods.some((slots) => slots.length > maxModSlots(s) - 1)) return { state: s, events: [] };
         const refund = sellRefund('voucher', id);

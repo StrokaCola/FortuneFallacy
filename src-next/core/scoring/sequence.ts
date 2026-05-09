@@ -274,8 +274,16 @@ function buildUpgradePath(
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;
 
-  // Boom
-  beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: product() >= ctx.target });
+  // Boom — megaRatio drives hit-stop tier in ScoreMoment. Computed
+  // from product() / target so it accounts for ALL upgrade applications;
+  // reduce-motion is gated upstream so we never feed mega visuals to
+  // those players.
+  const megaRatioFull = ctx.target > 0 ? product() / ctx.target : 0;
+  beats.push({
+    kind: 'boom', t, finalTotal: input.finalTotal,
+    crossedTarget: product() >= ctx.target,
+    ...(megaRatioFull >= 3 ? { megaRatio: megaRatioFull } : {}),
+  });
   return { beats, tier, totalDurMs: t };
 }
 
@@ -368,7 +376,13 @@ function buildLegacyPath(
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;
 
-  // Boom — terminal
-  beats.push({ kind: 'boom', t, finalTotal: input.finalTotal, crossedTarget: running >= ctx.target });
+  // Boom — terminal. megaRatio extension matches the upgrade-path above
+  // so legacy-path scoring also fires the hit-stop on mega scores.
+  const megaRatioLegacy = ctx.target > 0 ? running / ctx.target : 0;
+  beats.push({
+    kind: 'boom', t, finalTotal: input.finalTotal,
+    crossedTarget: running >= ctx.target,
+    ...(megaRatioLegacy >= 3 ? { megaRatio: megaRatioLegacy } : {}),
+  });
   return { beats, tier, totalDurMs: t };
 }

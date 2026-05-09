@@ -4,6 +4,8 @@ import { useStore, store } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { getDailyChallenge } from '../../online/dailyChallenge';
+import { lookupStake } from '../../data/stakes';
 
 // Match PauseMenu's notion of "run in progress" — also count an active
 // round (mid-hand) so a fresh-launch with `score === 0 && goalIdx === 0`
@@ -18,6 +20,8 @@ const selectGoalIdx = (s: GameState) => s.run.goalIdx;
 const selectScore = (s: GameState) => s.round.score;
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectHighScores = (s: GameState) => s.meta.highScores;
+const EMPTY_DAILY: GameState['meta']['dailyHistory'] = {};
+const selectDailyHistory = (s: GameState) => s.meta.dailyHistory ?? EMPTY_DAILY;
 
 export function Title() {
   const hasRun = useStore(selectHasRun);
@@ -26,7 +30,17 @@ export function Title() {
   const score = useStore(selectScore);
   const constellationId = useStore(selectConstellationId);
   const highScores = useStore(selectHighScores);
+  const dailyHistory = useStore(selectDailyHistory);
   const tight = useIsTightStage();
+
+  // Today's daily challenge config. Computed render-side off the system
+  // clock — cheap, deterministic, and refreshes on screen revisits so
+  // a session that crosses UTC midnight picks up the new daily without a
+  // page reload (the seed/constellation/stake change with the date).
+  const daily = getDailyChallenge();
+  const dailyConst = lookupConstellation(daily.constellationId);
+  const dailyStake = lookupStake(daily.stakeId);
+  const dailyAttempt = dailyHistory[daily.date];
   // Derived in render — the underlying array reference is stable, so this
   // recomputes only when highScores actually changes.
   const best = highScores.length === 0
@@ -161,6 +175,49 @@ export function Title() {
               best ◆ {best.score.toLocaleString()} · {best.name}
             </div>
           )}
+
+          {/* Daily Challenge: same seed + constellation + stake for every
+              player on the same UTC day. Astral perks are skipped so the
+              leaderboard stays fair. The card shows today's config and the
+              player's best for the day if they've already attempted it. */}
+          <button
+            className="btn btn-ghost mat-interactive tap"
+            style={{
+              width: primaryBtnWidth,
+              padding: tight ? '8px 12px' : '12px 16px',
+              borderColor: 'rgba(245,196,81,0.55)',
+              boxShadow: '0 0 18px rgba(245,196,81,0.18)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            }}
+            onClick={() => {
+              if (hasRun) {
+                const ok = window.confirm(
+                  'A run is in progress. Starting today\'s daily will overwrite it. Continue?',
+                );
+                if (!ok) return;
+              }
+              dispatch({ type: 'NEW_RUN', daily: true });
+            }}>
+            <div className="f-mono uc" style={{
+              fontSize: 9, letterSpacing: '0.32em', color: '#f5c451',
+            }}>
+              ★ daily challenge · {daily.date}
+            </div>
+            <div className="f-mono" style={{
+              fontSize: 11, color: '#f3f0ff', letterSpacing: '0.04em',
+            }}>
+              {dailyConst.name} · {dailyStake.name}
+            </div>
+            {dailyAttempt && (
+              <div className="f-mono" style={{
+                fontSize: 9, color: dailyAttempt.cleared ? '#7be3ff' : '#bba8ff',
+                letterSpacing: '0.18em',
+              }}>
+                {dailyAttempt.cleared ? '✓ cleared · ' : 'best · '}
+                {dailyAttempt.score.toLocaleString()}
+              </div>
+            )}
+          </button>
           {/* On tight viewports, fold the four secondary buttons into a
               two-row wrap so they take half the vertical space. */}
           <div style={{

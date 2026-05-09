@@ -4,6 +4,7 @@ import {
   freeShopReroll,
   maxConsumableSlots,
   maxModSlots,
+  effectiveCatalystSlotsUsed,
 } from './index';
 import type { GameState } from '../../state/store';
 
@@ -83,5 +84,47 @@ describe('maxModSlots', () => {
   it('returns 1 if mod_slots_capped_1 debuff active (Sedna boss, overrides forged_links)', () => {
     const s = makeState({ vouchers: ['forged_links'], isBoss: true, blindId: 'sedna' });
     expect(maxModSlots(s)).toBe(1);
+  });
+});
+
+describe('effectiveCatalystSlotsUsed', () => {
+  function makeStateWithCatalysts(catalysts: string[], editions: Record<string, string> = {}): GameState {
+    const s = makeState();
+    return {
+      ...s,
+      run: { ...s.run, catalysts, catalystEditions: editions } as GameState['run'],
+    };
+  }
+
+  it('returns 0 with no catalysts', () => {
+    expect(effectiveCatalystSlotsUsed(makeStateWithCatalysts([]))).toBe(0);
+  });
+
+  it('counts plain catalysts (no edition) as 1 slot each', () => {
+    expect(effectiveCatalystSlotsUsed(makeStateWithCatalysts(['a', 'b', 'c']))).toBe(3);
+  });
+
+  it('counts foil/holo/poly editions as 1 slot each', () => {
+    const s = makeStateWithCatalysts(['a', 'b', 'c'], { a: 'foil', b: 'holo', c: 'poly' });
+    expect(effectiveCatalystSlotsUsed(s)).toBe(3);
+  });
+
+  it('void editions take ZERO slots', () => {
+    const s = makeStateWithCatalysts(['a', 'b'], { a: 'void' });
+    expect(effectiveCatalystSlotsUsed(s)).toBe(1);
+  });
+
+  it('mixed: plain + void + foil', () => {
+    const s = makeStateWithCatalysts(['a', 'b', 'c', 'd'], { b: 'void', c: 'foil' });
+    expect(effectiveCatalystSlotsUsed(s)).toBe(3); // 'a' (plain) + 'c' (foil) + 'd' (plain)
+  });
+
+  it('handles missing catalystEditions field defensively', () => {
+    const s = {
+      ...makeState(),
+      run: { ...makeState().run, catalysts: ['a', 'b'] } as GameState['run'],
+    };
+    delete (s.run as { catalystEditions?: unknown }).catalystEditions;
+    expect(effectiveCatalystSlotsUsed(s)).toBe(2);
   });
 });

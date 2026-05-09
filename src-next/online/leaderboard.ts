@@ -44,11 +44,17 @@ export async function fetchOnlineScores(force = false): Promise<OnlineScore[]> {
   return fetchPromise;
 }
 
+// Mode partitions the leaderboard. 'run' is the default standard run.
+// 'daily-YYYY-MM-DD' is a daily-challenge entry; 'endless' is reserved for
+// post-win endless mode. The Scores screen filters by mode prefix to show
+// the right cohort.
+export type LeaderboardMode = 'run' | 'endless' | `daily-${string}`;
+
 export async function submitOnlineScore(
   name: string,
   score: number,
   constellation: string,
-  mode: 'run' | 'endless' = 'run',
+  mode: LeaderboardMode = 'run',
 ): Promise<void> {
   try {
     const res = await fetch(`${FIREBASE_URL}.json`, {
@@ -71,6 +77,12 @@ export function startLeaderboard(): () => void {
     if (score <= 0) return;
     const s = store.getState();
     const name = s.meta.playerName || 'Wanderer';
-    void submitOnlineScore(name, score, constellation, 'run');
+    // Daily runs submit under their dated mode so the global daily ladder
+    // and the all-time ladder don't collide. One run can only land in one
+    // bucket — daily wins the partition when both apply.
+    const mode: LeaderboardMode = s.run.dailyDate
+      ? `daily-${s.run.dailyDate}`
+      : 'run';
+    void submitOnlineScore(name, score, constellation, mode);
   });
 }
