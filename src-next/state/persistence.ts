@@ -105,11 +105,6 @@ export function applySavedToInitial(s: GameState): GameState {
   if (!mergedRun.runStats.catalystFires) {
     mergedRun.runStats = { ...mergedRun.runStats, catalystFires: {} };
   }
-  // peakHandSnapshot (added 2026-05) — null on legacy saves so the
-  // postmortem hides the replay button until the next hand is scored.
-  if (mergedRun.runStats.peakHandSnapshot === undefined) {
-    mergedRun.runStats = { ...mergedRun.runStats, peakHandSnapshot: null };
-  }
   // Audit modal trigger — added 2026-05. Legacy saves default to false
   // so the modal fires on the next ante-3 entry; that's a small cost
   // that's better than losing the chance to surface the event at all

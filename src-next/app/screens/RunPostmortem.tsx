@@ -29,7 +29,6 @@ import { COMBOS } from '../../core/scoring/combos';
 import { triggerShake } from '../visual/screenShake';
 import { PortalGate } from '../portal/PortalGate';
 import { computeOneMoreRunHook, HOOK_TONE_COLOR } from './postmortem/oneMoreRunHook';
-import { PeakHandReplay } from './postmortem/PeakHandReplay';
 
 const selectRun = (s: GameState) => s.run;
 const selectMeta = (s: GameState) => s.meta;
@@ -54,7 +53,7 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
   const target = useStore(selectTarget);
 
   const constellation = lookupConstellation(run.constellationId);
-  const stats = run.runStats ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {}, peakHandSnapshot: null };
+  const stats = run.runStats ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {} };
   const hook = computeOneMoreRunHook(meta, run);
   const hookColor = HOOK_TONE_COLOR[hook.tone];
 
@@ -147,10 +146,7 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
         </div>
 
         {/* Panel 2 — peak hand callout. Shown when stats actually have a
-            peak; first-roll busts and legacy saves can fall through.
-            When a peakHandSnapshot exists, a "replay peak hand" button
-            triggers the score sequence again via the same beat bus the
-            live ScoreMoment listens for. */}
+            peak; first-roll busts and legacy saves can fall through. */}
         {stats.peakHand > 0 && (
           <div className="mat-obsidian" style={{
             padding: '12px 22px', borderRadius: 10,
@@ -168,11 +164,6 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
                 {peakComboName} · {run.handsPlayed} hands played
               </div>
             )}
-            <PeakHandReplay
-              snapshot={stats.peakHandSnapshot ?? null}
-              target={target}
-              color={heroColor}
-            />
           </div>
         )}
 
