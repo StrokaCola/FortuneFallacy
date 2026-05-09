@@ -54,6 +54,13 @@ export type AchievementDef = {
   // event === null means a non-event store-change check (run on every
   // state mutation; used for discovery-driven achievements).
   check: (state: GameState, event: GameEventEmission | null) => boolean;
+  // Optional progress reporter for achievements with a numeric ramp
+  // (codex_25 → 25/56, daily_streak_7 → 3/7). The Codex view renders a
+  // mini-bar when this is present. Achievements without a numeric ramp
+  // (event-triggered single-shot ones) omit it and show as binary.
+  // Returns null when not yet meaningful to display (e.g. before any
+  // run started).
+  progress?: (state: GameState) => { current: number; target: number } | null;
 };
 
 // Helpers below are local to keep the data file self-contained.
@@ -166,12 +173,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   }),
 
   // ---------- Score Milestones (5) ----------
+  // Progress reads the run's peakHand snapshot so the bar fills as the
+  // player chases bigger numbers. Caps at the target so the bar can't
+  // visually overflow once unlocked.
   {
     id: 'score_5k',
     name: 'Five Thousand',
     description: 'Score 5,000 chips in a single hand.',
     dust: 10, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 5_000,
+    progress: (s) => ({ current: Math.min(5_000, s.run.runStats?.peakHand ?? 0), target: 5_000 }),
   },
   {
     id: 'score_25k',
@@ -179,6 +190,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Score 25,000 chips in a single hand.',
     dust: 25, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 25_000,
+    progress: (s) => ({ current: Math.min(25_000, s.run.runStats?.peakHand ?? 0), target: 25_000 }),
   },
   {
     id: 'score_100k',
@@ -186,6 +198,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Score 100,000 chips in a single hand.',
     dust: 50, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 100_000,
+    progress: (s) => ({ current: Math.min(100_000, s.run.runStats?.peakHand ?? 0), target: 100_000 }),
   },
   {
     id: 'score_500k',
@@ -193,6 +206,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Score 500,000 chips in a single hand.',
     dust: 100, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 500_000,
+    progress: (s) => ({ current: Math.min(500_000, s.run.runStats?.peakHand ?? 0), target: 500_000 }),
   },
   {
     id: 'score_1m',
@@ -200,6 +214,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Score 1,000,000 chips in a single hand.',
     dust: 200, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 1_000_000,
+    progress: (s) => ({ current: Math.min(1_000_000, s.run.runStats?.peakHand ?? 0), target: 1_000_000 }),
   },
 
   // ---------- Editions (4) ----------
@@ -262,6 +277,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover 25 catalysts.',
     dust: 25, category: 'codex',
     check: (s) => (s.meta.discovered?.catalysts ?? []).length >= 25,
+    progress: (s) => ({ current: Math.min(25, (s.meta.discovered?.catalysts ?? []).length), target: 25 }),
   },
   {
     id: 'codex_40',
@@ -269,6 +285,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover 40 catalysts.',
     dust: 50, category: 'codex',
     check: (s) => (s.meta.discovered?.catalysts ?? []).length >= 40,
+    progress: (s) => ({ current: Math.min(40, (s.meta.discovered?.catalysts ?? []).length), target: 40 }),
   },
   {
     id: 'codex_full',
@@ -276,6 +293,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover every catalyst in the codex.',
     dust: 150, category: 'codex',
     check: (s) => (s.meta.discovered?.catalysts ?? []).length >= CATALYST_META.length,
+    progress: (s) => ({ current: (s.meta.discovered?.catalysts ?? []).length, target: CATALYST_META.length }),
   },
   {
     id: 'codex_mods_full',
@@ -283,6 +301,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover every mod in the codex.',
     dust: 100, category: 'codex',
     check: (s) => (s.meta.discovered?.mods ?? []).length >= MODS.length,
+    progress: (s) => ({ current: (s.meta.discovered?.mods ?? []).length, target: MODS.length }),
   },
   {
     id: 'codex_vouchers_full',
@@ -290,6 +309,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover every voucher in the codex.',
     dust: 50, category: 'codex',
     check: (s) => (s.meta.discovered?.vouchers ?? []).length >= VOUCHERS.length,
+    progress: (s) => ({ current: (s.meta.discovered?.vouchers ?? []).length, target: VOUCHERS.length }),
   },
   {
     id: 'codex_bosses_full',
@@ -297,6 +317,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     description: 'Discover every boss debuff in the codex.',
     dust: 75, category: 'codex',
     check: (s) => (s.meta.discovered?.bosses ?? []).length >= BOSS_BLINDS.length,
+    progress: (s) => ({ current: (s.meta.discovered?.bosses ?? []).length, target: BOSS_BLINDS.length }),
   },
 
   // ---------- Risk (4) ----------
@@ -352,6 +373,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     dust: 40, category: 'daily',
     check: (s) =>
       Object.values(s.meta.dailyHistory ?? {}).filter((h) => h.cleared).length >= 3,
+    progress: (s) => ({
+      current: Math.min(3, Object.values(s.meta.dailyHistory ?? {}).filter((h) => h.cleared).length),
+      target: 3,
+    }),
   },
   {
     id: 'daily_streak_7',
@@ -360,6 +385,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     dust: 75, category: 'daily',
     check: (s) =>
       Object.values(s.meta.dailyHistory ?? {}).filter((h) => h.cleared).length >= 7,
+    progress: (s) => ({
+      current: Math.min(7, Object.values(s.meta.dailyHistory ?? {}).filter((h) => h.cleared).length),
+      target: 7,
+    }),
   },
 
   // ---------- Combo (4) ----------

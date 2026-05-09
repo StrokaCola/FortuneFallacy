@@ -4,9 +4,12 @@ import { dispatch } from '../../actions/dispatch';
 import { selectUnlocks } from '../../state/selectors';
 import { CONSTELLATIONS, DEFAULT_CONSTELLATION_ID } from '../../data/constellations';
 import { fetchOnlineScores, type OnlineScore } from '../../online/leaderboard';
+import { getDailyDate } from '../../online/dailyChallenge';
 import type { GameState } from '../../state/store';
 
 const selectActiveConstellation = (s: GameState) => s.run.constellationId;
+
+type LeaderboardScope = 'all_time' | 'daily_today';
 
 function shortName(fullName: string): string {
   // CONSTELLATIONS[*].name is "Lyra, the Lyre" — the picker only needs the lead noun.
@@ -19,8 +22,10 @@ export function Scores() {
 
   const initialId = unlocks.includes(activeId) ? activeId : DEFAULT_CONSTELLATION_ID;
   const [selectedId, setSelectedId] = useState<string>(initialId);
+  const [scope, setScope] = useState<LeaderboardScope>('all_time');
   const [allScores, setAllScores] = useState<OnlineScore[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const todayKey = `daily-${getDailyDate()}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -38,21 +43,78 @@ export function Scores() {
 
   const visible = useMemo(() => {
     if (!allScores) return null;
+    // Daily scope ignores the constellation picker — today's daily is
+    // ONE shared run across every player, so partitioning further by
+    // constellation would always show empty for non-matching ones.
     return allScores
-      .filter((s) => s.constellation === selectedId)
+      .filter((s) => {
+        if (scope === 'daily_today') return s.mode === todayKey;
+        // All-time: hide daily entries (they belong on the daily tab)
+        // and filter by constellation.
+        if (typeof s.mode === 'string' && s.mode.startsWith('daily-')) return false;
+        return s.constellation === selectedId;
+      })
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-  }, [allScores, selectedId]);
+  }, [allScores, selectedId, scope, todayKey]);
 
-  const selectedUnlocked = unlocks.includes(selectedId);
+  // Daily scope is always "unlocked" — every player sees the same
+  // global daily ladder regardless of constellation progression.
+  const selectedUnlocked = scope === 'daily_today' || unlocks.includes(selectedId);
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-auto px-4">
       <h2 className="font-display text-4xl text-cosmos-50 mb-4">HIGH SCORES</h2>
 
+      {/* Scope tabs — All-time / Today's daily. Daily is the shared
+          single-seed run across every player; all-time is per-
+          constellation. */}
+      <div className="flex gap-2 mb-3" role="radiogroup" aria-label="Leaderboard scope">
+        {([
+          { id: 'all_time',    label: 'All time' },
+          { id: 'daily_today', label: `Daily · ${getDailyDate()}` },
+        ] as { id: LeaderboardScope; label: string }[]).map((s) => {
+          const active = scope === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setScope(s.id)}
+              className="f-mono uc tap"
+              style={{
+                minHeight: 36,
+                padding: '6px 14px',
+                fontSize: 10,
+                letterSpacing: '0.24em',
+                borderRadius: 6,
+                border: active
+                  ? '1px solid rgba(245,196,81,0.85)'
+                  : '1px solid rgba(149,119,255,0.35)',
+                background: active
+                  ? 'rgba(245,196,81,0.18)'
+                  : 'rgba(8,4,28,0.55)',
+                color: active ? '#f5c451' : '#dcd4ff',
+                cursor: 'pointer',
+              }}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         className="w-full max-w-md mb-4 overflow-x-auto"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          // The constellation picker is meaningless on the daily scope —
+          // hide it but keep layout space stable so the list doesn't
+          // jump up when the player toggles.
+          visibility: scope === 'daily_today' ? 'hidden' : 'visible',
+          pointerEvents: scope === 'daily_today' ? 'none' : undefined,
+        }}
       >
         <div className="flex gap-2 px-1 pb-2">
           {CONSTELLATIONS.map((c) => {

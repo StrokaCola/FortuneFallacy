@@ -401,10 +401,21 @@ export const shopHandler: ActionHandler = (a, s) => {
         const finalState: GameState = trigger
           ? { ...afterRemoval, run: { ...afterRemoval.run, ...trigger.apply(afterRemoval) } }
           : afterRemoval;
-        return {
-          state: finalState,
-          events: [{ type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } }],
-        };
+        const events: GameEventEmission[] = [
+          { type: 'onUpgradeSold', payload: { kind: 'catalyst', id, refund } },
+        ];
+        if (trigger) {
+          events.push({
+            type: 'onSellTrigger',
+            payload: {
+              catalystId: id,
+              label: trigger.label,
+              shardsBefore: afterRemoval.run.shards,
+              shardsAfter: finalState.run.shards,
+            },
+          });
+        }
+        return { state: finalState, events };
       }
       if (a.kind === 'consumable') {
         const id = s.run.consumables[a.index];

@@ -11,7 +11,8 @@ import { updateComboStreaks } from '../../core/round/comboStreak';
 import type { GameEventEmission } from '../../events/types';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
 import { lookupResonance } from '../../data/resonances';
-import type { RunSlice } from '../../state/slices/run';
+import { adaptScoringContext } from '../../core/scoring/adapter';
+import type { RunSlice, PeakHandSnapshot } from '../../state/slices/run';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -172,11 +173,27 @@ export const rollHandler: ActionHandler = (a, s) => {
         workingState.run,
         final.combo ? { id: final.combo.id, tier: final.combo.tier } : null,
       );
+      // Build the SequenceInput once — it's used both as the live
+      // animation feed (via scoreSequenceController) AND, when this
+      // is a new peak hand, as the snapshot stored in runStats so
+      // the postmortem can replay it visually.
+      const sequenceInputForThisHand = adaptScoringContext({
+        combo: final.combo ?? null,
+        chips: final.chips ?? 0,
+        mult: final.mult ?? 1,
+        chain: { mult: final.chain?.mult ?? 1 },
+        total: final.total ?? 0,
+        events: final.events
+          .filter((e) => e.type === 'onUpgradeTriggered')
+          .map((e) => ({ type: e.type, payload: e.payload as { id: string; phase: number; deltaChips: number; deltaMult: number } })),
+        state: { round: { dice: workingState.round.dice, scoringOrder: workingState.round.scoringOrder } },
+      });
       const newRunStats = updateRunStats(
         workingState.run.runStats,
         final.events,
         final.total,
         final.combo?.id ?? null,
+        sequenceInputForThisHand,
       );
       // Hot Streak: a hand is "hot" when it scores above its fair share
       // (target × 2/3 — twice what a single hand would need to clear in
@@ -297,14 +314,25 @@ function updateRunStats(
   events: GameEventEmission[],
   handTotal: number,
   comboId: string | null,
+  // The current hand's SequenceInput. When the hand sets a new peak,
+  // this captures into runStats.peakHandSnapshot for the postmortem
+  // replay. Optional so older test paths can omit it without crashing.
+  sequenceInput?: PeakHandSnapshot,
 ): RunSlice['runStats'] {
   // Defensive: persistence has a default but a freshly-cloned state from
   // tests may pass undefined. Treat missing as a zero-baseline stat block.
   const base: RunSlice['runStats'] = prev ?? {
-    peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {},
+    peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {}, peakHandSnapshot: null,
   };
+  const isNewPeak = handTotal > base.peakHand;
   const peakHand = Math.max(base.peakHand, handTotal);
-  const peakCombo = handTotal > base.peakHand ? comboId : base.peakCombo;
+  const peakCombo = isNewPeak ? comboId : base.peakCombo;
+  // Replace the snapshot only when we just set a new peak. Keeps the
+  // postmortem's "play your peak hand" promise honest — it's always
+  // the BEST hand of the run, not the most recent one.
+  const peakHandSnapshot = isNewPeak && sequenceInput
+    ? sequenceInput
+    : (base.peakHandSnapshot ?? null);
   const catalystChips: Record<string, number> = { ...base.catalystChips };
   const catalystFires: Record<string, number> = { ...(base.catalystFires ?? {}) };
   for (const ev of events) {
@@ -347,5 +375,6 @@ function updateRunStats(
     catalystChips,
     catalystFires,
     dustEarned: base.dustEarned ?? 0,
+    peakHandSnapshot,
   };
 }

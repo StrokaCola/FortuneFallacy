@@ -419,6 +419,12 @@ function BossGrid({ discovered }: { discovered: string[] }) {
 }
 
 function AchievementsView({ unlocked }: { unlocked: string[] }) {
+  // Full state read so progressive achievements can compute their
+  // current/target via the predicate authored in data/achievements.ts.
+  // useStore subscriber fires once per state change but the comparison
+  // is identity-based on the meta + run slices, so the view re-renders
+  // only when something achievement-relevant has actually moved.
+  const state = useStore((s) => s);
   const unlockedSet = new Set(unlocked);
   const totalUnlocked = unlocked.length;
   const totalCount = ACHIEVEMENTS.length;
@@ -469,6 +475,13 @@ function AchievementsView({ unlocked }: { unlocked: string[] }) {
                 // description are masked. Once unlocked, they reveal in
                 // full so the player gets the spoilery payoff.
                 const showDetails = isUnlocked || !a.hidden;
+                // Progressive achievements (codex_25, daily_streak_7,
+                // score_25k, etc.) report a numeric current/target
+                // through their .progress() predicate. We only render
+                // the bar when the achievement has progress data AND
+                // hasn't been unlocked yet (post-unlock the bar is just
+                // noise — the ✓ already says it's done).
+                const progress = !isUnlocked && a.progress ? a.progress(state) : null;
                 return (
                   <div key={a.id} className="panel" style={{
                     padding: 10, borderRadius: 8,
@@ -508,6 +521,32 @@ function AchievementsView({ unlocked }: { unlocked: string[] }) {
                         {isUnlocked ? '✓' : '◇'} {a.dust}◆
                       </div>
                     </div>
+                    {progress && progress.target > 0 && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        marginTop: 8,
+                      }}>
+                        <div style={{
+                          flex: 1,
+                          height: 4,
+                          background: 'rgba(255,255,255,0.06)',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            width: `${Math.min(100, (progress.current / progress.target) * 100)}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #7be3ff, #cc88ff)',
+                            transition: 'width 400ms ease-out',
+                          }} />
+                        </div>
+                        <span className="f-mono num" style={{
+                          fontSize: 9, color: '#bba8ff', flexShrink: 0,
+                        }}>
+                          {progress.current.toLocaleString()} / {progress.target.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

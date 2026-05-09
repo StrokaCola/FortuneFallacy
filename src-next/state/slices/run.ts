@@ -1,3 +1,18 @@
+// Snapshot of a single hand's scoring inputs, captured when peakHand
+// is set. Pure JSON so persistence + replay can serialize it. Mirrors
+// the scoring adapter's input shape (core/scoring/adapter.ts) — kept
+// inline to avoid a circular import with that module.
+export type PeakHandSnapshot = {
+  faces: number[];
+  dieIndices: number[];
+  comboLabel: string;
+  comboBonus: number;
+  baseMult: number;
+  upgrades: { label: string; chipDelta: number; multDelta: number; tint?: 'gold' | 'magenta' }[];
+  mults: { label: string; value: number; tint?: 'gold' | 'magenta' }[];
+  finalTotal: number;
+};
+
 export type RunSlice = {
   seed: number;
   shards: number;
@@ -92,6 +107,12 @@ export type RunSlice = {
     // amplification is intentionally a v2 follow-up — needs balance
     // playtesting before adding multiplicative power.
     catalystFires: Record<string, number>;
+    // Snapshot of the SequenceInput from the peak-scoring hand. Stored
+    // on every peakHand update; the postmortem uses it to replay the
+    // hand visually (uses the same buildScoreSequence + runScoreSequence
+    // pipeline as live scoring). null until the player has scored at
+    // least one hand. Plain JSON — survives persistence + load cycles.
+    peakHandSnapshot: PeakHandSnapshot | null;
   };
   // Audit (mid-run risk event) — true once the player has resolved the
   // ante-3 audit modal (either gambled or skipped). Stays false through
@@ -157,6 +178,7 @@ export const initialRunSlice = (): RunSlice => ({
     catalystChips: {},
     dustEarned: 0,
     catalystFires: {},
+    peakHandSnapshot: null,
   },
   auditResolved: false,
 });

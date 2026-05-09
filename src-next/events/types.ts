@@ -115,6 +115,15 @@ export type GameEventMap = {
   // Mod removed from a die — fires the detach SFX so the swap reads as
   // a real two-step interaction.
   onModDetached: { dieIdx: number; modId: string };
+  // Sell-trigger fired — a catalyst's on-sell payoff (Stipend, Audit,
+  // Compounding Bias) ran. Drives the celebration toast + chime so
+  // the player sees the bonus they got from selling.
+  onSellTrigger: {
+    catalystId: string;
+    label: string;
+    shardsBefore: number;
+    shardsAfter: number;
+  };
 };
 
 export type GameEventEmission = {
