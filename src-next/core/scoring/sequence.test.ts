@@ -232,13 +232,16 @@ describe('buildScoreSequence — tier selection', () => {
     }
   });
 
-  it('short tier total duration is at least 2000ms for typical 5-die no-mult hand', () => {
+  it('short tier total duration is at least 1500ms for typical 5-die no-mult hand', () => {
+    // Floor reduced from 2000 → 1500 in the 2026-05 pacing tighten.
+    // Lower bound still catches accidental "instant" sequences while
+    // accommodating the ~20% global PACING reduction.
     const seq = buildScoreSequence(
       baseInput({ comboLabel: 'CHANCE', comboBonus: 0, mults: [], finalTotal: 18 }),
       baseCtx({ target: 100 }),
     );
     expect(seq.tier).toBe('short');
-    expect(seq.totalDurMs).toBeGreaterThanOrEqual(2000);
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(1500);
   });
 
   it('short tier total duration is at most 5000ms (sanity ceiling)', () => {
@@ -250,13 +253,14 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.totalDurMs).toBeLessThan(5000);
   });
 
-  it('mid tier total duration is at least 3000ms', () => {
+  it('mid tier total duration is at least 2400ms', () => {
+    // Floor reduced from 3000 → 2400 in the pacing tighten.
     const seq = buildScoreSequence(
       baseInput({ comboLabel: 'TWO_PAIR', comboBonus: 20, mults: [], finalTotal: 50 }),
       baseCtx({ target: 100 }),
     );
     expect(seq.tier).toBe('mid');
-    expect(seq.totalDurMs).toBeGreaterThanOrEqual(3000);
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(2400);
   });
 
   it('mid tier total duration is at most 6000ms (sanity ceiling)', () => {
@@ -268,13 +272,17 @@ describe('buildScoreSequence — tier selection', () => {
     expect(seq.totalDurMs).toBeLessThan(6000);
   });
 
-  it('full tier total duration is at least 3500ms', () => {
+  it('full tier total duration is at least 2800ms', () => {
+    // Floor reduced from 3500 → 2800 in the pacing tighten. Note
+    // this hand crosses target at the combo bonus, so the post-cross
+    // acceleration kicks in for the upgrades + mults + breath tail —
+    // shaves ~25% off the post-cross gaps.
     const seq = buildScoreSequence(
       baseInput({ comboLabel: 'FULL_HOUSE', comboBonus: 35, mults: [{ label: 'mult', value: 2 }], finalTotal: 200 }),
       baseCtx({ target: 100 }),
     );
     expect(seq.tier).toBe('full');
-    expect(seq.totalDurMs).toBeGreaterThanOrEqual(3500);
+    expect(seq.totalDurMs).toBeGreaterThanOrEqual(2800);
   });
 
   it('full tier total duration is at most 8000ms (sanity ceiling)', () => {
@@ -489,5 +497,55 @@ describe('buildScoreSequence — upgrade-beat path', () => {
     expect(kinds).toContain('upgrade-mult');
     expect(kinds).toContain('hold-breath');
     expect(kinds[kinds.length - 1]).toBe('boom');
+  });
+});
+
+describe('buildScoreSequence — post-cross-target acceleration', () => {
+  // Post-cross mechanism (added 2026-05): once running total crosses
+  // target, subsequent gaps shrink by ×0.75. Verifies the same hand
+  // takes meaningfully longer when it never crosses target vs when it
+  // crosses early.
+  it('a hand that crosses early ends sooner than one that crosses only at boom', () => {
+    // Both pick the same tier (full) so the comparison isolates the
+    // post-cross acceleration. Cross-early target=1 means the very
+    // first die-tick crosses; cross-late target=finalTotal-1 means
+    // the cross only fires near/at the boom, so almost no post-cross
+    // savings apply.
+    const input = baseInput({
+      comboLabel: 'FULL_HOUSE',
+      comboBonus: 100,
+      mults: [{ label: 'a', value: 2 }, { label: 'b', value: 2 }],
+      finalTotal: 800,
+      baseMult: 1,
+      upgrades: [
+        { label: 'u1', chipDelta: 50, multDelta: 2 },
+        { label: 'u2', chipDelta: 50, multDelta: 2 },
+      ],
+    });
+    const seqEarly = buildScoreSequence(input, baseCtx({ target: 1 }));
+    const seqLate = buildScoreSequence(input, baseCtx({ target: 799 }));
+    expect(seqEarly.tier).toBe('full');
+    expect(seqLate.tier).toBe('full');
+    expect(seqEarly.totalDurMs).toBeLessThan(seqLate.totalDurMs);
+    // Should save at least ~10% on the tail. Loose bound to absorb
+    // future tuning without churning the test on every adjustment.
+    const savedRatio = 1 - seqEarly.totalDurMs / seqLate.totalDurMs;
+    expect(savedRatio).toBeGreaterThan(0.10);
+  });
+
+  it('hold-breath floor never goes below 200ms post-cross', () => {
+    // Even with the post-cross factor, the climax beat needs weight.
+    // The floor stops a fast-cross from rushing the boom dishonestly.
+    const seq = buildScoreSequence(
+      baseInput({
+        comboLabel: 'FULL_HOUSE', comboBonus: 100, mults: [], finalTotal: 200, baseMult: 1,
+      }),
+      baseCtx({ target: 10 }),
+    );
+    const breath = seq.beats.find((b) => b.kind === 'hold-breath');
+    expect(breath).toBeDefined();
+    if (breath?.kind === 'hold-breath') {
+      expect(breath.durMs).toBeGreaterThanOrEqual(200);
+    }
   });
 });
