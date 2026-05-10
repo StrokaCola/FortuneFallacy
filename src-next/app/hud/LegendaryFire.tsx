@@ -4,6 +4,7 @@ import { useStore, type GameState } from '../../state/store';
 import { lookupCatalyst } from '../../data/catalysts';
 import { sfxPlay } from '../../audio/sfx';
 import { catalystIdFromEvent } from '../../core/upgrades/eventId';
+import { Z } from './zLayers';
 
 const FLASH_DURATION_MS = 720;
 const COOLDOWN_MS = 380;
@@ -59,7 +60,7 @@ export function LegendaryFire() {
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
-        zIndex: 8,
+        zIndex: Z.fx,
         overflow: 'hidden',
       }}
     >

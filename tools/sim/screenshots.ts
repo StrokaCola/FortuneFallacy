@@ -22,6 +22,14 @@ const VIEWPORTS: Viewport[] = [
   { name: 'ultrawide',         width: 2560, height: 1080 },
   // Worst case: short Android landscape
   { name: 'android-landscape', width: 640, height: 360, mobile: true },
+  // Added 2026-05 in the UX audit pass:
+  //  - iphone-se-landscape: rotated iPhone SE; the exact case the
+  //    "android-landscape" entry above doesn't quite cover (narrower)
+  //  - galaxy-tablet-portrait: just above the wide-mode threshold
+  //    (1280×760) so we capture the layout where the catalyst rail
+  //    is ABOUT to engage but isn't yet
+  { name: 'iphone-se-landscape',   width: 667, height: 375, mobile: true },
+  { name: 'galaxy-tablet-portrait', width: 800, height: 1280 },
 ];
 
 async function capture(page: Page, name: string): Promise<void> {

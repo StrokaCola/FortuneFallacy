@@ -8,6 +8,7 @@ import { useIsWideMode } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
 import { lookupResonance, activeResonances } from '../../data/resonances';
+import { Z } from './zLayers';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -208,7 +209,7 @@ export function CatalystStrip() {
       // 6+ cards don't run off the play area horizontally.
       display: 'flex',
       flexDirection: wide ? 'column' : 'row',
-      gap: 8, zIndex: 4,
+      gap: 8, zIndex: Z.hud,
     }}>
       {catalysts.map((id, i) => {
         const c = lookupCatalyst(id);

@@ -131,6 +131,11 @@ function Card({ c, compact, tight, progressId }: { c: Constellation; compact: bo
       <div style={{
         marginTop: 'auto', paddingTop: 8,
         borderTop: '1px dashed rgba(149,119,255,0.22)',
+        // Lift the stake block 4px off the card's bottom edge so the
+        // rules-row ("+1 hand, no rerolls, …") has breathing room on
+        // tight 190px-tall landscape cards instead of sitting flush
+        // against the border.
+        marginBottom: tight ? 4 : 0,
       }}>
         <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', marginBottom: 6 }}>
           stake

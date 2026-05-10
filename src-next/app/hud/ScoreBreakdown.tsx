@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import type { Beat } from '../../core/scoring/types';
 import { formatNumber } from './scoreExplainData';
+import { Z } from './zLayers';
 
 const FADE_OUT_MS = 1200;
 
@@ -173,7 +174,7 @@ export function ScoreBreakdown() {
         display: 'flex',
         gap: 22,
         alignItems: 'center',
-        zIndex: 3,
+        zIndex: Z.hud,
         pointerEvents: 'none',
         animation: 'fadein 0.25s ease-out',
       }}
