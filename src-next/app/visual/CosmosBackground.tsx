@@ -85,7 +85,8 @@ export function CosmosBackground({
   nebula = true,
   drift = true,
   tension = 0,
-}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number }) {
+  progress = 0,
+}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number; progress?: number }) {
   const t = THEMES[theme];
   const tensionClamped = Math.max(0, Math.min(1, tension));
   // Crimson tint fades in from 0 starting at tension=0.3, reaching opacity 0.25 at tension=1.
@@ -94,6 +95,16 @@ export function CosmosBackground({
   // tension=1. Pulls the edges into the dark and pushes attention to centre,
   // mimicking Clover Pit's claustrophobic moods on boss/late-blind hands.
   const vigOpacity = tensionClamped < 0.6 ? 0 : (tensionClamped - 0.6) * (0.55 / 0.4);
+  // Score-progress reactivity — completely orthogonal to tension. When
+  // the player is CLIMBING the score (approaching/crossing target), a
+  // gold tint fades in across the top half of the cosmos. The cosmos
+  // itself reacts to your over-clear flex. progress=1.0 → over target.
+  // We treat progress >=1 as "you crossed", brightening the scene.
+  const progressClamped = Math.max(0, Math.min(2, progress));
+  const goldOpacity = progressClamped < 0.6 ? 0 : Math.min(0.35, (progressClamped - 0.6) * 0.45);
+  // Star halo brightness boost — additive overlay that brightens the
+  // upper third of the screen as score crosses target.
+  const haloOpacity = progressClamped < 1.0 ? 0 : Math.min(0.45, (progressClamped - 1.0) * 0.6);
 
   return (
     <div style={{
@@ -114,6 +125,27 @@ export function CosmosBackground({
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,1) 105%)',
         opacity: vigOpacity,
+        transition: 'opacity 800ms ease',
+        willChange: 'opacity',
+      }} />
+      {/* Gold "you're crushing it" overlay — fades in as score crosses
+          60% of target, peaks at 200% (over-clear). screen blend so it
+          brightens stars + nebula without flattening the contrast. */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at 50% 30%, rgba(245,196,81,1) 0%, transparent 70%)',
+        opacity: goldOpacity,
+        mixBlendMode: 'screen',
+        transition: 'opacity 600ms ease',
+        willChange: 'opacity',
+      }} />
+      {/* Halo aura on cross-target — top half brightens further when
+          score is above 1× target, capping at progress=1.75. */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,232,180,0.85) 0%, transparent 55%)',
+        opacity: haloOpacity,
+        mixBlendMode: 'screen',
         transition: 'opacity 800ms ease',
         willChange: 'opacity',
       }} />

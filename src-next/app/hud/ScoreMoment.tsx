@@ -5,14 +5,15 @@ import { stageScale } from '../../render/stage';
 import { triggerShake } from '../visual/screenShake';
 import type { Beat } from '../../core/scoring/types';
 import { Z } from './zLayers';
+import { store } from '../../state/store';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
 type Star = { id: number; dx: number; dy: number; delay: number };
 
 type BoomState =
-  | { phase: 'hold'; total: number; gold: boolean }
-  | { phase: 'fly';  total: number; gold: boolean; stars: Star[] };
+  | { phase: 'hold'; total: number; gold: boolean; isNewBest: boolean }
+  | { phase: 'fly';  total: number; gold: boolean; stars: Star[]; isNewBest: boolean };
 
 let slamId = 1;
 
@@ -125,8 +126,16 @@ export function ScoreMoment() {
           }
           const useStars = gold && !reduced;
           const hold = gold ? HOLD_GOLD_MS : HOLD_BASE_MS;
+          // New-best detection — updateRunStats has already mutated
+          // peakHand by the time boom fires, so we check whether the
+          // current peak EQUALS this hand's total. If so, this hand
+          // IS the run's best (possibly tied with a prior identical
+          // hand — the celebration still fires, which is fine since
+          // matching your record is itself a moment).
+          const peakHandNow = store.getState().run.runStats?.peakHand ?? 0;
+          const isNewBest = peakHandNow > 0 && peakHandNow === beat.finalTotal;
 
-          setBoom({ phase: 'hold', total: beat.finalTotal, gold });
+          setBoom({ phase: 'hold', total: beat.finalTotal, gold, isNewBest });
 
           schedule(() => {
             if (!useStars) {
@@ -155,7 +164,7 @@ export function ScoreMoment() {
               dy: dy + (Math.random() - 0.5) * 24,
               delay: i * 30,
             }));
-            setBoom({ phase: 'fly', total: beat.finalTotal, gold, stars });
+            setBoom({ phase: 'fly', total: beat.finalTotal, gold, stars, isNewBest });
             schedule(finishBoom, FLY_MS);
           }, hold);
           break;
@@ -255,6 +264,26 @@ export function ScoreMoment() {
           >
             {boom.total.toLocaleString()}
           </div>
+          {/* NEW BEST stamp — sits above the boom number for the run's
+              new peak hand. Fires alongside the boom, fades through
+              the hold + fly phases so it tracks with the celebration. */}
+          {boom.isNewBest && (
+            <div
+              className="f-mono uc new-best-stamp"
+              style={{
+                position: 'absolute',
+                top: -52,
+                fontSize: 12, letterSpacing: '0.5em',
+                color: '#f5c451',
+                textShadow: '0 0 14px #f5c451, 0 0 28px rgba(245,196,81,0.6)',
+                fontWeight: 900,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              ★ NEW BEST ★
+            </div>
+          )}
           {boom.phase === 'fly' && boom.stars.map((s) => (
             <div
               key={s.id}

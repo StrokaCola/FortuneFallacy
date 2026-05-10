@@ -1,36 +1,50 @@
 import type { Beat, ScoreSequence, SequenceCtx, SequenceInput, SequenceTier } from './types';
 
 // Pacing constants per tier. All ms. Tunable in dev.
+//
+// Tightened 2026-05: cut ~20% globally + added post-cross-target
+// acceleration. The previous values were optimised for "every beat
+// distinct" — turned out players read the rhythm faster than the
+// authored cadence, so the gaps felt draggy. New values keep the
+// crescendo arc but at a tighter heart-rate.
 const PACING = {
   short: {
-    castSwellMs: 200,
-    dieGapMs: 350,
-    comboGapMs: 250,
-    multGapMs: 350,
-    upgradeChipGapMs: 280,
-    upgradeMultGapMs: 280,
-    holdBreathMs: 200,
+    castSwellMs: 180,
+    dieGapMs: 280,
+    comboGapMs: 200,
+    multGapMs: 280,
+    upgradeChipGapMs: 220,
+    upgradeMultGapMs: 220,
+    holdBreathMs: 160,
   },
   mid: {
-    castSwellMs: 200,
-    dieGapMs: 500,
-    comboGapMs: 300,
-    multGapMs: 400,
-    upgradeChipGapMs: 350,
-    upgradeMultGapMs: 350,
-    holdBreathMs: 300,
+    castSwellMs: 180,
+    dieGapMs: 400,
+    comboGapMs: 240,
+    multGapMs: 320,
+    upgradeChipGapMs: 280,
+    upgradeMultGapMs: 280,
+    holdBreathMs: 240,
   },
   full: {
-    castSwellMs: 200,
-    dieGapStartMs: 700,
-    dieGapEndMs: 480,
-    comboGapMs: 350,
-    multGapMs: 450,
-    upgradeChipGapMs: 420,
-    upgradeMultGapMs: 420,
-    holdBreathMs: 400,
+    castSwellMs: 180,
+    dieGapStartMs: 560,
+    dieGapEndMs: 380,
+    comboGapMs: 280,
+    multGapMs: 360,
+    upgradeChipGapMs: 340,
+    upgradeMultGapMs: 340,
+    holdBreathMs: 300,
   },
 } as const;
+
+// Post-cross-target acceleration. Once the running total has crossed
+// the blind's target, the player has WON; remaining beats are pure
+// celebration. Shrinking subsequent gaps by 25% turns the lingering
+// upgrade/mult chain into a victory drumroll instead of a slow lap.
+// Floor on hold-breath separately so the climax still has weight.
+const POST_CROSS_GAP_FACTOR = 0.75;
+const POST_CROSS_BREATH_FLOOR_MS = 200;
 
 const REDUCED_MOTION_DIE_GAP_MS = 220;
 const REDUCED_MOTION_PRE_BOOM_MS = 150;
@@ -160,6 +174,14 @@ function buildUpgradePath(
   let runningMult = input.baseMult!;
   const product = () => Math.round(runningChips * runningMult);
 
+  // Once the running total crosses target, all subsequent gaps shrink
+  // by POST_CROSS_GAP_FACTOR. Wraps the bare `t += gap` lines so the
+  // celebration tail flies past instead of dragging through the
+  // remaining upgrades + mults at the pre-cross cadence.
+  const advance = (gap: number): void => {
+    t += crossEmitted ? Math.max(40, Math.round(gap * POST_CROSS_GAP_FACTOR)) : gap;
+  };
+
   const checkCross = () => {
     if (!crossEmitted && product() >= ctx.target) {
       beats.push({ kind: 'cross-target', t: t + CROSS_TARGET_DELAY_MS, runningTotal: product(), target: ctx.target });
@@ -189,7 +211,7 @@ function buildUpgradePath(
       pitchSemis: i,
     });
     checkCross();
-    t += dieGaps[i]!;
+    advance(dieGaps[i]!);
   }
 
   // Combo-bonus — ALWAYS emitted (even when comboBonus === 0)
@@ -204,7 +226,7 @@ function buildUpgradePath(
     });
     checkCross();
     const comboGap = tier === 'full' ? PACING.full.comboGapMs : PACING[tier].comboGapMs;
-    t += comboGap;
+    advance(comboGap);
   }
 
   // Upgrade events — chip pass then mult pass for each event
@@ -222,7 +244,7 @@ function buildUpgradePath(
         runningTotal: product(),
       });
       checkCross();
-      t += upgradeChipGap;
+      advance(upgradeChipGap);
     }
     if (upg.multDelta !== 0) {
       runningMult += upg.multDelta;
@@ -235,7 +257,7 @@ function buildUpgradePath(
         tint: upg.tint,
       });
       checkCross();
-      t += upgradeMultGap;
+      advance(upgradeMultGap);
     }
   }
 
@@ -245,14 +267,15 @@ function buildUpgradePath(
   // distinct (a uniform-pace chain felt clunky in playtests). Pitch climbs
   // 2 semis per slam as before; ampScale rises with pitch and slam index
   // so deeper slams hit harder both audibly and emotionally.
+  // Per-slam shortening tightened from 0.9 → 0.85: 15% faster per slam
+  // so a 4-mult chain accelerates more aggressively into the boom.
   const baseMultGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
-  const minMultGap = Math.round(baseMultGap * 0.65);
+  const minMultGap = Math.round(baseMultGap * 0.6);
   let multSemis = 12;
   for (let mi = 0; mi < input.mults.length; mi++) {
     const m = input.mults[mi]!;
     runningMult *= m.value;
-    // Linear shortening: each slam ~10% faster than the previous, clamped.
-    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.9, mi)));
+    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.85, mi)));
     beats.push({
       kind: 'mult-slam',
       t,
@@ -266,11 +289,16 @@ function buildUpgradePath(
     });
     checkCross();
     multSemis += 2;
-    t += gap;
+    advance(gap);
   }
 
-  // Hold-breath
-  const breathMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
+  // Hold-breath — full duration when crossing target IS the climax;
+  // floor at POST_CROSS_BREATH_FLOOR_MS once already crossed so the
+  // boom still has weight even after the celebration has accelerated.
+  const breathBaseMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
+  const breathMs = crossEmitted
+    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR))
+    : breathBaseMs;
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;
 
@@ -297,6 +325,12 @@ function buildLegacyPath(
   let t = 0;
   let running = 0;
   let crossEmitted = false;
+
+  // Same post-cross acceleration as the upgrade-path. Wraps every
+  // bare `t += gap` so the celebration tail flies past the cross.
+  const advance = (gap: number): void => {
+    t += crossEmitted ? Math.max(40, Math.round(gap * POST_CROSS_GAP_FACTOR)) : gap;
+  };
 
   const checkCross = (beforeRunning: number) => {
     if (!crossEmitted && beforeRunning < ctx.target && running >= ctx.target) {
@@ -328,7 +362,7 @@ function buildLegacyPath(
       pitchSemis: i,
     });
     checkCross(before);
-    t += dieGaps[i]!;
+    advance(dieGaps[i]!);
   }
 
   // Combo-bonus — ALWAYS emitted (even when comboBonus === 0)
@@ -344,19 +378,22 @@ function buildLegacyPath(
     });
     checkCross(before);
     const comboGap = tier === 'full' ? PACING.full.comboGapMs : PACING[tier].comboGapMs;
-    t += comboGap;
+    advance(comboGap);
   }
 
   // Mult-slams — data-driven, with the same accelerando + amp ramp as the
   // chain-mult path above. See `mults` loop earlier for the rationale.
+  // Per-slam shortening tightened from 0.9 → 0.85 to match the
+  // upgrade-path; floor 0.6 instead of 0.65 so the deepest slams still
+  // shrink visibly at long chains.
   const baseMultGap = tier === 'full' ? PACING.full.multGapMs : PACING[tier].multGapMs;
-  const minMultGap = Math.round(baseMultGap * 0.65);
+  const minMultGap = Math.round(baseMultGap * 0.6);
   let multSemis = 12;
   for (let mi = 0; mi < input.mults.length; mi++) {
     const m = input.mults[mi]!;
     const before = running;
     running = Math.round(running * m.value);
-    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.9, mi)));
+    const gap = Math.max(minMultGap, Math.round(baseMultGap * Math.pow(0.85, mi)));
     beats.push({
       kind: 'mult-slam',
       t,
@@ -368,11 +405,14 @@ function buildLegacyPath(
     });
     checkCross(before);
     multSemis += 2;
-    t += gap;
+    advance(gap);
   }
 
-  // Hold-breath — ALWAYS emitted before boom on non-reduced-motion / non-bail paths
-  const breathMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
+  // Hold-breath — same post-cross floor treatment as the upgrade-path.
+  const breathBaseMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
+  const breathMs = crossEmitted
+    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR))
+    : breathBaseMs;
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;
 

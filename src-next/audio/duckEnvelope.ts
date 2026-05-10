@@ -59,4 +59,12 @@ export const DUCK_PRESETS = {
   silenceOnBust(): Omit<DuckPhase, 'startMs'> {
     return { attackMs: 80, holdMs: 900, releaseMs: 1800, depth: 0 };
   },
+  // Tipping-point tension — running total enters [80%, 100%) of target.
+  // Music dips moderately, holds while the next beats play, then resolves
+  // (or doesn't, if the cross never lands). Slightly shorter than
+  // holdBreath since the player needs the dread to LANDS on cross or
+  // to sour as the hand fails to make the gap.
+  tippingPoint(): Omit<DuckPhase, 'startMs'> {
+    return { attackMs: 220, holdMs: 360, releaseMs: 700, depth: 0.45 };
+  },
 } as const;

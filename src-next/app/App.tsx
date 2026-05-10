@@ -13,7 +13,7 @@ import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
 import { PackOverlay } from './screens/PackOverlay';
 import { useStore, store } from '../state/store';
-import { selectScreen, selectIsBoss, selectTensionFromState, selectPendingPack } from '../state/selectors';
+import { selectScreen, selectIsBoss, selectTensionFromState, selectPendingPack, selectScore, selectTarget } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
 import { ConstellationSelect } from './screens/ConstellationSelect';
@@ -45,6 +45,12 @@ export function App() {
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
   const pendingPack = useStore(selectPendingPack);
+  // Score-progress drives the gold tint + halo aura on the cosmos
+  // background — completely orthogonal to tension. >=1.0 = crossed
+  // target; >=2.0 = doubled over. Clamped in CosmosBackground.
+  const score = useStore(selectScore);
+  const target = useStore(selectTarget);
+  const progress = target > 0 ? score / target : 0;
 
   useEffect(() => {
     ensureAudioAfterGesture();
@@ -114,7 +120,7 @@ export function App() {
   return (
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
-        <CosmosBackground theme={theme} density={1} nebula drift tension={tension} />
+        <CosmosBackground theme={theme} density={1} nebula drift tension={tension} progress={progress} />
 
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>
