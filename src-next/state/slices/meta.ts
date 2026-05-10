@@ -86,6 +86,19 @@ export const SEEDED_UNLOCKS: string[] = [
   'ophiuchus',
 ];
 
+// Galaxy consumables ship as Codex-discovered from day one. They only
+// appear in Galaxy Packs (Celestial / Stellar / Galactic) — never in
+// the everyday consumable shop pool — so the discovery loop that works
+// for catalysts/mods/vouchers (each item is offered before it's bought)
+// never naturally fires for galaxies. Pre-seeding their IDs keeps the
+// codex honest: the player can browse the full Galaxy Pack contents
+// from the moment they install the game.
+//
+// Imported from the runtime registry so adding a new galaxy to
+// GALAXIES automatically extends this list — no second authorship site.
+import { GALAXIES } from '../../core/consumables/galaxies';
+export const SEEDED_DISCOVERED_CONSUMABLES: string[] = GALAXIES.map((g) => g.id);
+
 export const initialMetaSlice = (): MetaSlice => ({
   playerName: '',
   unlocks: [...SEEDED_UNLOCKS],
@@ -97,7 +110,7 @@ export const initialMetaSlice = (): MetaSlice => ({
     mods: [],
     vouchers: [],
     bosses: [],
-    consumables: [],
+    consumables: [...SEEDED_DISCOVERED_CONSUMABLES],
   },
   cosmicDust: 0,
   cosmicDustLifetime: 0,

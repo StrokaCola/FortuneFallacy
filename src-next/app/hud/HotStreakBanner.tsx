@@ -37,7 +37,12 @@ export function HotStreakBanner() {
       className="hot-streak-banner"
       style={{
         position: 'absolute',
-        top: '38%', left: '50%',
+        // Anchored at 22% to clear the center band where
+        // PatternDetectedBanner sits. The two can co-fire — pattern
+        // banner pops pre-score (700ms), hot-streak fires synchronously
+        // from SCORE_HAND — so they would visually collide if both were
+        // centered. Hot streak above, pattern below; both readable.
+        top: '22%', left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: Z.bannerBoss,
         pointerEvents: 'none',

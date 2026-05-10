@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { bus } from '../../events/bus';
 import { COMBOS } from '../../core/scoring/combos';
+import { Z } from './zLayers';
 
 type Banner = { combo: string; chips: number; mult: number; ts: number };
 
@@ -73,7 +74,7 @@ export function ComboBanner({ accent = '#7be3ff' }: { accent?: string }) {
       position: 'absolute', left: '50%',
       top: 'calc(var(--hud-top-h, 134px) + 12px)',
       transform: 'translateX(-50%)',
-      pointerEvents: 'none', textAlign: 'center', zIndex: 4,
+      pointerEvents: 'none', textAlign: 'center', zIndex: Z.hud,
       animation: isApex ? 'apex-banner-in 480ms cubic-bezier(0.2, 1.4, 0.4, 1)' : 'fadein 0.25s ease-out',
     }}>
       <div className="f-mono uc" style={{

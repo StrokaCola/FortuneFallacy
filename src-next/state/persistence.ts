@@ -1,7 +1,7 @@
 import { store, type GameState } from './store';
 import { safeReadJSON, safeWriteJSON } from './storage';
 import { migrateRetheme } from './migrations/v1_retheme';
-import { SEEDED_UNLOCKS } from './slices/meta';
+import { SEEDED_UNLOCKS, SEEDED_DISCOVERED_CONSUMABLES } from './slices/meta';
 import { begin as perfBegin } from '../devtools/perf';
 
 const KEY = 'ff_next_save';
@@ -55,12 +55,17 @@ export function applySavedToInitial(s: GameState): GameState {
     dismissed: savedOnb.dismissed ?? false,
   };
   const savedDisc = mergedMeta.discovered ?? {};
+  // Galaxies (Celestial Pack contents) are seeded as discovered for
+  // legacy saves too — their pack-only spawn means the natural
+  // discovery loop never fires. Union with whatever was already
+  // saved so any other consumables the player encountered stick.
+  const savedConsumables = savedDisc.consumables ?? [];
   mergedMeta.discovered = {
     catalysts: savedDisc.catalysts ?? [],
     mods: savedDisc.mods ?? [],
     vouchers: savedDisc.vouchers ?? [],
     bosses: savedDisc.bosses ?? [],
-    consumables: savedDisc.consumables ?? [],
+    consumables: Array.from(new Set([...SEEDED_DISCOVERED_CONSUMABLES, ...savedConsumables])),
   };
   // Daily Challenge history (added 2026-05). Legacy saves predate this field;
   // default to an empty record so the Title screen treats every prior date

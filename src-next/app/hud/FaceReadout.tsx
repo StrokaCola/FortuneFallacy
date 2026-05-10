@@ -2,6 +2,7 @@ import { useStore, type GameState } from '../../state/store';
 import { lookupConstellation, type Constellation } from '../../data/constellations';
 import { maxNumericFace } from '../../data/dice';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
+import { Z } from './zLayers';
 
 // `useStore` is a thin wrapper over `useSyncExternalStore` and must return a
 // stable reference for the same underlying state. Selectors that build a new
@@ -97,7 +98,7 @@ export function FaceReadout() {
           ? 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.30)'
           : 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.38)',
         transform: 'translate(-50%, -50%)',
-        textAlign: 'center', pointerEvents: 'none', zIndex: 4,
+        textAlign: 'center', pointerEvents: 'none', zIndex: Z.hud,
         display: 'flex', alignItems: 'center', gap: compact ? 32 : 18,
       }}>
         {faces.map((f, i) => {
@@ -180,7 +181,7 @@ export function FaceReadout() {
       border: '1px solid rgba(149,119,255,0.35)',
       borderRadius: 999,
       pointerEvents: 'none',
-      zIndex: 4,
+      zIndex: Z.hud,
     }}>
       {faces.map((f, i) => {
         const isLocked = locked[i];

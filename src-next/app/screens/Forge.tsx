@@ -245,7 +245,16 @@ export function Forge() {
                 </div>
               </div>
             ) : (
-              <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}>
+              <div style={{
+                flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4,
+                display: 'grid',
+                // Tight viewports: 1-column so each mod card has the
+                // full ~328px width on phones. The 2-column layout
+                // produced ~164px columns at 360px wide, aggressively
+                // truncating mod names and squeezing descriptions.
+                gridTemplateColumns: tight ? '1fr' : '1fr 1fr',
+                gap: 10, alignContent: 'start',
+              }}>
                 {(() => {
                   // Group by (id, edition). Each unique pair gets its own
                   // row so foil amplify + plain amplify show separately.

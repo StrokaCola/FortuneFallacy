@@ -336,7 +336,13 @@ export function Hub() {
           gap: tight ? 4 : 12,
           flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: 'calc(100% - 40px)',
-          marginTop: tight ? 0 : 4,
+          // Tight: add a clear 12px gutter between trial cards and the
+          // action row. With `clamp(140px, 45vh, 180px)` card heights on
+          // a 360px-tall landscape phone, the previous 0 margin let the
+          // cards' "Begin" button overhang touch the action row's
+          // pill buttons. 12px is the breathing room without pushing
+          // the action row off-screen.
+          marginTop: tight ? 12 : 4,
         }}>
           {!forgeDisabled && (
             <button
