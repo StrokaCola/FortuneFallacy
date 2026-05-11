@@ -38,7 +38,38 @@ export type StyleDef = {
   sheenColor?: number;
 };
 
-export type GeometricVariant = 'asymmetric' | 'plated' | 'recessed';
+// 2026-05-11 Forge overhaul — extended geometric variants. Each entry
+// triggers a different geometry/decoration treatment in buildDie. Variants
+// not listed here fall through with no change (material-only).
+//
+// Implementation cheat-sheet:
+//   asymmetric : push +Y face vertices inward (Loaded — weighted die)
+//   plated     : larger chamfer radius (Backstop — ceramic plate)
+//   recessed   : larger pip depression (Pip Charge — recessed dots)
+//   crystalline: tighter chamfer, harder edges, slight bevel inset
+//   etched     : per-face decal layer rendered by faceDecal.ts
+//   orbital    : an extra orbital satellite attached at build time
+//   haloed     : a faint torus halo at the die's equator
+//   spiked     : push each corner vertex outward ~3% (Brittle/Risk)
+//   gilded     : thin emissive line inset along each bevel
+//   pulsing    : body scale-breathes (±2% subtle, ±4% theatrical)
+//   pulsing-theatrical : same as 'pulsing' but bigger amplitude for legendaries
+//   haloed-dark : a violet/dark torus (Singularity — event horizon)
+//   haloed-theatrical : larger gold halo with slow rotation (Crown legendary)
+export type GeometricVariant =
+  | 'asymmetric'
+  | 'plated'
+  | 'recessed'
+  | 'crystalline'
+  | 'etched'
+  | 'orbital'
+  | 'haloed'
+  | 'haloed-dark'
+  | 'haloed-theatrical'
+  | 'spiked'
+  | 'gilded'
+  | 'pulsing'
+  | 'pulsing-theatrical';
 
 export const STYLES: Record<StyleKey, StyleDef> = {
   celestial: { bodyTint: 0x6b4ad6, bodyDeep: 0x1a0c4a, edge: 0xbba8ff, pip: 0xdcd4ff, halo: 0x7be3ff, eIntensity: 1.9, transmission: 0.50, thickness: 0.65, ior: 1.43, rough: 0.41 },
@@ -79,6 +110,15 @@ export type BuiltDie = {
   faceLensMats: FaceMatMap<THREE.MeshStandardMaterial>;
   faceHaloMats: FaceMatMap<THREE.SpriteMaterial>;
   pipGroup: THREE.Group;
+  // 2026-05-11 Forge overhaul — when a 'pulsing' variant is active, the
+  // body mesh should breathe. The renderer (DieView/Dice3D) reads this
+  // and applies the scale in its idle tick. Amplitude is the ±fraction
+  // (e.g., 0.02 for ±2%); periodMs is the breath cycle length.
+  pulseAmplitude?: number;
+  pulsePeriodMs?: number;
+  // Reference to the body mesh, so the renderer can apply the pulse
+  // scale without walking the group. Omitted for non-pulsing dice.
+  bodyMesh?: THREE.Mesh;
 };
 
 // Cached radial-gradient sprite texture — shared by all die halos and the
@@ -112,7 +152,7 @@ export function buildDie(
 ): BuiltDie {
   const baseS = STYLES[styleKey];
   const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
-  if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey, faceValues);
+  if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey, faceValues, geometricVariant);
   // d6 with non-canonical faces (Fibonacci/Eclipse/Ophiuchus) renders digits
   // per spatial face so what the player sees matches the rolled value.
   if (faceValues && !isStandardD6(faceValues)) {
@@ -124,8 +164,15 @@ export function buildDie(
   // Body — translucent crystal cube with vertex-color gradient (tint→deep at
   // corners) so transmission shows the soft inner colour while edges fall to
   // the deep tone.
-  // Plated variant: bigger chamfer hints at a ceramic-plate softness.
-  const chamfer = size * (geometricVariant === 'plated' ? 0.26 : 0.18);
+  // Chamfer radius varies by variant:
+  //   plated      0.26 — larger chamfer, ceramic-plate softness
+  //   crystalline 0.10 — tighter chamfer, hard bevel edges
+  //   default     0.18
+  const chamfer = size * (
+    geometricVariant === 'plated'      ? 0.26 :
+    geometricVariant === 'crystalline' ? 0.10 :
+    0.18
+  );
   const bodyGeo = new RoundedBoxGeometry(size, size, size, 8, chamfer);
   // Store the chamfer radius on parameters so tests can inspect it.
   (bodyGeo as any).parameters.radius = chamfer;
@@ -154,6 +201,37 @@ export function buildDie(
       if (y > threshold) {
         const t = Math.min(1, (y - threshold) / (size / 2 - threshold));
         pos.setY(i, y - maxBow * t);
+      }
+    }
+    pos.needsUpdate = true;
+  }
+
+  // Spiked variant (Brittle / Risk): push CORNER vertices outward ~3% from
+  // origin to give the die a faintly faceted, hairline-cracked silhouette.
+  // Center-face vertices are unaffected so face flatness is preserved.
+  if (geometricVariant === 'spiked') {
+    const half = size / 2;
+    // A vertex is "corner" iff it's within the chamfer band on ALL three
+    // axes (the bevel runs in 3D corner regions). We detect by checking
+    // each component's distance from the half-axis is small enough to be
+    // in the chamfer transition zone.
+    const cornerBand = chamfer * 1.1;
+    const maxNudge = size * 0.03;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const inCornerX = half - Math.abs(x) <= cornerBand;
+      const inCornerY = half - Math.abs(y) <= cornerBand;
+      const inCornerZ = half - Math.abs(z) <= cornerBand;
+      if (inCornerX && inCornerY && inCornerZ) {
+        // Push outward along the vertex's own direction. Re-normalize
+        // not needed; the displacement is uniformly small.
+        const len = Math.hypot(x, y, z);
+        if (len > 0) {
+          const k = (len + maxNudge) / len;
+          pos.setX(i, x * k);
+          pos.setY(i, y * k);
+          pos.setZ(i, z * k);
+        }
       }
     }
     pos.needsUpdate = true;
@@ -292,7 +370,76 @@ export function buildDie(
     });
   });
 
-  return { group, faceLensMats, faceHaloMats, pipGroup };
+  const pulse = attachVariantDecorations(group, body, size, S, geometricVariant);
+  return { group, faceLensMats, faceHaloMats, pipGroup, ...pulse };
+}
+
+// Attach variant-specific decorations (halo torus, gilded edge inlay,
+// extra orbital satellite) to a built die's group, AND return pulse
+// metadata for animated variants. Shared by all three buildDie code
+// paths (canonical d6, digit d6, polyhedron).
+//
+// The halo and gilded meshes are owned by `group` so the existing
+// DieView dispose pass (group.traverse → dispose geom + mat) cleans
+// them up automatically. No new dispose plumbing required.
+function attachVariantDecorations(
+  group: THREE.Group,
+  body: THREE.Mesh,
+  size: number,
+  S: StyleDef,
+  variant: GeometricVariant | undefined,
+): { pulseAmplitude?: number; pulsePeriodMs?: number; bodyMesh?: THREE.Mesh } {
+  if (!variant) return {};
+  // Haloed family — a thin torus ring around the die's equator. Color +
+  // size vary by sub-variant. The ring rotates slowly via a userData
+  // marker that DieView's idle tick reads.
+  if (variant === 'haloed' || variant === 'haloed-dark' || variant === 'haloed-theatrical') {
+    const isDark = variant === 'haloed-dark';
+    const isTheatrical = variant === 'haloed-theatrical';
+    const radius = size * (isTheatrical ? 0.78 : 0.65);
+    const tube = size * (isTheatrical ? 0.020 : 0.013);
+    const torusGeo = new THREE.TorusGeometry(radius, tube, 6, 64);
+    const torusColor = isDark ? 0x6a4a8a : (isTheatrical ? 0xffd84a : S.halo ?? 0x7be3ff);
+    const torusMat = new THREE.MeshBasicMaterial({
+      color: torusColor,
+      transparent: true,
+      opacity: isTheatrical ? 0.85 : (isDark ? 0.55 : 0.65),
+      toneMapped: false,
+    });
+    const torus = new THREE.Mesh(torusGeo, torusMat);
+    torus.rotation.x = Math.PI / 2;
+    torus.name = 'VariantHalo';
+    torus.userData.haloSpin = isTheatrical ? 0.12 : 0.06; // rad/s
+    group.add(torus);
+  }
+  // Gilded — a slightly larger wireframe edge mesh in gold that rides
+  // 0.5% outside the chamfer to read as a thin foil inlay.
+  if (variant === 'gilded') {
+    const edgeGeo = new THREE.EdgesGeometry(body.geometry, 25);
+    const inlayMat = new THREE.LineBasicMaterial({
+      color: 0xf5c451,
+      transparent: true,
+      opacity: 0.75,
+      toneMapped: false,
+    });
+    const inlay = new THREE.LineSegments(edgeGeo, inlayMat);
+    inlay.scale.setScalar(1.012); // outset slightly more than the base edge lines
+    inlay.name = 'VariantGilded';
+    group.add(inlay);
+  }
+  // Orbital — buildDie shouldn't *itself* attach orbital satellites
+  // (DieView already does that for the 2nd / 3rd mod). The 'orbital'
+  // variant marks the body for a per-mod EXTRA satellite handled by
+  // DieView; nothing to do here at build time.
+  // Etched — face decals are projected by faceDecal.ts (Phase 2.2).
+  // Pulsing — return amplitude/period so the renderer can animate.
+  if (variant === 'pulsing') {
+    return { pulseAmplitude: 0.02, pulsePeriodMs: 2600, bodyMesh: body };
+  }
+  if (variant === 'pulsing-theatrical') {
+    return { pulseAmplitude: 0.04, pulsePeriodMs: 2200, bodyMesh: body };
+  }
+  return {};
 }
 
 // d6 with non-canonical face values (Fibonacci/Eclipse/Ophiuchus). Same body
@@ -309,7 +456,11 @@ function buildD6WithDigits(
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_d6digits`;
 
-  const chamfer = size * (geometricVariant === 'plated' ? 0.26 : 0.18);
+  const chamfer = size * (
+    geometricVariant === 'plated'      ? 0.26 :
+    geometricVariant === 'crystalline' ? 0.10 :
+    0.18
+  );
   const bodyGeo = new RoundedBoxGeometry(size, size, size, 8, chamfer);
   (bodyGeo as any).parameters.radius = chamfer;
 
@@ -335,6 +486,27 @@ function buildD6WithDigits(
       if (y > threshold) {
         const t = Math.min(1, (y - threshold) / (size / 2 - threshold));
         pos.setY(i, y - maxBow * t);
+      }
+    }
+    pos.needsUpdate = true;
+  }
+  if (geometricVariant === 'spiked') {
+    const half = size / 2;
+    const cornerBand = chamfer * 1.1;
+    const maxNudge = size * 0.03;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const inCornerX = half - Math.abs(x) <= cornerBand;
+      const inCornerY = half - Math.abs(y) <= cornerBand;
+      const inCornerZ = half - Math.abs(z) <= cornerBand;
+      if (inCornerX && inCornerY && inCornerZ) {
+        const len = Math.hypot(x, y, z);
+        if (len > 0) {
+          const k = (len + maxNudge) / len;
+          pos.setX(i, x * k);
+          pos.setY(i, y * k);
+          pos.setZ(i, z * k);
+        }
       }
     }
     pos.needsUpdate = true;
@@ -448,7 +620,8 @@ function buildD6WithDigits(
     pipGroup.add(faceGroup);
   });
 
-  return { group, faceLensMats, faceHaloMats, pipGroup };
+  const pulse = attachVariantDecorations(group, body, size, S, geometricVariant);
+  return { group, faceLensMats, faceHaloMats, pipGroup, ...pulse };
 }
 
 // Non-cube path: builds a flat-shaded polyhedron (d4/d8/d10/d12/d20) with a
@@ -461,6 +634,7 @@ function buildPolyhedronDie(
   styleKey: StyleKey,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _faceValues?: readonly DieFace[],
+  geometricVariant?: GeometricVariant,
 ): BuiltDie {
   const group = new THREE.Group();
   group.name = `FortuneFallacyDie_${shape}_${styleKey}`;
@@ -575,7 +749,8 @@ function buildPolyhedronDie(
     pipGroup.add(faceGroup);
   }
 
-  return { group, faceLensMats, faceHaloMats, pipGroup };
+  const pulse = attachVariantDecorations(group, body, size, S, geometricVariant);
+  return { group, faceLensMats, faceHaloMats, pipGroup, ...pulse };
 }
 
 // Inscribed-circle radius of a face on the unit-sphere polyhedron, used to

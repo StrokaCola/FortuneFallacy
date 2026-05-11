@@ -481,6 +481,116 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   100% { transform: scale(1);    filter: brightness(1); }
 }
 
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge overhaul — Phase 1.1 backdrop animations                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Anvil silhouette — extremely slow rotation. The shape never quite
+   completes a turn in a normal Forge visit; the motion is ambient. */
+.forge-anvil {
+  animation: forge-anvil-rotate 240s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-anvil-rotate {
+  0%   { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Ember pulse — a single ring expands from the center every ~4.4s. */
+.forge-ember-pulse {
+  animation: forge-ember 4400ms ease-out infinite;
+  animation-delay: 600ms;
+}
+@keyframes forge-ember {
+  0%   { transform: scale(0.4); opacity: 0; }
+  20%  { transform: scale(1.0); opacity: 0.75; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Sparks — rise from the bottom over ~5.6s with sin-wave drift. The
+   horizontal nudge is delivered via translate3d so it composites on
+   the GPU. */
+.forge-spark {
+  animation: forge-spark-rise 5600ms linear infinite;
+  will-change: transform, opacity;
+}
+@keyframes forge-spark-rise {
+  0%   { transform: translate3d(0, 0, 0)        scale(0.6); opacity: 0; }
+  12%  { transform: translate3d(8px, -10vh, 0)  scale(1.0); opacity: 1; }
+  50%  { transform: translate3d(-10px, -50vh, 0) scale(0.9); opacity: 0.9; }
+  88%  { transform: translate3d(6px, -90vh, 0)  scale(0.6); opacity: 0.4; }
+  100% { transform: translate3d(0, -110vh, 0)   scale(0.3); opacity: 0; }
+}
+
+/* Light shaft — vertical gradient column descending onto the forge die.
+   Drawn behind the orbit panel; opacity breathes very slowly so it
+   doesn't feel static. */
+@keyframes forge-shaft-pulse {
+  0%, 100% { opacity: 0.32; }
+  50%      { opacity: 0.5; }
+}
+
+/* Die levitation — gentle vertical bob. Independent of the idle tumble
+   inside the WebGL canvas, applied to the canvas wrapper instead. */
+@keyframes forge-die-levitate {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* Inner constellation sigil ring — rotates slowly. The opacity stays
+   low so the sigil reads as ambient rather than competing with the
+   selected die. */
+@keyframes forge-sigil-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Reduce-motion overrides — anvil and sparks freeze, the ember holds
+   a low-glow static state, the levitation stops. The forge still
+   reads as cosmic-themed without any motion. */
+.reduce-motion .forge-anvil,
+.reduce-motion .forge-spark,
+.reduce-motion .forge-ember-pulse,
+.reduce-motion [data-forge-levitate],
+.reduce-motion [data-forge-sigil-ring] {
+  animation: none !important;
+}
+.reduce-motion .forge-ember-pulse { opacity: 0.5; transform: scale(1.2); }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge attach ritual — Phase 1.2                                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* CHARGE — small ring rises from below the die center, fades in to
+   peak intensity by the end of the 250ms beat. */
+@keyframes forge-ritual-charge {
+  0%   { transform: scale(0.65) translateY(40px); opacity: 0; }
+  60%  { opacity: 0.85; }
+  100% { transform: scale(1.05) translateY(0); opacity: 0.95; }
+}
+
+/* STRIKE — bright flash across the viewport, brief. */
+@keyframes forge-ritual-strike {
+  0%   { opacity: 0;     transform: scale(0.95); }
+  18%  { opacity: 1;     transform: scale(1.0); }
+  100% { opacity: 0;     transform: scale(1.05); }
+}
+
+/* SETTLE — halo expands outward, fades. The new mod has just locked
+   into the die; the halo "consecrates" the change. */
+@keyframes forge-ritual-settle {
+  0%   { transform: scale(1.0);  opacity: 0.95; }
+  60%  { transform: scale(1.45); opacity: 0.55; }
+  100% { transform: scale(1.9);  opacity: 0; }
+}
+
+/* Reduce-motion — collapse all three beats to a quick snap pulse so
+   the player still gets a "something happened" signal but no motion. */
+.reduce-motion [data-forge-ritual] > div {
+  animation: none !important;
+  opacity: 0.6;
+}
+
 /* Reduce-motion overrides for catalyst theatre — collapse to a snap pulse
    so the per-fire reaction stays legible without movement. */
 .reduce-motion .catalyst-floater,

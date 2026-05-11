@@ -5,6 +5,7 @@ import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
 import { WhisperToast } from './hud/WhisperToast';
+import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
 import { DailyLoginComet } from './hud/DailyLoginComet';
 import { SoundCaptions } from './hud/SoundCaptions';
 import { AuditEvent } from './hud/AuditEvent';
@@ -144,6 +145,7 @@ export function App() {
           <ArrivalToast />
           <AchievementToast />
           <WhisperToast />
+          <ForgeAttachRitual />
           <DailyLoginComet />
           <SoundCaptions />
           <AuditEvent />

@@ -51,7 +51,24 @@ export type ModId = typeof MOD_IDS[number];
 export type ModVisual = {
   materialKey: ModMaterialKey;
   accentColor: string;                                       // #rrggbb
-  geometricVariant?: 'asymmetric' | 'plated' | 'recessed';   // pilot 3 only; used by Phase 4
+  // 2026-05-11 Forge overhaul — variant union now mirrors GeometricVariant
+  // in render/three/buildDie.ts. The d6 build path uses these to drive
+  // body geometry (asymmetric/plated/recessed/crystalline/spiked), face
+  // decals (etched), or attached decorations (haloed/gilded/pulsing).
+  geometricVariant?:
+    | 'asymmetric'
+    | 'plated'
+    | 'recessed'
+    | 'crystalline'
+    | 'etched'
+    | 'orbital'
+    | 'haloed'
+    | 'haloed-dark'
+    | 'haloed-theatrical'
+    | 'spiked'
+    | 'gilded'
+    | 'pulsing'
+    | 'pulsing-theatrical';
   triggerFx: 'loaded' | 'pipCharge' | 'backstop' | 'pulse';  // pilot or generic; used by Phase 5/6
 };
 
@@ -168,12 +185,12 @@ export const MODS: ModDef[] = [
   {
     id: 'sharpened', name: 'Sharpened', icon: '▲',
     desc: '+1 mult per scoring die', multBonus: 1, rarity: 'common',
-    visual: { materialKey: 'sharpened', accentColor: '#a4d4ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'sharpened', accentColor: '#a4d4ff', triggerFx: 'pulse', geometricVariant: 'crystalline' },
   },
   {
     id: 'gilded', name: 'Gilded', icon: '◆',
     desc: '+1 shard on score', shardsBonus: 1, rarity: 'common',
-    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
+    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
     id: 'loaded', name: 'Loaded', icon: '⚔',
@@ -183,12 +200,12 @@ export const MODS: ModDef[] = [
   {
     id: 'snake_eyes', name: 'Snake Eyes', icon: '①',
     desc: '+2 mult if face is 1', snakeEyes: 2, rarity: 'common',
-    visual: { materialKey: 'snake_eyes', accentColor: '#7be3ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'snake_eyes', accentColor: '#7be3ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'high_roller', name: 'High Roller', icon: '🎯',
     desc: '+1 mult if face is 5 or 6', highFaceMult: 1, rarity: 'common',
-    visual: { materialKey: 'high_roller', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'high_roller', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
     id: 'backstop', name: 'Backstop', icon: '✦',
@@ -208,7 +225,7 @@ export const MODS: ModDef[] = [
   {
     id: 'mirror_pair', name: 'Mirror Pair', icon: '⚉',
     desc: '+3 mult per other die in hand sharing this face', pairBonus: 3, rarity: 'rare',
-    visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
   },
   {
     id: 'vanguard', name: 'Vanguard', icon: '◀',
@@ -226,43 +243,43 @@ export const MODS: ModDef[] = [
     id: 'conduit', name: 'Conduit', icon: '⫸',
     desc: '+1 mult per die scored before this one',
     chainMult: 1, rarity: 'uncommon',
-    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
   },
   {
     id: 'tithe', name: 'Tithe', icon: '⛁',
     desc: '+5 chips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
     titheChips: 5, titheMult: 2, rarity: 'rare',
-    visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'pulse' },
+    visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
     id: 'resonance', name: 'Resonance', icon: '♺',
     desc: 'The other mod on this die fires a second time (chips/mult only).',
     resonate: true, rarity: 'legendary',
-    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
   },
   {
     id: 'crescendo', name: 'Crescendo', icon: '⫷',
     desc: '+1 mult per die scored after this one',
     chainMultPost: 1, rarity: 'uncommon',
-    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse' },
+    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'pulsing' },
   },
   {
     id: 'crown', name: 'Crown', icon: '♛',
     desc: 'If face is 6: ×1.5 mult on this die (multiplicative)',
     crownMult: 1.5, crownFace: 6, rarity: 'legendary',
-    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'haloed-theatrical' },
   },
   {
     id: 'brittle', name: 'Brittle', icon: '☄',
     desc: '+5 mult per scoring die. Destroyed if the hand busts.',
     multBonus: 5, loseOnBust: true, rarity: 'rare',
-    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
   {
     id: 'wildcard', name: 'Wildcard', icon: '✱',
     desc: 'Counts as any face for combo detection (chooses best).',
     wildcard: true, rarity: 'legendary',
-    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   // ─── Phase 5b: combo / round / ante / galaxy aware mods ────────────────
   // Visuals reuse existing materialKeys so the renderer doesn't need new
@@ -278,13 +295,13 @@ export const MODS: ModDef[] = [
     id: 'keystone', name: 'Keystone', icon: '◆',
     desc: '×1.4 mult when this die has the highest face among scoring dice.',
     keystoneMult: 1.4, rarity: 'rare',
-    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse' },
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'crystalline' },
   },
   {
     id: 'astrolabe', name: 'Astrolabe', icon: '✺',
     desc: '+3 chips per combo level on the played hand.',
     chipsPerComboLevel: 3, rarity: 'uncommon',
-    visual: { materialKey: 'sharpened', accentColor: '#cc88ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'sharpened', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'pressure', name: 'Pressure', icon: '⏲',
@@ -296,19 +313,19 @@ export const MODS: ModDef[] = [
     id: 'risk', name: 'Risk', icon: '⚡',
     desc: '+6 mult on face 6. -3 mult on face 1.',
     riskHighMult: 6, riskLowMult: 3, rarity: 'uncommon',
-    visual: { materialKey: 'high_roller', accentColor: '#ffd84a', triggerFx: 'pulse' },
+    visual: { materialKey: 'high_roller', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
   {
     id: 'singularity', name: 'Singularity', icon: '●',
     desc: '×2 mult — but only on Ante 4 or higher.',
     singularityAnte: 4, singularityMult: 2, rarity: 'legendary',
-    visual: { materialKey: 'crown', accentColor: '#cc88ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'crown', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'haloed-dark' },
   },
   {
     id: 'refinery', name: 'Refinery', icon: '◇',
     desc: '+1 shard when scored as part of Two Pair or Full House.',
     refineryComboIds: ['two_pair', 'full_house'], refineryShards: 1, rarity: 'uncommon',
-    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse' },
+    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   // Phase 5d — mod-density / first-die / utility mods.
   {
@@ -321,19 +338,23 @@ export const MODS: ModDef[] = [
     id: 'telescope', name: 'Telescope', icon: '⌖',
     desc: '×1.3 mult on the first scoring die when the combo has ≥1 galaxy level.',
     telescopeMult: 1.3, rarity: 'rare',
-    visual: { materialKey: 'telescope', accentColor: '#cc88ff', triggerFx: 'pulse' },
+    // Telescope's "lens satellite" silhouette is rendered via the orbital variant.
+    // The existing 2nd-mod orbital satellite handles the actual sphere; this
+    // entry's variant marker is descriptive — buildDie reads it for any future
+    // orbital-specific decorations and the player sees it as the lens reading.
+    visual: { materialKey: 'telescope', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
   },
   {
     id: 'engraved', name: 'Engraved', icon: '⌑',
     desc: 'This die\'s Brittle mods survive the bust cleanup.',
     engraved: true, rarity: 'uncommon',
-    visual: { materialKey: 'engraved', accentColor: '#a4d4ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'engraved', accentColor: '#a4d4ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'echo', name: 'Echo', icon: '⤳',
     desc: 'Repeats the previous mod\'s effect on this die.',
     echo: true, rarity: 'legendary',
-    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse' },
+    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
   },
   // ─── Scaling die-mods (2026-05-11) ────────────────────────────────────
   // Each has a per-instance counter (run.diceModStacks[dieIdx][slotIdx]).
@@ -346,43 +367,46 @@ export const MODS: ModDef[] = [
     id: 'tally_mark', name: 'Tally Mark', icon: '|',
     desc: '+1 chip per time this die has ever scored.',
     tallyChipPerStack: 1, rarity: 'common',
-    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'pulse' },
+    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'cadence', name: 'Cadence', icon: '♪',
     desc: '+1 mult per time this die has scored in the current blind. Resets between blinds.',
     cadenceMultPerStack: 1, cadencePerBlind: true, rarity: 'uncommon',
-    visual: { materialKey: 'cadence', accentColor: '#5be8a4', triggerFx: 'pulse' },
+    visual: { materialKey: 'cadence', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'pulsing' },
   },
   {
     id: 'veteran', name: 'Veteran', icon: '⚔',
     desc: '+0.5 mult per blind survived while attached.',
     veteranMultPerStack: 0.5, rarity: 'uncommon',
-    visual: { materialKey: 'veteran', accentColor: '#bba8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'veteran', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
     id: 'glutton', name: 'Glutton', icon: '◉',
     desc: 'When this die rolls a 6: +1 stack. +3 chips per stack.',
     gluttonChipPerStack: 3, rarity: 'uncommon',
-    visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
   {
     id: 'dormant', name: 'Dormant', icon: '◌',
     desc: 'Silent until this die scores 10 times. Then +20 mult permanently.',
     dormantAwakenAt: 10, dormantMultAfter: 20, rarity: 'rare',
+    // Dormant ships with NO variant by default; once the die has accrued
+    // 10 stacks (awakening complete) the DieView upgrades it to 'haloed-
+    // theatrical' so the awakening reads as a visual unlock. See DieView.
     visual: { materialKey: 'dormant', accentColor: '#a080c0', triggerFx: 'pulse' },
   },
   {
     id: 'ballast', name: 'Ballast', icon: '⚓',
     desc: '+5 chips per time this die was locked when scoring.',
     ballastChipPerStack: 5, rarity: 'common',
-    visual: { materialKey: 'ballast', accentColor: '#88ddff', triggerFx: 'pulse' },
+    visual: { materialKey: 'ballast', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
   {
     id: 'pyre_mark', name: 'Pyre Mark', icon: '🔥',
     desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
     pyreChipPerStack: 2, rarity: 'common',
-    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
 ];
 

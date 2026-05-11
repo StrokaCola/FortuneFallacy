@@ -14,6 +14,8 @@ import {
 } from '../../state/selectors';
 import type { ModEdition } from '../../state/slices/run';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
+import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
+import { lookupConstellation } from '../../data/constellations';
 
 const FORGE_COST = 5;
 const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
@@ -52,6 +54,12 @@ export function Forge() {
   // Per-mod-id forge picker state. null = closed; 'amplify' = picker open
   // for amplify. Closes after dispatch or click-outside.
   const [forgeOpenFor, setForgeOpenFor] = useState<string | null>(null);
+  // 2026-05-11 Forge polish · Phase 1.2 — hover preview. When the player
+  // hovers (or long-presses) a mod inventory row, the centerpiece DieView
+  // gets that mod appended to its mods list so the player previews the
+  // visual outcome BEFORE attaching. Null = no preview, render the real
+  // attached mods. Released on leave / cancel.
+  const [hoveredModId, setHoveredModId] = useState<string | null>(null);
 
   // Resolve every die's attached mods into renderable DieMod[] up front, so the
   // orbit and the strip share the same visual representation.
@@ -65,6 +73,27 @@ export function Forge() {
 
   const slots = diceMods[selectedDie] ?? [];
   const accent = '#7be3ff';
+  // 2026-05-11 polish — current constellation drives the backdrop accent
+  // and the inner sigil ring inside the orbit panel.
+  const constellationId = useStore((s) => s.run.constellationId);
+  const constellation = lookupConstellation(constellationId);
+  // Hover-preview composition: append the hovered mod to the centerpiece
+  // die's mods array so the DieView shows what the player would see
+  // post-attach. We only preview when there's still a free slot; a
+  // hover on a row when slots are full doesn't change the preview
+  // (the row is already aria-disabled, so it's the right read).
+  const previewMod = hoveredModId ? lookupMod(hoveredModId) : null;
+  const previewMods = previewMod && slots.length < maxSlots
+    ? [
+        ...(allDiceMods[selectedDie] ?? []),
+        {
+          id: previewMod.id,
+          icon: previewMod.icon,
+          name: previewMod.name,
+          color: previewMod.visual?.accentColor ?? '#7be3ff',
+        },
+      ]
+    : (allDiceMods[selectedDie] ?? []);
   const selectedFace = dice[selectedDie]?.face ?? 1;
   const selectedMods = allDiceMods[selectedDie] ?? [];
   const diceSpec = useStore(selectDiceSpec);
@@ -72,6 +101,9 @@ export function Forge() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+      {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
+          rising sparks, ambient ember pulse. Sits behind everything. */}
+      <ForgeBackdrop />
       <div className="mat-obsidian"
         style={{
           position: 'absolute', top: 18, left: 18,
@@ -123,12 +155,74 @@ export function Forge() {
       }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
-          {/* Selected die orbit */}
+          {/* Selected die orbit — Phase 1.1 layered visuals:
+              - Light shaft: vertical gradient column descending from above.
+              - Inner sigil ring: constellation glyph rotating slowly behind the die.
+              - Outer dashed orbit + 4 orbital nodes (already present, unchanged).
+              - Centerpiece DieView levitates with a slow vertical bob. */}
           <div className="panel" style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             position: 'relative', display: 'grid', placeItems: 'center',
+            overflow: 'hidden',
           }}>
+            {/* Light shaft — column of soft warm/cool gradient descending
+                onto the die. Breathes very slowly so the panel never
+                feels static. */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: 0, bottom: 0,
+                left: '50%',
+                width: tight ? 120 : 150,
+                marginLeft: tight ? -60 : -75,
+                background: `linear-gradient(180deg,
+                  ${constellation.color}38 0%,
+                  ${constellation.color}1c 28%,
+                  ${accent}10 60%,
+                  transparent 100%)`,
+                filter: 'blur(8px)',
+                mixBlendMode: 'screen',
+                animation: 'forge-shaft-pulse 4800ms ease-in-out infinite',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* Inner sigil ring — constellation glyph projected onto a
+                slowly-rotating SVG. Drawn UNDER the dashed orbit so the
+                orbit nodes still cap the panel rim. */}
+            <svg
+              data-forge-sigil-ring
+              aria-hidden="true"
+              width={tight ? 220 : 250}
+              height={tight ? 220 : 250}
+              viewBox="0 0 100 100"
+              style={{
+                position: 'absolute',
+                opacity: 0.18,
+                color: constellation.color,
+                animation: 'forge-sigil-rotate 90s linear infinite',
+                transformOrigin: 'center',
+                pointerEvents: 'none',
+              }}>
+              {/* The constellation glyph is a sparse node array. Draw a
+                  faint stroke connecting them in order plus dots at each
+                  point. Reads as a small "card of stars" behind the die. */}
+              {constellation.glyph.length > 1 && (
+                <polyline
+                  points={constellation.glyph.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="0.6"
+                  strokeLinecap="round"
+                  strokeOpacity="0.65"
+                />
+              )}
+              {constellation.glyph.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r="1.2" fill="currentColor" />
+              ))}
+            </svg>
+            {/* Outer dashed orbit + 4 orbital nodes — pre-existing element. */}
             <svg width={tight ? 280 : 320} height={tight ? 280 : 320} viewBox="0 0 320 320" style={{ position: 'absolute' }}>
               <circle cx="160" cy="160" r="140" stroke="rgba(149,119,255,0.3)" strokeWidth="1" fill="none" strokeDasharray="4 6" />
               <g className="forge-orbit" style={{ transformOrigin: 'center' }}>
@@ -139,7 +233,34 @@ export function Forge() {
                 })}
               </g>
             </svg>
-            <DieView face={selectedFace} size={tight ? 112 : 140} style="celestial" shape={selectedShape} faceValues={diceSpec[selectedDie]?.faces} mods={selectedMods} />
+            <DieView
+              face={selectedFace}
+              size={tight ? 112 : 140}
+              style="celestial"
+              shape={selectedShape}
+              faceValues={diceSpec[selectedDie]?.faces}
+              mods={previewMods}
+              levitate
+            />
+            {/* Preview indicator — a tiny "preview" pill appears below
+                the die when a mod is being hover-previewed, so the
+                player understands the change is temporary. */}
+            {hoveredModId && previewMods !== selectedMods && (
+              <div className="f-mono uc" style={{
+                position: 'absolute', top: 12, left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 8, letterSpacing: '0.32em',
+                color: constellation.color,
+                background: 'rgba(15,9,37,0.85)',
+                padding: '3px 8px', borderRadius: 4,
+                border: `1px solid ${constellation.color}88`,
+                textShadow: `0 0 6px ${constellation.color}66`,
+                pointerEvents: 'none',
+                animation: 'fadein 200ms ease-out',
+              }}>
+                ◇ preview
+              </div>
+            )}
             <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, textAlign: 'center' }}>
               <div className="f-mono uc" style={{ fontSize: 9, color: '#bba8ff', letterSpacing: '0.2em' }}>
                 die {selectedDie + 1} · {slots.length}/{maxSlots} mods
@@ -342,6 +463,9 @@ export function Forge() {
                         aria-label={`${r.name}${edition ? ` ${editionLabel(edition)}` : ''} — ${canAttach ? 'attach to selected die' : 'no free mod slots'}`}
                         onClick={() => {
                           if (!canAttach) return;
+                          // Drop the preview on click — the real attach now drives
+                          // the DieView mods list.
+                          setHoveredModId(null);
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
                         }}
@@ -349,10 +473,15 @@ export function Forge() {
                           if (!canAttach) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
+                            setHoveredModId(null);
                             dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                             sfxPlay('modAttach');
                           }
                         }}
+                        onMouseEnter={() => setHoveredModId(r.id)}
+                        onMouseLeave={() => setHoveredModId((cur) => (cur === r.id ? null : cur))}
+                        onFocus={() => setHoveredModId(r.id)}
+                        onBlur={() => setHoveredModId((cur) => (cur === r.id ? null : cur))}
                         className={`forge-mod-row has-tip tap${isLegendary ? ' legendary-aura' : ''}`}
                         style={{
                           cursor: canAttach ? 'pointer' : 'not-allowed',

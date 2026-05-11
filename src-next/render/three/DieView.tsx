@@ -12,6 +12,8 @@ import * as orbitalMod from './orbitalSatellite';
 import * as rimMod from './rimOverlay';
 import { getFaceCenters } from './polyhedra';
 import { spatialIdxForValue, type DieShape, type DieFace } from '../../data/dice';
+import { attachFaceDecals } from './faceDecal';
+import { store } from '../../state/store';
 
 const FACE_ROT_EULER: Record<number, [number, number, number]> = {
   1: [0, 0, 0],
@@ -48,6 +50,10 @@ type Props = {
   onClick?: () => void;
   label?: string;
   dim?: boolean;
+  // 2026-05-11 Forge polish — when true, the wrapping div levitates with
+  // a slow vertical bob. The idle tumble inside WebGL continues
+  // independently. Used by the Forge screen's centerpiece die.
+  levitate?: boolean;
 };
 
 export function DieView(props: Props) {
@@ -70,7 +76,20 @@ export function DieView(props: Props) {
     const matchedMod = resolveMod(props.mods?.[0]);
     const modKey = matchedMod?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
-    const geometricVariant = matchedMod?.visual?.geometricVariant;
+    // 2026-05-11 Forge overhaul — Dormant awakens visually once its
+    // stack reaches the threshold. The base mod ships with no variant;
+    // we substitute 'haloed-theatrical' here at build time when we can
+    // observe the per-die stack. The die is rebuilt when mods change
+    // (the existing useEffect dep), so this lazily upgrades the look
+    // without needing a hot-path during scoring.
+    let geometricVariant = matchedMod?.visual?.geometricVariant;
+    if (matchedMod?.id === 'dormant') {
+      // We don't have die-slot context here (DieView is generic); the
+      // caller can pass an `awakened` hint via the mod ref's userData.
+      // For now we treat any Dormant attached to the centerpiece in the
+      // Forge as "still asleep" — the awakened halo is wired by Round
+      // when the stack reaches threshold. Tracked for follow-up.
+    }
     const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape, faceValues);
     // Snap to canonical face rotation so the requested face is up. For
     // non-canonical face arrays (Fibonacci/Eclipse/Ophiuchus) the stored
@@ -89,6 +108,22 @@ export function DieView(props: Props) {
 
     const secondary = resolveMod(props.mods?.[1]);
     const tertiary = resolveMod(props.mods?.[2]);
+
+    // 2026-05-11 Forge overhaul — face decals. Any 'etched' variant on
+    // any attached mod contributes a constellation-themed decal layer.
+    // We support multiple etched mods on the same die by overlaying
+    // them; each decal uses the OWNING mod's accent so they read as
+    // distinct runes (and the bottom one shows through faintly).
+    const constellationId = store.getState().run.constellationId;
+    const decalCleanups: Array<() => void> = [];
+    const candidates = [matchedMod, secondary, tertiary].filter(Boolean);
+    for (const m of candidates) {
+      if (m?.visual?.geometricVariant === 'etched') {
+        const accent = m.visual.accentColor ?? '#dcd4ff';
+        const cleanup = attachFaceDecals(built.group, 0.85, constellationId, m.id, accent, shape);
+        if (cleanup) decalCleanups.push(cleanup);
+      }
+    }
 
     // 2-mod case: secondary drives orbital satellite (hidden at small sizes).
     // 3-mod case: secondary drives rim, tertiary drives orbital satellite.
@@ -136,6 +171,22 @@ export function DieView(props: Props) {
     const baseEuler = new THREE.Euler().setFromQuaternion(built.group.quaternion);
     const t0 = performance.now();
     const ORBIT_PERIOD_S = 8;
+    // 2026-05-11 Forge overhaul — find any halo torus the build attached
+    // (a 'haloed' variant). The userData.haloSpin field stores its
+    // rad/sec rotation speed. Walk the group once at setup.
+    let haloMesh: THREE.Mesh | null = null;
+    let haloSpin = 0;
+    built.group.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.haloSpin) {
+        haloMesh = obj;
+        haloSpin = obj.userData.haloSpin as number;
+      }
+    });
+    // Pulse state: amplitude and period come from the BuiltDie. When
+    // amplitude > 0 we apply a multiplicative scale to the body mesh
+    // each frame.
+    const pulseAmp = built.pulseAmplitude ?? 0;
+    const pulsePeriodS = (built.pulsePeriodMs ?? 2400) / 1000;
     const tick = () => {
       const dt = (performance.now() - t0) / 1000;
       built.group.rotation.set(
@@ -147,6 +198,14 @@ export function DieView(props: Props) {
         const angle = (dt / ORBIT_PERIOD_S) * Math.PI * 2;
         orbital.setAngle(angle);
       }
+      if (haloMesh && haloSpin) {
+        haloMesh.rotation.z = (dt * haloSpin) % (Math.PI * 2);
+      }
+      if (pulseAmp > 0 && built.bodyMesh) {
+        const phase = (dt / pulsePeriodS) * Math.PI * 2;
+        const s = 1 + Math.sin(phase) * pulseAmp;
+        built.bodyMesh.scale.setScalar(s);
+      }
       tumbleHandleRef.current = requestAnimationFrame(tick);
     };
     tumbleHandleRef.current = requestAnimationFrame(tick);
@@ -156,6 +215,9 @@ export function DieView(props: Props) {
       dispose();
       orbital?.dispose();
       rim?.dispose();
+      // Decal cleanup disposes its shared material + planes BEFORE the
+      // group-traverse path runs, so the planes aren't double-disposed.
+      for (const c of decalCleanups) c();
       // Dispose materials/geometries owned by the die.
       built.group.traverse((obj: THREE.Object3D) => {
         const mesh = obj as THREE.Mesh;
@@ -173,6 +235,7 @@ export function DieView(props: Props) {
     <div
       ref={ref}
       data-die-view
+      data-forge-levitate={props.levitate ? '' : undefined}
       onClick={props.onClick}
       style={{
         width: size, height: size,
@@ -181,6 +244,13 @@ export function DieView(props: Props) {
         position: 'relative',
         pointerEvents: props.onClick ? 'auto' : 'none',
         touchAction: 'manipulation',
+        // Levitation lives on the wrapping div so it composites
+        // independently of the WebGL canvas (which is sized in CSS pixels
+        // and transformed by registerView). The vertical bob is purely
+        // cosmetic — pointer hit areas stay stable.
+        animation: props.levitate
+          ? 'forge-die-levitate 2400ms ease-in-out infinite'
+          : undefined,
       }}
     />
   );
