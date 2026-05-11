@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { DevConsole } from '../devtools/DevConsole';
+import { BoundsOverlay } from '../devtools/inspector/BoundsOverlay';
+import { SpawnOverlay } from '../devtools/inspector/SpawnOverlay';
 import { useScoreSequenceController } from './hud/scoreSequenceController';
 import { BossReveal } from './hud/BossReveal';
 import { ArrivalToast } from './hud/ArrivalToast';
@@ -158,6 +160,8 @@ export function App() {
         {pendingPack && <PackOverlay />}
         <CoachmarkController />
         {import.meta.env.DEV && <DevConsole />}
+        {import.meta.env.DEV && <BoundsOverlay />}
+        {import.meta.env.DEV && <SpawnOverlay />}
       </div>
     </DiagnosticOverlay>
   );

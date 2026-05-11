@@ -11,6 +11,7 @@ import { bus } from '../../events/bus';
 import { lookupAchievement } from '../../data/achievements';
 import { Z } from './zLayers';
 import { sfxPlay } from '../../audio/sfx';
+import { useInspectable } from '../../devtools/inspector/elementRegistry';
 
 const SHOW_MS = 4000;
 const STAGGER_MS = 250;
@@ -71,10 +72,13 @@ export function AchievementToast() {
     };
   }, [active, queue]);
 
+  const inspectRef = useInspectable<HTMLDivElement>('hud.achievementToast', { label: 'AchievementToast', zLayer: 'bannerArrival' });
+
   if (!active) return null;
 
   return (
     <div
+      ref={inspectRef}
       onClick={() => setActive(null)}
       className="mat-crystal"
       style={{

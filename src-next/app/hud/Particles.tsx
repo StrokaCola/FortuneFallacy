@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { bus } from '../../events/bus';
 import { getStageSize } from '../../render/stage';
 import { Z } from './zLayers';
+import { useInspectable } from '../../devtools/inspector/elementRegistry';
 
 // Reduce-motion gate: read once at the start of each handler so the
 // player's current preference is respected even if it changes mid-run.
@@ -23,7 +24,7 @@ export function Particles() {
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [shocks, setShocks] = useState<Shock[]>([]);
   const [flies, setFlies] = useState<FlyNum[]>([]);
-  const targetRef = useRef<HTMLDivElement>(null);
+  const targetRef = useInspectable<HTMLDivElement>('hud.particles', { label: 'Particles', zLayer: 'fx' });
 
   useEffect(() => {
     const off1 = bus.on('onComboDetected', ({ tier }) => {

@@ -1375,3 +1375,14 @@ html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__mark path {
   transform-box: fill-box;
   animation: drawDots 700ms ease-out 300ms backwards;
 }
+
+/* DEV-only: applied by the inspector mover. Sets individual CSS transform
+   properties so the override composes with any existing inline
+   `transform` set by the component (which applies on top after these
+   per the spec: translate → rotate → scale → transform). Vars are
+   written by src-next/devtools/inspector/applyOverrides.ts. */
+.ff-inspectable {
+  translate: var(--ff-inspect-translate, 0 0);
+  scale: var(--ff-inspect-scale, 1);
+  rotate: var(--ff-inspect-rotate, 0deg);
+}
