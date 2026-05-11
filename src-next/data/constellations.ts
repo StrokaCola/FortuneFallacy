@@ -38,7 +38,7 @@ export type Constellation = {
   flavor: string;
   rules: string[];
   // Identity tint used as the run-wide accent color (TopBar Astrolabe,
-  // ComboBanner border/glow, Round action-bar arrows). Avoid the four
+  // Round action-bar arrows). Avoid the four
   // semantically reserved colors that already mean something:
   //   #f5c451 (gold)    — target crossed / "TARGET BEAT" stamp
   //   #ff7847 (orange)  — multiplier tier 0

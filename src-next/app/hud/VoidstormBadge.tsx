@@ -4,7 +4,7 @@
 //
 // On tight viewports (phones at 375px wide / landscape phones at
 // 640×360), the full badge competes for horizontal space with the
-// center banners (PatternDetected / HotStreak / ComboBanner). On
+// center banners (PatternDetected / HotStreak). On
 // tight, collapse to icon-only + tooltip — the boon/curse glyph is
 // distinct enough to convey state at a glance, and the tooltip still
 // carries the full name + flavor.
