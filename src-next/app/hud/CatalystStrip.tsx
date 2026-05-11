@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
-import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../data/catalysts';
+import { lookupCatalyst, awakeningThreshold, isAwakened, SCALING_CATALYST_IDS, RETRIGGER_CATALYST_IDS } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
@@ -34,6 +34,11 @@ const selectMirroredHand = (s: GameState) => s.run.mirroredHandActive;
 
 const PULSE_DURATION_MS = 380;
 const PULSE_DURATION_LEGENDARY_MS = 540;
+// Scaling pulse — slower expand than fire, cosmic cyan glow. Long enough
+// for the cyan ring + brightness ramp to read but short enough the strip
+// doesn't visibly throb during a long combo chain.
+const PULSE_DURATION_SCALING_MS = 460;
+const BADGE_BUMP_DURATION_MS = 360;
 const CHAIN_PULSE_STEP_MS = 80;
 const FLOATER_DURATION_MS = 900;
 const RING_DURATION_MS = 720;
@@ -42,13 +47,103 @@ type FloaterRecord = {
   key: number;
   catalystId: string;
   text: string;
-  tone: 'chips' | 'mult';
+  // 2026-05-11 polish — 'scaling' tone (emerald) reads visually distinct
+  // from 'chips' (cyan) and 'mult' (orange). Used for scaling-catalyst
+  // contributions so a Star Chart fire doesn't look like a regular
+  // mult bump in the floater stream.
+  tone: 'chips' | 'mult' | 'scaling';
 };
 
 type RingRecord = { key: number; catalystId: string; color: string };
 
 const RESONANCE_RING_COLOR = '#ffd84a';
 const RESONANCE_FLOATER_TEXT_COLOR = '#ffd84a';
+
+// Lunar Phases — replaces the text "●●○○○○○○" with eight tiny phase
+// glyphs in a horizontal row. Current phase pulses gold; remaining
+// phases dim out. When `baked > 0` we show a small ×N multiplier
+// underneath the row so the player sees the accumulated bonus without
+// opening the tooltip.
+//
+// Unicode lunar glyphs render inconsistently on Windows + some Android
+// browsers (some emoji-fonts hijack them, some render flat circles).
+// We use Unicode arc characters instead: 🌑 → ◯, 🌒 → ◔, etc, mapped
+// to plain circle/half-disc symbols that ship in every system font.
+const PHASE_GLYPHS = ['○', '◔', '◑', '◕', '●', '◕', '◑', '◔'];
+function LunarPhaseBadge({ color, phase, baked }: { color: string; phase: number; baked: number }) {
+  return (
+    <div style={{
+      position: 'absolute', top: 4, right: 4,
+      background: 'rgba(15,9,37,0.85)',
+      padding: '2px 5px', borderRadius: 4,
+      border: `1px solid ${color}80`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      lineHeight: 1,
+      whiteSpace: 'nowrap',
+    }}>
+      <div style={{ display: 'flex', gap: 1, fontSize: 7, color }}>
+        {PHASE_GLYPHS.map((g, i) => (
+          <span key={i} style={{
+            color: i === phase ? '#f5c451' : color,
+            opacity: i === phase ? 1 : 0.45,
+            textShadow: i === phase ? '0 0 4px rgba(245,196,81,0.85)' : undefined,
+            transition: 'color 200ms, opacity 200ms',
+          }}>
+            {g}
+          </span>
+        ))}
+      </div>
+      {baked > 0 && (
+        <div className="f-mono" style={{
+          fontSize: 8, fontWeight: 700,
+          color: '#f5c451',
+          marginTop: 1, letterSpacing: '0.04em',
+        }}>
+          ×{(1 + baked).toFixed(2)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tide — split into two tabs (EBB / FLOW). Active tab gets the catalyst's
+// color + a subtle horizontal wave sweep; inactive is dim. The badge
+// width is tight so the strip card doesn't expand on narrow viewports.
+function TideBadge({ color, ebb }: { color: string; ebb: boolean }) {
+  return (
+    <div style={{
+      position: 'absolute', top: 4, right: 4,
+      background: 'rgba(15,9,37,0.85)',
+      padding: '1px 2px', borderRadius: 4,
+      border: `1px solid ${color}80`,
+      display: 'flex', gap: 2,
+      lineHeight: 1,
+    }}>
+      <div className="f-mono" style={{
+        fontSize: 7, fontWeight: 700, letterSpacing: '0.08em',
+        padding: '1px 4px',
+        borderRadius: 2,
+        color: ebb ? color : '#3a2f5a',
+        background: ebb ? `${color}25` : 'transparent',
+        textShadow: ebb ? `0 0 6px ${color}aa` : undefined,
+        transition: 'all 200ms',
+      }}>
+        EBB
+      </div>
+      <div className="f-mono" style={{
+        fontSize: 7, fontWeight: 700, letterSpacing: '0.08em',
+        padding: '1px 4px',
+        borderRadius: 2,
+        color: !ebb ? color : '#3a2f5a',
+        background: !ebb ? `${color}25` : 'transparent',
+        textShadow: !ebb ? `0 0 6px ${color}aa` : undefined,
+        transition: 'all 200ms',
+      }}>
+        FLOW
+      </div>
+    </div>
+  );
+}
 
 // Shared corner-badge for scaling-pack counters. Same shape as
 // compounding_bias' inline badge — color comes from the catalyst's
@@ -95,7 +190,14 @@ export function CatalystStrip() {
   const lunarBaked = useStore(selectLunarBaked);
   const mirroredHandActive = useStore(selectMirroredHand);
 
-  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | undefined>>({});
+  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | 'scaling' | undefined>>({});
+  // Tracks corner badges currently mid-bump so the CSS animation can
+  // re-fire on the next stack change. Keyed by catalyst id; the value is
+  // the last-bumped key so React re-mounts the badge on each bump.
+  const [badgeBumpKey, setBadgeBumpKey] = useState<Record<string, number>>({});
+  // Previous catalystStacks snapshot — diffed each render to detect
+  // stack increments so we can fire the badge-bump animation.
+  const prevStacksRef = useRef<Record<string, number>>({});
   const [floaters, setFloaters] = useState<FloaterRecord[]>([]);
   const [rings, setRings] = useState<RingRecord[]>([]);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -197,8 +299,17 @@ export function CatalystStrip() {
 
       const meta = lookupCatalyst(catalystId);
       const isLegendary = meta?.rarity === 'legendary';
-      const pulseKind: 'fire' | 'fire-legendary' = isLegendary ? 'fire-legendary' : 'fire';
-      const pulseDuration = isLegendary ? PULSE_DURATION_LEGENDARY_MS : PULSE_DURATION_MS;
+      const isScaling = SCALING_CATALYST_IDS.has(catalystId);
+      // Priority: legendary > scaling > regular fire. Legendary catalysts
+      // that are ALSO scaling (heirloom_locket) keep the legendary pulse
+      // because their rarity is the stronger signal; the scaling tooltip
+      // line + corner badge already mark them as scaling-class.
+      const pulseKind: 'fire' | 'fire-legendary' | 'scaling' =
+        isLegendary ? 'fire-legendary' : (isScaling ? 'scaling' : 'fire');
+      const pulseDuration =
+        isLegendary ? PULSE_DURATION_LEGENDARY_MS :
+        isScaling ? PULSE_DURATION_SCALING_MS :
+        PULSE_DURATION_MS;
 
       setPulsing((s) => ({ ...s, [catalystId]: pulseKind }));
       track(() => {
@@ -226,14 +337,16 @@ export function CatalystStrip() {
       const dChips = payload.deltaChips ?? 0;
       const dMult = payload.deltaMult ?? 0;
       let text = '';
-      let tone: 'chips' | 'mult' = 'chips';
+      let tone: 'chips' | 'mult' | 'scaling' = 'chips';
       if (dChips !== 0) {
         text = `+${Math.round(dChips)}`;
-        tone = 'chips';
+        // Scaling-catalyst chip contributions tinted emerald so the
+        // accumulated bonus reads visually distinct from regular +chips.
+        tone = isScaling ? 'scaling' : 'chips';
       } else if (dMult !== 0) {
         const rounded = Math.round(dMult * 10) / 10;
         text = `+${rounded.toString().replace(/\.0$/, '')} mult`;
-        tone = 'mult';
+        tone = isScaling ? 'scaling' : 'mult';
       }
       if (text) {
         const floaterKey = ++floaterKeyRef.current;
@@ -262,6 +375,25 @@ export function CatalystStrip() {
       timers.clear();
     };
   }, [catalysts]);
+
+  // Badge bump on stack increment. Diff the previous catalystStacks
+  // snapshot against the current one; for each id whose stack went UP,
+  // bump badgeBumpKey so React re-mounts the .badge-bumped element and
+  // the CSS animation re-fires. We don't run this for first-mount values
+  // (prevStacksRef defaults to {} so a first-load Lodestone with 3
+  // stacks would otherwise spuriously bump on render).
+  useEffect(() => {
+    const prev = prevStacksRef.current;
+    const next: Record<string, number> = {};
+    for (const [id, val] of Object.entries(catalystStacks)) {
+      next[id] = val;
+      const prior = prev[id];
+      if (prior != null && val > prior) {
+        setBadgeBumpKey((s) => ({ ...s, [id]: (s[id] ?? 0) + 1 }));
+      }
+    }
+    prevStacksRef.current = next;
+  }, [catalystStacks]);
 
   if (catalysts.length === 0) return null;
 
@@ -302,6 +434,8 @@ export function CatalystStrip() {
           ? `mat-pulse-fire-legendary ${PULSE_DURATION_LEGENDARY_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
           : pulseKind === 'fire'
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
+          : pulseKind === 'scaling'
+          ? `mat-pulse-scaling ${PULSE_DURATION_SCALING_MS}ms cubic-bezier(0.25, 0.9, 0.35, 1)`
           : undefined;
         const isLegendary = c.rarity === 'legendary';
         const cardFloaters = floaters.filter((f) => f.catalystId === id);
@@ -420,19 +554,32 @@ export function CatalystStrip() {
                 </div>
               )}
               {/* 2026-05-11 scaling pack — visible per-catalyst counters.
-                  Same corner-badge style as compounding_bias. */}
+                  Wrapped in a keyed div so the badge-bump animation
+                  re-fires on every stack increment without affecting the
+                  Lunar / Tide cosmetic badges (which animate themselves). */}
               {(() => {
                 const stack = catalystStacks[id];
-                if (id === 'star_chart' && stack) return renderBadge(c.color, `+${(stack * 0.25).toFixed(2)}×`);
-                if (id === 'lodestone' && stack) return renderBadge(c.color, `+${stack * 2}c`);
-                if (id === 'comet_trail' && stack) return renderBadge(c.color, `+${stack * 10}c`);
-                if (id === 'memento_star' && stack) return renderBadge(c.color, `+${(stack * 0.5).toFixed(1)}×`);
-                if (id === 'ouroboros' && stack) return renderBadge(c.color, `+${stack * 3}m`);
-                if (id === 'event_horizon' && stack) return renderBadge(c.color, `+${stack}%`);
-                if (id === 'highwater' && stack) return renderBadge(c.color, `+${stack}m`);
-                if (id === 'heirloom_locket' && stack) return renderBadge(c.color, `+${(stack * 0.15).toFixed(2)}×`);
-                if (id === 'lunar_phases') return renderBadge(c.color, `${'●'.repeat(lunarPhase)}${'○'.repeat(8 - lunarPhase)}`);
-                if (id === 'tide') return renderBadge(c.color, (handsPlayed % 2 === 0) ? 'ebb' : 'flow');
+                const bumpKey = badgeBumpKey[id] ?? 0;
+                const wrap = (node: React.ReactNode) => (
+                  <div key={`bump-${bumpKey}`} className="badge-bumpable" style={{
+                    animation: bumpKey > 0
+                      ? `badge-bump ${BADGE_BUMP_DURATION_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
+                      : undefined,
+                    transformOrigin: 'center',
+                  }}>
+                    {node}
+                  </div>
+                );
+                if (id === 'star_chart' && stack) return wrap(renderBadge(c.color, `+${(stack * 0.25).toFixed(2)}×`));
+                if (id === 'lodestone' && stack) return wrap(renderBadge(c.color, `+${stack * 2}c`));
+                if (id === 'comet_trail' && stack) return wrap(renderBadge(c.color, `+${stack * 10}c`));
+                if (id === 'memento_star' && stack) return wrap(renderBadge(c.color, `+${(stack * 0.5).toFixed(1)}×`));
+                if (id === 'ouroboros' && stack) return wrap(renderBadge(c.color, `+${stack * 3}m`));
+                if (id === 'event_horizon' && stack) return wrap(renderBadge(c.color, `+${stack}%`));
+                if (id === 'highwater' && stack) return wrap(renderBadge(c.color, `+${stack}m`));
+                if (id === 'heirloom_locket' && stack) return wrap(renderBadge(c.color, `+${(stack * 0.15).toFixed(2)}×`));
+                if (id === 'lunar_phases') return <LunarPhaseBadge color={c.color} phase={lunarPhase} baked={lunarBaked} />;
+                if (id === 'tide') return <TideBadge color={c.color} ebb={handsPlayed % 2 === 0} />;
                 return null;
               })()}
               {/* Mirrored Hand armed indicator — small star on the strip
@@ -515,9 +662,15 @@ export function CatalystStrip() {
                   fontSize: f.tone === 'mult' ? 13 : 14,
                   fontWeight: 800,
                   letterSpacing: '0.04em',
-                  color: f.tone === 'mult' ? '#ff7847' : '#7be3ff',
-                  textShadow: f.tone === 'mult'
-                    ? '0 0 12px rgba(255,120,71,0.95), 0 0 24px rgba(255,120,71,0.55)'
+                  color:
+                    f.tone === 'mult' ? '#ff7847' :
+                    f.tone === 'scaling' ? '#5be8a4' :
+                    '#7be3ff',
+                  textShadow:
+                    f.tone === 'mult'
+                      ? '0 0 12px rgba(255,120,71,0.95), 0 0 24px rgba(255,120,71,0.55)'
+                    : f.tone === 'scaling'
+                      ? '0 0 12px rgba(91,232,164,0.95), 0 0 24px rgba(91,232,164,0.55)'
                     : '0 0 12px rgba(123,227,255,0.95), 0 0 24px rgba(123,227,255,0.55)',
                   whiteSpace: 'nowrap',
                   animation: `catalyst-floater-up ${FLOATER_DURATION_MS}ms cubic-bezier(0.2, 1.0, 0.4, 1) forwards`,

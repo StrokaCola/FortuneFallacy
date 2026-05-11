@@ -26,12 +26,19 @@ const selectOwnedModEditions = (s: GameState) => s.run.ownedModEditions ?? EMPTY
 const selectDiceSpec = (s: GameState) => getDiceSpec(s);
 
 const selectDiceMods = (s: GameState) => s.run.diceMods;
+// 2026-05-11 polish — per-mod-instance stack counters surfaced in the
+// detach row so the player can SEE what a Tally Mark or Dormant has
+// accrued without opening tooltips. Fallback to an empty array on
+// legacy saves (covered by persistence default, but defensive here too).
+const EMPTY_STACKS: number[][] = [];
+const selectDiceModStacks = (s: GameState) => s.run.diceModStacks ?? EMPTY_STACKS;
 const selectDice = (s: GameState) => s.round.dice;
 const selectMaxMod = (s: GameState) => maxModSlots(s);
 
 export function Forge() {
   const dice = useStore(selectDice);
   const diceMods = useStore(selectDiceMods);
+  const diceModStacks = useStore(selectDiceModStacks);
   const tight = useIsTightStage();
   const ante = useStore(selectAnte);
   const shards = useStore(selectShards);
@@ -201,6 +208,9 @@ export function Forge() {
               {slots.map((rid, idx) => {
                 const r = lookupMod(rid);
                 if (!r) return null;
+                const stack = diceModStacks[selectedDie]?.[idx] ?? 0;
+                const stackLabel = formatModStackLabel(r, stack);
+                const accent = r.visual?.accentColor;
                 return (
                   <button
                     key={idx}
@@ -216,8 +226,25 @@ export function Forge() {
                       background: 'rgba(149,119,255,0.12)', border: '1px solid rgba(149,119,255,0.45)',
                       color: '#dcd4ff', letterSpacing: '0.18em', cursor: 'pointer',
                       maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                    title={stackLabel
+                      ? `${r.desc}\nCurrently ${stackLabel} from ${stack} stack${stack === 1 ? '' : 's'}.`
+                      : r.desc}>
                     ✕ {r.name}
+                    {stackLabel && accent && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700,
+                        padding: '1px 5px', borderRadius: 4,
+                        background: `${accent}25`,
+                        color: accent,
+                        border: `1px solid ${accent}88`,
+                        letterSpacing: '0.04em',
+                        textShadow: `0 0 4px ${accent}88`,
+                      }}>
+                        {stackLabel}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -447,4 +474,24 @@ export function Forge() {
       </div>
     </div>
   );
+}
+
+// 2026-05-11 polish — per-mod-instance stack chip label.
+// Returns null for non-scaling mods so the detach button doesn't render
+// an empty badge. The math mirrors what applyDieModStep credits the
+// die for at score time, so what the player sees here is what they'll
+// see on the next hand.
+import type { ModDef } from '../../core/mods';
+function formatModStackLabel(def: ModDef, stack: number): string | null {
+  if (stack <= 0) return null;
+  if (def.tallyChipPerStack) return `+${stack * def.tallyChipPerStack}c`;
+  if (def.cadenceMultPerStack) return `+${stack * def.cadenceMultPerStack}m (blind)`;
+  if (def.veteranMultPerStack) return `+${(stack * def.veteranMultPerStack).toFixed(1)}m`;
+  if (def.gluttonChipPerStack) return `+${stack * def.gluttonChipPerStack}c`;
+  if (def.dormantAwakenAt != null) {
+    return stack >= def.dormantAwakenAt ? '★ awake' : `${stack}/${def.dormantAwakenAt}`;
+  }
+  if (def.ballastChipPerStack) return `+${stack * def.ballastChipPerStack}c`;
+  if (def.pyreChipPerStack) return `+${stack * def.pyreChipPerStack}c`;
+  return null;
 }

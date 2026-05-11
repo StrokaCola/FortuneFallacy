@@ -359,6 +359,29 @@ export function lookupCatalyst(id: string): CatalystMeta | undefined {
   return CATALYST_META.find((c) => c.id === id);
 }
 
+// 2026-05-11 scaling pack — id sets used by the HUD/audio layer to
+// classify a catalyst fire into 'scaling' vs 'retrigger' vs the
+// existing 'fire'/'fire-legendary' kinds. Keep these aligned with the
+// metadata above; new catalysts in the same family should be added here
+// so the polish (pulse kind, audio voice, postmortem panel) picks them up
+// automatically.
+export const SCALING_CATALYST_IDS: ReadonlySet<string> = new Set([
+  'star_chart', 'lodestone', 'comet_trail', 'memento_star', 'ouroboros',
+  'lunar_phases', 'tide', 'event_horizon', 'highwater', 'heirloom_locket',
+  // Existing scaling catalysts that pre-date the 2026-05-11 pack but
+  // share the same "permanent stack accrued over the run" feel.
+  'compounding_bias', 'momentum',
+]);
+
+export const RETRIGGER_CATALYST_IDS: ReadonlySet<string> = new Set([
+  'polaris', 'refrain', 'mirror_edge', 'curtain_call', 'stutter',
+  'recursion_lens', 'cardinal_compass', 'echo_chamber',
+  // Existing retrigger catalysts.
+  'encore', 'gilding_press',
+  // Easter-egg retrigger uses the same audio/visual class.
+  'mirrored_hand',
+]);
+
 // Awakening — once a catalyst has fired N times in a single run, it
 // reads as "Awakened" with a ★ badge on the strip. v1 is purely
 // cosmetic; mechanical scaling will follow once playtesting confirms
