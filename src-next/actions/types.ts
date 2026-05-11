@@ -39,6 +39,8 @@ export type Action =
   | { type: 'RESOLVE_AUDIT'; choice: 'gamble' | 'skip' }
   | { type: 'SEE_COACHMARK'; id: string }
   | { type: 'SKIP_ONBOARDING' }
-  | { type: 'RESET_ONBOARDING' };
+  | { type: 'RESET_ONBOARDING' }
+  | { type: 'SHOW_DIE_TIP'; dieIdx: number; screenX: number; screenY: number; pointerType: 'mouse' | 'touch' | 'pen' }
+  | { type: 'HIDE_DIE_TIP' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

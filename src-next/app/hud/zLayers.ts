@@ -7,11 +7,12 @@
 //   inline styles requires `as unknown as number` shims that defeat type
 //   checking. A const object keeps zIndex usage type-safe.
 export const Z = {
-  canvas: 3,
+  canvas: 1,
   hud: 4,
   hudTop: 5,
   hudControl: 6,
   fx: 10,
+  dieTip: 11,
   toast: 12,
   bannerBoss: 30,
   bannerArrival: 40,

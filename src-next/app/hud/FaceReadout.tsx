@@ -1,6 +1,7 @@
 import { useStore, type GameState } from '../../state/store';
 import { lookupConstellation, type Constellation } from '../../data/constellations';
 import { maxNumericFace } from '../../data/dice';
+import { WILD_SENTINEL, describeFace } from '../../core/run/faceReadable';
 import { useIsCompactStage } from '../hooks/useIsCompactStage';
 import { Z } from './zLayers';
 
@@ -15,14 +16,6 @@ const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectFirstRollDone = (s: GameState) => s.round.firstRollDone;
 const selectScoringMode = (s: GameState) => lookupConstellation(s.run.constellationId).modifiers?.scoringMode ?? 'combo';
 const selectScoringOrder = (s: GameState) => s.round.scoringOrder;
-
-// WILD sentinel value emitted by the simulation for wildcard faces.
-const WILD_SENTINEL = -1;
-
-function describeFace(f: number): string {
-  if (f === WILD_SENTINEL) return '★';
-  return String(f);
-}
 
 // Constellations whose dice all use d6 faces (1..6) get the readout hidden —
 // pips on the 3D dice already convey the value unambiguously. Anything else

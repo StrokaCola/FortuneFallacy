@@ -17,8 +17,11 @@
 // global stuck element at a time; long-pressing a different element
 // transfers stickiness.
 
-const HOLD_MS = 450;
-const MOVE_TOLERANCE_PX = 8;
+// Exported so the 3D dice long-press handler (Dice3D.ts) shares the same hold
+// duration and movement tolerance as the HTML `.has-tip` system — keeps the
+// gesture feel consistent across React UI and the in-round dice canvas.
+export const HOLD_MS = 450;
+export const MOVE_TOLERANCE_PX = 8;
 const STUCK_CLASS = 'tip-stuck';
 
 let installed: { dispose: () => void } | null = null;

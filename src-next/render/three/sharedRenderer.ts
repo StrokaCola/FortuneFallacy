@@ -43,9 +43,16 @@ function isLowEndMobile(): boolean {
 function ensureRenderer(): THREE.WebGLRenderer {
   if (_renderer) return _renderer;
   _canvas = document.createElement('canvas');
-  _canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:80;width:100vw;height:100vh;';
+  // Sits at the "dice plane" inside #stage-root (same z as #three-next) so
+  // #next-root (z=2) and all React overlays — PauseMenu, Run Info, Settings,
+  // shop screens — paint over it. Previously z=80 on document.body, which
+  // made any rendered DieView (e.g. Forge thumbnails) punch through modals.
+  // The host fallback to document.body keeps unit-test envs (no #stage-root)
+  // working.
+  _canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;width:100vw;height:100vh;';
   _canvas.setAttribute('data-shared-renderer', '1');
-  document.body.appendChild(_canvas);
+  const host = document.getElementById('stage-root') ?? document.body;
+  host.appendChild(_canvas);
   const lowEnd = isLowEndMobile();
   _renderer = new THREE.WebGLRenderer({ canvas: _canvas, alpha: true, antialias: !lowEnd });
   // DPR cap: 2 on desktop / capable mobile, 1.5 on low-end mobile. Halves

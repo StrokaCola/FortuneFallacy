@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Z } from '../hud/zLayers';
 
 // Diagnostic overlay for the deployed build. Catches:
 //   1. React render errors via componentDidCatch (would otherwise unmount the
@@ -87,7 +88,7 @@ export class DiagnosticOverlay extends Component<{ children?: ReactNode }, State
             style={{
               position: 'fixed',
               left: 0, right: 0, bottom: 0,
-              zIndex: 999999,
+              zIndex: Z.overlay,
               maxHeight: '50vh',
               background: 'rgba(20,0,0,0.95)',
               color: '#ffd6d6',

@@ -7,17 +7,26 @@ import { applyConstellation } from '../../core/run/applyConstellation';
 import { applyAstralPerksToNewRun } from '../../core/run/applyAstralPerks';
 import { lookupConstellation } from '../../data/constellations';
 import { getDailyChallenge } from '../../online/dailyChallenge';
+import type { HandlerResult } from './types';
+
+// Any round transition wipes the long-press die tooltip — the die it pointed
+// at may no longer exist, and a stale floating chip would survive scene
+// changes and look like a bug.
+function clearDieTip(r: HandlerResult): HandlerResult {
+  if (r.state.ui.dieTip == null) return r;
+  return { ...r, state: { ...r.state, ui: { ...r.state.ui, dieTip: null } } };
+}
 
 export const roundHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'START_BLIND':
-      return startBlind(s);
+      return clearDieTip(startBlind(s));
     case 'CLEAR_BLIND':
-      return clearBlind(s);
+      return clearDieTip(clearBlind(s));
     case 'BUST_BLIND':
-      return bustBlind(s);
+      return clearDieTip(bustBlind(s));
     case 'SKIP_BLIND':
-      return skipBlind(s);
+      return clearDieTip(skipBlind(s));
     case 'NEW_RUN': {
       // Daily challenge: deterministic seed + constellation + stake derived
       // from today's UTC date so every player gets the same run on the same
@@ -48,7 +57,7 @@ export const roundHandler: ActionHandler = (a, s) => {
           run,
           round: initialRoundSlice(),
           shop: initialShopSlice(),
-          ui: { ...s.ui, screen: 'hub' },
+          ui: { ...s.ui, screen: 'hub', dieTip: null },
         },
         events: [],
       };

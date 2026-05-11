@@ -7,7 +7,7 @@ const baseState = (): GameState => ({
   round: { active: false, score: 0, dice: [] },
   shop: { open: false, offers: [], rerollCost: 5 },
   meta: { playerName: '', unlocks: [], highScores: [] },
-  ui: { screen: 'title', paused: false, tooltip: null, transition: 'idle' },
+  ui: { screen: 'title', paused: false, tooltip: null, transition: 'idle', dieTip: null },
   pingCount: 0,
 } as unknown as GameState);
 
@@ -87,7 +87,7 @@ describe('TOGGLE_PAUSE', () => {
   });
 
   it('toggles paused from true to false', () => {
-    const before = { ...baseState(), ui: { screen: 'round' as const, paused: true, tooltip: null, transition: 'idle' as const } };
+    const before = { ...baseState(), ui: { screen: 'round' as const, paused: true, tooltip: null, transition: 'idle' as const, dieTip: null } };
     const after = metaHandler({ type: 'TOGGLE_PAUSE' }, before).state;
     expect(after.ui.paused).toBe(false);
   });
@@ -95,5 +95,55 @@ describe('TOGGLE_PAUSE', () => {
   it('emits no events', () => {
     const r = metaHandler({ type: 'TOGGLE_PAUSE' }, baseState());
     expect(r.events).toHaveLength(0);
+  });
+});
+
+describe('SHOW_DIE_TIP / HIDE_DIE_TIP', () => {
+  // Inject 3 dice and an empty dieTip into baseState so the handler can
+  // validate dieIdx against round.dice.length.
+  const stateWithDice = (): GameState => ({
+    ...baseState(),
+    round: { active: true, score: 0, dice: [
+      { id: 0, face: 4, locked: false },
+      { id: 1, face: 6, locked: true },
+      { id: 2, face: 1, locked: false },
+    ] } as unknown as GameState['round'],
+  });
+
+  it('sets ui.dieTip when SHOW_DIE_TIP dispatched with valid die index', () => {
+    const r = metaHandler({
+      type: 'SHOW_DIE_TIP', dieIdx: 1, screenX: 120, screenY: 300, pointerType: 'touch',
+    }, stateWithDice());
+    expect(r.state.ui.dieTip).toEqual({ dieIdx: 1, screenX: 120, screenY: 300, pointerType: 'touch' });
+    expect(r.events).toHaveLength(0);
+  });
+
+  it('rejects SHOW_DIE_TIP when dieIdx is out of range', () => {
+    const r = metaHandler({
+      type: 'SHOW_DIE_TIP', dieIdx: 99, screenX: 0, screenY: 0, pointerType: 'mouse',
+    }, stateWithDice());
+    expect(r.state.ui.dieTip).toBeNull();
+  });
+
+  it('rejects SHOW_DIE_TIP when dieIdx is negative', () => {
+    const r = metaHandler({
+      type: 'SHOW_DIE_TIP', dieIdx: -1, screenX: 0, screenY: 0, pointerType: 'mouse',
+    }, stateWithDice());
+    expect(r.state.ui.dieTip).toBeNull();
+  });
+
+  it('HIDE_DIE_TIP clears the active tip', () => {
+    const shown = metaHandler({
+      type: 'SHOW_DIE_TIP', dieIdx: 0, screenX: 10, screenY: 20, pointerType: 'pen',
+    }, stateWithDice()).state;
+    expect(shown.ui.dieTip).not.toBeNull();
+    const hidden = metaHandler({ type: 'HIDE_DIE_TIP' }, shown).state;
+    expect(hidden.ui.dieTip).toBeNull();
+  });
+
+  it('HIDE_DIE_TIP is a no-op when no tip is set (preserves reference)', () => {
+    const s = stateWithDice();
+    const r = metaHandler({ type: 'HIDE_DIE_TIP' }, s);
+    expect(r.state).toBe(s);
   });
 });
