@@ -6,6 +6,7 @@ import { triggerShake } from '../visual/screenShake';
 import type { Beat } from '../../core/scoring/types';
 import { Z } from './zLayers';
 import { store } from '../../state/store';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
@@ -40,6 +41,9 @@ function isReducedMotion(): boolean {
 }
 
 export function ScoreMoment() {
+  // Tight viewports: shrink the boom + slams + stamp so the centered
+  // overlay stops overflowing a 360×640 phone. Wide-mode untouched.
+  const tight = useIsTightStage();
   const [active, setActive] = useState(false);
   const [comboName, setComboName] = useState('');
   const [slams, setSlams] = useState<SlamOverlay[]>([]);
@@ -201,25 +205,35 @@ export function ScoreMoment() {
     }}>
       {comboName && (
         <div className="f-display" style={{
-          fontSize: 32, color: '#f5c451',
+          fontSize: tight ? 22 : 32, color: '#f5c451',
           textShadow: '0 0 24px rgba(245,196,81,0.7)',
-          letterSpacing: '0.18em', marginBottom: 18,
+          letterSpacing: '0.18em', marginBottom: tight ? 12 : 18,
           animation: 'chipPop 200ms ease-out',
         }}>
           {comboName}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 18, marginBottom: 18 }}>
+      <div style={{
+        display: 'flex',
+        // Slams wrap on tight so a 4+ mult chain doesn't blow past the
+        // viewport edge. 18px gap shrinks to 10px to keep wrapped rows
+        // visually grouped instead of spilling.
+        flexWrap: tight ? 'wrap' : 'nowrap',
+        justifyContent: 'center',
+        gap: tight ? 10 : 18,
+        marginBottom: tight ? 12 : 18,
+        maxWidth: tight ? 'calc(100vw - 32px)' : undefined,
+      }}>
         {slams.map((s) => {
           const isMagenta = s.tint === 'magenta';
           const baseColor = isMagenta ? '#cc88ff' : (s.gold ? '#f5c451' : '#ff7847');
           return (
             <div key={s.id} className="f-mono" style={{
-              padding: '8px 18px', borderRadius: 8,
+              padding: tight ? '6px 12px' : '8px 18px', borderRadius: 8,
               background: `${baseColor}20`,
               border: `2px solid ${baseColor}`,
               color: baseColor,
-              fontSize: 28, fontWeight: 700,
+              fontSize: tight ? 20 : 28, fontWeight: 700,
               boxShadow: `0 0 24px ${baseColor}`,
               animation: 'boomPop 250ms cubic-bezier(0.2, 1.4, 0.5, 1)',
             }}>
@@ -232,7 +246,7 @@ export function ScoreMoment() {
         <div style={{
           position: 'absolute',
           top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
-          fontFamily: '"Cinzel Decorative", serif', fontSize: 48, fontWeight: 900,
+          fontFamily: '"Cinzel Decorative", serif', fontSize: tight ? 32 : 48, fontWeight: 900,
           color: '#f5c451', letterSpacing: '0.2em',
           textShadow: '0 0 30px #f5c451',
           animation: 'boomPop 350ms cubic-bezier(0.2, 1.6, 0.5, 1)',
@@ -242,7 +256,7 @@ export function ScoreMoment() {
         <div style={{
           position: 'absolute',
           top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
-          fontFamily: '"Cinzel Decorative", serif', fontSize: 48, fontWeight: 900,
+          fontFamily: '"Cinzel Decorative", serif', fontSize: tight ? 32 : 48, fontWeight: 900,
           color: '#ff4d6d', letterSpacing: '0.2em',
           textShadow: '0 0 30px #ff4d6d',
           animation: 'boomPop 350ms cubic-bezier(0.2, 1.6, 0.5, 1)',
@@ -254,7 +268,7 @@ export function ScoreMoment() {
             ref={boomRef}
             className="f-mono num"
             style={{
-              fontSize: 96, fontWeight: 700,
+              fontSize: tight ? 60 : 96, fontWeight: 700,
               color: boomColor,
               textShadow: boomGlow,
               animation: boom.phase === 'fly'

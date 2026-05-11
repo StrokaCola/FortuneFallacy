@@ -3,6 +3,7 @@ import { bus } from '../../events/bus';
 import type { Beat } from '../../core/scoring/types';
 import { formatNumber } from './scoreExplainData';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 const FADE_OUT_MS = 1200;
 
@@ -72,6 +73,10 @@ function tierIndex(m: number): number {
 }
 
 export function ScoreBreakdown() {
+  // Tight viewports (≤375 wide / ≤640×360 landscape) get smaller chip
+  // and mult numerals so the strip stops fighting the centered
+  // ScoreMoment overlay during the scoring crescendo.
+  const tight = useIsTightStage();
   const [chips, setChips] = useState(0);
   const [mult, setMult] = useState(1);
   const [visible, setVisible] = useState(false);
@@ -172,7 +177,7 @@ export function ScoreBreakdown() {
         top: 'calc(var(--hud-top-h, 134px) + 76px)',
         transform: 'translateX(-50%)',
         display: 'flex',
-        gap: 22,
+        gap: tight ? 10 : 22,
         alignItems: 'center',
         zIndex: Z.hud,
         pointerEvents: 'none',
@@ -200,7 +205,7 @@ export function ScoreBreakdown() {
         <div
           className="f-display num"
           style={{
-            fontSize: 44,
+            fontSize: tight ? 28 : 44,
             color: '#7be3ff',
             fontWeight: 700,
             lineHeight: 1,
@@ -213,7 +218,7 @@ export function ScoreBreakdown() {
       <div
         className="f-display"
         style={{
-          fontSize: 48,
+          fontSize: tight ? 32 : 48,
           // The × itself escalates with the mult tier — at 16× it reads
           // as ember-red, matching the mult panel.
           color: tierIndex(mult) >= 1 ? tier.color : '#bba8ff',
@@ -259,7 +264,7 @@ export function ScoreBreakdown() {
           <div
             className="f-display num"
             style={{
-              fontSize: 44,
+              fontSize: tight ? 28 : 44,
               color: tier.color,
               fontWeight: 700,
               lineHeight: 1,

@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { bus } from '../../events/bus';
 import { COMBOS } from '../../core/scoring/combos';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 type Banner = { combo: string; chips: number; mult: number; ts: number };
 
@@ -34,6 +35,12 @@ const COMBO_FLAVOR: Record<string, string> = {
 };
 
 export function ComboBanner({ accent = '#7be3ff' }: { accent?: string }) {
+  // Tight viewports: suppress the banner entirely. The combo name is
+  // already rendered by ScoreMoment (the gold label above the boom)
+  // and the +chips / ×mult deltas show up on ScoreBreakdown. On a
+  // 360-wide phone three labels for the same combo is clutter, not
+  // celebration. Wide/desktop keep the full triplet.
+  const tight = useIsTightStage();
   const [banner, setBanner] = useState<Banner | null>(null);
 
   useEffect(() => {
@@ -45,6 +52,7 @@ export function ComboBanner({ accent = '#7be3ff' }: { accent?: string }) {
     return off;
   }, []);
 
+  if (tight) return null;
   if (!banner) return null;
   const c = COMBOS.find((x) => x.id === banner.combo);
   if (!c) return null;

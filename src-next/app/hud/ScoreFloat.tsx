@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { useStore } from '../../state/store';
 import { selectScore, selectTarget } from '../../state/selectors';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 // "Score Explosion on Boom" — when the boom beat fires, the counter
 // itself erupts: scale-punch + chromatic split + an outward ring. The
@@ -11,6 +12,9 @@ import { selectScore, selectTarget } from '../../state/selectors';
 const EXPLOSION_DURATION_MS = 720;
 
 export function ScoreFloat() {
+  // Tight: shrink the counter font + bar width, and cap the boom rings
+  // so they don't dominate a 360-wide / 360-tall landscape phone.
+  const tight = useIsTightStage();
   const score = useStore(selectScore);
   const target = useStore(selectTarget);
 
@@ -66,10 +70,10 @@ export function ScoreFloat() {
               style={{
                 position: 'absolute',
                 left: '50%', top: '50%',
-                width: explosion.mega ? 220 : 160,
-                height: explosion.mega ? 220 : 160,
-                marginLeft: explosion.mega ? -110 : -80,
-                marginTop: explosion.mega ? -110 : -80,
+                width: tight ? (explosion.mega ? 160 : 120) : (explosion.mega ? 220 : 160),
+                height: tight ? (explosion.mega ? 160 : 120) : (explosion.mega ? 220 : 160),
+                marginLeft: tight ? (explosion.mega ? -80 : -60) : (explosion.mega ? -110 : -80),
+                marginTop: tight ? (explosion.mega ? -80 : -60) : (explosion.mega ? -110 : -80),
                 borderRadius: '50%',
                 border: `2px solid ${explosion.gold ? '#f5c451' : '#7be3ff'}`,
                 boxShadow: `0 0 28px ${explosion.gold ? '#f5c451' : '#7be3ff'}, 0 0 56px ${explosion.gold ? 'rgba(245,196,81,0.55)' : 'rgba(123,227,255,0.55)'}`,
@@ -84,8 +88,8 @@ export function ScoreFloat() {
                 style={{
                   position: 'absolute',
                   left: '50%', top: '50%',
-                  width: 280, height: 280,
-                  marginLeft: -140, marginTop: -140,
+                  width: tight ? 200 : 280, height: tight ? 200 : 280,
+                  marginLeft: tight ? -100 : -140, marginTop: tight ? -100 : -140,
                   borderRadius: '50%',
                   border: '1.5px solid #ff7847',
                   boxShadow: '0 0 32px #ff7847, 0 0 64px rgba(255,120,71,0.4)',
@@ -100,7 +104,7 @@ export function ScoreFloat() {
           data-score-counter
           className={`f-mono num${explosion ? (explosion.mega ? ' score-boom-mega' : ' score-boom-pop') : ''}`}
           style={{
-            fontSize: 56, lineHeight: 1,
+            fontSize: tight ? 36 : 56, lineHeight: 1,
             color: isGold ? '#f5c451' : '#f3f0ff',
             textShadow: '0 0 24px rgba(123,227,255,0.5)',
             fontWeight: 700,
@@ -116,7 +120,7 @@ export function ScoreFloat() {
         / {target ? target.toLocaleString() : '—'}
       </div>
       <div style={{
-        marginTop: 6, width: 160, height: 2, borderRadius: 2,
+        marginTop: 6, width: tight ? 110 : 160, height: 2, borderRadius: 2,
         background: 'rgba(149,119,255,0.2)', overflow: 'hidden',
       }}>
         <div style={{

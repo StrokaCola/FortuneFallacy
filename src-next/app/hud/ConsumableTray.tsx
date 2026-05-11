@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
 import { lookupConsumable, consumableRarity } from '../../core/consumables';
@@ -7,6 +7,7 @@ import { SellButton } from './SellButton';
 import { Z } from './zLayers';
 import { useIsWideMode } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
+import { bus } from '../../events/bus';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -18,6 +19,25 @@ export function ConsumableTray() {
   const wide = useIsWideMode();
   const locked = useStore(selectConsumablesLocked);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
+
+  // Fade the tray during the scoring sequence — consumables are inert
+  // mid-score (they can't be used until the hand resolves), and on
+  // tight viewports the row competes with centered banners + the
+  // ScoreBreakdown strip for horizontal space. Dimming both communicates
+  // "you can't use these right now" AND reclaims visual attention for
+  // the score celebration. Re-engages 400ms after the boom beat to let
+  // the explosion finish before the tray pops back to full opacity.
+  const [scoring, setScoring] = useState(false);
+  useEffect(() => {
+    const offCalc = bus.on('onScoreCalculated', () => setScoring(true));
+    const offBeat = bus.on('onScoreBeat', ({ beat }) => {
+      if (beat.kind === 'boom') {
+        const t = window.setTimeout(() => setScoring(false), 400);
+        return () => window.clearTimeout(t);
+      }
+    });
+    return () => { offCalc(); offBeat(); };
+  }, []);
 
   const onUse = (index: number) => {
     if (locked) return;
@@ -49,7 +69,10 @@ export function ConsumableTray() {
         // Wide-mode: vertical right rail to mirror the catalyst left rail.
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
-        gap: 8, zIndex: Z.hud, pointerEvents: 'auto',
+        gap: 8, zIndex: Z.hud,
+        pointerEvents: scoring ? 'none' : 'auto',
+        opacity: scoring ? 0.35 : 1,
+        transition: 'opacity 220ms ease',
       }}>
         {items.map((id, i) => {
           const def = lookupConsumable(id);
