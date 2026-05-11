@@ -71,10 +71,23 @@ export type MetaSlice = {
   };
 };
 
+// Import maneuvers up-front so the seed lists below can both reference
+// them. Galaxies + maneuvers both register their IDs across the
+// `unlocks` (pack-overlay `???` gate) and `discovered.consumables`
+// (codex unlock state) lists; defining them here keeps the seed
+// authorship in one place.
+import { MANEUVERS } from '../../core/consumables/maneuvers';
+
 // All constellations are seeded as unlocked while the gameplay-side
 // unlock-grant logic is still TBD. Codex tabs already render a `???`
 // locked state for any id not present here, so flipping this to a smaller
 // list (or `[]`) re-enables locking without further code changes.
+//
+// Maneuver IDs are appended so the PackOverlay (which reads from a
+// snapshot of `meta.unlocks` at pack-open time) renders maneuvers with
+// their real name + icon instead of `???`. Galaxy packs intentionally
+// keep the discovery beat — maneuvers are the utilitarian tactical
+// category and don't benefit from being hidden behind a reveal.
 export const SEEDED_UNLOCKS: string[] = [
   'lyra',
   'mensa',
@@ -84,20 +97,26 @@ export const SEEDED_UNLOCKS: string[] = [
   'eclipse',
   'polyhedra',
   'ophiuchus',
+  ...MANEUVERS.map((m) => m.id),
 ];
 
-// Galaxy consumables ship as Codex-discovered from day one. They only
-// appear in Galaxy Packs (Celestial / Stellar / Galactic) — never in
+// Galaxy + maneuver consumables ship as Codex-discovered from day one.
+// They only appear in their respective packs (Celestial / Stellar /
+// Galactic for galaxies; Maneuver Packs for maneuvers) — never in
 // the everyday consumable shop pool — so the discovery loop that works
 // for catalysts/mods/vouchers (each item is offered before it's bought)
-// never naturally fires for galaxies. Pre-seeding their IDs keeps the
-// codex honest: the player can browse the full Galaxy Pack contents
+// never naturally fires for them. Pre-seeding their IDs keeps the
+// codex honest: the player can browse the full pack contents
 // from the moment they install the game.
 //
-// Imported from the runtime registry so adding a new galaxy to
-// GALAXIES automatically extends this list — no second authorship site.
+// Imported from the runtime registries so adding a new galaxy or
+// maneuver automatically extends this list — no second authorship site.
+// (MANEUVERS is already imported above for SEEDED_UNLOCKS.)
 import { GALAXIES } from '../../core/consumables/galaxies';
-export const SEEDED_DISCOVERED_CONSUMABLES: string[] = GALAXIES.map((g) => g.id);
+export const SEEDED_DISCOVERED_CONSUMABLES: string[] = [
+  ...GALAXIES.map((g) => g.id),
+  ...MANEUVERS.map((m) => m.id),
+];
 
 export const initialMetaSlice = (): MetaSlice => ({
   playerName: '',
