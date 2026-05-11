@@ -207,7 +207,7 @@ export function ScoreMoment() {
         <div className="f-display" style={{
           fontSize: tight ? 22 : 32, color: '#f5c451',
           textShadow: '0 0 24px rgba(245,196,81,0.7)',
-          letterSpacing: '0.18em', marginBottom: tight ? 12 : 18,
+          letterSpacing: '0.18em', marginBottom: tight ? 8 : 18,
           animation: 'chipPop 200ms ease-out',
         }}>
           {comboName}
@@ -217,11 +217,14 @@ export function ScoreMoment() {
         display: 'flex',
         // Slams wrap on tight so a 4+ mult chain doesn't blow past the
         // viewport edge. 18px gap shrinks to 10px to keep wrapped rows
-        // visually grouped instead of spilling.
+        // visually grouped instead of spilling. Bottom margin tightens
+        // on tight (8 vs 18) so combo+slams+boom column stays ≤160px
+        // tall and NEW BEST has room above the boom without colliding
+        // with a wrapped 2-row slams set.
         flexWrap: tight ? 'wrap' : 'nowrap',
         justifyContent: 'center',
         gap: tight ? 10 : 18,
-        marginBottom: tight ? 12 : 18,
+        marginBottom: tight ? 8 : 18,
         maxWidth: tight ? 'calc(100vw - 32px)' : undefined,
       }}>
         {slams.map((s) => {
@@ -246,6 +249,7 @@ export function ScoreMoment() {
         <div style={{
           position: 'absolute',
           top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
+          left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap',
           fontFamily: '"Cinzel Decorative", serif', fontSize: tight ? 32 : 48, fontWeight: 900,
           color: '#f5c451', letterSpacing: '0.2em',
           textShadow: '0 0 30px #f5c451',
@@ -256,6 +260,7 @@ export function ScoreMoment() {
         <div style={{
           position: 'absolute',
           top: 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.32)',
+          left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap',
           fontFamily: '"Cinzel Decorative", serif', fontSize: tight ? 32 : 48, fontWeight: 900,
           color: '#ff4d6d', letterSpacing: '0.2em',
           textShadow: '0 0 30px #ff4d6d',
@@ -286,7 +291,9 @@ export function ScoreMoment() {
               className="f-mono uc new-best-stamp"
               style={{
                 position: 'absolute',
-                top: -52,
+                // Boom shrinks 96→60 on tight; stamp follows so it doesn't
+                // float above the centered scoring column into the slams row.
+                top: tight ? -34 : -52,
                 fontSize: 12, letterSpacing: '0.5em',
                 color: '#f5c451',
                 textShadow: '0 0 14px #f5c451, 0 0 28px rgba(245,196,81,0.6)',

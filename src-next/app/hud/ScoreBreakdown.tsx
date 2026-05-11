@@ -171,10 +171,11 @@ export function ScoreBreakdown() {
       style={{
         position: 'absolute',
         left: '50%',
-        // Sit just below the catalyst/consumable rows so the breakdown
-        // strip never overlaps TopBar even when it wraps. 76px is the
-        // approximate combined chip height of the strips above it.
-        top: 'calc(var(--hud-top-h, 134px) + 76px)',
+        // Sit cleanly below the catalyst/consumable rows. Strips are 88px
+        // tall starting at `--hud-top-h + 8`, so we clear them with
+        // 96 + 8 = 104px instead of the previous 76px (which left a
+        // ~20px vertical overlap with the strip card bottoms).
+        top: 'calc(var(--hud-top-h, 134px) + 104px)',
         transform: 'translateX(-50%)',
         display: 'flex',
         gap: tight ? 10 : 22,
@@ -188,7 +189,10 @@ export function ScoreBreakdown() {
         key={`chips-${chipsPulse}`}
         className="panel"
         style={{
-          padding: '14px 26px',
+          // Tight shrinks horizontal padding so the centered chips+mult
+          // strip doesn't reach into the catalyst/consumable cards at
+          // the screen edges on a ~360px portrait phone.
+          padding: tight ? '8px 16px' : '14px 26px',
           borderRadius: 14,
           textAlign: 'center',
           // Mult-tier escalation: as cumulative mult crosses 4×/8×/16×,
@@ -258,7 +262,7 @@ export function ScoreBreakdown() {
           key={`mult-${multPulse}`}
           className="panel"
           style={{
-            padding: '14px 26px',
+            padding: tight ? '8px 16px' : '14px 26px',
             borderRadius: 14,
             textAlign: 'center',
             ['--tier-flash' as string]: tier.flash,
