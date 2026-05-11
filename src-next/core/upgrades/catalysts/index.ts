@@ -60,6 +60,21 @@ import './highRoller';
 import './royalFlush';
 import './economyEngine';
 import './eclipsePact';
+// 2026-05-11 scaling pack
+import './starChart';
+import './lodestone';
+import './cometTrail';
+import './mementoStar';
+import './ouroboros';
+import './lunarPhases';
+import './tide';
+import './eventHorizon';
+import './highwater';
+import './heirloomLocket';
+// Retrigger pack registers no per-id handlers; its single export is
+// applyRetriggers, invoked from phases/upgrades.ts. Importing here
+// keeps the file in the bundle and matches the existing pattern.
+import './retriggers';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -91,5 +106,12 @@ export const CATALYST_IDS = [
   'momentum', 'dice_master', 'prism_lens',
   'streak_seeker', 'nova_burst', 'high_roller',
   'royal_flush', 'economy_engine', 'eclipse_pact',
+  // 2026-05-11 scaling pack
+  'star_chart', 'lodestone', 'comet_trail', 'memento_star', 'ouroboros',
+  'lunar_phases', 'tide', 'event_horizon', 'highwater', 'heirloom_locket',
+  // 2026-05-11 retrigger pack — handlers live in retriggers.ts (invoked
+  // explicitly from phases/upgrades.ts, not via the standard registry).
+  'polaris', 'refrain', 'mirror_edge', 'curtain_call', 'stutter',
+  'recursion_lens', 'cardinal_compass', 'echo_chamber',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

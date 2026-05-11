@@ -24,7 +24,8 @@ import { useEffect } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
-import { lookupCatalyst, CATALYST_META } from '../../data/catalysts';
+import { lookupCatalyst, CATALYST_META, SCALING_CATALYST_IDS, RETRIGGER_CATALYST_IDS } from '../../data/catalysts';
+import { lookupEasterEgg } from '../../data/easterEggs';
 import { COMBOS } from '../../core/scoring/combos';
 import { triggerShake } from '../visual/screenShake';
 import { PortalGate } from '../portal/PortalGate';
@@ -90,6 +91,31 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
     .sort(([, a], [, b]) => b - a)
     .slice(0, TOP_CATALYSTS);
   const totalContribution = topCatalysts.reduce((s, [, v]) => s + v, 0);
+
+  // 2026-05-11 polish — three end-of-run callouts for the scaling pack.
+  //
+  // Scaling lattice: per-catalyst final stack with the effective bonus
+  // displayed in the catalyst's own units. Only listed if the player
+  // actually owned the catalyst this run (i.e., a stack exists for it).
+  const scalingStacks = (run.catalystStacks ?? {}) as Record<string, number>;
+  const scalingRows = Object.entries(scalingStacks)
+    .filter(([id, n]) => n > 0 && run.catalysts.includes(id))
+    .map(([id, n]) => ({ id, stacks: n, label: formatScalingBonus(id, n) }))
+    .sort((a, b) => b.stacks - a.stacks);
+  // Retrigger echoes: filter catalystFires to retrigger ids the player
+  // actually owned. Sum + breakdown.
+  const retriggerFires = Object.entries(stats.catalystFires ?? {})
+    .filter(([id, n]) => n > 0 && RETRIGGER_CATALYST_IDS.has(id) && run.catalysts.includes(id))
+    .sort(([, a], [, b]) => b - a);
+  const retriggerTotal = retriggerFires.reduce((s, [, v]) => s + v, 0);
+  // Whispers heard this run: meta.easterEggs holds the persistent set;
+  // we can't distinguish "found in this run" without extra plumbing.
+  // Per plan we list ALL discovered eggs — players who found one this
+  // run see the same banner as those who found nothing new (the banner
+  // is content-aware: a run with zero owned won't show the panel).
+  const whispersThisRun = (meta.easterEggs ?? [])
+    .map((id) => lookupEasterEgg(id))
+    .filter((e): e is NonNullable<typeof e> => e != null);
 
   const buildIdentity = computeBuildIdentity(run.catalysts);
   const peakComboName = stats.peakCombo
@@ -218,6 +244,118 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           </div>
         )}
 
+        {/* Panel 3.5 — Scaling Lattice. The accrued permanent stacks for
+            every scaling catalyst the player held this run, rendered as
+            "Star Chart  +1.25× mult · 5 stacks" rows. Cyan accent because
+            scaling-catalyst fires use the cyan/emerald palette during
+            the run. */}
+        {scalingRows.length > 0 && (
+          <div className="mat-obsidian" style={{
+            padding: '14px 22px', borderRadius: 10,
+            width: '100%', maxWidth: 460,
+            opacity: 0, animation: 'fadein 800ms ease-out 1050ms both',
+          }}>
+            <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.32em', color: '#7be3ff', marginBottom: 8, textAlign: 'center' }}>
+              compounded over the run
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {scalingRows.map(({ id, stacks, label }) => {
+                const c = lookupCatalyst(id);
+                if (!c) return null;
+                return (
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontSize: 14, color: c.color,
+                      filter: `drop-shadow(0 0 4px ${c.color})`,
+                      width: 22, textAlign: 'center', flexShrink: 0,
+                    }}>{c.icon}</span>
+                    <span className="f-mono" style={{
+                      fontSize: 11, color: '#f3f0ff', flex: 1, textAlign: 'left',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{c.name}</span>
+                    <span className="f-mono" style={{
+                      fontSize: 10, color: '#bba8ff', letterSpacing: '0.06em',
+                    }}>{stacks} stacks</span>
+                    <span className="f-mono num" style={{
+                      fontSize: 11, color: '#5be8a4', width: 92, textAlign: 'right', flexShrink: 0,
+                      textShadow: '0 0 8px rgba(91,232,164,0.4)',
+                    }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Panel 3.6 — Retrigger Echoes. Total retrigger fires summed
+            across every retrigger catalyst the player held, with a
+            per-id breakdown. Lavender accent matches the retrigger
+            family's identity colors (Encore, Refrain, etc). */}
+        {retriggerFires.length > 0 && (
+          <div className="mat-obsidian" style={{
+            padding: '14px 22px', borderRadius: 10,
+            width: '100%', maxWidth: 460,
+            opacity: 0, animation: 'fadein 800ms ease-out 1100ms both',
+          }}>
+            <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff', marginBottom: 8, textAlign: 'center' }}>
+              echoes that landed · {retriggerTotal}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              {retriggerFires.map(([id, n]) => {
+                const c = lookupCatalyst(id);
+                if (!c) return null;
+                return (
+                  <div key={id} className="f-mono" style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: 10, color: c.color,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: `${c.color}15`,
+                    border: `1px solid ${c.color}55`,
+                  }}>
+                    <span style={{ fontSize: 11, filter: `drop-shadow(0 0 4px ${c.color})` }}>{c.icon}</span>
+                    <span>{c.name}</span>
+                    <span style={{ color: '#f3f0ff', fontWeight: 700 }}>×{n}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Whispers banner — shows every easter egg the player has ever
+            discovered across runs. Matches the Codex Whispers tab styling
+            so the visual identity carries across screens. Gold tint. */}
+        {whispersThisRun.length > 0 && (
+          <div style={{
+            width: '100%', maxWidth: 460,
+            padding: '10px 18px', borderRadius: 8,
+            background: 'linear-gradient(180deg, rgba(245,196,81,0.10), rgba(28,18,69,0.85))',
+            border: '1px solid rgba(245,196,81,0.45)',
+            boxShadow: '0 0 18px rgba(245,196,81,0.18)',
+            opacity: 0, animation: 'fadein 800ms ease-out 1150ms both',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          }}>
+            <div className="f-mono uc" style={{
+              fontSize: 9, letterSpacing: '0.4em',
+              color: '#f5c451',
+              textShadow: '0 0 12px rgba(245,196,81,0.5)',
+            }}>
+              ⋆ whispers heard · {whispersThisRun.length} / 5
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {whispersThisRun.map((e) => (
+                <span key={e.id} className="f-mono" style={{
+                  fontSize: 10, color: '#f5c451', letterSpacing: '0.08em',
+                  opacity: 0.92,
+                }}>
+                  <span style={{ marginRight: 4 }}>{e.icon}</span>{e.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Panel 4 — build identity (only when there are 3+ catalysts so
             the verdict actually means something). */}
         {buildIdentity && (
@@ -330,3 +468,24 @@ function computeBuildIdentity(catalysts: string[]): { label: string; color: stri
     color: sample?.color ?? '#bba8ff',
   };
 }
+
+// 2026-05-11 polish — per-scaling-catalyst stack → human-readable bonus.
+// Mirrors the badge labels used in CatalystStrip so the player sees the
+// same units everywhere. If we add a new scaling catalyst, add a case
+// here and to SCALING_CATALYST_IDS in data/catalysts.ts.
+function formatScalingBonus(id: string, stacks: number): string {
+  switch (id) {
+    case 'star_chart':       return `+${(stacks * 0.25).toFixed(2)}× mult`;
+    case 'lodestone':        return `+${stacks * 2} chips`;
+    case 'comet_trail':      return `+${stacks * 10} chips`;
+    case 'memento_star':     return `+${(stacks * 0.5).toFixed(1)}× mult`;
+    case 'ouroboros':        return `+${stacks * 3} mult`;
+    case 'event_horizon':    return `+${stacks}% mult`;
+    case 'highwater':        return `+${stacks} mult`;
+    case 'heirloom_locket':  return `+${(stacks * 0.15).toFixed(2)}× mult`;
+    case 'compounding_bias': return `+${(stacks * 0.10).toFixed(2)}× mult`;
+    case 'momentum':         return `×${Math.pow(1.4, stacks).toFixed(2)} mult`;
+    default:                 return `${stacks} stacks`;
+  }
+}
+void SCALING_CATALYST_IDS; // imported for type narrowing; actual gating uses run.catalysts

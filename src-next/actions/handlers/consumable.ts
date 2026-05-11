@@ -35,8 +35,14 @@ export const consumableHandler: ActionHandler = (a, s) => {
       }
       const result = def.apply(s, a.targets ?? []);
       const consumables = result.state.run.consumables.filter((_, i) => i !== a.index);
+      // Comet Trail: ANY consumable use during a blind resets the streak.
+      // Marked here, consumed in transitions.clearBlind.
       return {
-        state: { ...result.state, run: { ...result.state.run, consumables } },
+        state: {
+          ...result.state,
+          run: { ...result.state.run, consumables },
+          round: { ...result.state.round, consumableUsedThisBlind: true },
+        },
         events: result.events,
       };
     }

@@ -82,6 +82,9 @@ export function applySavedToInitial(s: GameState): GameState {
   // Daily login (added 2026-05). Legacy saves default to "never logged
   // in" so the comet fires on first visit after upgrading.
   mergedMeta.dailyLogin = mergedMeta.dailyLogin ?? { lastDate: null };
+  // 2026-05-11 easter egg discovery log — append-only, default empty for
+  // any save that predates the field.
+  mergedMeta.easterEggs = mergedMeta.easterEggs ?? [];
   const mergedRun = { ...s.run, ...saved.run };
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
@@ -128,6 +131,12 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedRun.vouchers = mergedRun.vouchers ?? [];
   mergedRun.ownedMods = mergedRun.ownedMods ?? [];
   mergedRun.diceMods = mergedRun.diceMods ?? [];
+  mergedRun.catalystStacks = mergedRun.catalystStacks ?? {};
+  mergedRun.lunarPhase = mergedRun.lunarPhase ?? 0;
+  mergedRun.lunarBakedMult = mergedRun.lunarBakedMult ?? 0;
+  mergedRun.diceModStacks = mergedRun.diceModStacks ?? mergedRun.diceMods.map((m: string[]) => m.map(() => 0));
+  mergedRun.theAnswerArmed = mergedRun.theAnswerArmed ?? false;
+  mergedRun.mirroredHandActive = mergedRun.mirroredHandActive ?? false;
   return {
     ...s,
     run:   mergedRun,

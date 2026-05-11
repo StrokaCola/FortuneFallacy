@@ -51,10 +51,16 @@ export const diceHandler: ActionHandler = (a, s) => {
       const diceModEditions = diceModEditionsCur.map((r, i) =>
         i === a.dieIdx ? [...(r ?? []), transferring] : r,
       );
+      // Keep diceModStacks length-synced with diceMods. New attachment
+      // starts at 0 stacks — counters only build as the mod actually fires.
+      const diceModStacksCur = s.run.diceModStacks ?? s.run.diceMods.map(() => []);
+      const diceModStacks = diceModStacksCur.map((r, i) =>
+        i === a.dieIdx ? [...(r ?? []), 0] : r,
+      );
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions, diceModStacks },
         },
         events: [{ type: 'onModAttached', payload: { dieIdx: a.dieIdx, modId: a.modId } }],
       };
@@ -76,10 +82,18 @@ export const diceHandler: ActionHandler = (a, s) => {
       const ownedModEditions = detachedId
         ? [...(s.run.ownedModEditions ?? []), detachedEdition]
         : (s.run.ownedModEditions ?? []);
+      // Detaching drops the per-instance scaling counter — the mod returns to
+      // inventory as a fresh attach next time. This is intentional: a fully-
+      // grown Tally Mark can't be moved between dice without restarting its
+      // scaling. Pairs naturally with "this die is my project" play.
+      const diceModStacksCur = s.run.diceModStacks ?? s.run.diceMods.map(() => []);
+      const diceModStacks = diceModStacksCur.map((r, i) =>
+        i === a.dieIdx ? (r ?? []).filter((_, j) => j !== a.modIdx) : r,
+      );
       return {
         state: {
           ...s,
-          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions },
+          run: { ...s.run, ownedMods, diceMods, ownedModEditions, diceModEditions, diceModStacks },
         },
         events: detachedId
           ? [{ type: 'onModDetached', payload: { dieIdx: a.dieIdx, modId: detachedId } }]

@@ -137,9 +137,14 @@ describe('DieView', () => {
       { id: 'loaded' as const, icon: '⚔', name: 'Loaded', color: '#c87a4a' },
     ];
     const { unmount } = render(<DieView size={140} face={1} mods={mods} />);
-    // Rim is built from secondary's accent.
+    // 2026-05-11 Phase 3.2 — rim is now built with the full accent
+    // array (primary, secondary, tertiary) so the band cycles across
+    // all three colors. The secondary accent still appears at index 1.
     expect(rimSpy).toHaveBeenCalled();
-    expect(rimSpy.mock.calls[rimSpy.mock.calls.length - 1]![0].accentColor).toBe('#a4d4ff');
+    const rimArgs = rimSpy.mock.calls[rimSpy.mock.calls.length - 1]![0];
+    expect(rimArgs.accentColors).toBeDefined();
+    expect(rimArgs.accentColors).toContain('#a4d4ff'); // secondary still present
+    expect(rimArgs.accentColors).toContain('#f5c451'); // primary present too
     // Orbital satellite is built from tertiary's accent.
     expect(orbitalSpy).toHaveBeenCalled();
     expect(orbitalSpy.mock.calls[orbitalSpy.mock.calls.length - 1]![0].accentColor).toBe('#c87a4a');

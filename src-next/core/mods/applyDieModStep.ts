@@ -16,6 +16,10 @@ export type DieModStepResult = {
   // Number of shards consumed by Tithe on this die (deducted from the
   // round.tithePrimedThisHand budget by the caller).
   titheCost: number;
+  // Per-slot stack delta for the 2026-05-11 scaling die-mods. Parallel to the
+  // input `modIds` array. The caller (applyModScoring) folds these into
+  // run.diceModStacks. `null` when no scaling mod fired this step.
+  stackDeltas?: number[] | null;
 };
 
 type StepCtx = {
@@ -42,6 +46,14 @@ type StepCtx = {
   // Mod count on this die — Polarize-style mods read this without us needing
   // to thread the full diceMods array.
   modsOnThisDie?: number;
+  // Per-slot stack counts for the scaling die-mods. Length matches modIds.
+  // Default: a slot-aligned zero array. Used by tally_mark, cadence, glutton,
+  // dormant, ballast, pyre_mark, veteran.
+  slotStacks?: number[];
+  // True iff this die was LOCKED at the moment we entered scoring. Used by
+  // ballast to gate its accumulator. The caller (applyModScoring) reads
+  // ctx.state.round.dice[dieIdx].locked.
+  dieWasLocked?: boolean;
 };
 
 /**
@@ -77,6 +89,16 @@ export function applyDieModStep(
   let dMultMul = 1;
   let titheCost = 0;
   const events: DieModEvent[] = [];
+  // Per-slot stack deltas — one entry per mod id even if it's not a scaling
+  // mod (0 in that case). Mirror the modIds array order so the caller can
+  // index by slot. Created lazily to avoid allocations when no scaling mod
+  // is attached on this die.
+  let stackDeltas: number[] | null = null;
+  const ensureStackDeltas = (): number[] => {
+    if (!stackDeltas) stackDeltas = new Array(defs.length).fill(0);
+    return stackDeltas;
+  };
+  const stacksIn = stepCtx.slotStacks ?? [];
   // Echo mod: tracks the previous mod's contribution on this die so an
   // Echo slot copies it. "Previous" = the most recent NON-Echo mod that
   // emitted any contribution. Updated at the end of each iteration.
@@ -190,6 +212,40 @@ export function applyDieModStep(
       if (def.titheChips) modChips += def.titheChips;
       if (def.titheMult) modMult += def.titheMult;
     }
+    // ─── Scaling die-mods (2026-05-11) ─────────────────────────────────
+    // Per-slot stack lives in run.diceModStacks (parallel to diceMods);
+    // stepCtx.slotStacks is the row for this die. slotIdxSafe locates this
+    // mod's slot via id (defs is built in modIds order, so direct scan).
+    const slotIdxSafe = defs.findIndex((d) => d.id === id);
+    const curStack = stacksIn[slotIdxSafe] ?? 0;
+    if (def.tallyChipPerStack) {
+      modChips += def.tallyChipPerStack * curStack;
+      ensureStackDeltas()[slotIdxSafe] = 1;
+    }
+    if (def.cadenceMultPerStack) {
+      modMult += def.cadenceMultPerStack * curStack;
+      ensureStackDeltas()[slotIdxSafe] = 1;
+    }
+    if (def.veteranMultPerStack) {
+      // Veteran's stack accrues per-blind in transitions.clearBlind, not here.
+      modMult += def.veteranMultPerStack * curStack;
+    }
+    if (def.gluttonChipPerStack) {
+      modChips += def.gluttonChipPerStack * curStack;
+      if (face === 6) ensureStackDeltas()[slotIdxSafe] = 1;
+    }
+    if (def.dormantAwakenAt != null && def.dormantMultAfter) {
+      if (curStack >= def.dormantAwakenAt) modMult += def.dormantMultAfter;
+      if (curStack < def.dormantAwakenAt) ensureStackDeltas()[slotIdxSafe] = 1;
+    }
+    if (def.ballastChipPerStack) {
+      modChips += def.ballastChipPerStack * curStack;
+      if (stepCtx.dieWasLocked) ensureStackDeltas()[slotIdxSafe] = 1;
+    }
+    if (def.pyreChipPerStack) {
+      modChips += def.pyreChipPerStack * curStack;
+      if (face === 1) ensureStackDeltas()[slotIdxSafe] = 1;
+    }
 
     // Resonance amplifies the additive chips/mult of THIS mod a second time
     // (only when paired with a resonance mod on the same die).
@@ -233,5 +289,5 @@ export function applyDieModStep(
     }
   }
 
-  return { dChips, dMult, dMultMul, events, titheCost };
+  return { dChips, dMult, dMultMul, events, titheCost, stackDeltas };
 }

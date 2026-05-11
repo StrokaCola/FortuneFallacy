@@ -551,6 +551,20 @@ export class Dice3D {
         list.push({ kind: trigger, accent, faceValue });
         this.pendingPulses.set(dieIdx, list);
       }),
+      // 2026-05-11 Phase 3.3 — affinity celebration. When the scoring
+      // pipeline detects an affinitied pair on a die, it emits a
+      // synthetic `affinity:<id>@<dieIdx>` event. We translate that into
+      // a gold halo pulse queued for the die's score-tick.
+      bus.on('onUpgradeTriggered', ({ id }) => {
+        if (!id.startsWith('affinity:')) return;
+        const at = id.indexOf('@');
+        if (at < 0) return;
+        const dieIdx = Number(id.slice(at + 1));
+        if (!Number.isFinite(dieIdx)) return;
+        const list = this.pendingPulses.get(dieIdx) ?? [];
+        list.push({ kind: 'pulse', accent: '#f5c451', faceValue: 0 });
+        this.pendingPulses.set(dieIdx, list);
+      }),
     );
     this.syncDice(store.getState().round.dice);
     this.attachClick();

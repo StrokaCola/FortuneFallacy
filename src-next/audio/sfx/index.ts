@@ -10,7 +10,12 @@ export type SfxId =
   | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe'
   | 'multSlam' | 'comboChime' | 'targetCross' | 'notEnough'
   | 'modPulse' | 'modLoaded' | 'modPipCharge' | 'modBackstop'
-  | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover';
+  | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover'
+  // 2026-05-11 polish pass — scaling pack stings. scalingTick fires on every
+  // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
+  // fires once per retrigger catalyst hit (Polaris/Refrain/etc). whisperChime
+  // fires once when an easter egg is discovered for the first time.
+  | 'scalingTick' | 'retriggerEcho' | 'whisperChime';
 
 export type SfxOpts = { tier?: number; volume?: number; idx?: number; freq?: number; gain?: number };
 
@@ -67,6 +72,10 @@ import.meta.hot?.dispose(() => {
 const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
   uiHover: 80,
   cardFlip: 90,
+  // scalingTick is intentionally throttled aggressively — a 5-die hand with
+  // 6 scaling catalysts could otherwise queue dozens of bells. 60ms gap
+  // lets a chain READ as a chain without auditioning as a stutter.
+  scalingTick: 60,
 };
 const lastPlayedAt: Partial<Record<SfxId, number>> = {};
 
@@ -133,6 +142,9 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
       case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;
       case 'uiHover':         (v as typeof voices).uiHover(bank as never); break;
+      case 'scalingTick':     (v as typeof voices).scalingTick(bank as never, opts); break;
+      case 'retriggerEcho':   (v as typeof voices).retriggerEcho(bank as never, opts); break;
+      case 'whisperChime':    (v as typeof voices).whisperChime(bank as never, opts); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);

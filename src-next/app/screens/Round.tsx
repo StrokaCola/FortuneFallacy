@@ -16,6 +16,7 @@ import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
 import { ClearShardsToast } from '../hud/ClearShardsToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
+import { DiceStackStrip } from '../hud/DiceStackStrip';
 import { FaceReadout } from '../hud/FaceReadout';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
@@ -93,6 +94,7 @@ export function Round() {
       <ShardGainToast />
       <ClearShardsToast />
       <ConsumableTray />
+      <DiceStackStrip />
 
       <FaceReadout />
       <ScoreBreakdown />

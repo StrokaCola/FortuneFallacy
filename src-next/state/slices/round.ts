@@ -60,6 +60,22 @@ export type RoundSlice = {
   } | null;
   pendingRoundEnd?: 'clear' | 'bust' | null;
   pendingScoreDelta?: number | null;
+  // Eris Apple easter egg — set true for the current Eris blind once the
+  // player has scored an all-prime hand. Inverts `disable_catalysts_first_hand`
+  // for the remainder of the blind. Resets on START_BLIND.
+  errisAppleFlipped: boolean;
+  // Mirrored Hand easter egg — consumed (set true) once the first-hand
+  // retrigger has fired for this blind. Prevents repeat retriggers on
+  // subsequent hands.
+  mirroredHandConsumed: boolean;
+  // True for the very first ROLL_SETTLED of the very first hand of the
+  // very first blind of the run. Pi Approximation easter egg looks at
+  // this flag once and then it stays false for the rest of the run.
+  piApproxArmed: boolean;
+  // Comet Trail catalyst — set true whenever USE_CONSUMABLE fires during
+  // this blind. clearBlind checks this and resets the catalyst's stack
+  // counter if any consumable was used.
+  consumableUsedThisBlind: boolean;
 };
 
 export const initialRoundSlice = (): RoundSlice => ({
@@ -89,4 +105,8 @@ export const initialRoundSlice = (): RoundSlice => ({
   hotHandsInRow: 0,
   hotStreakFiredThisBlind: false,
   voidstormId: null,
+  errisAppleFlipped: false,
+  mirroredHandConsumed: false,
+  piApproxArmed: false,
+  consumableUsedThisBlind: false,
 });

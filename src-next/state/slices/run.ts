@@ -97,6 +97,30 @@ export type RunSlice = {
   // ante-3 audit modal (either gambled or skipped). Stays false through
   // antes 1 and 2 so the modal pops on ante 3 entry.
   auditResolved: boolean;
+  // Generic per-catalyst stack counter. Used by the new scaling catalysts
+  // (Lodestone, Comet Trail, Memento Star, Ouroboros, Tide, Event Horizon,
+  // Highwater, Heirloom Locket, Star Chart). Keyed by catalyst id; value
+  // semantics are per-catalyst. Survives across blinds, resets on bust
+  // (handled in transitions.bustBlind).
+  catalystStacks: Record<string, number>;
+  // Lunar Phases catalyst — 0..7 moon cycle counter. Each hand advances
+  // the phase; full moon (8) bakes +0.1× mult into `lunarBakedMult` then
+  // resets to 0. Run-scoped.
+  lunarPhase: number;
+  lunarBakedMult: number;
+  // Parallel array to diceMods: per-mod-instance stack counters for the
+  // scaling die-mods (Tally Mark, Cadence, Veteran, Glutton, Dormant,
+  // Ballast, Pyre Mark). Length-synced with diceMods at all times.
+  diceModStacks: number[][];
+  // Run-scoped easter-egg flags. Surfaced via Codex + tooltips. Persisted
+  // so a discovery in run N still hints to the player in run N+1.
+  // Inverted: when `theAnswerArmed` is true, a hand totaling 42 grants a
+  // permanent +1 reroll for the rest of the run; resets each run.
+  theAnswerArmed: boolean;
+  // Mirrored Hand easter egg — set on START_BLIND when two catalysts with
+  // palindromic names are owned. Causes the first hand's scoring dice to
+  // retrigger once.
+  mirroredHandActive: boolean;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -159,4 +183,10 @@ export const initialRunSlice = (): RunSlice => ({
     catalystFires: {},
   },
   auditResolved: false,
+  catalystStacks: {},
+  lunarPhase: 0,
+  lunarBakedMult: 0,
+  diceModStacks: Array.from({ length: 5 }, () => [] as number[]),
+  theAnswerArmed: false,
+  mirroredHandActive: false,
 });

@@ -217,4 +217,47 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0x88ddff, halo: 0x88ddff,
     transmission: 0.42, rough: 0.18, ior: 1.65, eIntensity: 1.7,
   },
+  // 31. Tally Mark — Scribed slate; thin cool emissive marks accumulate.
+  tally_mark: {
+    bodyTint: 0x2a2a3a, bodyDeep: 0x07051a,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.06, rough: 0.60, eIntensity: 1.0,
+  },
+  // 32. Cadence — Pulsing teal; rhythmic emissive pattern.
+  cadence: {
+    bodyTint: 0x1a4a3a, bodyDeep: 0x07261a,
+    edge: 0x5be8a4, halo: 0x5be8a4,
+    transmission: 0.20, rough: 0.30, eIntensity: 1.6,
+  },
+  // 33. Veteran — Tarnished steel with violet rim; battle-worn.
+  veteran: {
+    bodyTint: 0x3a3a4a, bodyDeep: 0x10101a,
+    edge: 0xbba8ff, halo: 0xbba8ff,
+    transmission: 0.08, rough: 0.55, eIntensity: 1.0,
+    metalness: 0.55,
+  },
+  // 34. Glutton — Deep amber/orange; consumption-pulse on six.
+  glutton: {
+    bodyTint: 0x6a3a1a, bodyDeep: 0x2a0a08,
+    edge: 0xff7847, halo: 0xff7847,
+    transmission: 0.16, rough: 0.40, eIntensity: 1.5,
+  },
+  // 35. Dormant — Cold lavender, low emissive — awakens to bright bloom.
+  dormant: {
+    bodyTint: 0x3a2a4a, bodyDeep: 0x10081a,
+    edge: 0xa080c0, halo: 0xa080c0,
+    transmission: 0.12, rough: 0.50, eIntensity: 0.5,
+  },
+  // 36. Ballast — Deep cyan stone, heavy and grounded.
+  ballast: {
+    bodyTint: 0x1a3a4a, bodyDeep: 0x07101a,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.10, rough: 0.65, eIntensity: 0.9,
+  },
+  // 37. Pyre Mark — Charred crimson with orange ember edge.
+  pyre_mark: {
+    bodyTint: 0x4a1a1a, bodyDeep: 0x1a0707,
+    edge: 0xff7847, halo: 0xffb47a,
+    transmission: 0.12, rough: 0.45, eIntensity: 1.8,
+  },
 };

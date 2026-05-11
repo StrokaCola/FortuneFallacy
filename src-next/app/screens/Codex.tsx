@@ -13,7 +13,7 @@ import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS } from '../visual/rarityStyles';
 
-type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'achievements';
+type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'achievements' | 'secrets';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'catalysts', label: 'Catalysts' },
@@ -23,12 +23,15 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'constellations', label: 'Constellations' },
   { id: 'bosses', label: 'Bosses' },
   { id: 'achievements', label: 'Ascensions' },
+  { id: 'secrets', label: 'Whispers' },
 ];
 
 const selectDiscovered = (s: GameState) => s.meta.discovered;
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
 const EMPTY_ACHIEVEMENTS = { unlocked: [] as string[], unlockedAt: {} as Record<string, number> };
 const selectAchievements = (s: GameState) => s.meta.achievements ?? EMPTY_ACHIEVEMENTS;
+const EMPTY_EGGS: string[] = [];
+const selectEasterEggs = (s: GameState) => s.meta.easterEggs ?? EMPTY_EGGS;
 
 // RARITY_COLORS now lives in app/visual/rarityStyles.ts (shared with Shop).
 
@@ -37,6 +40,7 @@ export function Codex() {
   const discovered = useStore(selectDiscovered);
   const stakeProgress = useStore(selectStakeProgress);
   const achievements = useStore(selectAchievements);
+  const easterEggs = useStore(selectEasterEggs);
 
   return (
     <div style={{
@@ -80,6 +84,8 @@ export function Codex() {
 
         {tab === 'achievements' ? (
           <AchievementsView unlocked={achievements.unlocked} />
+        ) : tab === 'secrets' ? (
+          <SecretsView found={easterEggs} />
         ) : (
           <>
             <CodexProgressHeader tab={tab} discovered={discovered} stakeProgress={stakeProgress} />
@@ -554,6 +560,80 @@ function AchievementsView({ unlocked }: { unlocked: string[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Whispers — hand-authored easter egg index ─────────────────────────
+// Pre-discovery: shows the hint only (silhouette title, locked icon).
+// Post-discovery: reveals the name + full mechanical description.
+// The hint is always visible — that's the point. The unfound egg still
+// gives the player something to chew on.
+import { EASTER_EGGS } from '../../data/easterEggs';
+
+function SecretsView({ found }: { found: string[] }) {
+  const foundSet = new Set(found);
+  return (
+    <div>
+      <div className="f-mono" style={{
+        fontSize: 11, color: '#bba8ff', marginBottom: 14, opacity: 0.85,
+        textAlign: 'center',
+      }}>
+        Things half-known. Some you've already done; some are still rumour.
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: 10,
+      }}>
+        {EASTER_EGGS.map((e) => {
+          const seen = foundSet.has(e.id);
+          return (
+            <div key={e.id} style={{
+              padding: '14px 16px',
+              borderRadius: 8,
+              background: seen
+                ? 'linear-gradient(180deg, rgba(245,196,81,0.10), rgba(28,18,69,0.85))'
+                : 'rgba(28,18,69,0.6)',
+              border: `1px solid ${seen ? '#f5c45188' : 'rgba(149,119,255,0.3)'}`,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                marginBottom: 6,
+              }}>
+                <div className="f-mono uc" style={{
+                  fontSize: 10, letterSpacing: '0.18em',
+                  color: seen ? '#f5c451' : '#7a6ab0',
+                }}>
+                  {seen ? e.name : '— — —'}
+                </div>
+                <div style={{
+                  fontSize: 18,
+                  color: seen ? '#f5c451' : '#3a2f5a',
+                  textShadow: seen ? '0 0 8px #f5c45188' : undefined,
+                }}>
+                  {seen ? e.icon : '?'}
+                </div>
+              </div>
+              <div className="f-mono" style={{
+                fontSize: 10, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.5,
+                marginBottom: seen ? 8 : 0,
+              }}>
+                "{e.hint}"
+              </div>
+              {seen && (
+                <div className="f-mono" style={{
+                  fontSize: 10, color: '#dcd4ff', lineHeight: 1.45,
+                  paddingTop: 8,
+                  borderTop: '1px solid rgba(245,196,81,0.25)',
+                }}>
+                  {e.revealedDesc}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

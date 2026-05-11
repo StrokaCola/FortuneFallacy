@@ -14,5 +14,7 @@ export function applyConstellation(base: RunSlice, c: Constellation): RunSlice {
     catalysts: [...(c.startingCatalysts ?? [])],
     ownedMods: [...(c.startingMods ?? [])],
     diceMods: Array.from({ length: diceCount }, () => [] as string[]),
+    diceModEditions: Array.from({ length: diceCount }, () => [] as (null | 'foil' | 'holo' | 'poly')[]),
+    diceModStacks: Array.from({ length: diceCount }, () => [] as number[]),
   };
 }

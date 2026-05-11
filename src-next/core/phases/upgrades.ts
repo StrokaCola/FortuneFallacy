@@ -5,6 +5,8 @@ import { applyDieModStep } from '../mods/applyDieModStep';
 import { editionBonus } from '../upgrades/editions';
 import { applyResonances } from '../upgrades/resonance';
 import { applyVoidstorm } from '../round/voidstorms';
+import { applyRetriggers } from '../upgrades/catalysts/retriggers';
+import { activeAffinitiesOnDie } from '../../data/modAffinities';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -63,6 +65,14 @@ export const upgrades: PhaseFn = (ctx) => {
     next = applyEncore(next);
   }
 
+  // Retrigger pack (Polaris, Refrain, Mirror Edge, Curtain Call, Stutter,
+  // Cardinal Compass, Echo Chamber, Mirrored Hand easter egg). Same shape
+  // as Encore — re-fire per-die mods after the main mod sweep. Recursion
+  // Lens (the meta-retrigger) is handled inside applyRetriggers.
+  if (!catalystsBlocked) {
+    next = applyRetriggers(next);
+  }
+
   // Resonance: hand-authored pair bonuses fire once per hand AFTER the
   // catalysts and mods have all contributed. Skipped under the same
   // catalysts-blocked debuff that gates the main loop, since resonances
@@ -87,6 +97,18 @@ const applyModScoring: PhaseFn = (ctx) => {
   // Filter to valid indices in case scoringOrder references stale dice.
   const scoringDice = order.filter((idx) => idx >= 0 && idx < faces.length);
   const scoringFaces = scoringDice.map((i) => faces[i]!);
+  // 2026-05-11 scaling die-mod stack accrual: pull in (or default) the
+  // parallel per-slot stacks. Mutated below as scaling mods fire.
+  const diceModStacksIn = ctx.state.run.diceModStacks ?? diceMods.map((row) => row.map(() => 0));
+  // Pad rows if a save predates the field for a particular die.
+  const diceModStacks = diceMods.map((row, i) => {
+    const cur = diceModStacksIn[i] ?? [];
+    if (cur.length === row.length) return [...cur];
+    const padded = [...cur];
+    while (padded.length < row.length) padded.push(0);
+    return padded;
+  });
+  let stacksMutated = false;
 
   let chips = ctx.chips;
   let mult = ctx.mult;
@@ -118,15 +140,46 @@ const applyModScoring: PhaseFn = (ctx) => {
     const face = faces[i]!;
     const mods = diceMods[i] ?? [];
     const editions = diceModEditions[i] ?? [];
+    const slotStacks = diceModStacks[i] ?? [];
+    const dieWasLocked = ctx.state.round.dice[i]?.locked ?? false;
+    // Phase 3.3 — affinity fire. If THIS die carries an affinitied pair
+    // of mods, emit a synthetic 'affinity:<pairId>@<dieIdx>' event so
+    // the renderer can fire a gold celebration halo on this die during
+    // its score-tick. Free of pipeline cost — purely a notification.
+    for (const aff of activeAffinitiesOnDie(mods)) {
+      events.push({
+        type: 'onUpgradeTriggered',
+        payload: {
+          id: `affinity:${aff.id}@${i}`,
+          phase: Phase.UPGRADES,
+          deltaChips: 0,
+          deltaMult: 0,
+        },
+      });
+    }
     const step = applyDieModStep(
       {
         face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget,
         comboId, comboTier, ante, handsLeft, comboLevelOnPlayed,
         modsOnThisDie: mods.length,
+        slotStacks,
+        dieWasLocked,
       },
       mods,
       editions,
     );
+    if (step.stackDeltas) {
+      const row = diceModStacks[i];
+      if (row) {
+        for (let j = 0; j < step.stackDeltas.length; j++) {
+          const d = step.stackDeltas[j] ?? 0;
+          if (d !== 0) {
+            row[j] = (row[j] ?? 0) + d;
+            stacksMutated = true;
+          }
+        }
+      }
+    }
     titheBudget -= step.titheCost;
     chips += step.dChips;
     mult += step.dMult;
@@ -179,6 +232,18 @@ const applyModScoring: PhaseFn = (ctx) => {
         payload: { id: `mod:crownMul@${i}`, phase: Phase.UPGRADES, deltaChips: 0, deltaMult: mult - multAfterAdditive },
       });
     }
+  }
+  // Fold mutated scaling-mod stacks back into ctx.state.run so the next
+  // pipeline pass + post-hand persistence sees the new values.
+  if (stacksMutated) {
+    return {
+      ...ctx,
+      chips, mult, events,
+      state: {
+        ...ctx.state,
+        run: { ...ctx.state.run, diceModStacks },
+      },
+    };
   }
   return { ...ctx, chips, mult, events };
 };

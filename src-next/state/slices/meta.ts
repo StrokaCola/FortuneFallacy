@@ -18,6 +18,11 @@ export type MetaSlice = {
     bosses: string[];
     consumables: string[];
   };
+  // 2026-05-11 easter egg discovery log. Each entry is a stable id from
+  // EASTER_EGGS in data/easterEggs.ts. Persisted across runs so the codex
+  // can show "FOUND" badges and reveal the hint text (vs the unknown
+  // placeholder). Treat as append-only — never remove an entry.
+  easterEggs?: string[];
   // Cosmic Dust: meta-currency awarded per blind clear / run end. Persists
   // across runs. Spent at the Astral Forge on permanent perks. See
   // data/astralPerks.ts and core/round/transitions.ts (award sites).
@@ -138,4 +143,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   dailyHistory: {},
   achievements: { unlocked: [], unlockedAt: {} },
   dailyLogin: { lastDate: null },
+  easterEggs: [],
 });

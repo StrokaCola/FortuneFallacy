@@ -16,6 +16,10 @@ export function catalystIdFromEvent(eventId: string): string | null {
   if (!eventId) return null;
   if (eventId.startsWith('mod:')) return null;
   if (eventId.startsWith('resonance:')) return null;
+  // 2026-05-11 easter eggs — synthetic events use the 'easter_egg:' prefix.
+  // They don't attribute to any catalyst card. The discoveryBridge picks
+  // them up separately.
+  if (eventId.startsWith('easter_egg:')) return null;
   if (eventId.startsWith('edition:')) {
     const at = eventId.indexOf('@');
     return at > 0 ? eventId.slice(at + 1) : null;

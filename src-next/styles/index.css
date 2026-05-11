@@ -460,6 +460,242 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   100% { transform: scale(1); filter: brightness(1); }
 }
 
+/* Scaling-catalyst fire pulse — softer + cooler than mat-pulse-fire so
+   players visually separate "this catalyst paid out" (fire/legendary)
+   from "this catalyst's permanent stack contributed" (scaling). Cosmic
+   cyan glow, slower expand, no rotation jitter. */
+@keyframes mat-pulse-scaling {
+  0%   { transform: scale(1);     box-shadow: 0 0 10px rgba(123,227,255,0.45); filter: brightness(1); }
+  22%  { transform: scale(1.16);  box-shadow: 0 0 28px rgba(123,227,255,0.85), 0 0 56px rgba(123,227,255,0.35); filter: brightness(1.25); }
+  60%  { transform: scale(0.98);  box-shadow: 0 0 14px rgba(123,227,255,0.55); filter: brightness(1.05); }
+  100% { transform: scale(1);     box-shadow: 0 0 10px rgba(123,227,255,0.45); filter: brightness(1); }
+}
+
+/* Corner badge bump — fires when run.catalystStacks[id] increments, so
+   the player SEES the number tick up rather than discovering it on
+   their next tooltip open. Brief, doesn't overstay. */
+@keyframes badge-bump {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  35%  { transform: scale(1.45); filter: brightness(1.6) saturate(1.3); }
+  70%  { transform: scale(0.95); filter: brightness(1.1); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge overhaul — Phase 1.1 backdrop animations                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Anvil silhouette — extremely slow rotation. The shape never quite
+   completes a turn in a normal Forge visit; the motion is ambient. */
+.forge-anvil {
+  animation: forge-anvil-rotate 240s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-anvil-rotate {
+  0%   { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Ember pulse — a single ring expands from the center every ~4.4s. */
+.forge-ember-pulse {
+  animation: forge-ember 4400ms ease-out infinite;
+  animation-delay: 600ms;
+}
+@keyframes forge-ember {
+  0%   { transform: scale(0.4); opacity: 0; }
+  20%  { transform: scale(1.0); opacity: 0.75; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Sparks — rise from the bottom over ~5.6s with sin-wave drift. The
+   horizontal nudge is delivered via translate3d so it composites on
+   the GPU. */
+.forge-spark {
+  animation: forge-spark-rise 5600ms linear infinite;
+  will-change: transform, opacity;
+}
+@keyframes forge-spark-rise {
+  0%   { transform: translate3d(0, 0, 0)        scale(0.6); opacity: 0; }
+  12%  { transform: translate3d(8px, -10vh, 0)  scale(1.0); opacity: 1; }
+  50%  { transform: translate3d(-10px, -50vh, 0) scale(0.9); opacity: 0.9; }
+  88%  { transform: translate3d(6px, -90vh, 0)  scale(0.6); opacity: 0.4; }
+  100% { transform: translate3d(0, -110vh, 0)   scale(0.3); opacity: 0; }
+}
+
+/* Light shaft — vertical gradient column descending onto the forge die.
+   Drawn behind the orbit panel; opacity breathes very slowly so it
+   doesn't feel static. */
+@keyframes forge-shaft-pulse {
+  0%, 100% { opacity: 0.32; }
+  50%      { opacity: 0.5; }
+}
+
+/* Die levitation — gentle vertical bob. Independent of the idle tumble
+   inside the WebGL canvas, applied to the canvas wrapper instead. */
+@keyframes forge-die-levitate {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* Inner constellation sigil ring — rotates slowly. The opacity stays
+   low so the sigil reads as ambient rather than competing with the
+   selected die. */
+@keyframes forge-sigil-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Reduce-motion overrides — anvil and sparks freeze, the ember holds
+   a low-glow static state, the levitation stops. The forge still
+   reads as cosmic-themed without any motion. */
+.reduce-motion .forge-anvil,
+.reduce-motion .forge-spark,
+.reduce-motion .forge-ember-pulse,
+.reduce-motion [data-forge-levitate],
+.reduce-motion [data-forge-sigil-ring] {
+  animation: none !important;
+}
+.reduce-motion .forge-ember-pulse { opacity: 0.5; transform: scale(1.2); }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge attach ritual — Phase 1.2                                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* CHARGE — small ring rises from below the die center, fades in to
+   peak intensity by the end of the 250ms beat. */
+@keyframes forge-ritual-charge {
+  0%   { transform: scale(0.65) translateY(40px); opacity: 0; }
+  60%  { opacity: 0.85; }
+  100% { transform: scale(1.05) translateY(0); opacity: 0.95; }
+}
+
+/* STRIKE — bright flash across the viewport, brief. */
+@keyframes forge-ritual-strike {
+  0%   { opacity: 0;     transform: scale(0.95); }
+  18%  { opacity: 1;     transform: scale(1.0); }
+  100% { opacity: 0;     transform: scale(1.05); }
+}
+
+/* SETTLE — halo expands outward, fades. The new mod has just locked
+   into the die; the halo "consecrates" the change. */
+@keyframes forge-ritual-settle {
+  0%   { transform: scale(1.0);  opacity: 0.95; }
+  60%  { transform: scale(1.45); opacity: 0.55; }
+  100% { transform: scale(1.9);  opacity: 0; }
+}
+
+/* Reduce-motion — collapse all three beats to a quick snap pulse so
+   the player still gets a "something happened" signal but no motion. */
+.reduce-motion [data-forge-ritual] > div {
+  animation: none !important;
+  opacity: 0.6;
+}
+
+/* Affinity arc — Phase 3. A gentle gold pulse so the linkage reads as
+   "alive". Keeps the same drop-shadow but breathes the opacity. */
+.forge-affinity-arc {
+  animation: forge-affinity-pulse 3000ms ease-in-out infinite;
+}
+@keyframes forge-affinity-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.0; }
+}
+.reduce-motion .forge-affinity-arc { animation: none; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge specimen vials — Phase 4.1                                   */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Hover tilt + subtle lift on each mod row. The 3D rotation reads as
+   "the vial is being inspected"; the lift gives it tactile weight.
+   Combined with the existing .forge-mod-row hover pulse on the icon. */
+.forge-specimen {
+  transform-style: preserve-3d;
+  perspective: 320px;
+}
+.forge-specimen:hover {
+  transform: translateY(-2px) rotateY(3deg) rotateX(-1.5deg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 18px var(--mod-c, #7be3ff)55;
+}
+.forge-specimen:active {
+  transform: translateY(0) rotateY(1.5deg) rotateX(0deg) scale(0.985);
+}
+
+/* Vial column breathes — same period as the ember pulse so the screen
+   feels coordinated. */
+.forge-specimen-vial {
+  animation: forge-vial-breath 4400ms ease-in-out infinite;
+  animation-delay: 1200ms;
+}
+@keyframes forge-vial-breath {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.0; }
+}
+
+.reduce-motion .forge-specimen:hover { transform: translateY(-2px); }
+.reduce-motion .forge-specimen-vial { animation: none; opacity: 0.9; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge edition orbit — Phase 4.2                                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* The whole orbit-row breathes slowly to suggest celestial bodies in
+   motion. Per-orb hover scales them up so the player feels the pull.
+   On chosen click the orb collapses inward (CSS only — the dispatch
+   navigates away from this row before the animation completes, which
+   makes the snap feel responsive). */
+.forge-edition-orbit {
+  animation: forge-edition-rotate 14s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-edition-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* Counter-rotate each orb so its label stays upright while the row
+   spins. Same period, opposite direction. */
+.forge-edition-orb {
+  animation: forge-edition-counter 14s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-edition-counter {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+.forge-edition-orb:hover {
+  transform: scale(1.18) rotate(0deg) !important;
+  animation: none !important;
+  box-shadow: 0 0 24px currentColor, inset 0 0 16px currentColor !important;
+}
+.reduce-motion .forge-edition-orbit,
+.reduce-motion .forge-edition-orb { animation: none !important; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge die-picker — Phase 4.3                                        */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Selected-die halo pulse. Constellation color radiates outward and
+   eases back. Reads as "this die is currently being inspected." */
+@keyframes forge-die-pick-halo {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+/* Unselected dies — hovering nudges them forward as a preview cue. */
+.forge-die-pick:hover:not(.forge-die-pick-selected) {
+  transform: translateY(0) scale(1) !important;
+  opacity: 0.85 !important;
+}
+.reduce-motion [class*="forge-die-pick-halo"],
+.reduce-motion .forge-die-pick:hover { animation: none !important; }
+
+/* Forge header constellation sigil — slow ambient rotation that hints
+   the icon is "live" rather than a static logo. */
+.forge-header-sigil {
+  animation: forge-sigil-rotate 60s linear infinite;
+  transform-origin: center;
+}
+.reduce-motion .forge-header-sigil { animation: none; }
+
 /* Reduce-motion overrides for catalyst theatre — collapse to a snap pulse
    so the per-fire reaction stays legible without movement. */
 .reduce-motion .catalyst-floater,
@@ -484,6 +720,31 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   60%  { transform: translate(50%, 4px) scale(1.02); opacity: 1; }
   100% { transform: translate(50%, 0) scale(1); opacity: 1; }
 }
+
+/* WhisperToast — quieter than AchievementToast. Easter egg discoveries
+   should feel intimate; the toast slides in, holds, fades. Shorter Y
+   travel, lower scale overshoot than achievement-toast-in. */
+@keyframes whisper-toast-in {
+  0%   { transform: translate(50%, -14px) scale(0.96); opacity: 0; filter: blur(2px); }
+  55%  { transform: translate(50%, 2px) scale(1.0); opacity: 1; filter: blur(0); }
+  100% { transform: translate(50%, 0) scale(1); opacity: 1; filter: blur(0); }
+}
+@keyframes whisper-toast-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; transform: translate(50%, -6px) scale(0.98); }
+}
+
+/* One-frame ✦ glyph flash — gold sigil that briefly blooms when a
+   whisper is heard. Lives behind the toast title; reads as the
+   moment-of-recognition spark. */
+@keyframes whisper-sigil-flash {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(4px); }
+  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); filter: blur(0); }
+  85%  { opacity: 0.4; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); }
+}
+
+.reduce-motion .whisper-sigil { animation: none !important; opacity: 0.4; }
 
 /* Shop synergy hint — gentle pulse on the "✦ resonance" label when a
    shop offer would complete a Resonance pair with an already-owned

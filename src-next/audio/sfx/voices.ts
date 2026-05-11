@@ -387,3 +387,49 @@ export function modDetach(bank: SynthBank): void {
   const t = jitteredTime();
   bank.modDetach.pluck.triggerAttackRelease('A4', '8n', t);
 }
+
+// ---- scalingTick: soft pentatonic bell, ticks with the stack -------------
+// Plays on every scaling-catalyst contribution. opts.idx, when provided,
+// picks a higher note from the cosmic pentatonic — Lodestone at idx 0,
+// Star Chart at idx 2, Memento Star at idx 4, etc. Keeps a 5-catalyst
+// scaling lattice musically distinct from one another.
+export function scalingTick(bank: SynthBank, opts: VoiceOpts = {}): void {
+  const t = jitteredTime();
+  const idx = opts.idx ?? 4;
+  const hz = pickPent(8 + idx) * centsToRatio(jitterCents());
+  bank.modPulse.chime.volume.value = vol('scalingTick', -22);
+  bank.modPulse.chime.triggerAttackRelease(hz, '32n', t);
+}
+
+// ---- retriggerEcho: a die's mod echoes — short staccato repeat -----------
+// One short FM ping at a high pent index, then a softer echo a 16th later
+// at a half-step shift. Reads as "this die just fired again" without
+// stepping on the regular score-beat audio.
+export function retriggerEcho(bank: SynthBank, opts: VoiceOpts = {}): void {
+  const t = jitteredTime();
+  const idx = opts.idx ?? 6;
+  const hz = pickPent(idx) * centsToRatio(jitterCents());
+  bank.lockTap.ping.volume.value = vol('retriggerEcho', -18);
+  bank.lockTap.ping.triggerAttackRelease(hz, '32n', t);
+  bank.lockTap.ping.volume.value = vol('retriggerEchoTail', -24);
+  bank.lockTap.ping.triggerAttackRelease(hz * 1.5, '32n', t + 0.06);
+}
+
+// ---- whisperChime: a slow pentatonic bell arpeggio for easter eggs -------
+// Three rising bells over 320 ms, low velocity, ends on the octave. The
+// shape is intentionally LONGER and SOFTER than combo/comboChime so a
+// whisper reads as ambient + numinous rather than victorious.
+export function whisperChime(bank: SynthBank, opts: VoiceOpts = {}): void {
+  const t = jitteredTime();
+  const idx = opts.idx ?? 0; // per-egg base note offset
+  const root = pickPent(5 + idx) * centsToRatio(jitterCents());
+  bank.combo.bells.volume.value = vol('whisperBells', -18);
+  // Three-step rise: root, fifth, octave.
+  bank.combo.bells.triggerAttackRelease(root, '4n', t);
+  bank.combo.bells.triggerAttackRelease(root * 1.5, '4n', t + 0.11);
+  bank.combo.bells.triggerAttackRelease(root * 2, '2n', t + 0.22);
+  // A sub-octave shimmer for body, matching how comboChime threads a sub.
+  bank.castBoom.kick.volume.value = vol('whisperSub', -26);
+  bank.castBoom.kick.triggerAttackRelease(Math.max(55, root / 2), '4n', t);
+  lastTime = t + 0.7;
+}
