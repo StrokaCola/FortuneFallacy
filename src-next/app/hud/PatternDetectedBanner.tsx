@@ -15,9 +15,15 @@ import { COMBOS } from '../../core/scoring/combos';
 import { sfxPlay } from '../../audio/sfx';
 import { triggerShake } from '../visual/screenShake';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 const HOLD_MS = 700;
 const ANNOUNCE_TIER_FLOOR = 4; // small_straight and up
+// On tight viewports, restrict the full-screen banner to genuinely
+// rare combos (Large Straight onward). Tier 4 (small straight) and 5
+// (full house) fire often and a full-screen banner on a 360-wide
+// phone is too much; the combo still gets the ScoreMoment label.
+const ANNOUNCE_TIER_FLOOR_TIGHT = 6;
 
 const ANNOUNCE_FLAVOR: Record<string, string> = {
   five_kind: 'five aligned',
@@ -32,11 +38,13 @@ type Banner = { key: number; comboId: string; comboName: string };
 let bannerKey = 1;
 
 export function PatternDetectedBanner() {
+  const tight = useIsTightStage();
   const [banner, setBanner] = useState<Banner | null>(null);
 
   useEffect(() => {
+    const floor = tight ? ANNOUNCE_TIER_FLOOR_TIGHT : ANNOUNCE_TIER_FLOOR;
     const off = bus.on('onComboDetected', ({ combo, tier }) => {
-      if (tier < ANNOUNCE_TIER_FLOOR) return;
+      if (tier < floor) return;
       const def = COMBOS.find((c) => c.id === combo);
       if (!def) return;
       const next: Banner = { key: bannerKey++, comboId: combo, comboName: def.name };
@@ -52,7 +60,7 @@ export function PatternDetectedBanner() {
       }, HOLD_MS);
     });
     return off;
-  }, []);
+  }, [tight]);
 
   if (!banner) return null;
 

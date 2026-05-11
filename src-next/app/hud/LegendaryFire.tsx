@@ -5,6 +5,7 @@ import { lookupCatalyst } from '../../data/catalysts';
 import { sfxPlay } from '../../audio/sfx';
 import { catalystIdFromEvent } from '../../core/upgrades/eventId';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 const FLASH_DURATION_MS = 720;
 const COOLDOWN_MS = 380;
@@ -18,6 +19,12 @@ const selectCatalysts = (s: GameState) => s.run.catalysts;
  * fires several times in one hand doesn't strobe the screen.
  */
 export function LegendaryFire() {
+  // Tight: cap the rim flash to 65% opacity. The full-screen radial
+  // gradient is sized in vw/vh so it covers the same proportional area
+  // on a 360-wide phone as on desktop — but the smaller viewport makes
+  // the flash feel more dominant relative to the rest of the HUD.
+  // 0.65 keeps the fanfare visible without strobing.
+  const tight = useIsTightStage();
   const catalysts = useStore(selectCatalysts);
   const [flashes, setFlashes] = useState<{ key: number; color: string }[]>([]);
   const flashKeyRef = useRef(0);
@@ -62,6 +69,7 @@ export function LegendaryFire() {
         pointerEvents: 'none',
         zIndex: Z.fx,
         overflow: 'hidden',
+        opacity: tight ? 0.65 : 1,
       }}
     >
       {flashes.map((f) => (
