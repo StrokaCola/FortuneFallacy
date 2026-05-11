@@ -205,11 +205,21 @@ export function Forge() {
               width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
               display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
             }}>
+              {/* firstScalingSlot — the lowest slot index in this die that
+                  carries a scaling mod with a non-null stackLabel. Used to
+                  position the scaling_mod_first coachmark anchor. */}
+              {(() => { return null; })()}
               {slots.map((rid, idx) => {
                 const r = lookupMod(rid);
                 if (!r) return null;
                 const stack = diceModStacks[selectedDie]?.[idx] ?? 0;
                 const stackLabel = formatModStackLabel(r, stack);
+                // Compute on each row — cheap (≤2-3 mods per die typically).
+                const firstScalingSlot = slots.findIndex((sid, si) => {
+                  const sdef = lookupMod(sid);
+                  const sStack = diceModStacks[selectedDie]?.[si] ?? 0;
+                  return sdef ? formatModStackLabel(sdef, sStack) != null : false;
+                });
                 const accent = r.visual?.accentColor;
                 return (
                   <button
@@ -233,15 +243,23 @@ export function Forge() {
                       : r.desc}>
                     ✕ {r.name}
                     {stackLabel && accent && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 700,
-                        padding: '1px 5px', borderRadius: 4,
-                        background: `${accent}25`,
-                        color: accent,
-                        border: `1px solid ${accent}88`,
-                        letterSpacing: '0.04em',
-                        textShadow: `0 0 4px ${accent}88`,
-                      }}>
+                      <span
+                        // Anchor for the scaling_mod_first coachmark — the
+                        // first rendered chip in the detach row gets the
+                        // data-coach attribute (the coachmark controller
+                        // picks the first DOM match, so we only tag it
+                        // when this slot is the first scaling-mod on the
+                        // currently-selected die).
+                        data-coach={idx === firstScalingSlot ? 'scaling-mod-chip' : undefined}
+                        style={{
+                          fontSize: 9, fontWeight: 700,
+                          padding: '1px 5px', borderRadius: 4,
+                          background: `${accent}25`,
+                          color: accent,
+                          border: `1px solid ${accent}88`,
+                          letterSpacing: '0.04em',
+                          textShadow: `0 0 4px ${accent}88`,
+                        }}>
                         {stackLabel}
                       </span>
                     )}

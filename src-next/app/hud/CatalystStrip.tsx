@@ -407,7 +407,9 @@ export function CatalystStrip() {
   }
 
   return (
-    <div style={{
+    <div
+      data-coach="catalyst-strip"
+      style={{
       position: 'absolute',
       // Stack from the bottom edge of TopBar (with breathing room) so
       // catalysts never disappear under TopBar when it wraps onto two

@@ -144,6 +144,51 @@ export const RESONANCES: ResonanceDef[] = [
     flavor: 'The line still climbs. The line never came down.',
     effect: { kind: 'mult', value: 3 },
   },
+
+  // ── 2026-05-11 scaling-pack pairs ───────────────────────────────────
+  // Tuned conservatively. Each pair rewards a focused build around the
+  // scaling-pack's accumulators rather than introducing new top-end
+  // ceilings. Power: roughly the rarer half's rarity.
+  {
+    id: 'constellation',
+    a: 'star_chart',
+    b: 'heirloom_locket',
+    name: 'Constellation',
+    flavor: 'Drawn once. Inherited forever.',
+    effect: { kind: 'mult', value: 4 },
+  },
+  {
+    id: 'tidewater',
+    a: 'tide',
+    b: 'lunar_phases',
+    name: 'Tidewater',
+    flavor: 'The moon pulls. The water answers. The card scores.',
+    effect: { kind: 'both', chips: 25, mult: 2 },
+  },
+  {
+    id: 'orbital_lock',
+    a: 'polaris',
+    b: 'star_chart',
+    name: 'Orbital Lock',
+    flavor: 'Find the still point. The rest of the sky rolls around it.',
+    effect: { kind: 'mult', value: 3 },
+  },
+  {
+    id: 'memento_mori',
+    a: 'memento_star',
+    b: 'highwater',
+    name: 'Memento Mori',
+    flavor: 'Every record is a tombstone for the next one.',
+    effect: { kind: 'chips', value: 40 },
+  },
+  {
+    id: 'whisper_chain',
+    a: 'refrain',
+    b: 'echo_chamber',
+    name: 'Whisper Chain',
+    flavor: 'One voice. Two voices. The room sustains the choir.',
+    effect: { kind: 'mult', value: 4 },
+  },
 ];
 
 export function lookupResonance(id: string): ResonanceDef | undefined {

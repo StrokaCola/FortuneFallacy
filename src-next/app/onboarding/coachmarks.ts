@@ -14,12 +14,20 @@
 
 import type { Screen } from '../../state/slices/ui';
 import type { GameState } from '../../state/store';
+import { SCALING_CATALYST_IDS } from '../../data/catalysts';
+import { lookupMod } from '../../core/mods';
 
 export type CoachmarkId =
   | 'round_roll'
   | 'round_lock'
   | 'shop_offers'
-  | 'hub_blinds';
+  | 'hub_blinds'
+  // 2026-05-11 scaling pack onboarding. Fires the first time the player
+  // owns a catalyst or mod from the scaling family, so the counter
+  // mechanic surfaces without tooltip-diving. Anchored to the
+  // CatalystStrip / Forge respectively.
+  | 'scaling_catalyst_first'
+  | 'scaling_mod_first';
 
 export type CoachmarkSide = 'above' | 'below';
 
@@ -63,6 +71,36 @@ export const COACHMARKS: CoachmarkDef[] = [
     anchor: 'hub-blinds',
     side: 'above',
     text: 'Pick the next blind. Skip for a tag bonus. Bosses bring debuffs — plan accordingly.',
+  },
+  // ── Scaling-pack onboarding (2026-05-11) ────────────────────────────
+  {
+    id: 'scaling_catalyst_first',
+    screen: 'round',
+    anchor: 'catalyst-strip',
+    side: 'below',
+    text: 'This catalyst grows as you play. Watch the corner counter — every matching combo bakes a permanent bonus into the card.',
+    requires: (s) => s.run.catalysts.some((id) => SCALING_CATALYST_IDS.has(id)),
+  },
+  {
+    id: 'scaling_mod_first',
+    screen: 'forge',
+    anchor: 'scaling-mod-chip',
+    side: 'above',
+    text: 'This mod stacks per-die. The chip on the right shows what it has accrued so far — and it survives across blinds.',
+    requires: (s) => s.run.diceMods.some((row) =>
+      row.some((id) => {
+        const def = lookupMod(id);
+        return !!(
+          def?.tallyChipPerStack ||
+          def?.cadenceMultPerStack ||
+          def?.veteranMultPerStack ||
+          def?.gluttonChipPerStack ||
+          def?.dormantAwakenAt != null ||
+          def?.ballastChipPerStack ||
+          def?.pyreChipPerStack
+        );
+      })
+    ),
   },
 ];
 
