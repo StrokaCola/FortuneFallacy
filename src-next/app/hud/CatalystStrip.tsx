@@ -23,6 +23,14 @@ const EMPTY_CONTRIB: Record<string, number> = {};
 const selectCatalystChips = (s: GameState) => s.run.runStats?.catalystChips ?? EMPTY_CONTRIB;
 const EMPTY_FIRES: Record<string, number> = {};
 const selectCatalystFires = (s: GameState) => s.run.runStats?.catalystFires ?? EMPTY_FIRES;
+// 2026-05-11 scaling pack — selector for per-catalyst stack counters used by
+// star_chart, lodestone, comet_trail, memento_star, ouroboros, event_horizon,
+// highwater, heirloom_locket.
+const EMPTY_STACKS: Record<string, number> = {};
+const selectCatalystStacks = (s: GameState) => s.run.catalystStacks ?? EMPTY_STACKS;
+const selectLunarPhase = (s: GameState) => s.run.lunarPhase ?? 0;
+const selectLunarBaked = (s: GameState) => s.run.lunarBakedMult ?? 0;
+const selectMirroredHand = (s: GameState) => s.run.mirroredHandActive;
 
 const PULSE_DURATION_MS = 380;
 const PULSE_DURATION_LEGENDARY_MS = 540;
@@ -41,6 +49,26 @@ type RingRecord = { key: number; catalystId: string; color: string };
 
 const RESONANCE_RING_COLOR = '#ffd84a';
 const RESONANCE_FLOATER_TEXT_COLOR = '#ffd84a';
+
+// Shared corner-badge for scaling-pack counters. Same shape as
+// compounding_bias' inline badge — color comes from the catalyst's
+// own identity hue.
+function renderBadge(color: string, text: string) {
+  return (
+    <div style={{
+      position: 'absolute', top: 4, right: 4,
+      fontSize: 9, fontFamily: '"JetBrains Mono", monospace',
+      color, fontWeight: 700,
+      background: 'rgba(15,9,37,0.85)',
+      padding: '1px 4px', borderRadius: 4,
+      border: `1px solid ${color}80`,
+      letterSpacing: '0.04em',
+      whiteSpace: 'nowrap',
+    }}>
+      {text}
+    </div>
+  );
+}
 
 export function CatalystStrip() {
   const catalysts = useStore(selectCatalysts);
@@ -62,6 +90,10 @@ export function CatalystStrip() {
   const roundActive = useStore(selectActive);
   const catalystChips = useStore(selectCatalystChips);
   const catalystFires = useStore(selectCatalystFires);
+  const catalystStacks = useStore(selectCatalystStacks);
+  const lunarPhase = useStore(selectLunarPhase);
+  const lunarBaked = useStore(selectLunarBaked);
+  const mirroredHandActive = useStore(selectMirroredHand);
 
   const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | undefined>>({});
   const [floaters, setFloaters] = useState<FloaterRecord[]>([]);
@@ -387,6 +419,36 @@ export function CatalystStrip() {
                   +{compoundingStacks}
                 </div>
               )}
+              {/* 2026-05-11 scaling pack — visible per-catalyst counters.
+                  Same corner-badge style as compounding_bias. */}
+              {(() => {
+                const stack = catalystStacks[id];
+                if (id === 'star_chart' && stack) return renderBadge(c.color, `+${(stack * 0.25).toFixed(2)}×`);
+                if (id === 'lodestone' && stack) return renderBadge(c.color, `+${stack * 2}c`);
+                if (id === 'comet_trail' && stack) return renderBadge(c.color, `+${stack * 10}c`);
+                if (id === 'memento_star' && stack) return renderBadge(c.color, `+${(stack * 0.5).toFixed(1)}×`);
+                if (id === 'ouroboros' && stack) return renderBadge(c.color, `+${stack * 3}m`);
+                if (id === 'event_horizon' && stack) return renderBadge(c.color, `+${stack}%`);
+                if (id === 'highwater' && stack) return renderBadge(c.color, `+${stack}m`);
+                if (id === 'heirloom_locket' && stack) return renderBadge(c.color, `+${(stack * 0.15).toFixed(2)}×`);
+                if (id === 'lunar_phases') return renderBadge(c.color, `${'●'.repeat(lunarPhase)}${'○'.repeat(8 - lunarPhase)}`);
+                if (id === 'tide') return renderBadge(c.color, (handsPlayed % 2 === 0) ? 'ebb' : 'flow');
+                return null;
+              })()}
+              {/* Mirrored Hand armed indicator — small star on the strip
+                  edge when the player is holding 2+ palindrome catalysts.
+                  Shown on every owned catalyst card for ambient visibility. */}
+              {mirroredHandActive && i === 0 && (
+                <div className="has-tip" style={{
+                  position: 'absolute', top: -6, left: -6, zIndex: 4,
+                  fontSize: 14, color: '#f5c451',
+                  textShadow: '0 0 8px #f5c451, 0 0 14px rgba(245,196,81,0.6)',
+                }}
+                  title="Mirrored Hand armed — first hand of every blind retriggers."
+                >
+                  ⟁
+                </div>
+              )}
               {id === 'patience_counter' && (
                 <div style={{
                   position: 'absolute', top: 4, right: 4,
@@ -469,6 +531,33 @@ export function CatalystStrip() {
               <span className="tip-title">{c.name}</span>
               {c.desc}
               {c.flavor && <span className="tip-flavor">{c.flavor}</span>}
+              {/* Live "currently" line for the 2026-05-11 scaling pack so
+                  the player can see what they've accrued without doing the
+                  math in their head. */}
+              {(() => {
+                const stack = catalystStacks[id];
+                let line: string | null = null;
+                if (id === 'star_chart' && stack) line = `currently +${(stack * 0.25).toFixed(2)}× mult · ${stack} straights`;
+                else if (id === 'lodestone' && stack) line = `currently +${stack * 2} chips · ${stack} pairs`;
+                else if (id === 'comet_trail' && stack) line = `currently +${stack * 10} chips · ${stack}-blind streak`;
+                else if (id === 'memento_star' && stack) line = `currently +${(stack * 0.5).toFixed(1)}× mult · ${stack} overflows`;
+                else if (id === 'ouroboros' && stack) line = `currently +${stack * 3} mult · ${stack} loops`;
+                else if (id === 'event_horizon' && stack) line = `currently +${stack}% mult · ${stack} big hits absorbed`;
+                else if (id === 'highwater' && stack) line = `currently +${stack} mult · ${stack} personal bests`;
+                else if (id === 'heirloom_locket' && stack) line = `currently +${(stack * 0.15).toFixed(2)}× mult · ${stack} blinds`;
+                else if (id === 'lunar_phases') line = `phase ${lunarPhase}/8 · baked ×${(1 + lunarBaked).toFixed(2)}`;
+                if (!line) return null;
+                return (
+                  <span style={{
+                    display: 'block', marginTop: 6,
+                    color: '#7be3ff',
+                    fontFamily: '"JetBrains Mono", monospace',
+                    fontSize: 10,
+                  }}>
+                    ◇ {line}
+                  </span>
+                );
+              })()}
               {(catalystChips[id] ?? 0) > 0 && (
                 <span style={{
                   display: 'block', marginTop: 6,

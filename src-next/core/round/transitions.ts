@@ -12,6 +12,8 @@ import { CONSUMABLES } from '../consumables';
 import { firstBlindExtraHands } from '../run/applyAstralPerks';
 import { pickVoidstorm } from './voidstorms';
 import { mulberry32 } from '../rng';
+import { accrueBlindCleared, isPalindrome } from './scalingHooks';
+import { lookupCatalyst } from '../../data/catalysts';
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
@@ -77,6 +79,17 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // equal to the current ante. Pure round-start grant; the score-time spend
   // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
   const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
+  // Mirrored Hand easter egg — set true for the upcoming blind iff the
+  // player owns 2+ catalysts whose display names are palindromes
+  // (ignoring case/spaces/punctuation). The retrigger only fires on the
+  // first hand of each such blind. Discovery hint: a small subtle line
+  // appears in the codex once the player has ever owned a palindromic
+  // catalyst, suggesting "pairs of names that read both ways tie".
+  const palindromicCount = s.run.catalysts.filter((cid) => {
+    const meta = lookupCatalyst(cid);
+    return meta ? isPalindrome(meta.name) : false;
+  }).length;
+  const mirroredHandActive = palindromicCount >= 2;
   // Voidstorm — derived from the run seed mixed with goalIdx so each blind
   // gets a stable but distinct roll. Boss blinds always skip.
   const stormRng = mulberry32((s.run.seed ^ (s.run.goalIdx * 0x9e3779b1)) >>> 0);
@@ -85,7 +98,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     state: {
       ...s,
       ui: { ...s.ui, screen: 'round' },
-      run: { ...s.run, shards: s.run.shards + shardLungBonus },
+      run: { ...s.run, shards: s.run.shards + shardLungBonus, mirroredHandActive },
       round: {
         ...initialRoundSlice(),
         active: true,
@@ -189,11 +202,38 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       ? recordDailyAttempt(s.meta.dailyHistory ?? {}, s, true)
       : (baseMeta.dailyHistory ?? {}),
   };
+  // Scaling catalysts that bump per cleared blind: Comet Trail (consumable
+  // streak), Memento Star (200%+ overflow), Heirloom Locket (every blind).
+  const blindScalingDiff = accrueBlindCleared({
+    run: s.run,
+    round: s.round,
+    blindTarget: s.round.target,
+    blindScore: s.round.score,
+  });
+  // Scaling die-mods at blind boundary:
+  // - Veteran: +1 stack per attachment on every cleared blind (perfectly
+  //   safe; mod survives bust separately).
+  // - Cadence: per-blind counter — reset to 0 between blinds.
+  const nextDiceModStacks = s.run.diceMods.map((row, dieIdx) => {
+    const stackRow = (s.run.diceModStacks?.[dieIdx] ?? row.map(() => 0)).slice();
+    for (let slotIdx = 0; slotIdx < row.length; slotIdx++) {
+      const id = row[slotIdx]!;
+      const def = lookupMod(id);
+      if (!def) continue;
+      if (def.cadencePerBlind) stackRow[slotIdx] = 0;
+      if (def.veteranMultPerStack) stackRow[slotIdx] = (stackRow[slotIdx] ?? 0) + 1;
+      // Pad missing slots up to row length.
+      while (stackRow.length < row.length) stackRow.push(0);
+    }
+    return stackRow;
+  });
   return {
     state: {
       ...s,
       run: {
         ...s.run,
+        ...blindScalingDiff.run,
+        diceModStacks: nextDiceModStacks,
         shards: s.run.shards + reward,
         goalIdx: nextGoal,
         ante: nextAnte,
@@ -258,8 +298,18 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
       run: {
         ...s.run,
         compoundingStacks: 0,
+        // 2026-05-11 scaling pack — same lifecycle as compoundingStacks:
+        // permanent within the run, reset on bust. The player has to
+        // re-earn every stack on the next attempt; this preserves the
+        // existing "death = full reset" social contract.
+        catalystStacks: {},
+        lunarPhase: 0,
+        lunarBakedMult: 0,
         diceMods: dropped.diceMods,
         diceModEditions: dropped.diceModEditions,
+        // Reset scaling die-mod stacks to zero rows length-synced with the
+        // surviving mods. Bust → fresh start, same as catalystStacks above.
+        diceModStacks: dropped.diceMods.map((row) => row.map(() => 0)),
         shards: s.run.shards + auditRefund,
         catalysts: catalystsAfterAudit,
         catalystEditions: editionsAfterAudit,

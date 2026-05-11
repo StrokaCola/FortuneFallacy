@@ -35,6 +35,15 @@ export const MOD_IDS = [
   'telescope',
   'engraved',
   'echo',
+  // 2026-05-11 scaling pack — die-level mods with per-instance stack counters.
+  // Per-slot stack count lives in run.diceModStacks (parallel array to diceMods).
+  'tally_mark',
+  'cadence',
+  'veteran',
+  'glutton',
+  'dormant',
+  'ballast',
+  'pyre_mark',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -122,6 +131,31 @@ export type ModDef = {
   // Echo: marker — when this slot fires, it copies the prior NON-Echo
   // mod's chips/mult/multMul on this die. No-ops on the first slot.
   echo?: boolean;
+  // ─── Phase 6 — per-instance scaling mods (2026-05-11) ───────────────────
+  // These mods accumulate state per attachment in run.diceModStacks (parallel
+  // to diceMods). applyDieModStep reads the current stack via StepCtx and
+  // returns updated stacks alongside its chip/mult delta.
+  //
+  // Tally Mark — +1 chip per stack. +1 stack each time this die scores.
+  tallyChipPerStack?: number;
+  // Cadence — +1 mult per stack THIS BLIND ONLY. +1 stack each time this
+  // die scores in the current blind. Stack resets on START_BLIND.
+  cadenceMultPerStack?: number;
+  cadencePerBlind?: boolean;
+  // Veteran — +0.5 mult per blind survived (1 stack per blind cleared while
+  // this mod is attached to this die). +1 stack on clearBlind.
+  veteranMultPerStack?: number;
+  // Glutton — when this die rolls a 6, +1 stack permanent. +N chips per stack.
+  gluttonChipPerStack?: number;
+  // Dormant — silent until N fires, then a free holo edition is granted.
+  // Reads as +0 chips/mult until the awaken threshold; after, +X mult bonus.
+  dormantAwakenAt?: number;
+  dormantMultAfter?: number;
+  // Ballast — +1 stack each time this die is locked when scoring. +N chips per stack.
+  ballastChipPerStack?: number;
+  // Pyre Mark — face 1 re-rolls (via the face-remap flow handled elsewhere)
+  // AND grants +1 chip permanent. +N chips per stack.
+  pyreChipPerStack?: number;
   visual?: ModVisual;
 };
 
@@ -300,6 +334,55 @@ export const MODS: ModDef[] = [
     desc: 'Repeats the previous mod\'s effect on this die.',
     echo: true, rarity: 'legendary',
     visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse' },
+  },
+  // ─── Scaling die-mods (2026-05-11) ────────────────────────────────────
+  // Each has a per-instance counter (run.diceModStacks[dieIdx][slotIdx]).
+  // The counter is surfaced in DieView's mod tooltip + as a small "+N" badge
+  // beside the icon (see app/visual/upgradeKindFrames if you wire the
+  // badge there). Counters reset only on bust (matches existing scaling
+  // catalyst semantics) — survive across blinds and re-attachments to the
+  // same die.
+  {
+    id: 'tally_mark', name: 'Tally Mark', icon: '|',
+    desc: '+1 chip per time this die has ever scored.',
+    tallyChipPerStack: 1, rarity: 'common',
+    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'cadence', name: 'Cadence', icon: '♪',
+    desc: '+1 mult per time this die has scored in the current blind. Resets between blinds.',
+    cadenceMultPerStack: 1, cadencePerBlind: true, rarity: 'uncommon',
+    visual: { materialKey: 'cadence', accentColor: '#5be8a4', triggerFx: 'pulse' },
+  },
+  {
+    id: 'veteran', name: 'Veteran', icon: '⚔',
+    desc: '+0.5 mult per blind survived while attached.',
+    veteranMultPerStack: 0.5, rarity: 'uncommon',
+    visual: { materialKey: 'veteran', accentColor: '#bba8ff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'glutton', name: 'Glutton', icon: '◉',
+    desc: 'When this die rolls a 6: +1 stack. +3 chips per stack.',
+    gluttonChipPerStack: 3, rarity: 'uncommon',
+    visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'pulse' },
+  },
+  {
+    id: 'dormant', name: 'Dormant', icon: '◌',
+    desc: 'Silent until this die scores 10 times. Then +20 mult permanently.',
+    dormantAwakenAt: 10, dormantMultAfter: 20, rarity: 'rare',
+    visual: { materialKey: 'dormant', accentColor: '#a080c0', triggerFx: 'pulse' },
+  },
+  {
+    id: 'ballast', name: 'Ballast', icon: '⚓',
+    desc: '+5 chips per time this die was locked when scoring.',
+    ballastChipPerStack: 5, rarity: 'common',
+    visual: { materialKey: 'ballast', accentColor: '#88ddff', triggerFx: 'pulse' },
+  },
+  {
+    id: 'pyre_mark', name: 'Pyre Mark', icon: '🔥',
+    desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
+    pyreChipPerStack: 2, rarity: 'common',
+    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse' },
   },
 ];
 

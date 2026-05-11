@@ -69,6 +69,25 @@ export function startDiscoveryBridge(): () => void {
         return s;
       });
     }),
+    // 2026-05-11 easter egg discovery — listen for the synthetic
+    // 'easter_egg:<id>' upgrade events emitted by roll.ts / transitions
+    // and append the id to meta.easterEggs. Also catches 'mirrored_hand'
+    // (the inline retrigger emit) by mapping the unprefixed id.
+    bus.on('onUpgradeTriggered', (payload: { id: string }) => {
+      let eggId: string | null = null;
+      const prefix = 'easter_egg:';
+      if (payload.id.startsWith(prefix)) eggId = payload.id.slice(prefix.length);
+      else if (payload.id === 'mirrored_hand') eggId = 'mirrored_hand';
+      if (!eggId) return;
+      setStateRaw((s) => {
+        const cur = s.meta.easterEggs ?? [];
+        if (cur.includes(eggId!)) return s;
+        return {
+          ...s,
+          meta: { ...s.meta, easterEggs: [...cur, eggId!] },
+        };
+      });
+    }),
   ];
 
   // Track consumables added via GRANT_CONSUMABLE (skip rewards, packs).

@@ -12,6 +12,7 @@ import type { GameEventEmission } from '../../events/types';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
 import { lookupResonance } from '../../data/resonances';
 import type { RunSlice } from '../../state/slices/run';
+import { accrueScalingStacks, checkEasterEggs } from '../../core/round/scalingHooks';
 
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
@@ -80,18 +81,47 @@ export const rollHandler: ActionHandler = (a, s) => {
         face,
         locked: autoUnlock ? false : s.round.dice[id]?.locked ?? false,
       }));
-      return {
-        state: { ...s, round: { ...s.round, handInProgress: false, dice } },
-        events: [
-          { type: 'onSimulationEnd', payload: { result: a.result } },
-          {
-            type: 'onRollEnd',
-            payload: {
-              faces: a.result.finalFaces,
-              metrics: { chaos: 0, impact: 0, settle: 0, sync: 1 },
-            },
+      // Pi Approximation easter egg — first three dice settle as 3, 1, 4
+      // on the very first roll of the run (run.handsPlayed === 0 AND first
+      // settle of this blind, the round was just freshly initialized).
+      // Disarm the flag immediately so it can never re-fire this run.
+      const piEligible =
+        s.run.handsPlayed === 0 &&
+        s.run.goalIdx === 0 &&
+        !s.round.piApproxArmed && // not yet checked this run
+        a.result.finalFaces.length >= 3 &&
+        a.result.finalFaces[0] === 3 &&
+        a.result.finalFaces[1] === 1 &&
+        a.result.finalFaces[2] === 4;
+      const piConsumables = piEligible && s.run.consumables.length < 5
+        ? [...s.run.consumables, 'shard_drop'] // safe grant — exists in any pool
+        : s.run.consumables;
+      const runDiff = piEligible
+        ? { consumables: piConsumables }
+        : {};
+      const events: GameEventEmission[] = [
+        { type: 'onSimulationEnd', payload: { result: a.result } },
+        {
+          type: 'onRollEnd',
+          payload: {
+            faces: a.result.finalFaces,
+            metrics: { chaos: 0, impact: 0, settle: 0, sync: 1 },
           },
-        ],
+        },
+      ];
+      if (piEligible) {
+        events.push({
+          type: 'onUpgradeTriggered',
+          payload: { id: 'easter_egg:pi', phase: 0, deltaChips: 0, deltaMult: 0 },
+        });
+      }
+      return {
+        state: {
+          ...s,
+          run: { ...s.run, ...runDiff },
+          round: { ...s.round, handInProgress: false, dice, piApproxArmed: true },
+        },
+        events,
       };
     }
     case 'SCORE_HAND': {
@@ -190,19 +220,50 @@ export const rollHandler: ActionHandler = (a, s) => {
         : 0;
       const hotStreakFiredThisBlind = workingState.round.hotStreakFiredThisBlind ?? false;
       const shouldFireHotStreak = hotHandsInRow >= 3 && !hotStreakFiredThisBlind;
+      // Scaling-catalyst stack updates (Star Chart, Lodestone, Ouroboros,
+      // Lunar Phases, Event Horizon, Highwater) read the just-played combo,
+      // the per-die contributions, and the new peakHand. Returns a partial
+      // RunSlice diff that's spread into baseState below.
+      const scalingDiff = accrueScalingStacks({
+        run: workingState.run,
+        comboId: final.combo?.id ?? null,
+        events: final.events,
+        peakHandWasNew: newRunStats.peakHand > (workingState.run.runStats?.peakHand ?? 0),
+      });
+      // Easter eggs: The Answer (hand total === 42), Lucky Seven (3+ scoring 7s),
+      // Eris Apple (Eris boss + all-prime hand). Pi Approximation fires earlier
+      // in ROLL_SETTLED. Each returns its own diff + bonus events.
+      const eggDiff = checkEasterEggs({
+        run: workingState.run,
+        round: workingState.round,
+        handTotal: final.total,
+        scoringFaces: final.combo?.scoringFaces ?? workingState.round.dice.filter((d) => d.locked).map((d) => d.face),
+        blindId: workingState.round.blindId,
+        isBoss: workingState.round.isBoss,
+      });
       const baseState = {
         ...workingState,
         run: {
           ...workingState.run,
           ...streakUpdates,
-          shards: shardBonus > 0 ? workingState.run.shards + shardBonus : workingState.run.shards,
+          ...scalingDiff.run,
+          ...eggDiff.run,
+          shards: (shardBonus > 0 ? workingState.run.shards + shardBonus : workingState.run.shards) + (eggDiff.shardsBonus ?? 0),
           handsPlayed: workingState.run.handsPlayed + 1,
           runStats: newRunStats,
         },
         round: {
           ...workingState.round,
+          ...eggDiff.round,
+          // Mirrored Hand consumes on the first SCORE_HAND of the blind so it
+          // doesn't re-fire on the second hand. The retrigger pipeline checks
+          // round.mirroredHandConsumed BEFORE this is set (the pipeline runs
+          // on workingState.round, which still has consumed=false).
+          mirroredHandConsumed: workingState.run.mirroredHandActive
+            ? true
+            : workingState.round.mirroredHandConsumed,
           handsLeft: newHandsLeft,
-          rerollsLeft: rerollsPerHand(workingState),
+          rerollsLeft: rerollsPerHand(workingState) + (eggDiff.bonusRerollsThisHand ?? 0),
           scoring: true,
           firstHandPlayed: true,
           pendingScoreDelta: final.total,
@@ -226,7 +287,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           },
         },
       };
-      const baseEvents = [...final.events, ...modFiredEvents];
+      const baseEvents = [...final.events, ...modFiredEvents, ...eggDiff.events];
       if (shouldFireHotStreak) {
         baseEvents.push({
           type: 'onHotStreak',
