@@ -23,18 +23,6 @@ const HOLD_BASE_MS = 1400;
 const FLY_MS = 800;
 const STAR_COUNT = 12;
 
-const CONSTELLATION_NAMES: Record<string, string> = {
-  FIVE_KIND: 'Cygnus',
-  FOUR_KIND: 'Orion',
-  FULL_HOUSE: 'Pegasus',
-  THREE_KIND: 'Auriga',
-  LG_STRAIGHT: 'Lyra',
-  SM_STRAIGHT: 'Cassiopeia',
-  TWO_PAIR: 'Gemini',
-  ONE_PAIR: 'Vela',
-  CHANCE: 'Wandering Star',
-};
-
 function isReducedMotion(): boolean {
   if (typeof document === 'undefined') return false;
   return document.documentElement.classList.contains('reduce-motion');
@@ -45,7 +33,6 @@ export function ScoreMoment() {
   // overlay stops overflowing a 360×640 phone. Wide-mode untouched.
   const tight = useIsTightStage();
   const [active, setActive] = useState(false);
-  const [comboName, setComboName] = useState('');
   const [slams, setSlams] = useState<SlamOverlay[]>([]);
   const [stamp, setStamp] = useState<'target' | 'bail' | null>(null);
   const [boom, setBoom] = useState<BoomState | null>(null);
@@ -86,14 +73,14 @@ export function ScoreMoment() {
         case 'cast-swell':
           clearAllTimers();
           setActive(true);
-          setComboName('');
           setSlams([]);
           setStamp(null);
           setBoom(null);
           crossed = false;
           break;
         case 'combo-bonus':
-          setComboName(CONSTELLATION_NAMES[beat.comboLabel] ?? beat.comboLabel);
+          // The combo's chip/mult deltas already light up ScoreBreakdown;
+          // a separate named-constellation label here is noise.
           break;
         case 'mult-slam': {
           const id = slamId++;
@@ -203,16 +190,6 @@ export function ScoreMoment() {
       position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: Z.fx,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     }}>
-      {comboName && (
-        <div className="f-display" style={{
-          fontSize: tight ? 22 : 32, color: '#f5c451',
-          textShadow: '0 0 24px rgba(245,196,81,0.7)',
-          letterSpacing: '0.18em', marginBottom: tight ? 8 : 18,
-          animation: 'chipPop 200ms ease-out',
-        }}>
-          {comboName}
-        </div>
-      )}
       <div style={{
         display: 'flex',
         // Slams wrap on tight so a 4+ mult chain doesn't blow past the

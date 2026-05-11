@@ -1,5 +1,5 @@
-// Visual check: constellation accent threads through ComboBanner +
-// TopBar + ActionBar arrows. Captures four constellations side by side
+// Visual check: constellation accent threads through TopBar +
+// ActionBar arrows. Captures four constellations side by side
 // to confirm each gets its own identity tint and that boss override
 // (red) still trumps when active.
 
@@ -36,7 +36,7 @@ async function captureConstellation(page: import('playwright').Page, constellati
   }, constellationId);
   await page.waitForTimeout(1800);
 
-  // Lock all dice + score so the ComboBanner appears.
+  // Lock all dice + score so the scoring sequence runs.
   await page.evaluate(() => {
     const ff = (window as unknown as DevWindow).__ff;
     if (!ff) return;
@@ -46,7 +46,7 @@ async function captureConstellation(page: import('playwright').Page, constellati
     }
     ff.dispatch({ type: 'SCORE_HAND' });
   });
-  // Wait for ComboBanner to appear (fires on onScoreCalculated).
+  // Wait for the scoring sequence to settle.
   await page.waitForTimeout(900);
 
   await page.screenshot({ path: `${OUT_DIR}/accent-${label}.png` });
