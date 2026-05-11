@@ -61,7 +61,13 @@ export function ScoreFloat() {
       pointerEvents: 'none', zIndex: 5,
     }}>
       <div style={{ position: 'relative' }}>
-        {explosion && (
+        {/* Tight viewports: suppress the ring explosion entirely. The
+            ScoreMoment center boom (60px font + glow) IS the climax;
+            firing a second ring explosion 130px above it creates the
+            "two simultaneous explosions at different anchors" effect
+            the user reported. Counter still pops + shifts color/glow
+            via the className-based animation. Wide/desktop keep both. */}
+        {explosion && !tight && (
           <>
             <div
               key={`ring-${explosion.key}`}

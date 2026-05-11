@@ -843,6 +843,15 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   35%  { transform: scale(1.22); box-shadow: 0 0 28px rgba(123,227,255,0.55); }
   100% { transform: scale(1); box-shadow: 0 0 0 rgba(123,227,255,0); }
 }
+/* Tight variant — gentler scale + glow so consecutive die-tick pulses
+   (firing every ~280ms with the standard 240ms animation) don't create
+   a stroboscopic jitter on a small phone where the chip panel occupies
+   a big chunk of the centered score strip. */
+@keyframes chipsTickPopTight {
+  0%   { transform: scale(1); box-shadow: 0 0 0 rgba(123,227,255,0); }
+  35%  { transform: scale(1.08); box-shadow: 0 0 10px rgba(123,227,255,0.32); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(123,227,255,0); }
+}
 @keyframes multSlamPunch {
   0%   { transform: scale(1) rotate(0); }
   20%  { transform: scale(1.42) rotate(-2.5deg); }

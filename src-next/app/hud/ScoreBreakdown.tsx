@@ -198,7 +198,14 @@ export function ScoreBreakdown() {
           borderColor: `${tier.color}66`,
           boxShadow: tierIndex(mult) >= 1 ? `0 0 18px ${tier.glow}` : undefined,
           transition: 'border-color 200ms ease, box-shadow 200ms ease',
-          animation: chipsPulse > 0 ? 'chipsTickPop 240ms cubic-bezier(0.2, 1.4, 0.5, 1)' : undefined,
+          // Tight uses the gentler keyframe (scale 1.08 vs 1.22, glow
+          // 10px vs 28px) so back-to-back die-tick pulses every 280ms
+          // don't strobe. Wide/desktop keep the full juicy 1.22 pop.
+          animation: chipsPulse > 0
+            ? (tight
+                ? 'chipsTickPopTight 180ms cubic-bezier(0.2, 1.4, 0.5, 1)'
+                : 'chipsTickPop 240ms cubic-bezier(0.2, 1.4, 0.5, 1)')
+            : undefined,
         }}
       >
         <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.18em' }}>chips</div>
