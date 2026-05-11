@@ -179,7 +179,10 @@ export function Forge() {
       </div>
 
       {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
-          Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens. */}
+          Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens.
+          Phase 4.x polish — tight viewports add extra paddingBottom so the
+          frosted Done bar at the bottom doesn't overlap the last
+          inventory row when fully scrolled. */}
       <div style={{
         position: 'absolute', left: '50%',
         top: tight ? 150 : 220,
@@ -187,7 +190,7 @@ export function Forge() {
         display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
         flexWrap: 'wrap', justifyContent: 'center',
         maxWidth: 'calc(100% - 40px)',
-        paddingBottom: 100,
+        paddingBottom: tight ? 140 : 100,
       }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
@@ -380,11 +383,26 @@ export function Forge() {
             </div>
           </div>
 
-          {/* Die selector strip */}
+          {/* Die selector strip. Tight viewports: horizontal scroll +
+              tighter spacing so 6-7 dice don't wrap into the inventory
+              panel below. Wide: even space-between as before. */}
           <div style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
-            display: 'flex', justifyContent: 'space-between',
-            flexWrap: 'wrap', gap: 4,
+            display: 'flex',
+            justifyContent: tight ? 'flex-start' : 'space-between',
+            flexWrap: 'nowrap',
+            overflowX: tight ? 'auto' : 'visible',
+            overflowY: 'visible',
+            paddingTop: 12,
+            paddingBottom: 8,
+            // Native scroll-snap so the user can flick between dies
+            // without falling between two on tight viewports.
+            scrollSnapType: tight ? 'x mandatory' : 'none',
+            // Hide scrollbar cosmetically on iOS / Android — the dice
+            // already cue scrollability through their visible overflow
+            // (the row clearly has more than fits).
+            scrollbarWidth: 'thin',
+            gap: tight ? 8 : 4,
           }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
@@ -409,6 +427,8 @@ export function Forge() {
                     pointerEvents: 'auto',
                     background: 'transparent',
                     border: 'none',
+                    flexShrink: 0,
+                    scrollSnapAlign: 'center',
                   }}>
                   {isSelected && (
                     // Halo ring for the selected die — pulses faintly so
@@ -797,16 +817,44 @@ export function Forge() {
         </div>
       </div>
 
-      <div style={{
-        position: 'absolute', left: '50%',
-        bottom: tight ? `calc(var(--hud-bottom-h, 60px) + 12px)` : 28,
-        transform: 'translateX(-50%)',
-        zIndex: 5,
-      }}>
-        <button className="btn btn-primary mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
-          ✓ Done
-        </button>
-      </div>
+      {/* Done bar — tight viewports get a full-width frosted-glass bar
+          across the bottom so the inventory panel header isn't obscured
+          by an orphan button. The inner content has matching paddingBottom
+          (see line ~190) so the last inventory row scrolls clear above
+          the bar before reaching it. Wide viewports keep the centered
+          floating button — there's plenty of room. */}
+      {tight ? (
+        <div
+          style={{
+            position: 'absolute', left: 0, right: 0,
+            bottom: 0,
+            zIndex: 5,
+            padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px)',
+            background: 'linear-gradient(180deg, rgba(15,9,37,0) 0%, rgba(15,9,37,0.85) 35%, rgba(15,9,37,0.96) 100%)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(149,119,255,0.18)',
+            display: 'flex', justifyContent: 'center',
+          }}>
+          <button
+            className="btn btn-primary mat-interactive"
+            onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
+            style={{ width: 'min(280px, 100%)' }}>
+            ✓ Done
+          </button>
+        </div>
+      ) : (
+        <div style={{
+          position: 'absolute', left: '50%',
+          bottom: 28,
+          transform: 'translateX(-50%)',
+          zIndex: 5,
+        }}>
+          <button className="btn btn-primary mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
+            ✓ Done
+          </button>
+        </div>
+      )}
     </div>
   );
 }
