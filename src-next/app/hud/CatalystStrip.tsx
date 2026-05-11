@@ -4,7 +4,7 @@ import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../data/catal
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
-import { useIsWideMode } from '../hooks/useIsCompactStage';
+import { useIsWideMode, useIsTightStage } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
 import { lookupResonance, activeResonances } from '../../data/resonances';
@@ -48,6 +48,16 @@ export function CatalystStrip() {
   const compoundingStacks = useStore(selectCompoundingStacks);
   const handsPlayed = useStore(selectHandsPlayed);
   const wide = useIsWideMode();
+  // Tight viewports: suppress the ring burst that emanates from each
+  // catalyst card on fire. The card-pulse (scale+glow) AND the rising
+  // floater both already celebrate the same event; the ring is the
+  // third concurrent celebration with zero informational value. On a
+  // 4-catalyst Five-of-a-Kind that means 4-5 expanding rings stacked
+  // on top of the strip — instant visual mud. Wide/desktop keeps them.
+  // Also throttle floaters: stagger each one's launch by 120ms instead
+  // of letting them all spawn in the same frame, so a chain reads as
+  // a sequence rather than a chaotic burst.
+  const tight = useIsTightStage();
   const handsLeft = useStore(selectHandsLeft);
   const roundActive = useStore(selectActive);
   const catalystChips = useStore(selectCatalystChips);
@@ -59,6 +69,12 @@ export function CatalystStrip() {
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const floaterKeyRef = useRef(0);
   const ringKeyRef = useRef(0);
+  // Tight-viewport floater staggering: tracks the earliest time the
+  // NEXT floater can launch. Resets when the gap expires. Lets a chain
+  // of catalyst fires play as a sequence instead of a simultaneous
+  // burst — the user can actually attribute each floater to its source.
+  const floaterStaggerRef = useRef(0);
+  const FLOATER_STAGGER_MS = 120;
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -89,11 +105,15 @@ export function CatalystStrip() {
           track(() => {
             setPulsing((s) => ({ ...s, [half]: undefined }));
           }, PULSE_DURATION_LEGENDARY_MS);
-          const ringKey = ++ringKeyRef.current;
-          setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
-          track(() => {
-            setRings((rs) => rs.filter((r) => r.key !== ringKey));
-          }, RING_DURATION_MS);
+          // Same tight-mode ring suppression as below — keeps the
+          // legendary pulse + named-beat floater, drops the rings.
+          if (!tight) {
+            const ringKey = ++ringKeyRef.current;
+            setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
+            track(() => {
+              setRings((rs) => rs.filter((r) => r.key !== ringKey));
+            }, RING_DURATION_MS);
+          }
         }
         // Single floater on the first owned half — shows the named beat
         // ("Symphony +5 mult") rather than two anonymous deltas.
@@ -104,15 +124,22 @@ export function CatalystStrip() {
           if (dChips > 0) parts.push(`+${Math.round(dChips)}`);
           if (dMult > 0) parts.push(`+${(Math.round(dMult * 10) / 10).toString().replace(/\.0$/, '')} mult`);
           const floaterKey = ++floaterKeyRef.current;
-          setFloaters((fs) => [...fs, {
-            key: floaterKey,
-            catalystId: halves[0]!,
-            text: parts.join(' · '),
-            tone: 'mult',
-          }]);
-          track(() => {
-            setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
-          }, FLOATER_DURATION_MS);
+          const launchAt = tight ? Math.max(performance.now(), floaterStaggerRef.current) : performance.now();
+          const delay = launchAt - performance.now();
+          if (tight) floaterStaggerRef.current = launchAt + FLOATER_STAGGER_MS;
+          const launch = () => {
+            setFloaters((fs) => [...fs, {
+              key: floaterKey,
+              catalystId: halves[0]!,
+              text: parts.join(' · '),
+              tone: 'mult',
+            }]);
+            track(() => {
+              setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
+            }, FLOATER_DURATION_MS);
+          };
+          if (delay > 0) track(launch, delay);
+          else launch();
         }
         return;
       }
@@ -148,12 +175,18 @@ export function CatalystStrip() {
 
       // Ring burst emanates from the card; lower-cost than the floater and
       // fires for every catalyst contribution (incl. edition stamps).
-      const ringKey = ++ringKeyRef.current;
-      const ringColor = isLegendary ? '#ff9466' : meta?.color ?? '#7be3ff';
-      setRings((rs) => [...rs, { key: ringKey, catalystId, color: ringColor }]);
-      track(() => {
-        setRings((rs) => rs.filter((r) => r.key !== ringKey));
-      }, RING_DURATION_MS);
+      // Tight viewports skip the ring entirely — the card-pulse already
+      // communicates "this card fired" and the floater carries the
+      // actual delta. The ring is pure redundant celebration on small
+      // screens where 4+ concurrent rings stack into visual mud.
+      if (!tight) {
+        const ringKey = ++ringKeyRef.current;
+        const ringColor = isLegendary ? '#ff9466' : meta?.color ?? '#7be3ff';
+        setRings((rs) => [...rs, { key: ringKey, catalystId, color: ringColor }]);
+        track(() => {
+          setRings((rs) => rs.filter((r) => r.key !== ringKey));
+        }, RING_DURATION_MS);
+      }
 
       // Floater — only when there's a material delta. Skips silent fires
       // (utility catalysts that mutate state without moving chips/mult)
@@ -172,10 +205,23 @@ export function CatalystStrip() {
       }
       if (text) {
         const floaterKey = ++floaterKeyRef.current;
-        setFloaters((fs) => [...fs, { key: floaterKey, catalystId, text, tone }]);
-        track(() => {
-          setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
-        }, FLOATER_DURATION_MS);
+        // Tight: stagger floaters by 120ms so a chain of 4 catalyst
+        // fires reads as four sequential reveals instead of four
+        // overlapping +chips numbers stacking at the same Y. Wide
+        // keeps the simultaneous-burst behavior (more space, clearer
+        // spatial attribution per card).
+        const now = performance.now();
+        const launchAt = tight ? Math.max(now, floaterStaggerRef.current) : now;
+        const delay = launchAt - now;
+        if (tight) floaterStaggerRef.current = launchAt + FLOATER_STAGGER_MS;
+        const launch = () => {
+          setFloaters((fs) => [...fs, { key: floaterKey, catalystId, text, tone }]);
+          track(() => {
+            setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
+          }, FLOATER_DURATION_MS);
+        };
+        if (delay > 0) track(launch, delay);
+        else launch();
       }
     });
     return () => {
