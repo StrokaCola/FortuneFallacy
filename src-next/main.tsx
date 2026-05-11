@@ -72,6 +72,18 @@ for (const e of sfxUnlockEvents) document.addEventListener(e, sfxGestureHandler)
 
 if (import.meta.env.DEV) {
   (window as unknown as { __ff: unknown }).__ff = { store, dispatch, audio: audioEngine, sfx: { bank: sfxBank } };
+  void Promise.all([
+    import('./devtools/inspector/overrides'),
+    import('./devtools/inspector/applyOverrides'),
+    import('./devtools/inspector/picker'),
+    import('./devtools/inspector/spawnRecorder'),
+  ]).then(([overrides, applier, picker, recorder]) => {
+    overrides.loadOverridesFromStorage();
+    overrides.installOverridePersistence();
+    applier.installOverrideApplier();
+    picker.installPicker();
+    recorder.installSpawnRecorder();
+  });
 }
 
 if (import.meta.env.DEV) {

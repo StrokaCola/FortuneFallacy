@@ -61,6 +61,7 @@ export function DevConsole() {
     return (
       <button
         onClick={() => setOpen(true)}
+        data-ff-devconsole
         className="absolute top-2 right-2 px-3 py-1 bg-cosmos-800/80 ring-1 ring-cosmos-300/30
                    rounded text-xs font-mono text-cosmos-50 hover:bg-cosmos-700/80 pointer-events-auto">
         debug
@@ -72,9 +73,11 @@ export function DevConsole() {
   if (!active) return null;
 
   return (
-    <div className="absolute top-2 right-2 w-[420px] max-h-[80vh] flex flex-col
-                    bg-cosmos-900/95 ring-1 ring-cosmos-300/30 rounded-lg
-                    text-xs font-mono text-cosmos-50 backdrop-blur pointer-events-auto">
+    <div
+      data-ff-devconsole
+      className="absolute top-2 right-2 w-[420px] max-h-[80vh] flex flex-col
+                 bg-cosmos-900/95 ring-1 ring-cosmos-300/30 rounded-lg
+                 text-xs font-mono text-cosmos-50 backdrop-blur pointer-events-auto">
       <div className="flex gap-2 p-2 border-b border-cosmos-300/20 items-center">
         <span className="font-bold flex-1">dev console</span>
         <span className="text-cosmos-300 text-[10px]">` to toggle</span>

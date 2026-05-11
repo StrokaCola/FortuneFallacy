@@ -9,6 +9,7 @@ import { KindFrame } from '../visual/upgradeKindFrames';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/eventId';
 import { lookupResonance, activeResonances } from '../../data/resonances';
 import { Z } from './zLayers';
+import { useInspectable } from '../../devtools/inspector/elementRegistry';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -406,8 +407,11 @@ export function CatalystStrip() {
     linkedIds.add(r.b);
   }
 
+  const inspectRef = useInspectable<HTMLDivElement>('hud.catalystStrip', { label: 'CatalystStrip', zLayer: 'hud' });
+
   return (
     <div
+      ref={inspectRef}
       data-coach="catalyst-strip"
       style={{
       position: 'absolute',
