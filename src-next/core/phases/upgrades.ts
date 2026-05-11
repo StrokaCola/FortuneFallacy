@@ -6,6 +6,7 @@ import { editionBonus } from '../upgrades/editions';
 import { applyResonances } from '../upgrades/resonance';
 import { applyVoidstorm } from '../round/voidstorms';
 import { applyRetriggers } from '../upgrades/catalysts/retriggers';
+import { activeAffinitiesOnDie } from '../../data/modAffinities';
 
 const ALWAYS_ACTIVE = new Set<string>();
 
@@ -141,6 +142,21 @@ const applyModScoring: PhaseFn = (ctx) => {
     const editions = diceModEditions[i] ?? [];
     const slotStacks = diceModStacks[i] ?? [];
     const dieWasLocked = ctx.state.round.dice[i]?.locked ?? false;
+    // Phase 3.3 — affinity fire. If THIS die carries an affinitied pair
+    // of mods, emit a synthetic 'affinity:<pairId>@<dieIdx>' event so
+    // the renderer can fire a gold celebration halo on this die during
+    // its score-tick. Free of pipeline cost — purely a notification.
+    for (const aff of activeAffinitiesOnDie(mods)) {
+      events.push({
+        type: 'onUpgradeTriggered',
+        payload: {
+          id: `affinity:${aff.id}@${i}`,
+          phase: Phase.UPGRADES,
+          deltaChips: 0,
+          deltaMult: 0,
+        },
+      });
+    }
     const step = applyDieModStep(
       {
         face, dieIdx: i, pos, totalScoring: scoringDice.length, scoringFaces, titheBudget,

@@ -16,6 +16,7 @@ import type { ModEdition } from '../../state/slices/run';
 import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
+import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
 
 const FORGE_COST = 5;
 const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
@@ -137,8 +138,43 @@ export function Forge() {
           fontSize: 'clamp(20px, 6vw, 32px)',
           color: '#f3f0ff', marginTop: tight ? 4 : 6,
           whiteSpace: 'nowrap',
+          display: 'inline-flex', alignItems: 'center', gap: 12,
         }}>
+          {/* Animated constellation icon — small SVG built from the
+              constellation's glyph nodes, slowly rotating. Reads as
+              "the run's identity sigil". Phase 4.3 polish. */}
+          <svg
+            aria-hidden="true"
+            width={tight ? 22 : 28}
+            height={tight ? 22 : 28}
+            viewBox="0 0 100 100"
+            className="forge-header-sigil"
+            style={{
+              color: constellation.color,
+              filter: `drop-shadow(0 0 6px ${constellation.color})`,
+            }}>
+            {constellation.glyph.length > 1 && (
+              <polyline
+                points={constellation.glyph.map((p) => `${p.x},${p.y}`).join(' ')}
+                fill="none" stroke="currentColor" strokeWidth="1.2"
+                strokeLinecap="round" strokeOpacity="0.85"
+              />
+            )}
+            {constellation.glyph.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="currentColor" />
+            ))}
+          </svg>
           The Star Forge
+        </div>
+        {/* Subtitle — kept under 60 chars so it sits below the title on
+            tight viewports without wrapping. */}
+        <div className="f-mono" style={{
+          marginTop: tight ? 2 : 4,
+          fontSize: 10, letterSpacing: '0.24em',
+          color: '#bba8ff', opacity: 0.85,
+          fontStyle: 'italic',
+        }}>
+          strike the cosmos into your dice
         </div>
       </div>
 
@@ -232,7 +268,83 @@ export function Forge() {
                   return <circle key={a} cx={x} cy={y} r="3" fill={accent} style={{ filter: `drop-shadow(0 0 6px ${accent})` }} />;
                 })}
               </g>
+              {/* 2026-05-11 Phase 3.1 — Affinity link arcs. When the
+                  selected die carries an affinitied pair of mods, draw
+                  a gold curve connecting their orbital "anchor" points.
+                  The anchor positions are derived from the mod's slot
+                  index — slot 0 anchors at NW, slot 1 at NE, slot 2 at
+                  SE (matches the visual order in the detach row). */}
+              {(() => {
+                const modIds = diceMods[selectedDie] ?? [];
+                const pairs = activeAffinitiesOnDie(modIds);
+                if (pairs.length === 0) return null;
+                // Slot anchor positions inside the 320×320 viewBox. Each
+                // slot's anchor sits on the dashed orbit ring at a
+                // pre-assigned angle, so adding more slots stays even.
+                const slotAngles = [200, 340, 100, 60]; // NW, NE, SE, NE+
+                const anchorFor = (slotIdx: number) => {
+                  const a = (slotAngles[slotIdx] ?? 0) * Math.PI / 180;
+                  return { x: 160 + Math.cos(a) * 130, y: 160 + Math.sin(a) * 130 };
+                };
+                return pairs.map((pair, i) => {
+                  const idxs = affinitySlotIndices(pair, modIds);
+                  if (!idxs) return null;
+                  const [aIdx, bIdx] = idxs;
+                  const p1 = anchorFor(aIdx);
+                  const p2 = anchorFor(bIdx);
+                  // Bezier arc bowed inward toward the center so it
+                  // reads as a "linked" curve over the die, not a
+                  // straight cord.
+                  const cx = 160, cy = 160;
+                  const bowed = `M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Q ${cx} ${cy} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+                  return (
+                    <g key={pair.id} className="forge-affinity-arc">
+                      <path d={bowed} stroke="#f5c451" strokeWidth="1.5"
+                            fill="none" strokeLinecap="round"
+                            opacity={0.55 - i * 0.05}
+                            style={{ filter: 'drop-shadow(0 0 6px rgba(245,196,81,0.75))' }} />
+                      <circle cx={p1.x} cy={p1.y} r="3"
+                              fill="#f5c451" opacity="0.9"
+                              style={{ filter: 'drop-shadow(0 0 6px rgba(245,196,81,0.85))' }} />
+                      <circle cx={p2.x} cy={p2.y} r="3"
+                              fill="#f5c451" opacity="0.9"
+                              style={{ filter: 'drop-shadow(0 0 6px rgba(245,196,81,0.85))' }} />
+                    </g>
+                  );
+                });
+              })()}
             </svg>
+            {/* Affinity badge — when at least one affinity is active on
+                the selected die, show a small gold legend chip stacked
+                below the die-label line so the player can see *what*
+                they linked. Tooltip shows the flavor line. */}
+            {(() => {
+              const modIds = diceMods[selectedDie] ?? [];
+              const pairs = activeAffinitiesOnDie(modIds);
+              if (pairs.length === 0) return null;
+              return (
+                <div style={{
+                  position: 'absolute', bottom: 38, left: 12, right: 12,
+                  display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center',
+                  pointerEvents: 'none',
+                }}>
+                  {pairs.map((p) => (
+                    <div key={p.id} className="f-mono uc has-tip" title={p.flavor}
+                         style={{
+                           fontSize: 8, letterSpacing: '0.24em',
+                           color: '#f5c451',
+                           padding: '2px 6px', borderRadius: 3,
+                           background: 'rgba(245,196,81,0.10)',
+                           border: '1px solid rgba(245,196,81,0.55)',
+                           textShadow: '0 0 6px rgba(245,196,81,0.45)',
+                           pointerEvents: 'auto',
+                         }}>
+                      ⌬ {p.name}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <DieView
               face={selectedFace}
               size={tight ? 112 : 140}
@@ -284,20 +396,36 @@ export function Forge() {
                   key={i}
                   type="button"
                   onClick={() => setSelectedDie(i)}
-                  className="has-tip tap"
+                  className={`has-tip tap forge-die-pick${isSelected ? ' forge-die-pick-selected' : ''}`}
                   aria-label={`Select die ${i + 1}`}
                   aria-pressed={isSelected}
                   style={{
                     cursor: 'pointer',
                     opacity: isSelected ? 1 : 0.55,
-                    transform: isSelected ? 'translateY(-4px)' : 'none',
-                    transition: 'all 200ms',
+                    transform: isSelected ? 'translateY(-6px) scale(1.05)' : 'translateY(4px) scale(0.94)',
+                    transition: 'all 280ms cubic-bezier(0.2, 1.1, 0.3, 1)',
                     position: 'relative',
                     padding: 6,
                     pointerEvents: 'auto',
                     background: 'transparent',
                     border: 'none',
                   }}>
+                  {isSelected && (
+                    // Halo ring for the selected die — pulses faintly so
+                    // the player's eye returns to the active pick on
+                    // every visit. Constellation accent for identity.
+                    <div aria-hidden="true" style={{
+                      position: 'absolute',
+                      left: '50%', top: '50%',
+                      width: 72, height: 72,
+                      marginLeft: -36, marginTop: -36,
+                      borderRadius: '50%',
+                      border: `1px solid ${constellation.color}80`,
+                      boxShadow: `0 0 14px ${constellation.color}55, inset 0 0 12px ${constellation.color}33`,
+                      pointerEvents: 'none',
+                      animation: 'forge-die-pick-halo 3200ms ease-in-out infinite',
+                    }} />
+                  )}
                   <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
@@ -482,23 +610,52 @@ export function Forge() {
                         onMouseLeave={() => setHoveredModId((cur) => (cur === r.id ? null : cur))}
                         onFocus={() => setHoveredModId(r.id)}
                         onBlur={() => setHoveredModId((cur) => (cur === r.id ? null : cur))}
-                        className={`forge-mod-row has-tip tap${isLegendary ? ' legendary-aura' : ''}`}
+                        className={`forge-mod-row forge-specimen has-tip tap${isLegendary ? ' legendary-aura' : ''}`}
                         style={{
                           cursor: canAttach ? 'pointer' : 'not-allowed',
                           opacity: canAttach ? 1 : 0.4,
-                          padding: 14, borderRadius: 8,
-                          background: 'rgba(15,9,37,0.5)',
+                          padding: '14px 14px 14px 18px', borderRadius: 8,
+                          background: `linear-gradient(135deg, rgba(15,9,37,0.65) 0%, ${c}10 100%)`,
                           border: isLegendary
                             ? '1px solid #ff7847aa'
                             : edition
                               ? `1px solid ${editionAccent}66`
                               : '1px solid rgba(149,119,255,0.2)',
-                          transition: 'all 150ms',
+                          transition: 'all 200ms cubic-bezier(0.2, 1, 0.3, 1)',
                           display: 'flex', alignItems: 'center', gap: 10,
                           position: 'relative',
                           overflow: 'hidden',
                           ['--mod-c' as never]: c,
+                          // The vial silhouette sits behind the icon as a
+                          // CSS background gradient column on the left
+                          // edge. The icon box, name, and description
+                          // stack normally on top — only the visual
+                          // chrome changes.
                         } as React.CSSProperties}>
+                        {/* Specimen vial silhouette — a thin vertical
+                            translucent column of the accent color along
+                            the card's left edge, with a brighter "core"
+                            band centered on the icon. Pure decorative;
+                            sits behind all other card content. */}
+                        <div
+                          aria-hidden="true"
+                          className="forge-specimen-vial"
+                          style={{
+                            position: 'absolute',
+                            top: 6, bottom: 6, left: 4,
+                            width: 8,
+                            borderRadius: 4,
+                            background: `linear-gradient(180deg,
+                              transparent 0%,
+                              ${c}aa 30%,
+                              ${c} 50%,
+                              ${c}aa 70%,
+                              transparent 100%)`,
+                            boxShadow: `0 0 8px ${c}88, inset 0 0 4px ${c}66`,
+                            opacity: 0.85,
+                            pointerEvents: 'none',
+                          }}
+                        />
                         {isLegendary && (
                           <>
                             <div className="ff-holo" style={{ borderRadius: 8 }} />
@@ -506,12 +663,15 @@ export function Forge() {
                           </>
                         )}
                         <div style={{
-                          width: 36, height: 36, borderRadius: 6,
-                          background: `${c}25`, border: `1px solid ${c}80`,
+                          marginLeft: 6, // breathing room past the vial column
+                          width: 38, height: 38, borderRadius: 8,
+                          background: `radial-gradient(circle at center, ${c}50 0%, ${c}18 60%, transparent 100%)`,
+                          border: `1px solid ${c}80`,
                           display: 'grid', placeItems: 'center',
-                          color: c, fontSize: 16,
-                          filter: `drop-shadow(0 0 4px ${c})`,
+                          color: c, fontSize: 18,
+                          filter: `drop-shadow(0 0 6px ${c})`,
                           position: 'relative', zIndex: 2,
+                          flexShrink: 0,
                         }}>{r.icon}</div>
                         <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
                           <div className="f-head" style={{
@@ -551,7 +711,27 @@ export function Forge() {
                             </button>
                           )}
                           {isPickerOpen && (
-                            <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            // Phase 4.2 — edition forging as orbital ritual.
+                            // The three editions appear in a small orbital
+                            // ring above the card's icon. Hovering an
+                            // orbital tilts and brightens it; clicking
+                            // commits the forge. The whole thing reads as
+                            // "pick a star to bind into this rune."
+                            <div className="forge-edition-orbit" style={{
+                              position: 'relative',
+                              width: '100%', height: 64,
+                              marginTop: 6,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              gap: 18,
+                            }}>
+                              {/* faint orbit ring */}
+                              <div aria-hidden="true" style={{
+                                position: 'absolute', inset: 0,
+                                margin: 'auto', width: 180, height: 36,
+                                borderRadius: 999,
+                                border: '1px dashed rgba(245,196,81,0.3)',
+                                pointerEvents: 'none',
+                              }} />
                               {ALL_EDITIONS.map((ed) => (
                                 <button
                                   key={ed}
@@ -562,16 +742,24 @@ export function Forge() {
                                     setForgeOpenFor(null);
                                     sfxPlay('modAttach');
                                   }}
-                                  className="f-mono uc tap"
+                                  aria-label={`Forge ${editionLabel(ed)} edition`}
+                                  className="forge-edition-orb f-mono uc tap"
                                   style={{
-                                    fontSize: 10, padding: '6px 12px', borderRadius: 6,
-                                    background: `${editionColor(ed)}22`,
-                                    border: `1px solid ${editionColor(ed)}88`,
-                                    color: editionColor(ed),
-                                    letterSpacing: '0.16em',
+                                    width: 44, height: 44, borderRadius: '50%',
+                                    background: `radial-gradient(circle at 35% 30%,
+                                      ${editionColor(ed)}cc 0%,
+                                      ${editionColor(ed)}44 60%,
+                                      rgba(15,9,37,0.85) 100%)`,
+                                    border: `1px solid ${editionColor(ed)}aa`,
+                                    boxShadow: `0 0 16px ${editionColor(ed)}66, inset 0 0 12px ${editionColor(ed)}55`,
+                                    fontSize: 9, letterSpacing: '0.16em',
+                                    color: '#f3f0ff',
                                     cursor: 'pointer',
+                                    position: 'relative',
+                                    display: 'grid', placeItems: 'center',
+                                    transition: 'transform 200ms cubic-bezier(0.2, 1.2, 0.3, 1), box-shadow 200ms',
                                   }}>
-                                  {editionLabel(ed).slice(0, 4)}
+                                  {editionLabel(ed).slice(0, 3)}
                                 </button>
                               ))}
                             </div>

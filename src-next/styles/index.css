@@ -591,6 +591,111 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   opacity: 0.6;
 }
 
+/* Affinity arc — Phase 3. A gentle gold pulse so the linkage reads as
+   "alive". Keeps the same drop-shadow but breathes the opacity. */
+.forge-affinity-arc {
+  animation: forge-affinity-pulse 3000ms ease-in-out infinite;
+}
+@keyframes forge-affinity-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.0; }
+}
+.reduce-motion .forge-affinity-arc { animation: none; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge specimen vials — Phase 4.1                                   */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Hover tilt + subtle lift on each mod row. The 3D rotation reads as
+   "the vial is being inspected"; the lift gives it tactile weight.
+   Combined with the existing .forge-mod-row hover pulse on the icon. */
+.forge-specimen {
+  transform-style: preserve-3d;
+  perspective: 320px;
+}
+.forge-specimen:hover {
+  transform: translateY(-2px) rotateY(3deg) rotateX(-1.5deg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 18px var(--mod-c, #7be3ff)55;
+}
+.forge-specimen:active {
+  transform: translateY(0) rotateY(1.5deg) rotateX(0deg) scale(0.985);
+}
+
+/* Vial column breathes — same period as the ember pulse so the screen
+   feels coordinated. */
+.forge-specimen-vial {
+  animation: forge-vial-breath 4400ms ease-in-out infinite;
+  animation-delay: 1200ms;
+}
+@keyframes forge-vial-breath {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.0; }
+}
+
+.reduce-motion .forge-specimen:hover { transform: translateY(-2px); }
+.reduce-motion .forge-specimen-vial { animation: none; opacity: 0.9; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge edition orbit — Phase 4.2                                    */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* The whole orbit-row breathes slowly to suggest celestial bodies in
+   motion. Per-orb hover scales them up so the player feels the pull.
+   On chosen click the orb collapses inward (CSS only — the dispatch
+   navigates away from this row before the animation completes, which
+   makes the snap feel responsive). */
+.forge-edition-orbit {
+  animation: forge-edition-rotate 14s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-edition-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* Counter-rotate each orb so its label stays upright while the row
+   spins. Same period, opposite direction. */
+.forge-edition-orb {
+  animation: forge-edition-counter 14s linear infinite;
+  transform-origin: center;
+}
+@keyframes forge-edition-counter {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+.forge-edition-orb:hover {
+  transform: scale(1.18) rotate(0deg) !important;
+  animation: none !important;
+  box-shadow: 0 0 24px currentColor, inset 0 0 16px currentColor !important;
+}
+.reduce-motion .forge-edition-orbit,
+.reduce-motion .forge-edition-orb { animation: none !important; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Forge die-picker — Phase 4.3                                        */
+/* ────────────────────────────────────────────────────────────────── */
+
+/* Selected-die halo pulse. Constellation color radiates outward and
+   eases back. Reads as "this die is currently being inspected." */
+@keyframes forge-die-pick-halo {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+/* Unselected dies — hovering nudges them forward as a preview cue. */
+.forge-die-pick:hover:not(.forge-die-pick-selected) {
+  transform: translateY(0) scale(1) !important;
+  opacity: 0.85 !important;
+}
+.reduce-motion [class*="forge-die-pick-halo"],
+.reduce-motion .forge-die-pick:hover { animation: none !important; }
+
+/* Forge header constellation sigil — slow ambient rotation that hints
+   the icon is "live" rather than a static logo. */
+.forge-header-sigil {
+  animation: forge-sigil-rotate 60s linear infinite;
+  transform-origin: center;
+}
+.reduce-motion .forge-header-sigil { animation: none; }
+
 /* Reduce-motion overrides for catalyst theatre — collapse to a snap pulse
    so the per-fire reaction stays legible without movement. */
 .reduce-motion .catalyst-floater,

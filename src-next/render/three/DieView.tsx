@@ -140,9 +140,18 @@ export function DieView(props: Props) {
       });
       scene.add(orbital.group);
     } else if (props.mods?.length === 3) {
-      if (secondary?.visual?.accentColor) {
+      // 2026-05-11 Phase 3.2 — rim cycles across ALL three attached
+      // accents (primary, secondary, tertiary) over ~6s so a player's
+      // 3-mod build reads as a layered identity, not just the topmost
+      // mod. Single-color rims (legacy path) still work via accentColor.
+      const accents = [
+        matchedMod?.visual?.accentColor,
+        secondary?.visual?.accentColor,
+        tertiary?.visual?.accentColor,
+      ].filter((c): c is string => !!c);
+      if (accents.length >= 2) {
         rim = rimMod.buildRimOverlay({
-          accentColor: secondary.visual.accentColor,
+          accentColors: accents,
           dieSize: 0.85,
         });
         scene.add(rim.group);
@@ -198,6 +207,8 @@ export function DieView(props: Props) {
         const angle = (dt / ORBIT_PERIOD_S) * Math.PI * 2;
         orbital.setAngle(angle);
       }
+      // Phase 3.2 — multi-color rim cycles across attached accents.
+      if (rim?.tick) rim.tick(dt * 1000);
       if (haloMesh && haloSpin) {
         haloMesh.rotation.z = (dt * haloSpin) % (Math.PI * 2);
       }
