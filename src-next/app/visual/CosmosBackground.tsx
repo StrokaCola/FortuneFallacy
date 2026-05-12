@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ThemeKey = 'midnight' | 'voidlit' | 'sandstorm' | 'abyssal';
 
@@ -106,7 +107,12 @@ export function CosmosBackground({
   // upper third of the screen as score crosses target.
   const haloOpacity = progressClamped < 1.0 ? 0 : Math.min(0.45, (progressClamped - 1.0) * 0.6);
 
-  return (
+  // Portal the backdrop to a host OUTSIDE #next-root so its opaque radial
+  // gradient paints UNDER the dice canvas (#three-next, z=1). Rendering it
+  // inside #next-root (z=2) covered the dice when #three-next was lowered
+  // from z=3 to z=1 to stop dice from punching through modals.
+  const host = typeof document !== 'undefined' ? document.getElementById('cosmos-root') : null;
+  const tree = (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
       background: `radial-gradient(ellipse at 50% 35%, ${t.bgNear} 0%, ${t.bgMid} 45%, ${t.bgFar} 100%)`,
@@ -151,4 +157,5 @@ export function CosmosBackground({
       }} />
     </div>
   );
+  return host ? createPortal(tree, host) : tree;
 }
