@@ -63,12 +63,52 @@ export const forgeVFX = {
   },
 };
 
-export function ForgeVFX() {
+export function ForgeVFX({ anchorRef }: { anchorRef?: React.RefObject<HTMLElement | null> }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [attachments, setAttachments] = useState<AttachEvent[]>([]);
   const [forges, setForges] = useState<ForgeEvent[]>([]);
   const [affinities, setAffinities] = useState<AffinityEvent[]>([]);
   const [constellationIntensity, setConstellationIntensity] = useState(0);
+  // Live center of the anchored element (typically the die panel). The
+  // rituals position themselves on this point with `position: fixed` —
+  // re-measured on scroll/resize so they stay glued to the die rather
+  // than the viewport center for the full 2.2s lifetime of an attach.
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  const hasActiveEffect = attachments.length > 0 || forges.length > 0 || affinities.length > 0;
+
+  useEffect(() => {
+    if (!anchorRef) {
+      setAnchor(null);
+      return;
+    }
+    const measure = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setAnchor({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    };
+    measure();
+    // Only listen while there's a ritual playing — when idle, the static
+    // anchor we last measured is fine and we avoid wasting scroll work.
+    if (!hasActiveEffect) return;
+    // The Forge content scrolls inside its own container, so we catch
+    // scroll in capture phase to pick up nested scrollers as well as
+    // the document.
+    window.addEventListener('scroll', measure, { passive: true, capture: true });
+    window.addEventListener('resize', measure, { passive: true });
+    let raf = 0;
+    const tick = () => {
+      measure();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener('scroll', measure, { capture: true });
+      window.removeEventListener('resize', measure);
+      cancelAnimationFrame(raf);
+    };
+  }, [anchorRef, hasActiveEffect]);
 
   useEffect(() => {
     forgeVFX.callbacks.attach = (modId, rarity, edition) => {
@@ -118,6 +158,9 @@ export function ForgeVFX() {
     poly: { glow: '#06b6d4', filter: 'drop-shadow(0 0 20px #06b6d4) drop-shadow(0 0 40px rgba(6,182,212,0.4))' },
   };
 
+  // When an anchor is wired up (the Forge die panel), all rituals
+  // position themselves at the anchor center; otherwise they fall back
+  // to viewport center so callers without a ref still get something.
   return (
     <div
       ref={containerRef}
@@ -134,8 +177,8 @@ export function ForgeVFX() {
         <div
           style={{
             position: 'fixed',
-            left: '50%',
-            top: '50%',
+            left: anchor ? anchor.x : '50%',
+            top: anchor ? anchor.y : '50%',
             marginLeft: -240,
             marginTop: -240,
             width: 480,
@@ -143,7 +186,7 @@ export function ForgeVFX() {
             borderRadius: '50%',
             background: `radial-gradient(circle, rgba(123,227,255,${0.04 + constellationIntensity * 0.02}) 0%, transparent 100%)`,
             pointerEvents: 'none',
-            transition: 'all 400ms ease-out',
+            transition: 'opacity 400ms ease-out, background 400ms ease-out',
           }}
         />
       )}
@@ -153,6 +196,7 @@ export function ForgeVFX() {
           key={event.key}
           event={event}
           config={rarityConfig[event.rarity] ?? rarityConfig.common}
+          anchor={anchor}
         />
       ))}
 
@@ -161,11 +205,12 @@ export function ForgeVFX() {
           key={event.key}
           event={event}
           config={editionConfig[event.edition] ?? editionConfig.base}
+          anchor={anchor}
         />
       ))}
 
       {affinities.map((event) => (
-        <AffinityActivationPulse key={event.key} event={event} />
+        <AffinityActivationPulse key={event.key} event={event} anchor={anchor} />
       ))}
     </div>
   );
@@ -183,7 +228,11 @@ export function ForgeVFX() {
  * lets `stellarCollapse` (defined in ForgeVFX.css) sweep angle inward
  * to r=0 over the particle's lifetime.
  */
-function ModAttachmentRitual({ event, config }: { event: AttachEvent; config: RarityConfig }) {
+function ModAttachmentRitual({ event, config, anchor }: {
+  event: AttachEvent;
+  config: RarityConfig;
+  anchor: { x: number; y: number } | null;
+}) {
   const intensity = Math.max(1, Math.min(5, config.intensity));
 
   // Particle count, orbit radius, core/shockwave peaks all key off
@@ -224,8 +273,8 @@ function ModAttachmentRitual({ event, config }: { event: AttachEvent; config: Ra
     <div
       style={{
         position: 'fixed',
-        left: '50%',
-        top: '50%',
+        left: anchor ? anchor.x : '50%',
+        top: anchor ? anchor.y : '50%',
         marginLeft: -stageRadius,
         marginTop: -stageRadius,
         width: stageRadius * 2,
@@ -309,7 +358,11 @@ function ModAttachmentRitual({ event, config }: { event: AttachEvent; config: Ra
 /**
  * Edition-specific glow and merge: foil purple, holo orange, poly cyan.
  */
-function EditionForgeRitual({ event: _event, config }: { event: ForgeEvent; config: EditionConfig }) {
+function EditionForgeRitual({ event: _event, config, anchor }: {
+  event: ForgeEvent;
+  config: EditionConfig;
+  anchor: { x: number; y: number } | null;
+}) {
   const ORB_COUNT = 3;
   const orbs = Array.from({ length: ORB_COUNT }, (_, i) => ({
     id: i,
@@ -321,8 +374,8 @@ function EditionForgeRitual({ event: _event, config }: { event: ForgeEvent; conf
     <div
       style={{
         position: 'fixed',
-        left: '50%',
-        top: '50%',
+        left: anchor ? anchor.x : '50%',
+        top: anchor ? anchor.y : '50%',
         marginLeft: -60,
         marginTop: -60,
         width: 120,
@@ -379,14 +432,17 @@ function EditionForgeRitual({ event: _event, config }: { event: ForgeEvent; conf
 /**
  * Golden resonance rings when an affinity pair activates.
  */
-function AffinityActivationPulse({ event }: { event: AffinityEvent }) {
+function AffinityActivationPulse({ event, anchor }: {
+  event: AffinityEvent;
+  anchor: { x: number; y: number } | null;
+}) {
   return (
     <div
       data-affinity-pulse={event.affinityId}
       style={{
         position: 'fixed',
-        left: '50%',
-        top: '50%',
+        left: anchor ? anchor.x : '50%',
+        top: anchor ? anchor.y : '50%',
         marginLeft: -240,
         marginTop: -240,
         width: 480,
