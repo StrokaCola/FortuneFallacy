@@ -52,6 +52,17 @@ html, body {
 
 #bg-next { display: none; }
 
+/* Cosmos backdrop host. Lives as a sibling of #three-next inside #stage-root
+   so the React-rendered nebula/gradient (portalled here from CosmosBackground)
+   paints UNDER the dice canvas. Without this, putting CosmosBackground inside
+   #next-root (z=2) covered #three-next (z=1) with its opaque radial gradient. */
+#cosmos-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
 #stage-root {
   /* Tier 2: stage IS the viewport. Fixed 1280×800 + transform scale is
      gone; layout flows. Safe-area insets are applied as padding so all
