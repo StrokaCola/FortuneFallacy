@@ -53,12 +53,17 @@ function fireDie(
   rCtx: RetriggerCtx,
   dieIdx: number,
   catalystId: string,
-): { chips: number; mult: number } {
+): { chips: number; mult: number; stackDeltas: number[] | null } {
   const pos = rCtx.scoringDice.indexOf(dieIdx);
-  if (pos < 0) return { chips: 0, mult: 0 };
+  if (pos < 0) return { chips: 0, mult: 0, stackDeltas: null };
   const face = rCtx.faces[dieIdx]!;
   const mods = rCtx.diceMods[dieIdx] ?? [];
-  if (mods.length === 0) return { chips: 0, mult: 0 };
+  if (mods.length === 0) return { chips: 0, mult: 0, stackDeltas: null };
+  // Read live stack values so curStack-gated mods (Dormant) see any increments
+  // from the primary applyModScoring pass and from earlier retriggers in this
+  // hand. Sourced from ctx.state.run rather than rCtx so updates between
+  // retrigger functions are visible.
+  const slotStacks = ctx.state.run.diceModStacks?.[dieIdx] ?? [];
   const step = applyDieModStep(
     {
       face,
@@ -67,6 +72,7 @@ function fireDie(
       totalScoring: rCtx.scoringDice.length,
       scoringFaces: rCtx.scoringFaces,
       titheBudget: 0, // retriggers never recharge tithe
+      slotStacks,
     },
     mods,
   );
@@ -79,7 +85,35 @@ function fireDie(
   return {
     chips: step.dChips,
     mult: step.dMult + multAdditiveFromMul,
+    stackDeltas: step.stackDeltas ?? null,
   };
+}
+
+// Fold accumulated per-die stack deltas back into ctx.state.run.diceModStacks.
+// Returns the same ctx if nothing accumulated, otherwise a new ctx with a
+// fresh diceModStacks (copied row-by-row so prior ctx values stay immutable).
+function withFoldedStacks(
+  ctx: PipelineCtx,
+  perDieDeltas: Map<number, number[]>,
+): PipelineCtx {
+  if (perDieDeltas.size === 0) return ctx;
+  const cur = ctx.state.run.diceModStacks;
+  if (!cur) return ctx;
+  let mutated = false;
+  const next = cur.map((row) => row.slice());
+  for (const [dieIdx, deltas] of perDieDeltas) {
+    const row = next[dieIdx];
+    if (!row) continue;
+    for (let j = 0; j < deltas.length; j++) {
+      const d = deltas[j] ?? 0;
+      if (d !== 0) {
+        row[j] = (row[j] ?? 0) + d;
+        mutated = true;
+      }
+    }
+  }
+  if (!mutated) return ctx;
+  return { ...ctx, state: { ...ctx.state, run: { ...ctx.state.run, diceModStacks: next } } };
 }
 
 function emitFire(
@@ -104,17 +138,21 @@ function polaris(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
   const targetPos = rCtx.scoringFaces.indexOf(maxFace);
   if (targetPos < 0) return ctx;
   const dieIdx = rCtx.scoringDice[targetPos]!;
-  let { chips, mult } = fireDie(ctx, rCtx, dieIdx, 'polaris');
+  const fire = fireDie(ctx, rCtx, dieIdx, 'polaris');
+  let { chips, mult } = fire;
   if (!recursionPending.used && chips + mult !== 0 && ctx.state.run.catalysts.includes('recursion_lens')) {
     chips *= 2;
     mult *= 2;
     recursionPending.used = true;
   }
+  const stacks = new Map<number, number[]>();
+  if (fire.stackDeltas) stacks.set(dieIdx, fire.stackDeltas);
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + chips,
-    mult: ctx.mult + mult,
-    events: emitFire(ctx.events, 'polaris', chips, mult),
+    ...folded,
+    chips: folded.chips + chips,
+    mult: folded.mult + mult,
+    events: emitFire(folded.events, 'polaris', chips, mult),
   };
 }
 
@@ -125,21 +163,24 @@ function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
   if (cur < 0 || cur !== prev) return ctx;
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   for (const idx of rCtx.scoringDice) {
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'refrain');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'refrain');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
   if (!recursionPending.used && (totalChips + totalMult) !== 0 && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
     recursionPending.used = true;
   }
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'refrain', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'refrain', totalChips, totalMult),
   };
 }
 
@@ -147,24 +188,27 @@ function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
 function mirrorEdge(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   const dice = ctx.state.round.dice;
   for (const idx of rCtx.scoringDice) {
     if (!dice[idx]?.locked) continue;
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'mirror_edge');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'mirror_edge');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (totalChips === 0 && totalMult === 0) return ctx;
-  if (!recursionPending.used && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
+  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
     recursionPending.used = true;
   }
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'mirror_edge', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'mirror_edge', totalChips, totalMult),
   };
 }
 
@@ -177,22 +221,25 @@ function curtainCall(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { u
   if (handsLeft > 1) return ctx;
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   for (const idx of rCtx.scoringDice) {
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'curtain_call');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'curtain_call');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (totalChips === 0 && totalMult === 0) return ctx;
-  if (!recursionPending.used && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
+  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
     recursionPending.used = true;
   }
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'curtain_call', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'curtain_call', totalChips, totalMult),
   };
 }
 
@@ -202,24 +249,27 @@ function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
   const isPrime = n === 2 || n === 3 || n === 5 || n === 7;
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   for (const idx of rCtx.scoringDice) {
     const hit = isPrime ? true : ctx.rng.next() < 0.25;
     if (!hit) continue;
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'stutter');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'stutter');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (totalChips === 0 && totalMult === 0) return ctx;
-  if (!recursionPending.used && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
+  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
     recursionPending.used = true;
   }
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'stutter', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'stutter', totalChips, totalMult),
   };
 }
 
@@ -227,23 +277,26 @@ function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
 function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   for (const idx of rCtx.scoringDice) {
     if (rCtx.faces[idx] !== 4) continue;
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'cardinal_compass');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'cardinal_compass');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (totalChips === 0 && totalMult === 0) return ctx;
-  if (!recursionPending.used && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
+  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
     recursionPending.used = true;
   }
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'cardinal_compass', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'cardinal_compass', totalChips, totalMult),
   };
 }
 
@@ -251,18 +304,23 @@ function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending:
 function echoChamber(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
   if (rCtx.scoringDice.length < 4) return ctx;
   const firstIdx = rCtx.scoringDice[0]!;
-  let { chips, mult } = fireDie(ctx, rCtx, firstIdx, 'echo_chamber');
-  if (chips === 0 && mult === 0) return ctx;
-  if (!recursionPending.used && ctx.state.run.catalysts.includes('recursion_lens')) {
+  const fire = fireDie(ctx, rCtx, firstIdx, 'echo_chamber');
+  let { chips, mult } = fire;
+  const hasStacks = !!fire.stackDeltas && fire.stackDeltas.some((d) => d !== 0);
+  if (chips === 0 && mult === 0 && !hasStacks) return ctx;
+  if (!recursionPending.used && (chips !== 0 || mult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     chips *= 2;
     mult *= 2;
     recursionPending.used = true;
   }
+  const stacks = new Map<number, number[]>();
+  if (fire.stackDeltas) stacks.set(firstIdx, fire.stackDeltas);
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + chips,
-    mult: ctx.mult + mult,
-    events: emitFire(ctx.events, 'echo_chamber', chips, mult),
+    ...folded,
+    chips: folded.chips + chips,
+    mult: folded.mult + mult,
+    events: emitFire(folded.events, 'echo_chamber', chips, mult),
   };
 }
 
@@ -274,17 +332,20 @@ function mirroredHandEgg(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   if (ctx.state.round.mirroredHandConsumed) return ctx;
   let totalChips = 0;
   let totalMult = 0;
+  const stacks = new Map<number, number[]>();
   for (const idx of rCtx.scoringDice) {
-    const { chips, mult } = fireDie(ctx, rCtx, idx, 'mirrored_hand');
-    totalChips += chips;
-    totalMult += mult;
+    const fire = fireDie(ctx, rCtx, idx, 'mirrored_hand');
+    totalChips += fire.chips;
+    totalMult += fire.mult;
+    if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (totalChips === 0 && totalMult === 0) return ctx;
+  if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
+  const folded = withFoldedStacks(ctx, stacks);
   return {
-    ...ctx,
-    chips: ctx.chips + totalChips,
-    mult: ctx.mult + totalMult,
-    events: emitFire(ctx.events, 'mirrored_hand', totalChips, totalMult),
+    ...folded,
+    chips: folded.chips + totalChips,
+    mult: folded.mult + totalMult,
+    events: emitFire(folded.events, 'mirrored_hand', totalChips, totalMult),
   };
 }
 

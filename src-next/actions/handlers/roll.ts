@@ -245,6 +245,11 @@ export const rollHandler: ActionHandler = (a, s) => {
         ...workingState,
         run: {
           ...workingState.run,
+          // Pipeline writes scaling-mod accruals (Dormant/Tally/Cadence/Glutton/
+          // Ballast/Pyre Mark) onto final.state.run.diceModStacks during the
+          // upgrades phase. Without this merge, every SCORE_HAND silently
+          // reverts those increments back to workingState's pre-pipeline value.
+          diceModStacks: final.state.run.diceModStacks,
           ...streakUpdates,
           ...scalingDiff.run,
           ...eggDiff.run,
