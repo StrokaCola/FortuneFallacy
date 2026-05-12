@@ -134,6 +134,11 @@ describe('constellation modifier wiring', () => {
     expect(maxCatalystSlots(argo) - maxCatalystSlots(lyra)).toBe(2);
   });
 
+  it('Argo seeds Captain’s Wage at run start', () => {
+    const argo = stateWith('argo');
+    expect(argo.run.catalysts).toContain('captains_wage');
+  });
+
   it('non-Argo constellations leave the slot cap at the legacy default', () => {
     for (const c of CONSTELLATIONS) {
       if (c.id === 'argo') continue;
