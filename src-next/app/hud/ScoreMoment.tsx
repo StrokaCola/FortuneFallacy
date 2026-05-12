@@ -77,6 +77,7 @@ export function ScoreMoment() {
         case 'cross-target':
           crossed = true;
           scoringVFX.triggerTargetBeat();
+          scoringVFX.triggerCrossTargetCascade();
           triggerShake('mid');
           scoringVFX.shakeScreen('mid');
           break;
@@ -110,7 +111,7 @@ export function ScoreMoment() {
           // matching your record is itself a moment).
           const peakHandNow = store.getState().run.runStats?.peakHand ?? 0;
           const isNewBest = peakHandNow > 0 && peakHandNow === beat.finalTotal;
-          scoringVFX.triggerBoom(beat.finalTotal, gold, isNewBest);
+          scoringVFX.triggerBoom(beat.finalTotal, gold, isNewBest, ratio > 0 ? ratio : 1);
 
           // ScoringVFX's BoomSequence runs pop (400ms) → hold → fly (800ms).
           // Schedule END_SCORING + counter catch-pulse to land at the end

@@ -1,36 +1,48 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 /**
- * ScoringVFX: Enhanced cosmic/ethereal visual effects for scoring theatre
- * 
- * This component provides:
- * - Enhanced multiplier slam popups with glow and fade
- * - Target beat / bail stamps with rotation and chromatic effects
- * - Boom number reveal with hold and fly-to-counter sequence
- * - Star fly animation with trails toward score counter
- * - Screen shake and chromatic aberration for mega-booms
- * - NEW BEST stamp with steady glow pulse
- * - Cross-target flash effect
- * 
- * Integration:
- * 1. Import and render at the top level of your Round/Scoring screen
- * 2. Import the CSS file: import './ScoringVFX.css'
- * 3. Dispatch events via scoringVFX.triggerSlam(), triggerBoom(), etc.
- * 4. For screen shake: call scoringVFX.shakeScreen(intensity)
- * 5. For CA effect: call scoringVFX.chromatic(duration)
+ * ScoringVFX Refined — Orchestrated scoring theatre as narrative arc
+ *
+ * The scoring sequence tells a story:
+ * 1. BUILDING PHASE: Slams establish multiplier tier, each one escalates
+ * 2. CROSSROADS: Target beat or bail moment (turning point)
+ * 3. CLIMAX: Boom number reveals, new best stamp, stars fly home
+ * 4. RESOLUTION: Score counter catches stars, screen settles
+ *
+ * Effects are state-driven: gold on successful cross, crimson on bail,
+ * star count + burst radius scaled by finalTotal / target ratio.
  */
+
+type ShakeIntensity = 'tiny' | 'mid' | 'big';
+
+type SlamEvent = {
+  id: string;
+  label: string;
+  multiplier: number;
+  gold: boolean;
+  tint?: string | null;
+};
+
+type BoomEvent = {
+  id: string;
+  total: number;
+  crossed: boolean;
+  isNewBest: boolean;
+  ratio: number;
+};
 
 export const scoringVFX = {
   callbacks: {
-    slam: null as ((label: string, multiplier: number, gold: boolean, tint?: string) => void) | null,
+    slam: null as ((label: string, multiplier: number, gold: boolean, tint?: string | null) => void) | null,
     targetBeat: null as (() => void) | null,
     bail: null as (() => void) | null,
-    boom: null as ((total: number, gold: boolean, isNewBest: boolean) => void) | null,
-    shakeScreen: null as ((intensity: 'tiny' | 'mid' | 'big') => void) | null,
+    boom: null as ((total: number, crossed: boolean, isNewBest: boolean, ratio: number) => void) | null,
+    shakeScreen: null as ((intensity: ShakeIntensity) => void) | null,
     chromatic: null as ((duration: number) => void) | null,
+    crossTargetCascade: null as (() => void) | null,
   },
 
-  triggerSlam(label: string, multiplier: number, gold: boolean = false, tint?: string) {
+  triggerSlam(label: string, multiplier: number, gold: boolean = false, tint: string | null = null) {
     if (this.callbacks.slam) this.callbacks.slam(label, multiplier, gold, tint);
   },
 
@@ -42,73 +54,61 @@ export const scoringVFX = {
     if (this.callbacks.bail) this.callbacks.bail();
   },
 
-  triggerBoom(total: number, gold: boolean = false, isNewBest: boolean = false) {
-    if (this.callbacks.boom) this.callbacks.boom(total, gold, isNewBest);
+  // Boom is the climax moment. ratio = finalTotal / targetScore (affects intensity).
+  triggerBoom(total: number, crossed: boolean = false, isNewBest: boolean = false, ratio: number = 1) {
+    if (this.callbacks.boom) this.callbacks.boom(total, crossed, isNewBest, ratio);
   },
 
-  shakeScreen(intensity: 'tiny' | 'mid' | 'big' = 'mid') {
+  shakeScreen(intensity: ShakeIntensity = 'mid') {
     if (this.callbacks.shakeScreen) this.callbacks.shakeScreen(intensity);
   },
 
   chromatic(duration: number = 480) {
     if (this.callbacks.chromatic) this.callbacks.chromatic(duration);
   },
-};
 
-type SlamEvent = {
-  id: string;
-  label: string;
-  multiplier: number;
-  gold: boolean;
-  tint?: string;
-};
-
-type BoomEvent = {
-  id: string;
-  total: number;
-  gold: boolean;
-  isNewBest: boolean;
+  // Golden screen flash when score crosses the round target.
+  triggerCrossTargetCascade() {
+    if (this.callbacks.crossTargetCascade) this.callbacks.crossTargetCascade();
+  },
 };
 
 export function ScoringVFX() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const screenRef = useRef<HTMLDivElement>(null);
   const [slams, setSlams] = useState<SlamEvent[]>([]);
   const [targetBeat, setTargetBeat] = useState(false);
   const [bail, setBail] = useState(false);
   const [boom, setBoom] = useState<BoomEvent | null>(null);
   const [shakeClass, setShakeClass] = useState('');
   const [chromaticActive, setChromaticActive] = useState(false);
+  const [crossTargetFlash, setCrossTargetFlash] = useState(false);
 
   useEffect(() => {
-    // Register external callbacks
     scoringVFX.callbacks.slam = (label, multiplier, gold, tint) => {
       const id = `slam-${Date.now()}-${Math.random()}`;
       const event: SlamEvent = { id, label, multiplier, gold, tint };
       setSlams((prev) => [...prev, event]);
-
-      // Remove after animation completes
       setTimeout(() => {
         setSlams((prev) => prev.filter((s) => s.id !== id));
-      }, 600);
+      }, 800);
     };
 
     scoringVFX.callbacks.targetBeat = () => {
       setTargetBeat(true);
-      setTimeout(() => setTargetBeat(false), 700);
+      setTimeout(() => setTargetBeat(false), 800);
     };
 
     scoringVFX.callbacks.bail = () => {
       setBail(true);
-      setTimeout(() => setBail(false), 2400);
+      setTimeout(() => setBail(false), 2600);
     };
 
-    scoringVFX.callbacks.boom = (total, gold, isNewBest) => {
-      setBoom({ id: `boom-${Date.now()}`, total, gold, isNewBest });
+    scoringVFX.callbacks.boom = (total, crossed, isNewBest, ratio) => {
+      setBoom({ id: `boom-${Date.now()}`, total, crossed, isNewBest, ratio });
     };
 
     scoringVFX.callbacks.shakeScreen = (intensity) => {
-      const durationMs = intensity === 'tiny' ? 150 : intensity === 'mid' ? 300 : 500;
+      const durationMs = intensity === 'tiny' ? 150 : intensity === 'mid' ? 320 : 520;
       setShakeClass(`vfx-shake-${intensity}`);
       setTimeout(() => setShakeClass(''), durationMs);
     };
@@ -118,6 +118,11 @@ export function ScoringVFX() {
       setTimeout(() => setChromaticActive(false), duration);
     };
 
+    scoringVFX.callbacks.crossTargetCascade = () => {
+      setCrossTargetFlash(true);
+      setTimeout(() => setCrossTargetFlash(false), 600);
+    };
+
     return () => {
       scoringVFX.callbacks.slam = null;
       scoringVFX.callbacks.targetBeat = null;
@@ -125,6 +130,7 @@ export function ScoringVFX() {
       scoringVFX.callbacks.boom = null;
       scoringVFX.callbacks.shakeScreen = null;
       scoringVFX.callbacks.chromatic = null;
+      scoringVFX.callbacks.crossTargetCascade = null;
     };
   }, []);
 
@@ -139,9 +145,8 @@ export function ScoringVFX() {
         overflow: 'hidden',
       }}
     >
-      {/* Screen shake & chromatic aberration layer */}
+      {/* Screen shake + chromatic layer */}
       <div
-        ref={screenRef}
         className={shakeClass}
         style={{
           position: 'absolute',
@@ -150,55 +155,61 @@ export function ScoringVFX() {
         }}
       />
 
-      {/* Multiplier slams */}
+      {/* Cross-target flash (golden screen glow) */}
+      {crossTargetFlash && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'radial-gradient(ellipse at center, rgba(245,196,81,0.4) 0%, rgba(245,196,81,0.1) 50%, transparent 100%)',
+            animation: 'crossTargetFlash 600ms ease-out forwards',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
       {slams.map((slam) => (
         <SlamPopup key={slam.id} event={slam} />
       ))}
 
-      {/* Target beat stamp */}
       {targetBeat && <TargetBeatStamp />}
-
-      {/* Bail stamp */}
       {bail && <BailStamp />}
-
-      {/* Boom sequence */}
       {boom && <BoomSequence event={boom} onComplete={() => setBoom(null)} />}
     </div>
   );
 }
 
 /**
- * SlamPopup: Multiplier badge with glow and fade
+ * Multiplier badge with contextual coloring:
+ * gold for post-target, orange-red for default, magenta for special tint.
  */
 function SlamPopup({ event }: { event: SlamEvent }) {
   const isMagenta = event.tint === 'magenta';
   const baseColor = isMagenta ? '#cc88ff' : event.gold ? '#f5c451' : '#ff7847';
+  const bgOpacity = event.gold ? 0.25 : 0.18;
 
   return (
     <div
-      className="vfx-slam"
       style={{
         position: 'fixed',
         left: '50%',
         top: '50%',
         transform: 'translate(-50%, -50%)',
-        marginLeft: -28,
-        marginTop: -20,
         pointerEvents: 'none',
       }}
     >
       <div
         style={{
-          padding: '8px 18px',
-          borderRadius: 8,
-          background: `${baseColor}20`,
+          padding: '10px 22px',
+          borderRadius: 10,
+          background: `${baseColor}${Math.round(bgOpacity * 255).toString(16).padStart(2, '0')}`,
           border: `2px solid ${baseColor}`,
           color: baseColor,
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 700,
           fontFamily: 'monospace',
-          boxShadow: `0 0 24px ${baseColor}`,
-          animation: 'slamPopEnhanced 400ms cubic-bezier(0.2, 1.4, 0.5, 1) forwards',
+          boxShadow: `0 0 28px ${baseColor}99, inset 0 0 12px ${baseColor}33`,
+          animation: 'slamPopEnhanced 500ms cubic-bezier(0.2, 1.4, 0.5, 1) forwards',
           whiteSpace: 'nowrap',
         }}
       >
@@ -209,7 +220,7 @@ function SlamPopup({ event }: { event: SlamEvent }) {
 }
 
 /**
- * TargetBeatStamp: Gold stamp with 3D rotation
+ * Celebratory stamp when crossing the target: gold, 3D rotation entrance.
  */
 function TargetBeatStamp() {
   return (
@@ -226,23 +237,23 @@ function TargetBeatStamp() {
       <div
         style={{
           fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 48,
+          fontSize: 56,
           fontWeight: 900,
           color: '#f5c451',
-          letterSpacing: '0.2em',
-          textShadow: '0 0 30px #f5c451',
-          animation: 'targetBeatPop 500ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
+          letterSpacing: '0.15em',
+          textShadow: '0 0 40px #f5c451, 0 0 80px rgba(245,196,81,0.5)',
+          animation: 'targetBeatPop 600ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
           whiteSpace: 'nowrap',
         }}
       >
-        TARGET BEAT
+        ★ TARGET BEAT ★
       </div>
     </div>
   );
 }
 
 /**
- * BailStamp: Red stamp indicating failure
+ * Failure stamp when not reaching target: red, sustained hold, then fades.
  */
 function BailStamp() {
   return (
@@ -258,12 +269,12 @@ function BailStamp() {
       <div
         style={{
           fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 48,
+          fontSize: 52,
           fontWeight: 900,
           color: '#ff4d6d',
-          letterSpacing: '0.2em',
-          textShadow: '0 0 30px #ff4d6d',
-          animation: 'bailStampPop 2400ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
+          letterSpacing: '0.18em',
+          textShadow: '0 0 40px #ff4d6d, 0 0 80px rgba(255,77,109,0.4)',
+          animation: 'bailStampPop 2600ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
           whiteSpace: 'nowrap',
         }}
       >
@@ -274,7 +285,9 @@ function BailStamp() {
 }
 
 /**
- * BoomSequence: Final score reveal, hold, and star fly
+ * Final score reveal: pop → hold → fly with star cascade.
+ * Phases: pop (400ms) / hold (1400–1500ms) / fly (800ms).
+ * High-ratio booms get 16 stars + wider burst.
  */
 function BoomSequence({
   event,
@@ -285,44 +298,33 @@ function BoomSequence({
 }) {
   const [phase, setPhase] = useState<'pop' | 'hold' | 'fly'>('pop');
   const boomRef = useRef<HTMLDivElement>(null);
-  const HOLD_MS = event.gold ? 1500 : 1400;
+  const HOLD_MS = event.crossed ? 1500 : 1400;
   const FLY_MS = 800;
-  const STAR_COUNT = 12;
+  const STAR_COUNT = event.ratio > 2 ? 16 : 12;
 
   useEffect(() => {
-    // Pop phase: 400ms
-    const popTimer = setTimeout(() => {
-      setPhase('hold');
-    }, 400);
-
-    // Hold phase
-    const holdTimer = setTimeout(() => {
-      setPhase('fly');
-    }, 400 + HOLD_MS);
-
-    // Fly phase
-    const flyTimer = setTimeout(() => {
-      onComplete();
-    }, 400 + HOLD_MS + FLY_MS);
+    const popTimer = setTimeout(() => setPhase('hold'), 400);
+    const holdTimer = setTimeout(() => setPhase('fly'), 400 + HOLD_MS);
+    const flyTimer = setTimeout(() => onComplete(), 400 + HOLD_MS + FLY_MS);
 
     return () => {
       clearTimeout(popTimer);
       clearTimeout(holdTimer);
       clearTimeout(flyTimer);
     };
-  }, [event, onComplete]);
+  }, [event, onComplete, HOLD_MS, FLY_MS]);
 
-  const boomColor = event.gold ? '#f5c451' : '#fff';
-  const boomGlow = event.gold
-    ? '0 0 40px #f5c451, 0 0 80px rgba(245,196,81,0.5)'
-    : '0 0 40px #7be3ff, 0 0 80px rgba(123,227,255,0.5)';
-  const starColor = event.gold ? '#f5c451' : '#7be3ff';
+  const boomColor = event.crossed ? '#f5c451' : '#fff';
+  const boomGlow = event.crossed
+    ? '0 0 48px #f5c451, 0 0 96px rgba(245,196,81,0.6)'
+    : '0 0 48px #7be3ff, 0 0 96px rgba(123,227,255,0.5)';
+  const starColor = event.crossed ? '#f5c451' : '#7be3ff';
 
   const stars = Array.from({ length: STAR_COUNT }, (_, i) => ({
     id: i,
     angle: (i / STAR_COUNT) * Math.PI * 2,
-    delay: i * 30,
-    distance: 40 + Math.random() * 80,
+    delay: i * (event.ratio > 2 ? 25 : 35),
+    distance: 60 + Math.random() * (event.ratio > 2 ? 100 : 80),
   }));
 
   return (
@@ -337,31 +339,28 @@ function BoomSequence({
         zIndex: 9999,
       }}
     >
-      {/* Radiating burst (mega-boom effect) */}
-      {event.gold && (
+      {event.ratio > 1.5 && (
         <div
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            marginLeft: -200,
-            marginTop: -200,
-            width: 400,
-            height: 400,
+            marginLeft: -240,
+            marginTop: -240,
+            width: 480,
+            height: 480,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, #f5c45144 0%, transparent 100%)',
-            animation: 'radioBurst 800ms cubic-bezier(0.34, 1.06, 0.64, 1)',
+            background: `radial-gradient(circle, ${starColor}44 0%, transparent 100%)`,
+            animation: `radioBurst ${FLY_MS}ms cubic-bezier(0.34, 1.06, 0.64, 1)`,
             pointerEvents: 'none',
           }}
         />
       )}
 
-      {/* Boom number */}
       <div
         ref={boomRef}
-        className="vfx-boom"
         style={{
-          fontSize: 96,
+          fontSize: 120,
           fontWeight: 700,
           fontFamily: 'monospace',
           color: boomColor,
@@ -379,23 +378,22 @@ function BoomSequence({
         {event.total.toLocaleString()}
       </div>
 
-      {/* NEW BEST stamp */}
       {event.isNewBest && (
         <div
           style={{
             position: 'absolute',
-            top: 'calc(50% - 100px)',
+            top: 'calc(50% - 140px)',
             left: '50%',
             transform: 'translateX(-50%)',
             fontFamily: 'monospace',
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 900,
-            letterSpacing: '0.5em',
+            letterSpacing: '0.6em',
             color: '#f5c451',
-            textShadow: '0 0 14px #f5c451, 0 0 28px rgba(245,196,81,0.6)',
+            textShadow: '0 0 20px #f5c451, 0 0 40px rgba(245,196,81,0.7)',
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
-            animation: 'newBestGlow 1200ms ease-in-out infinite',
+            animation: 'newBestGlow 1400ms ease-in-out infinite',
             pointerEvents: 'none',
           }}
         >
@@ -403,30 +401,28 @@ function BoomSequence({
         </div>
       )}
 
-      {/* Stars (only in fly phase for performance) */}
       {phase === 'fly' &&
         stars.map((star) => (
           <div
             key={`star-${star.id}`}
-            className="vfx-star"
             style={{
               position: 'absolute',
               left: '50%',
               top: '50%',
-              marginLeft: -12,
-              marginTop: -12,
-              width: 24,
-              height: 24,
-              fontSize: 24,
-              lineHeight: '24px',
+              marginLeft: -14,
+              marginTop: -14,
+              width: 28,
+              height: 28,
+              fontSize: 28,
+              lineHeight: '28px',
               textAlign: 'center',
               color: starColor,
-              textShadow: `0 0 12px ${starColor}, 0 0 24px ${starColor}`,
+              textShadow: `0 0 16px ${starColor}, 0 0 32px ${starColor}`,
               animation: `starFlyEnhanced ${FLY_MS}ms cubic-bezier(0.34, 1.06, 0.64, 1) ${star.delay}ms forwards`,
-              ['--fly-x' as any]: `${Math.cos(star.angle) * star.distance * 3}px`,
-              ['--fly-y' as any]: `${Math.sin(star.angle) * star.distance * 3}px`,
+              ['--fly-x' as never]: `${Math.cos(star.angle) * star.distance * 4}px`,
+              ['--fly-y' as never]: `${Math.sin(star.angle) * star.distance * 4}px`,
               pointerEvents: 'none',
-            }}
+            } as React.CSSProperties}
           >
             ★
           </div>
