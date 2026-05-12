@@ -18,6 +18,7 @@ import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
 import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
+import { invalidateRects } from '../../render/three/sharedRenderer';
 import '../hud/ForgeVFX.css';
 
 const FORGE_COST = 5;
@@ -108,6 +109,23 @@ export function Forge() {
     const modIds = diceMods[selectedDie] ?? [];
     forgeVFX.updateConstellation(activeAffinitiesOnDie(modIds).length);
   }, [diceMods, selectedDie]);
+
+  // When the player switches dice, the previously-selected button shrinks
+  // (scale 1.05 → 0.94) and the newly-selected one grows. The shared
+  // dice renderer caches each view's bounding rect and only refreshes
+  // them on scroll/resize/visibilitychange — selection swaps aren't
+  // covered, so the canvas keeps drawing each cube at its old (stale)
+  // rect. That's what produced the off-centre cubes in the halo.
+  // Invalidating the cache here re-measures every view on the next
+  // frame so the cubes line up with their buttons again.
+  useEffect(() => {
+    invalidateRects();
+    // Re-invalidate after the selection transform animation finishes
+    // (280ms) — the cube would otherwise lock to the rect captured
+    // mid-animation.
+    const t = setTimeout(invalidateRects, 320);
+    return () => clearTimeout(t);
+  }, [selectedDie]);
 
   // VFX anchor: the stellar ritual + edition burst + affinity rings all
   // center on this ref's bounding rect rather than the viewport, so the
