@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupMod } from '../../core/mods';
@@ -101,6 +101,13 @@ export function Forge() {
   const selectedMods = allDiceMods[selectedDie] ?? [];
   const diceSpec = useStore(selectDiceSpec);
   const selectedShape = diceSpec[selectedDie]?.shape ?? 'd6';
+
+  // Drive the ambient constellation sigil glow off the active affinity
+  // count on the selected die — it brightens as the player builds links.
+  useEffect(() => {
+    const modIds = diceMods[selectedDie] ?? [];
+    forgeVFX.updateConstellation(activeAffinitiesOnDie(modIds).length);
+  }, [diceMods, selectedDie]);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
@@ -619,13 +626,14 @@ export function Forge() {
                           setHoveredModId(null);
                           const prevModIds = diceMods[selectedDie] ?? [];
                           const prevPairs = activeAffinitiesOnDie(prevModIds);
-                          forgeVFX.triggerAttach(r.id);
+                          forgeVFX.triggerAttach(r.id, r.rarity, edition ?? 'base');
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
-                          const newPairs = activeAffinitiesOnDie([...prevModIds, r.id]);
+                          const newModIds = [...prevModIds, r.id];
+                          const newPairs = activeAffinitiesOnDie(newModIds);
                           if (newPairs.length > prevPairs.length) {
                             const added = newPairs.find((p) => !prevPairs.some((pp) => pp.id === p.id));
-                            if (added) forgeVFX.triggerAffinityPulse(added.id);
+                            if (added) forgeVFX.triggerAffinityActivate(added.id, newModIds);
                           }
                         }}
                         onKeyDown={(e) => {
@@ -635,13 +643,14 @@ export function Forge() {
                             setHoveredModId(null);
                             const prevModIds = diceMods[selectedDie] ?? [];
                             const prevPairs = activeAffinitiesOnDie(prevModIds);
-                            forgeVFX.triggerAttach(r.id);
+                            forgeVFX.triggerAttach(r.id, r.rarity, edition ?? 'base');
                             dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                             sfxPlay('modAttach');
-                            const newPairs = activeAffinitiesOnDie([...prevModIds, r.id]);
+                            const newModIds = [...prevModIds, r.id];
+                            const newPairs = activeAffinitiesOnDie(newModIds);
                             if (newPairs.length > prevPairs.length) {
                               const added = newPairs.find((p) => !prevPairs.some((pp) => pp.id === p.id));
-                              if (added) forgeVFX.triggerAffinityPulse(added.id);
+                              if (added) forgeVFX.triggerAffinityActivate(added.id, newModIds);
                             }
                           }
                         }}
