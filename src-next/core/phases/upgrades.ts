@@ -259,27 +259,50 @@ const applyEncore: PhaseFn = (ctx: PipelineCtx) => {
   const lastIdx = scoringDice[lastPos]!;
   const face = faces[lastIdx]!;
   const mods = ctx.state.run.diceMods[lastIdx] ?? [];
+  // Read the POST-applyModScoring stack values so curStack-gated mods see
+  // the +1 already accrued from the primary fire (e.g. Dormant 0→1, then
+  // Encore takes it 1→2).
+  const slotStacks = ctx.state.run.diceModStacks?.[lastIdx] ?? [];
   const step = applyDieModStep(
     {
       face, dieIdx: lastIdx, pos: lastPos, totalScoring: scoringDice.length,
       scoringFaces: scoringDice.map((i) => faces[i]!),
       titheBudget: 0, // Encore never re-charges tithe.
+      slotStacks,
     },
     mods,
   );
-  if (step.dChips === 0 && step.dMult === 0 && step.dMultMul === 1) return ctx;
+  const noChipMultDelta = step.dChips === 0 && step.dMult === 0 && step.dMultMul === 1;
+  const noStackDelta = !step.stackDeltas || step.stackDeltas.every((d) => d === 0);
+  if (noChipMultDelta && noStackDelta) return ctx;
   let mult = ctx.mult + step.dMult;
   if (step.dMultMul !== 1) mult *= step.dMultMul;
+  let nextState = ctx.state;
+  if (!noStackDelta && ctx.state.run.diceModStacks) {
+    const nextStacks = ctx.state.run.diceModStacks.map((row) => row.slice());
+    const targetRow = nextStacks[lastIdx];
+    if (targetRow) {
+      for (let j = 0; j < step.stackDeltas!.length; j++) {
+        const d = step.stackDeltas![j] ?? 0;
+        if (d !== 0) targetRow[j] = (targetRow[j] ?? 0) + d;
+      }
+    }
+    nextState = { ...ctx.state, run: { ...ctx.state.run, diceModStacks: nextStacks } };
+  }
+  const events = noChipMultDelta
+    ? ctx.events
+    : [
+        ...ctx.events,
+        {
+          type: 'onUpgradeTriggered' as const,
+          payload: { id: 'encore', phase: Phase.UPGRADES, deltaChips: step.dChips, deltaMult: mult - ctx.mult },
+        },
+      ];
   return {
     ...ctx,
     chips: ctx.chips + step.dChips,
     mult,
-    events: [
-      ...ctx.events,
-      {
-        type: 'onUpgradeTriggered',
-        payload: { id: 'encore', phase: Phase.UPGRADES, deltaChips: step.dChips, deltaMult: mult - ctx.mult },
-      },
-    ],
+    events,
+    state: nextState,
   };
 };
