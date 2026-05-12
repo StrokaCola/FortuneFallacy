@@ -217,6 +217,62 @@
   }
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STELLAR RITUAL — orbital particles collapse into a white-hot core.
+   Intensity (driven by the installed mod's rarity) scales particle
+   count, orbit radius, core size, and shockwave reach. Single source
+   of truth for the spiral motion: --angle (start), --r-start (outer
+   radius), --dur, --delay. The particle itself is positioned at the
+   center; the rotation + translateX is what plants it on its orbit,
+   and the keyframe sweeps it inward.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+@keyframes stellarCollapse {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(var(--r-start)) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+    transform: rotate(calc(var(--angle) + 200deg)) translateX(20px) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(calc(var(--angle) + 260deg)) translateX(0px) scale(0.2);
+  }
+}
+
+@keyframes stellarCore {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  40% {
+    transform: translate(-50%, -50%) scale(var(--core-peak, 2.4));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes stellarShockwave {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.2);
+    border-width: 4px;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(var(--shock-peak, 3.5));
+    border-width: 1px;
+  }
+}
+
 /* Sparkle twinkle for legendary/special mods */
 @keyframes sparkle {
   0%, 100% {
