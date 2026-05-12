@@ -430,26 +430,22 @@ export function Forge() {
                 </div>
               );
             })()}
-            {/* Wrap the centerpiece die in a positioned div so it stacks
-                on top of the absolutely-positioned SVG chrome (sigil
-                ring, dashed orbit, affinity arcs). Per CSS painting
-                rules, positioned elements paint over in-flow static
-                ones with equal z-index, so without this wrapper the
-                constellation glyph and orbital nodes literally render
-                over the 3D die. zIndex 2 lifts it above all the panel
-                decorations without touching the preview pill (zIndex
-                auto) or the affinity badge (also auto). */}
-            <div style={{ position: 'relative', zIndex: 2 }}>
-              <DieView
-                face={selectedFace}
-                size={tight ? 112 : 140}
-                style="celestial"
-                shape={selectedShape}
-                faceValues={diceSpec[selectedDie]?.faces}
-                mods={previewMods}
-                levitate
-              />
-            </div>
+            {/* Centerpiece die. The wrapper that used to elevate it
+                above the panel's SVG chrome is gone now that the dice
+                canvas itself rides at z-index 15 over all React UI —
+                the wrapper was a block-level shim and its rect was
+                what the shared renderer was reading, throwing the
+                cube's scissor area off-centre from the actual
+                placeholder. */}
+            <DieView
+              face={selectedFace}
+              size={tight ? 112 : 140}
+              style="celestial"
+              shape={selectedShape}
+              faceValues={diceSpec[selectedDie]?.faces}
+              mods={previewMods}
+              levitate
+            />
             {/* Preview indicator — a tiny "preview" pill appears below
                 the die when a mod is being hover-previewed, so the
                 player understands the change is temporary. */}
@@ -595,14 +591,7 @@ export function Forge() {
                       animation: 'forge-die-pick-halo 3200ms ease-in-out infinite',
                     }} />
                   )}
-                  {/* Wrap the cube in a positioned div so it stacks on
-                      top of the absolutely-positioned halo (positioned
-                      elements would otherwise paint over in-flow static
-                      elements with the same z-index, sinking the die
-                      behind its own halo). */}
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
-                  </div>
+                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,
