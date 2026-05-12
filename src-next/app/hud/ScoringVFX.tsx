@@ -1,126 +1,662 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { triggerShake } from '../visual/screenShake';
 
 /**
- * ScoringVFX Refined — Orchestrated scoring theatre as narrative arc
+ * ScoringVFX — SCORING_VFX_HANDOFF.md handoff
  *
- * The scoring sequence tells a story:
- * 1. BUILDING PHASE: Slams establish multiplier tier, each one escalates
- * 2. CROSSROADS: Target beat or bail moment (turning point)
- * 3. CLIMAX: Boom number reveals, new best stamp, stars fly home
- * 4. RESOLUTION: Score counter catches stars, screen settles
+ * Procedural SVG particles (zero emoji), balatro-juicy timing, screen-level
+ * orchestration. Replaces the previous DOM-emoji slams/booms with custom
+ * SVG primitives (Sparkle4, Star5, Burst6, Shard, SlamBurst, Sunburst,
+ * BailCracks, PolyRing) and layered screen effects (godrays, vignette,
+ * time-dilation flash, chromatic aberration).
  *
- * Effects are state-driven: gold on successful cross, crimson on bail,
- * star count + burst radius scaled by finalTotal / target ratio.
+ * Public API (per handoff):
+ *   scoringVFX.fireSlam(label, color?, shake?)
+ *   scoringVFX.fireTargetBeat()
+ *   scoringVFX.fireBail()
+ *   scoringVFX.fireBoom(variant, total)
  */
 
-type ShakeIntensity = 'tiny' | 'mid' | 'big';
+type ShakeKind = 'sm' | 'md' | 'lg';
+type BoomVariant = 'normal' | 'gold' | 'mega';
 
 type SlamEvent = {
-  id: string;
+  kind: 'slam';
+  id: number;
   label: string;
-  multiplier: number;
-  gold: boolean;
-  tint?: string | null;
+  color: string;
+};
+
+type StampEvent = {
+  kind: 'target' | 'bail';
+  id: number;
 };
 
 type BoomEvent = {
-  id: string;
+  kind: 'boom';
+  id: number;
   total: number;
-  crossed: boolean;
-  isNewBest: boolean;
-  ratio: number;
+  variant: BoomVariant;
+  counterFx: number;
+  counterFy: number;
+  newBest: boolean;
+};
+
+type Effect = SlamEvent | StampEvent | BoomEvent;
+
+// Default particle intensity (the demo's tweak slider goes 1–5; production
+// uses the tuned mid-high value).
+const INTENSITY = 4;
+
+// Map handoff shake kinds onto the existing #stage-root triggerShake.
+function mapShake(kind: ShakeKind): 'tiny' | 'mid' | 'big' {
+  return kind === 'sm' ? 'tiny' : kind === 'md' ? 'mid' : 'big';
+}
+
+// ─── SVG PRIMITIVES ────────────────────────────────────────
+function Sparkle4({ size = 18, color = 'currentColor', glow = true }: { size?: number; color?: string; glow?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="-20 -20 40 40" style={{ overflow: 'visible' }}>
+      <path
+        d="M0,-18 C2,-6 6,-2 18,0 C6,2 2,6 0,18 C-2,6 -6,2 -18,0 C-6,-2 -2,-6 0,-18 Z"
+        fill={color}
+        style={glow ? { filter: `drop-shadow(0 0 6px ${color})` } : undefined}
+      />
+    </svg>
+  );
+}
+
+function Star5({ size = 22, color = 'currentColor', glow = true }: { size?: number; color?: string; glow?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="-20 -20 40 40" style={{ overflow: 'visible' }}>
+      <path
+        d="M0,-18 L5.5,-6 L18,-5 L8.5,3 L11,16 L0,9 L-11,16 L-8.5,3 L-18,-5 L-5.5,-6 Z"
+        fill={color}
+        style={glow ? { filter: `drop-shadow(0 0 6px ${color})` } : undefined}
+      />
+    </svg>
+  );
+}
+
+function Burst6({ size = 20, color = 'currentColor', glow = true }: { size?: number; color?: string; glow?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="-20 -20 40 40" style={{ overflow: 'visible' }}>
+      <path
+        d="M0,-18 L4,-4 L18,0 L4,4 L0,18 L-4,4 L-18,0 L-4,-4 Z"
+        fill={color}
+        style={glow ? { filter: `drop-shadow(0 0 6px ${color})` } : undefined}
+      />
+    </svg>
+  );
+}
+
+function Shard({ size = 24, color = 'currentColor', glow = true }: { size?: number; color?: string; glow?: boolean }) {
+  return (
+    <svg width={size} height={size * 0.32} viewBox="-30 -10 60 20" style={{ overflow: 'visible' }}>
+      <path
+        d="M-28,0 L-4,-7 L28,0 L-4,7 Z"
+        fill={color}
+        style={glow ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
+      />
+    </svg>
+  );
+}
+
+function SlamBurst({ size = 320, color = '#7be3ff', spokes = 16 }: { size?: number; color?: string; spokes?: number }) {
+  const rays = [];
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2;
+    const len = i % 2 === 0 ? 110 : 70;
+    rays.push(
+      <path
+        key={i}
+        d={`M0,0 L${Math.cos(a - 0.06) * 16},${Math.sin(a - 0.06) * 16} L${Math.cos(a) * len},${Math.sin(a) * len} L${Math.cos(a + 0.06) * 16},${Math.sin(a + 0.06) * 16} Z`}
+        fill={`url(#vfx-slam-grad-${color.replace('#', '')})`}
+      />,
+    );
+  }
+  const gid = `vfx-slam-grad-${color.replace('#', '')}`;
+  return (
+    <svg className="vfx-slam-burst-svg" width={size} height={size} viewBox="-120 -120 240 240" style={{ overflow: 'visible' }}>
+      <defs>
+        <radialGradient id={gid} cx="0" cy="0" r="0.5">
+          <stop offset="0%" stopColor={color} stopOpacity="0.95" />
+          <stop offset="60%" stopColor={color} stopOpacity="0.55" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <g style={{ filter: `drop-shadow(0 0 16px ${color})` }}>{rays}</g>
+      <circle r="14" fill={color} opacity="0.85" />
+    </svg>
+  );
+}
+
+function Sunburst({ size = 460, color = '#f5c451', spokes = 24, gradId = 'vfx-sun-grad' }: { size?: number; color?: string; spokes?: number; gradId?: string }) {
+  const rays = [];
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2;
+    const len = i % 2 === 0 ? 180 : 110;
+    const w = i % 2 === 0 ? 0.05 : 0.04;
+    rays.push(
+      <path
+        key={i}
+        d={`M0,0 L${Math.cos(a - w) * 22},${Math.sin(a - w) * 22} L${Math.cos(a) * len},${Math.sin(a) * len} L${Math.cos(a + w) * 22},${Math.sin(a + w) * 22} Z`}
+        fill={`url(#${gradId})`}
+      />,
+    );
+  }
+  return (
+    <svg className="vfx-stamp-sun" width={size} height={size} viewBox="-200 -200 400 400" style={{ overflow: 'visible' }}>
+      <defs>
+        <radialGradient id={gradId} cx="0" cy="0" r="0.5">
+          <stop offset="0%" stopColor="#fff5d0" stopOpacity="1" />
+          <stop offset="40%" stopColor={color} stopOpacity="0.85" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <g style={{ filter: `drop-shadow(0 0 24px ${color})` }}>{rays}</g>
+      <circle r="22" fill="#fff5d0" opacity="0.6" />
+    </svg>
+  );
+}
+
+function BailCracks({ size = 360, color = '#ff4d6d' }: { size?: number; color?: string }) {
+  const cracks = [];
+  const angles = [0, 28, 62, 95, 132, 168, 198, 232, 268, 300, 332];
+  angles.forEach((a, i) => {
+    const rad = (a * Math.PI) / 180;
+    const len = 100 + (i % 3) * 30;
+    const p1 = [Math.cos(rad) * 18, Math.sin(rad) * 18];
+    const p2 = [Math.cos(rad + 0.04) * (len * 0.4), Math.sin(rad + 0.04) * (len * 0.4)];
+    const p3 = [Math.cos(rad - 0.05) * (len * 0.7), Math.sin(rad - 0.05) * (len * 0.7)];
+    const p4 = [Math.cos(rad) * len, Math.sin(rad) * len];
+    cracks.push(
+      <path
+        key={i}
+        d={`M${p1[0]},${p1[1]} L${p2[0]},${p2[1]} L${p3[0]},${p3[1]} L${p4[0]},${p4[1]}`}
+        stroke={color}
+        strokeWidth="1.6"
+        fill="none"
+        style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+      />,
+    );
+  });
+  return (
+    <svg className="vfx-bail-cracks" width={size} height={size} viewBox="-180 -180 360 360" style={{ overflow: 'visible' }}>
+      <circle r="14" fill="none" stroke={color} strokeWidth="1.5" opacity="0.7" />
+      {cracks}
+    </svg>
+  );
+}
+
+function PolyRing({ sides = 12, radius = 110, color = '#b18bff' }: { sides?: number; radius?: number; color?: string }) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+    pts.push(`${Math.cos(a) * radius},${Math.sin(a) * radius}`);
+  }
+  return (
+    <svg
+      className="vfx-boom-poly"
+      width={radius * 2.6}
+      height={radius * 2.6}
+      viewBox={`${-radius * 1.3} ${-radius * 1.3} ${radius * 2.6} ${radius * 2.6}`}
+      style={{ overflow: 'visible' }}
+    >
+      <polygon
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        style={{ filter: `drop-shadow(0 0 8px ${color})` }}
+      />
+      <polygon
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="0.5"
+        opacity="0.5"
+        transform="scale(0.7)"
+      />
+    </svg>
+  );
+}
+
+// ─── PARTICLE SYSTEMS ─────────────────────────────────────
+function SlamSparks({ count = 10, color, intensity = INTENSITY }: { count?: number; color: string; intensity?: number }) {
+  const sparks = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => {
+        const angle = (360 / count) * i + (Math.random() - 0.5) * 12;
+        const dist = (80 + Math.random() * 50) * (0.6 + intensity * 0.12);
+        const size = 12 + Math.random() * 6;
+        const useShard = i % 2 === 0;
+        return { angle, dist, size, useShard, delay: Math.random() * 60 };
+      }),
+    [count, intensity],
+  );
+  return (
+    <div className="vfx-slam-sparks" style={{ color }}>
+      {sparks.map((s, i) => (
+        <div
+          key={i}
+          className="vfx-slam-spark"
+          style={{
+            ['--angle' as never]: `${s.angle}deg`,
+            ['--dist' as never]: `${s.dist}px`,
+            animationDelay: `${s.delay}ms`,
+          } as React.CSSProperties}
+        >
+          {s.useShard
+            ? <Shard size={s.size * 1.6} color={color} />
+            : <Sparkle4 size={s.size} color={color} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StampShards({ count = 16, color = '#f5c451', intensity = INTENSITY }: { count?: number; color?: string; intensity?: number }) {
+  const shards = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => {
+        const angle = (360 / count) * i + (Math.random() - 0.5) * 10;
+        const dist = (120 + Math.random() * 80) * (0.6 + intensity * 0.12);
+        const size = 14 + Math.random() * 10;
+        const spinStart = (Math.random() - 0.5) * 80;
+        const spinEnd = spinStart + (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 360);
+        const variant = i % 3;
+        return { angle, dist, size, spinStart, spinEnd, variant };
+      }),
+    [count, intensity],
+  );
+  return (
+    <div className="vfx-stamp-shards" style={{ color }}>
+      {shards.map((s, i) => (
+        <div
+          key={i}
+          className="vfx-stamp-shard"
+          style={{
+            ['--angle' as never]: `${s.angle}deg`,
+            ['--dist' as never]: `${s.dist}px`,
+            ['--spin-start' as never]: `${s.spinStart}deg`,
+            ['--spin-end' as never]: `${s.spinEnd}deg`,
+          } as React.CSSProperties}
+        >
+          {s.variant === 0 && <Sparkle4 size={s.size} color={color} />}
+          {s.variant === 1 && <Star5 size={s.size + 2} color={color} />}
+          {s.variant === 2 && <Shard size={s.size * 1.4} color={color} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BailAsh({ count = 12 }: { count?: number }) {
+  const dots = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        x: (Math.random() - 0.5) * 240,
+        delay: i * 60 + Math.random() * 80,
+      })),
+    [count],
+  );
+  return (
+    <div className="vfx-bail-ash">
+      {dots.map((d, i) => (
+        <div
+          key={i}
+          className="vfx-bail-ash-dot"
+          style={{ ['--x' as never]: `${d.x}px`, animationDelay: `${d.delay}ms` } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BoomSparks({ count = 24, intensity = INTENSITY }: { count?: number; intensity?: number }) {
+  const sparks = useMemo(() => {
+    const out = [] as Array<{ angle: number; dist: number; size: number; color: string; variant: number; spin: number; dur: number; delay: number }>;
+    const colors = ['#ffd97a', '#f5c451', '#7be3ff', '#ff52c8', '#b18bff'];
+    for (let i = 0; i < count; i++) {
+      const angle = (360 / count) * i + (Math.random() - 0.5) * 18;
+      const dist = (140 + Math.random() * 180) * (0.6 + intensity * 0.12);
+      const size = 14 + Math.random() * 12;
+      const color = colors[i % colors.length];
+      const variant = i % 3;
+      const spin = (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 540);
+      const dur = 900 + Math.random() * 400;
+      const delay = i * 22 + Math.random() * 30;
+      out.push({ angle, dist, size, color, variant, spin, dur, delay });
+    }
+    return out;
+  }, [count, intensity]);
+  return (
+    <div className="vfx-boom-sparks">
+      {sparks.map((s, i) => (
+        <div
+          key={i}
+          className="vfx-boom-spark"
+          style={{
+            ['--angle' as never]: `${s.angle}deg`,
+            ['--dist' as never]: `${s.dist}px`,
+            ['--spin' as never]: `${s.spin}deg`,
+            ['--dur' as never]: `${s.dur}ms`,
+            ['--delay' as never]: `${s.delay}ms`,
+            color: s.color,
+          } as React.CSSProperties}
+        >
+          {s.variant === 0 && <Sparkle4 size={s.size} color={s.color} />}
+          {s.variant === 1 && <Star5 size={s.size + 2} color={s.color} />}
+          {s.variant === 2 && <Burst6 size={s.size} color={s.color} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConfettiRain({ count = 28 }: { count?: number }) {
+  const pieces = useMemo(() => {
+    const colors = ['#ffd97a', '#f5c451', '#b18bff', '#7be3ff'];
+    return Array.from({ length: count }, (_, i) => ({
+      left: Math.random() * 100,
+      delay: Math.random() * 600,
+      dur: 1800 + Math.random() * 900,
+      drift: (Math.random() - 0.5) * 200,
+      rot: (Math.random() > 0.5 ? 1 : -1) * (540 + Math.random() * 720),
+      color: colors[i % colors.length],
+      size: 10 + Math.random() * 8,
+      variant: i % 3,
+    }));
+  }, [count]);
+  return (
+    <div className="vfx-boom-confetti">
+      {pieces.map((p, i) => (
+        <div
+          key={i}
+          className="vfx-confetti-piece"
+          style={{
+            left: `${p.left}%`,
+            ['--delay' as never]: `${p.delay}ms`,
+            ['--dur' as never]: `${p.dur}ms`,
+            ['--drift' as never]: `${p.drift}px`,
+            ['--rot' as never]: `${p.rot}deg`,
+            animationDelay: `${p.delay}ms`,
+            animationDuration: `${p.dur}ms`,
+          } as React.CSSProperties}
+        >
+          {p.variant === 0 && <Sparkle4 size={p.size} color={p.color} />}
+          {p.variant === 1 && <Shard size={p.size * 1.5} color={p.color} />}
+          {p.variant === 2 && <Burst6 size={p.size} color={p.color} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StarTrails({ count = 10, targetX, targetY }: { count?: number; targetX: number; targetY: number }) {
+  const stars = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        delay: i * 36,
+        fx: targetX + (Math.random() - 0.5) * 24,
+        fy: targetY + (Math.random() - 0.5) * 24,
+        size: 16 + Math.random() * 8,
+      })),
+    [count, targetX, targetY],
+  );
+  return (
+    <div className="vfx-star-trails">
+      {stars.map((s, i) => (
+        <div
+          key={i}
+          className="vfx-star-trail"
+          style={{
+            ['--fx' as never]: `${s.fx}px`,
+            ['--fy' as never]: `${s.fy}px`,
+            ['--delay' as never]: `${s.delay}ms`,
+            animationDelay: `${s.delay}ms`,
+          } as React.CSSProperties}
+        >
+          <Star5 size={s.size} color="#ffd97a" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── EFFECT COMPONENTS ───────────────────────────────────
+function MultSlam({ label, color }: { label: string; color: string }) {
+  const tintClass = color === '#f5c451' ? 'gold' : color === '#ff52c8' ? 'magenta' : 'cyan';
+  return (
+    <div className="vfx-slam-root">
+      <SlamBurst color={color} spokes={Math.round(12 + INTENSITY * 2)} />
+      <div className={`vfx-slam-pill ${tintClass}`}>{label}</div>
+      <SlamSparks count={Math.round(8 + INTENSITY * 2)} color={color} />
+    </div>
+  );
+}
+
+function TargetBeatStamp() {
+  return (
+    <div className="vfx-stamp-root">
+      <Sunburst color="#f5c451" spokes={Math.round(20 + INTENSITY * 2)} />
+      <div className="vfx-stamp-text">TARGET BEAT</div>
+      <StampShards count={Math.round(14 + INTENSITY * 3)} />
+    </div>
+  );
+}
+
+function BailStampInner() {
+  return (
+    <div className="vfx-bail-root">
+      <BailCracks color="#ff4d6d" />
+      <div className="vfx-bail-text">NOT ENOUGH</div>
+      <BailAsh count={10 + INTENSITY * 2} />
+    </div>
+  );
+}
+
+function BoomNumber({
+  total,
+  variant,
+  counterFx,
+  counterFy,
+  newBest,
+}: {
+  total: number;
+  variant: BoomVariant;
+  counterFx: number;
+  counterFy: number;
+  newBest: boolean;
+}) {
+  const [phase, setPhase] = useState<'pop' | 'fly'>('pop');
+
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setPhase('fly'), 1700);
+    return () => {
+      window.clearTimeout(t1);
+    };
+  }, []);
+
+  const ringColor = variant === 'normal' ? '#7be3ff' : '#f5c451';
+  const polyColor = variant === 'mega' ? '#ff52c8' : '#b18bff';
+
+  return (
+    <div className="vfx-boom-root">
+      <div className="vfx-boom-rings">
+        <div
+          className="vfx-boom-ring vfx-boom-ring-1"
+          style={{
+            borderColor: ringColor,
+            boxShadow: `0 0 30px ${ringColor}99, inset 0 0 24px ${ringColor}55`,
+          }}
+        />
+        <div className="vfx-boom-ring vfx-boom-ring-2" style={{ borderColor: polyColor }} />
+        <div className="vfx-boom-ring vfx-boom-ring-3" style={{ borderColor: '#7be3ff' }} />
+      </div>
+
+      <PolyRing sides={variant === 'mega' ? 16 : 12} radius={130} color={polyColor} />
+
+      {phase === 'pop' && (
+        <BoomSparks count={variant === 'mega' ? 36 : variant === 'gold' ? 28 : 18} />
+      )}
+
+      <div
+        className={`vfx-boom-number ${variant} ${phase}`}
+        style={
+          phase === 'fly'
+            ? ({ ['--fx' as never]: `${counterFx}px`, ['--fy' as never]: `${counterFy}px` } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {total.toLocaleString()}
+      </div>
+
+      {(variant === 'gold' || variant === 'mega') && (
+        <ConfettiRain count={variant === 'mega' ? 36 : 24} />
+      )}
+
+      {phase === 'fly' && <StarTrails count={variant === 'mega' ? 14 : 10} targetX={counterFx} targetY={counterFy} />}
+
+      {newBest && phase === 'pop' && (
+        <div className="vfx-newbest">★ NEW BEST ★</div>
+      )}
+    </div>
+  );
+}
+
+// ─── PUBLIC API ───────────────────────────────────────────
+type Callbacks = {
+  slam: ((label: string, color: string, shake: ShakeKind) => void) | null;
+  targetBeat: (() => void) | null;
+  bail: (() => void) | null;
+  boom: ((variant: BoomVariant, total: number, newBest: boolean) => void) | null;
 };
 
 export const scoringVFX = {
   callbacks: {
-    slam: null as ((label: string, multiplier: number, gold: boolean, tint?: string | null) => void) | null,
-    targetBeat: null as (() => void) | null,
-    bail: null as (() => void) | null,
-    boom: null as ((total: number, crossed: boolean, isNewBest: boolean, ratio: number) => void) | null,
-    shakeScreen: null as ((intensity: ShakeIntensity) => void) | null,
-    chromatic: null as ((duration: number) => void) | null,
-    crossTargetCascade: null as (() => void) | null,
+    slam: null,
+    targetBeat: null,
+    bail: null,
+    boom: null,
+  } as Callbacks,
+
+  fireSlam(label: string, color: string = '#7be3ff', shake: ShakeKind = 'sm') {
+    if (this.callbacks.slam) this.callbacks.slam(label, color, shake);
   },
 
-  triggerSlam(label: string, multiplier: number, gold: boolean = false, tint: string | null = null) {
-    if (this.callbacks.slam) this.callbacks.slam(label, multiplier, gold, tint);
-  },
-
-  triggerTargetBeat() {
+  fireTargetBeat() {
     if (this.callbacks.targetBeat) this.callbacks.targetBeat();
   },
 
-  triggerBail() {
+  fireBail() {
     if (this.callbacks.bail) this.callbacks.bail();
   },
 
-  // Boom is the climax moment. ratio = finalTotal / targetScore (affects intensity).
-  triggerBoom(total: number, crossed: boolean = false, isNewBest: boolean = false, ratio: number = 1) {
-    if (this.callbacks.boom) this.callbacks.boom(total, crossed, isNewBest, ratio);
-  },
-
-  shakeScreen(intensity: ShakeIntensity = 'mid') {
-    if (this.callbacks.shakeScreen) this.callbacks.shakeScreen(intensity);
-  },
-
-  chromatic(duration: number = 480) {
-    if (this.callbacks.chromatic) this.callbacks.chromatic(duration);
-  },
-
-  // Golden screen flash when score crosses the round target.
-  triggerCrossTargetCascade() {
-    if (this.callbacks.crossTargetCascade) this.callbacks.crossTargetCascade();
+  fireBoom(variant: BoomVariant, total: number, newBest: boolean = false) {
+    if (this.callbacks.boom) this.callbacks.boom(variant, total, newBest);
   },
 };
 
+// ─── STAGE ─────────────────────────────────────────────────
+function getCounterDelta(): { fx: number; fy: number } {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return { fx: 0, fy: 0 };
+  }
+  const counter = document.querySelector<HTMLElement>('[data-score-counter]');
+  if (!counter) return { fx: 0, fy: 0 };
+  const rect = counter.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  return { fx: cx - window.innerWidth / 2, fy: cy - window.innerHeight / 2 };
+}
+
+function isReducedMotion(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('reduce-motion');
+}
+
+function fireScreenClass(name: 'vfx-godrays-fire' | 'vfx-flash-fire' | 'vfx-timedilate-fire' | 'vfx-vignette-active' | 'vfx-ca-fire', durationMs: number) {
+  if (typeof document === 'undefined') return;
+  const layer = document.getElementById('vfx-scoring-layer');
+  if (!layer) return;
+  layer.classList.remove(name);
+  // Force reflow so the animation restarts cleanly on back-to-back triggers.
+  void layer.offsetWidth;
+  layer.classList.add(name);
+  window.setTimeout(() => layer.classList.remove(name), durationMs);
+}
+
 export function ScoringVFX() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [slams, setSlams] = useState<SlamEvent[]>([]);
-  const [targetBeat, setTargetBeat] = useState(false);
-  const [bail, setBail] = useState(false);
-  const [boom, setBoom] = useState<BoomEvent | null>(null);
-  const [shakeClass, setShakeClass] = useState('');
-  const [chromaticActive, setChromaticActive] = useState(false);
-  const [crossTargetFlash, setCrossTargetFlash] = useState(false);
+  const [effects, setEffects] = useState<Effect[]>([]);
+  const nextId = useRef(0);
+
+  const removeEffect = useCallback((id: number) => {
+    setEffects((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   useEffect(() => {
-    scoringVFX.callbacks.slam = (label, multiplier, gold, tint) => {
-      const id = `slam-${Date.now()}-${Math.random()}`;
-      const event: SlamEvent = { id, label, multiplier, gold, tint };
-      setSlams((prev) => [...prev, event]);
-      setTimeout(() => {
-        setSlams((prev) => prev.filter((s) => s.id !== id));
-      }, 800);
+    const reduced = isReducedMotion();
+
+    scoringVFX.callbacks.slam = (label, color, shake) => {
+      const id = ++nextId.current;
+      const event: SlamEvent = { kind: 'slam', id, label, color };
+      setEffects((prev) => [...prev, event]);
+      window.setTimeout(() => removeEffect(id), 1000);
+      if (!reduced) {
+        triggerShake(mapShake(shake));
+        fireScreenClass('vfx-ca-fire', 360);
+      }
     };
 
     scoringVFX.callbacks.targetBeat = () => {
-      setTargetBeat(true);
-      setTimeout(() => setTargetBeat(false), 800);
+      const id = ++nextId.current;
+      const event: StampEvent = { kind: 'target', id };
+      setEffects((prev) => [...prev, event]);
+      window.setTimeout(() => removeEffect(id), 1500);
+      if (!reduced) {
+        triggerShake('mid');
+        fireScreenClass('vfx-godrays-fire', 1800);
+        fireScreenClass('vfx-vignette-active', 1600);
+        fireScreenClass('vfx-timedilate-fire', 260);
+        fireScreenClass('vfx-flash-fire', 220);
+      }
     };
 
     scoringVFX.callbacks.bail = () => {
-      setBail(true);
-      setTimeout(() => setBail(false), 2600);
+      const id = ++nextId.current;
+      const event: StampEvent = { kind: 'bail', id };
+      setEffects((prev) => [...prev, event]);
+      window.setTimeout(() => removeEffect(id), 1900);
+      if (!reduced) {
+        triggerShake('mid');
+        fireScreenClass('vfx-vignette-active', 2000);
+      }
     };
 
-    scoringVFX.callbacks.boom = (total, crossed, isNewBest, ratio) => {
-      setBoom({ id: `boom-${Date.now()}`, total, crossed, isNewBest, ratio });
-    };
-
-    scoringVFX.callbacks.shakeScreen = (intensity) => {
-      const durationMs = intensity === 'tiny' ? 150 : intensity === 'mid' ? 320 : 520;
-      setShakeClass(`vfx-shake-${intensity}`);
-      setTimeout(() => setShakeClass(''), durationMs);
-    };
-
-    scoringVFX.callbacks.chromatic = (duration) => {
-      setChromaticActive(true);
-      setTimeout(() => setChromaticActive(false), duration);
-    };
-
-    scoringVFX.callbacks.crossTargetCascade = () => {
-      setCrossTargetFlash(true);
-      setTimeout(() => setCrossTargetFlash(false), 600);
+    scoringVFX.callbacks.boom = (variant, total, newBest) => {
+      const id = ++nextId.current;
+      const { fx, fy } = getCounterDelta();
+      const event: BoomEvent = { kind: 'boom', id, total, variant, counterFx: fx, counterFy: fy, newBest };
+      setEffects((prev) => [...prev, event]);
+      // BoomNumber lives ~2500ms (pop 1700 + fly 800); stamp the New Best
+      // a touch longer so it can hold past the number leaving.
+      window.setTimeout(() => removeEffect(id), 2700);
+      if (reduced) return;
+      const shake: ShakeKind = variant === 'mega' ? 'lg' : variant === 'gold' ? 'md' : 'sm';
+      triggerShake(mapShake(shake));
+      if (variant !== 'normal') {
+        fireScreenClass('vfx-godrays-fire', 1800);
+        fireScreenClass('vfx-vignette-active', 2400);
+      }
+      if (variant === 'mega') {
+        fireScreenClass('vfx-timedilate-fire', 260);
+        fireScreenClass('vfx-flash-fire', 220);
+      }
+      if (variant === 'gold' || variant === 'mega') {
+        fireScreenClass('vfx-ca-fire', 480);
+      }
     };
 
     return () => {
@@ -128,15 +664,12 @@ export function ScoringVFX() {
       scoringVFX.callbacks.targetBeat = null;
       scoringVFX.callbacks.bail = null;
       scoringVFX.callbacks.boom = null;
-      scoringVFX.callbacks.shakeScreen = null;
-      scoringVFX.callbacks.chromatic = null;
-      scoringVFX.callbacks.crossTargetCascade = null;
     };
-  }, []);
+  }, [removeEffect]);
 
   return (
     <div
-      ref={containerRef}
+      id="vfx-scoring-layer"
       style={{
         position: 'fixed',
         inset: 0,
@@ -145,288 +678,35 @@ export function ScoringVFX() {
         overflow: 'hidden',
       }}
     >
-      {/* Screen shake + chromatic layer */}
-      <div
-        className={shakeClass}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          animation: chromaticActive ? 'screenChromatic 480ms ease-out forwards' : undefined,
-        }}
-      />
+      {/* Screen-level overlays (godrays/vignette/flash/time-dilate) — toggled via classes */}
+      <div className="vfx-vignette" />
+      <div className="vfx-godrays" />
+      <div className="vfx-timedilate" />
+      <div className="vfx-flash" />
 
-      {/* Cross-target flash (golden screen glow) */}
-      {crossTargetFlash && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'radial-gradient(ellipse at center, rgba(245,196,81,0.4) 0%, rgba(245,196,81,0.1) 50%, transparent 100%)',
-            animation: 'crossTargetFlash 600ms ease-out forwards',
-            pointerEvents: 'none',
-          }}
-        />
-      )}
-
-      {slams.map((slam) => (
-        <SlamPopup key={slam.id} event={slam} />
-      ))}
-
-      {targetBeat && <TargetBeatStamp />}
-      {bail && <BailStamp />}
-      {boom && <BoomSequence event={boom} onComplete={() => setBoom(null)} />}
-    </div>
-  );
-}
-
-/**
- * Multiplier badge with contextual coloring:
- * gold for post-target, orange-red for default, magenta for special tint.
- */
-function SlamPopup({ event }: { event: SlamEvent }) {
-  const isMagenta = event.tint === 'magenta';
-  const baseColor = isMagenta ? '#cc88ff' : event.gold ? '#f5c451' : '#ff7847';
-  const bgOpacity = event.gold ? 0.25 : 0.18;
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-      }}
-    >
-      <div
-        style={{
-          padding: '10px 22px',
-          borderRadius: 10,
-          background: `${baseColor}${Math.round(bgOpacity * 255).toString(16).padStart(2, '0')}`,
-          border: `2px solid ${baseColor}`,
-          color: baseColor,
-          fontSize: 32,
-          fontWeight: 700,
-          fontFamily: 'monospace',
-          boxShadow: `0 0 28px ${baseColor}99, inset 0 0 12px ${baseColor}33`,
-          animation: 'slamPopEnhanced 500ms cubic-bezier(0.2, 1.4, 0.5, 1) forwards',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        ×{event.multiplier}
+      {/* Effects layer (positioned at viewport center). The chromatic
+          aberration filter is applied on this wrapper so all child SVG
+          + DOM particles inherit the channel shift. */}
+      <div className="vfx-effects-layer">
+        {effects.map((eff) => {
+          if (eff.kind === 'slam') return <MultSlam key={eff.id} label={eff.label} color={eff.color} />;
+          if (eff.kind === 'target') return <TargetBeatStamp key={eff.id} />;
+          if (eff.kind === 'bail') return <BailStampInner key={eff.id} />;
+          if (eff.kind === 'boom') {
+            return (
+              <BoomNumber
+                key={eff.id}
+                total={eff.total}
+                variant={eff.variant}
+                counterFx={eff.counterFx}
+                counterFy={eff.counterFy}
+                newBest={eff.newBest}
+              />
+            );
+          }
+          return null;
+        })}
       </div>
-    </div>
-  );
-}
-
-/**
- * Celebratory stamp when crossing the target: gold, 3D rotation entrance.
- */
-function TargetBeatStamp() {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
-        perspective: '1000px',
-        pointerEvents: 'none',
-      }}
-    >
-      <div
-        style={{
-          fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 56,
-          fontWeight: 900,
-          color: '#f5c451',
-          letterSpacing: '0.15em',
-          textShadow: '0 0 40px #f5c451, 0 0 80px rgba(245,196,81,0.5)',
-          animation: 'targetBeatPop 600ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        ★ TARGET BEAT ★
-      </div>
-    </div>
-  );
-}
-
-/**
- * Failure stamp when not reaching target: red, sustained hold, then fades.
- */
-function BailStamp() {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-      }}
-    >
-      <div
-        style={{
-          fontFamily: '"Cinzel Decorative", serif',
-          fontSize: 52,
-          fontWeight: 900,
-          color: '#ff4d6d',
-          letterSpacing: '0.18em',
-          textShadow: '0 0 40px #ff4d6d, 0 0 80px rgba(255,77,109,0.4)',
-          animation: 'bailStampPop 2600ms cubic-bezier(0.2, 1.6, 0.5, 1) forwards',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        NOT ENOUGH
-      </div>
-    </div>
-  );
-}
-
-/**
- * Final score reveal: pop → hold → fly with star cascade.
- * Phases: pop (400ms) / hold (1400–1500ms) / fly (800ms).
- * High-ratio booms get 16 stars + wider burst.
- */
-function BoomSequence({
-  event,
-  onComplete,
-}: {
-  event: BoomEvent;
-  onComplete: () => void;
-}) {
-  const [phase, setPhase] = useState<'pop' | 'hold' | 'fly'>('pop');
-  const boomRef = useRef<HTMLDivElement>(null);
-  const HOLD_MS = event.crossed ? 1500 : 1400;
-  const FLY_MS = 800;
-  const STAR_COUNT = event.ratio > 2 ? 16 : 12;
-
-  useEffect(() => {
-    const popTimer = setTimeout(() => setPhase('hold'), 400);
-    const holdTimer = setTimeout(() => setPhase('fly'), 400 + HOLD_MS);
-    const flyTimer = setTimeout(() => onComplete(), 400 + HOLD_MS + FLY_MS);
-
-    return () => {
-      clearTimeout(popTimer);
-      clearTimeout(holdTimer);
-      clearTimeout(flyTimer);
-    };
-  }, [event, onComplete, HOLD_MS, FLY_MS]);
-
-  const boomColor = event.crossed ? '#f5c451' : '#fff';
-  const boomGlow = event.crossed
-    ? '0 0 48px #f5c451, 0 0 96px rgba(245,196,81,0.6)'
-    : '0 0 48px #7be3ff, 0 0 96px rgba(123,227,255,0.5)';
-  const starColor = event.crossed ? '#f5c451' : '#7be3ff';
-
-  const stars = Array.from({ length: STAR_COUNT }, (_, i) => ({
-    id: i,
-    angle: (i / STAR_COUNT) * Math.PI * 2,
-    delay: i * (event.ratio > 2 ? 25 : 35),
-    distance: 60 + Math.random() * (event.ratio > 2 ? 100 : 80),
-  }));
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: 'none',
-        zIndex: 9999,
-      }}
-    >
-      {event.ratio > 1.5 && (
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -240,
-            marginTop: -240,
-            width: 480,
-            height: 480,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${starColor}44 0%, transparent 100%)`,
-            animation: `radioBurst ${FLY_MS}ms cubic-bezier(0.34, 1.06, 0.64, 1)`,
-            pointerEvents: 'none',
-          }}
-        />
-      )}
-
-      <div
-        ref={boomRef}
-        style={{
-          fontSize: 120,
-          fontWeight: 700,
-          fontFamily: 'monospace',
-          color: boomColor,
-          textShadow: boomGlow,
-          animation:
-            phase === 'pop'
-              ? 'boomNumberPop 400ms cubic-bezier(0.2, 1.4, 0.5, 1) forwards'
-              : phase === 'hold'
-                ? 'boomNumberHold 1500ms ease-in-out infinite'
-                : `boomNumberFly ${FLY_MS}ms ease-in forwards`,
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        {event.total.toLocaleString()}
-      </div>
-
-      {event.isNewBest && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(50% - 140px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontFamily: 'monospace',
-            fontSize: 13,
-            fontWeight: 900,
-            letterSpacing: '0.6em',
-            color: '#f5c451',
-            textShadow: '0 0 20px #f5c451, 0 0 40px rgba(245,196,81,0.7)',
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-            animation: 'newBestGlow 1400ms ease-in-out infinite',
-            pointerEvents: 'none',
-          }}
-        >
-          ★ NEW BEST ★
-        </div>
-      )}
-
-      {phase === 'fly' &&
-        stars.map((star) => (
-          <div
-            key={`star-${star.id}`}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              marginLeft: -14,
-              marginTop: -14,
-              width: 28,
-              height: 28,
-              fontSize: 28,
-              lineHeight: '28px',
-              textAlign: 'center',
-              color: starColor,
-              textShadow: `0 0 16px ${starColor}, 0 0 32px ${starColor}`,
-              animation: `starFlyEnhanced ${FLY_MS}ms cubic-bezier(0.34, 1.06, 0.64, 1) ${star.delay}ms forwards`,
-              ['--fly-x' as never]: `${Math.cos(star.angle) * star.distance * 4}px`,
-              ['--fly-y' as never]: `${Math.sin(star.angle) * star.distance * 4}px`,
-              pointerEvents: 'none',
-            } as React.CSSProperties}
-          >
-            ★
-          </div>
-        ))}
     </div>
   );
 }
