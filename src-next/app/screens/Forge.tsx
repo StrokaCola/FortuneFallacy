@@ -18,6 +18,7 @@ import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
 import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
+import { invalidateRects } from '../../render/three/sharedRenderer';
 import '../hud/ForgeVFX.css';
 
 const FORGE_COST = 5;
@@ -108,6 +109,23 @@ export function Forge() {
     const modIds = diceMods[selectedDie] ?? [];
     forgeVFX.updateConstellation(activeAffinitiesOnDie(modIds).length);
   }, [diceMods, selectedDie]);
+
+  // When the player switches dice, the previously-selected button shrinks
+  // (scale 1.05 → 0.94) and the newly-selected one grows. The shared
+  // dice renderer caches each view's bounding rect and only refreshes
+  // them on scroll/resize/visibilitychange — selection swaps aren't
+  // covered, so the canvas keeps drawing each cube at its old (stale)
+  // rect. That's what produced the off-centre cubes in the halo.
+  // Invalidating the cache here re-measures every view on the next
+  // frame so the cubes line up with their buttons again.
+  useEffect(() => {
+    invalidateRects();
+    // Re-invalidate after the selection transform animation finishes
+    // (280ms) — the cube would otherwise lock to the rect captured
+    // mid-animation.
+    const t = setTimeout(invalidateRects, 320);
+    return () => clearTimeout(t);
+  }, [selectedDie]);
 
   // VFX anchor: the stellar ritual + edition burst + affinity rings all
   // center on this ref's bounding rect rather than the viewport, so the
@@ -412,26 +430,22 @@ export function Forge() {
                 </div>
               );
             })()}
-            {/* Wrap the centerpiece die in a positioned div so it stacks
-                on top of the absolutely-positioned SVG chrome (sigil
-                ring, dashed orbit, affinity arcs). Per CSS painting
-                rules, positioned elements paint over in-flow static
-                ones with equal z-index, so without this wrapper the
-                constellation glyph and orbital nodes literally render
-                over the 3D die. zIndex 2 lifts it above all the panel
-                decorations without touching the preview pill (zIndex
-                auto) or the affinity badge (also auto). */}
-            <div style={{ position: 'relative', zIndex: 2 }}>
-              <DieView
-                face={selectedFace}
-                size={tight ? 112 : 140}
-                style="celestial"
-                shape={selectedShape}
-                faceValues={diceSpec[selectedDie]?.faces}
-                mods={previewMods}
-                levitate
-              />
-            </div>
+            {/* Centerpiece die. The wrapper that used to elevate it
+                above the panel's SVG chrome is gone now that the dice
+                canvas itself rides at z-index 15 over all React UI —
+                the wrapper was a block-level shim and its rect was
+                what the shared renderer was reading, throwing the
+                cube's scissor area off-centre from the actual
+                placeholder. */}
+            <DieView
+              face={selectedFace}
+              size={tight ? 112 : 140}
+              style="celestial"
+              shape={selectedShape}
+              faceValues={diceSpec[selectedDie]?.faces}
+              mods={previewMods}
+              levitate
+            />
             {/* Preview indicator — a tiny "preview" pill appears below
                 the die when a mod is being hover-previewed, so the
                 player understands the change is temporary. */}
@@ -577,14 +591,7 @@ export function Forge() {
                       animation: 'forge-die-pick-halo 3200ms ease-in-out infinite',
                     }} />
                   )}
-                  {/* Wrap the cube in a positioned div so it stacks on
-                      top of the absolutely-positioned halo (positioned
-                      elements would otherwise paint over in-flow static
-                      elements with the same z-index, sinking the die
-                      behind its own halo). */}
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
-                  </div>
+                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,
