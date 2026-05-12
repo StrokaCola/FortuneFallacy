@@ -115,8 +115,9 @@ export function Forge() {
   const dieAnchorRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div data-forge-scroll style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <ForgeVFX anchorRef={dieAnchorRef} />
+      <ForgeDebugOverlay dieAnchorRef={dieAnchorRef} />
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
@@ -214,29 +215,36 @@ export function Forge() {
             (no wrap) the right column is its own flex item and scrolls
             past the sticky left col naturally.
 
-            The translucent dark backdrop + bottom fade is what makes
-            the sticky behavior visually correct on tight viewports.
-            Without it, the inventory column scrolls up *behind* the
-            pane and bleeds through the transparent gaps between the
-            panel, picker strip, and detach row. zIndex 20 keeps the
-            picker's selected-die halo glow above the inventory panel
-            below. */}
-        <div style={{
+            We deliberately leave the column itself transparent: the
+            DieView cubes use a translucent THREE.js canvas, so an
+            opaque backdrop directly behind them alpha-blends the
+            transparent pixels with dark color and makes the dice look
+            muddy. Bleed-through of the inventory beneath is blocked
+            by per-row backdrops on the picker strip and detach row
+            (added below) — those backdrops aren't behind the dice
+            cubes themselves, so the cubes stay vibrant against the
+            Forge ambient. zIndex 20 keeps the picker halo, dice, and
+            attached-mod chips above the inventory panel below. */}
+        <div data-forge-sticky-col style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: 14, width: 'min(360px, 100%)',
           position: 'sticky', top: 0, zIndex: 20,
           alignSelf: 'flex-start',
           padding: '8px 0 14px',
-          background: 'linear-gradient(180deg, rgba(15,9,37,0.94) 0%, rgba(15,9,37,0.92) 80%, rgba(15,9,37,0) 100%)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          // Frosted-glass effect: no opaque color overlay (which would
+          // alpha-blend with the dice canvas and mute them) — just
+          // blur whatever scrolls up behind, so the inventory's empty
+          // copy and rows turn into an unreadable color smear instead
+          // of bleeding through legibly.
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
         }}>
           {/* Selected die orbit — Phase 1.1 layered visuals:
               - Light shaft: vertical gradient column descending from above.
               - Inner sigil ring: constellation glyph rotating slowly behind the die.
               - Outer dashed orbit + 4 orbital nodes (already present, unchanged).
               - Centerpiece DieView levitates with a slow vertical bob. */}
-          <div ref={dieAnchorRef} className="panel" style={{
+          <div ref={dieAnchorRef} data-forge-die-panel className="panel" style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             position: 'relative', display: 'grid', placeItems: 'center',
@@ -598,7 +606,7 @@ export function Forge() {
         </div>
 
         {/* Right column: mod inventory */}
-        <div style={{
+        <div data-forge-inventory style={{
           width: 'min(380px, calc(100vw - 32px))',
           height: tight ? 360 : 440,
         }}>
@@ -937,6 +945,186 @@ export function Forge() {
         </div>
       )}
     </div>
+  );
+}
+
+// Debug overlay for the Forge layout. Toggled via a small DBG button in
+// the corner — when open, draws colored outlines around each major
+// layout element with its computed position/zIndex/background so we
+// can tell at a glance which element is covering which. Also lets us
+// fire the stellar VFX manually at any rarity to verify it lands on
+// the die anchor and stays in front of the rest of the UI.
+type DbgRow = {
+  label: string;
+  color: string;
+  rect: { x: number; y: number; w: number; h: number };
+  zIndex: string;
+  position: string;
+  bg: string;
+  backdropFilter: string;
+};
+
+const DBG_TARGETS: Array<{ sel: string; label: string; color: string }> = [
+  { sel: '[data-forge-scroll]',    label: 'scroll',    color: '#ffffff' },
+  { sel: '[data-forge-sticky-col]',label: 'stickyCol', color: '#ff52c8' },
+  { sel: '[data-forge-die-panel]', label: 'diePanel',  color: '#ffd97a' },
+  { sel: '.forge-dice-strip',      label: 'picker',    color: '#7be3ff' },
+  { sel: '.forge-die-pick',        label: 'dieBtn',    color: '#6ee7a7' },
+  { sel: '[data-forge-inventory]', label: 'inv',       color: '#ff4d6d' },
+];
+
+function ForgeDebugOverlay({ dieAnchorRef }: { dieAnchorRef: React.RefObject<HTMLDivElement | null> }) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<DbgRow[]>([]);
+  const [meta, setMeta] = useState<{ vw: number; vh: number; scrollTop: number; anchor: { x: number; y: number } | null }>(
+    { vw: 0, vh: 0, scrollTop: 0, anchor: null },
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    let raf = 0;
+    const tick = () => {
+      const next: DbgRow[] = [];
+      for (const t of DBG_TARGETS) {
+        const nodes = document.querySelectorAll(t.sel);
+        nodes.forEach((node, i) => {
+          const r = (node as HTMLElement).getBoundingClientRect();
+          const cs = getComputedStyle(node as HTMLElement);
+          next.push({
+            label: nodes.length > 1 ? `${t.label}[${i}]` : t.label,
+            color: t.color,
+            rect: { x: r.left, y: r.top, w: r.width, h: r.height },
+            zIndex: cs.zIndex,
+            position: cs.position,
+            bg: cs.backgroundColor || 'transparent',
+            backdropFilter: cs.backdropFilter || (cs as unknown as { webkitBackdropFilter?: string }).webkitBackdropFilter || 'none',
+          });
+        });
+      }
+      const scroller = document.querySelector('[data-forge-scroll]') as HTMLElement | null;
+      const anchorEl = dieAnchorRef.current;
+      const ar = anchorEl?.getBoundingClientRect();
+      setRows(next);
+      setMeta({
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+        scrollTop: scroller?.scrollTop ?? 0,
+        anchor: ar ? { x: ar.left + ar.width / 2, y: ar.top + ar.height / 2 } : null,
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [open, dieAnchorRef]);
+
+  const fireVfx = (rarity: 'common' | 'uncommon' | 'rare' | 'legendary') => {
+    forgeVFX.triggerAttach(`__dbg_${rarity}`, rarity, 'base');
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          position: 'fixed', bottom: 88, right: 8,
+          zIndex: 99999,
+          background: open ? '#ff52c8' : 'rgba(0,0,0,0.7)',
+          color: '#fff', border: '1px solid #fff',
+          padding: '4px 8px', borderRadius: 4,
+          fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.1em',
+          pointerEvents: 'auto', cursor: 'pointer',
+        }}>
+        DBG {open ? 'ON' : 'OFF'}
+      </button>
+
+      {open && rows.map((row, i) => (
+        <div key={i} aria-hidden="true" style={{
+          position: 'fixed',
+          left: row.rect.x, top: row.rect.y,
+          width: row.rect.w, height: row.rect.h,
+          border: `2px solid ${row.color}`,
+          pointerEvents: 'none',
+          zIndex: 99997,
+          boxSizing: 'border-box',
+        }}>
+          <span style={{
+            position: 'absolute', top: -14, left: 0,
+            fontSize: 9, color: row.color,
+            background: 'rgba(0,0,0,0.85)',
+            padding: '1px 4px',
+            fontFamily: 'monospace',
+            whiteSpace: 'nowrap',
+          }}>{row.label} z:{row.zIndex} {row.position}</span>
+        </div>
+      ))}
+
+      {open && meta.anchor && (
+        <div aria-hidden="true" style={{
+          position: 'fixed',
+          left: meta.anchor.x - 8, top: meta.anchor.y - 8,
+          width: 16, height: 16,
+          borderRadius: '50%',
+          background: '#ff52c8',
+          boxShadow: '0 0 12px #ff52c8',
+          pointerEvents: 'none',
+          zIndex: 99998,
+        }} />
+      )}
+
+      {open && (
+        <div style={{
+          position: 'fixed',
+          top: 60, left: 8, right: 8,
+          maxHeight: 'calc(45vh)',
+          overflow: 'auto',
+          zIndex: 99998,
+          background: 'rgba(0,0,0,0.92)',
+          color: '#7be3ff',
+          padding: 8,
+          border: '1px solid #ff52c8',
+          borderRadius: 4,
+          fontSize: 10,
+          fontFamily: 'monospace',
+          lineHeight: 1.45,
+          pointerEvents: 'auto',
+        }}>
+          <div style={{ color: '#ffd97a', marginBottom: 4 }}>FORGE DEBUG</div>
+          <div>vw {meta.vw}  vh {meta.vh}  scrollTop {meta.scrollTop}</div>
+          <div>anchor {meta.anchor ? `(${meta.anchor.x.toFixed(0)}, ${meta.anchor.y.toFixed(0)})` : '—'}</div>
+          <div style={{ borderTop: '1px solid #444', margin: '6px 0' }} />
+          {rows.map((r, i) => (
+            <div key={i} style={{ color: r.color, marginBottom: 2 }}>
+              {r.label.padEnd(12)} pos={r.position} z={r.zIndex} rect=({r.rect.x.toFixed(0)},{r.rect.y.toFixed(0)},{r.rect.w.toFixed(0)}x{r.rect.h.toFixed(0)})
+              {r.bg !== 'rgba(0, 0, 0, 0)' && r.bg !== 'transparent' && <span> bg={r.bg}</span>}
+              {r.backdropFilter !== 'none' && <span> bdf={r.backdropFilter}</span>}
+            </div>
+          ))}
+          <div style={{ borderTop: '1px solid #444', margin: '6px 0' }} />
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <span style={{ color: '#ffd97a', alignSelf: 'center' }}>fire VFX:</span>
+            {(['common', 'uncommon', 'rare', 'legendary'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => fireVfx(r)}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  border: '1px solid #555',
+                  padding: '2px 6px',
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  borderRadius: 3,
+                }}>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
