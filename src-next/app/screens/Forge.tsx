@@ -207,8 +207,18 @@ export function Forge() {
         maxWidth: 'calc(100% - 40px)',
         paddingBottom: tight ? 200 : 120,
       }}>
-        {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
+        {/* Left column. Sticky so the die centerpiece + picker + detach
+            row stay pinned to the top of the scrollport as the player
+            scrolls through the mod inventory below — they need the die
+            visible to know what they're modifying. On wide viewports
+            (no wrap) the right column is its own flex item and scrolls
+            past the sticky left col naturally. */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 14, width: 'min(360px, 100%)',
+          position: 'sticky', top: 0, zIndex: 3,
+          alignSelf: 'flex-start',
+        }}>
           {/* Selected die orbit — Phase 1.1 layered visuals:
               - Light shaft: vertical gradient column descending from above.
               - Inner sigil ring: constellation glyph rotating slowly behind the die.
