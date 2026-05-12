@@ -231,13 +231,13 @@ export function Forge() {
           position: 'sticky', top: 0, zIndex: 20,
           alignSelf: 'flex-start',
           padding: '8px 0 14px',
-          // Frosted-glass effect: no opaque color overlay (which would
-          // alpha-blend with the dice canvas and mute them) — just
-          // blur whatever scrolls up behind, so the inventory's empty
-          // copy and rows turn into an unreadable color smear instead
-          // of bleeding through legibly.
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          // Important: do NOT add backdrop-filter here. The .panel class
+          // already applies its own backdrop-filter to the die panel,
+          // and stacking a second backdrop-filter on this parent breaks
+          // WebGL canvas rendering inside (the centerpiece DieView and
+          // every picker die go invisible). The picker strip below
+          // gets its own simple opaque background instead — that
+          // blocks inventory bleed-through without nesting filters.
         }}>
           {/* Selected die orbit — Phase 1.1 layered visuals:
               - Light shaft: vertical gradient column descending from above.
@@ -445,6 +445,17 @@ export function Forge() {
               overflow: 'visible',
               paddingTop: 16,
               paddingBottom: 16,
+              // Simple opaque-ish dark backdrop blocks the inventory
+              // empty-state copy / mod rows from bleeding through when
+              // the inventory scrolls up behind the sticky pane. This
+              // is a plain `background` (not `backdrop-filter`) so it
+              // doesn't break the WebGL DieView canvases that render
+              // each die — those have opaque cube faces and only let
+              // the background show through where the canvas is empty,
+              // which is exactly the in-between space we *want*
+              // covered.
+              background: 'rgba(15,9,37,0.88)',
+              borderRadius: 14,
             }}>
           <div
             style={{
