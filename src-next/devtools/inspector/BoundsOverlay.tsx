@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Z } from '../../app/hud/zLayers';
 import { getInspectableById } from './elementRegistry';
 import {
   getInspectorState,
@@ -59,7 +60,7 @@ export function BoundsOverlay() {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999 }}
+      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: Z.overlay }}
       aria-hidden
     >
       <div

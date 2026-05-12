@@ -21,11 +21,12 @@
   /* Semantic z-index tokens. Anything that previously used a magic
      number should pull from this palette so layering stays predictable
      when new overlays land. */
-  --z-canvas: 3;
+  --z-canvas: 1;
   --z-hud: 4;
   --z-hud-top: 5;
   --z-hud-control: 6;
   --z-fx: 10;
+  --z-die-tip: 11;
   --z-toast: 12;
   --z-banner-boss: 30;
   --z-banner-arrival: 40;
@@ -88,7 +89,7 @@ html, body {
   width: 100%;
   height: calc(100% - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px));
   min-height: 200px;
-  z-index: 3;
+  z-index: 1;
   pointer-events: none;
   display: none;
   background: transparent;

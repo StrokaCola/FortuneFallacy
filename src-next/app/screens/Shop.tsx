@@ -302,7 +302,7 @@ export function Shop() {
               )}
             <div
               className={`panel-strong${isLegendary ? ' legendary-aura' : ''}`}
-              onMouseEnter={() => sfxPlay('cardFlip')}
+              onPointerEnter={() => sfxPlay('cardFlip')}
               onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
               style={{
                 // Tight portrait: full-width card; height auto so descriptions wrap.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Z } from './zLayers';
 
 // Diagnostic overlay surfaced via the URL flag `?debug=1`. Lets the
 // user screenshot the relevant runtime state (canvas dimensions, HUD
@@ -66,7 +67,7 @@ export function RoundDebugOverlay() {
         position: 'fixed',
         top: 8,
         left: 8,
-        zIndex: 9999,
+        zIndex: Z.overlay,
         background: 'rgba(0, 0, 0, 0.85)',
         color: '#7be3ff',
         font: '11px/1.35 ui-monospace, Menlo, monospace',

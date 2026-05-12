@@ -150,6 +150,31 @@ export const metaHandler: ActionHandler = (a, s) => {
         ],
       };
     }
+    case 'SHOW_DIE_TIP': {
+      // Guard against a stale tip for a die that no longer exists (e.g. a
+      // race with RESET_ROUND). The tooltip is in-round UI only.
+      if (a.dieIdx < 0 || a.dieIdx >= s.round.dice.length) {
+        return { state: s, events: [] };
+      }
+      return {
+        state: {
+          ...s,
+          ui: {
+            ...s.ui,
+            dieTip: {
+              dieIdx: a.dieIdx,
+              screenX: a.screenX,
+              screenY: a.screenY,
+              pointerType: a.pointerType,
+            },
+          },
+        },
+        events: [],
+      };
+    }
+    case 'HIDE_DIE_TIP':
+      if (s.ui.dieTip == null) return { state: s, events: [] };
+      return { state: { ...s, ui: { ...s.ui, dieTip: null } }, events: [] };
     default:
       return { state: s, events: [] };
   }

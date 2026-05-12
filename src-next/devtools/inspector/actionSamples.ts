@@ -56,6 +56,8 @@ export const actionSamples = {
   SEE_COACHMARK:        { type: 'SEE_COACHMARK', id: 'first_roll' },
   SKIP_ONBOARDING:      { type: 'SKIP_ONBOARDING' },
   RESET_ONBOARDING:     { type: 'RESET_ONBOARDING' },
+  SHOW_DIE_TIP:         { type: 'SHOW_DIE_TIP', dieIdx: 0, screenX: 100, screenY: 100, pointerType: 'touch' },
+  HIDE_DIE_TIP:         { type: 'HIDE_DIE_TIP' },
 } satisfies ActionSamples;
 
 export const actionTypes: Action['type'][] = Object.keys(actionSamples) as Action['type'][];

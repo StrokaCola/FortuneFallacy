@@ -21,6 +21,8 @@ import { firePipCharge } from './modFx/pipCharge';
 import { fireBackstop } from './modFx/backstop';
 import { computeDropSlot } from './dragSlot';
 import { getDigitTexture } from './digitTexture';
+import { projectToScreen } from './projectToScreen';
+import { HOLD_MS, MOVE_TOLERANCE_PX } from '../../app/ui/longPressTip';
 
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
@@ -275,6 +277,14 @@ export class Dice3D {
   private dragPlane: THREE.Plane | null = null;
   private dragGhostSlot: number | null = null;
   private dragGhostSprite: THREE.Sprite | null = null;
+  // Long-press info-tooltip state. The 3D dice canvas can't carry a `.has-tip`
+  // class, so we reuse the same HOLD_MS / MOVE_TOLERANCE_PX gesture as the
+  // HTML long-press controller (see app/ui/longPressTip.ts) and dispatch
+  // SHOW_DIE_TIP on fire. `holdTriggered` suppresses the synthesized click
+  // so the press-and-hold doesn't also toggle the lock on pointerup.
+  private holdTimer: number | null = null;
+  private holdTriggered = false;
+  private holdPointerType: 'mouse' | 'touch' | 'pen' = 'mouse';
   private scoringActive = false;
   private activeScoringDie = -1;
   // Queued FX requests per die — `onModFired` enqueues; `die-tick` drains.
@@ -589,7 +599,12 @@ export class Dice3D {
 
       const groups = this.dice.map((d) => d.group);
       const hits = this.raycaster.intersectObjects(groups, true);
-      if (hits.length === 0) return;
+      if (hits.length === 0) {
+        // Tap on empty stage dismisses any sticky long-press tooltip — matches
+        // the .has-tip "tap outside to dismiss" rule from longPressTip.ts.
+        if (store.getState().ui.dieTip != null) dispatch({ type: 'HIDE_DIE_TIP' });
+        return;
+      }
 
       let obj: THREE.Object3D | null = hits[0]!.object;
       while (obj && !groups.includes(obj as THREE.Group)) obj = obj.parent;
@@ -597,6 +612,43 @@ export class Dice3D {
 
       const idx = groups.indexOf(obj as THREE.Group);
       if (idx < 0) return;
+
+      // Hit a different die than the currently-tipped one → drop the old tip
+      // immediately so the visual transfers cleanly. A new SHOW_DIE_TIP fires
+      // after the hold timer if the player keeps holding.
+      const curTip = store.getState().ui.dieTip;
+      if (curTip != null && curTip.dieIdx !== idx) {
+        dispatch({ type: 'HIDE_DIE_TIP' });
+      }
+
+      // Arm the long-press timer. Cleared on move (>MOVE_TOLERANCE_PX),
+      // pointerup, pointercancel, drag start, and destroy().
+      if (this.holdTimer != null) clearTimeout(this.holdTimer);
+      this.holdTriggered = false;
+      this.holdPointerType = (ev.pointerType as 'mouse' | 'touch' | 'pen') || 'mouse';
+      const holdIdx = idx;
+      this.holdTimer = window.setTimeout(() => {
+        this.holdTimer = null;
+        // Don't fire if the player started dragging or released. dragStart is
+        // cleared on pointerup; isDragging arms only if motion crossed the
+        // drag threshold (which would have cancelled this timer in move).
+        if (this.isDragging || this.dragStart?.dieIdx !== holdIdx) return;
+        const die = this.dice[holdIdx];
+        if (!die) return;
+        const screen = projectToScreen(
+          die.group.position,
+          this.camera,
+          this.canvas.getBoundingClientRect(),
+        );
+        this.holdTriggered = true;
+        dispatch({
+          type: 'SHOW_DIE_TIP',
+          dieIdx: holdIdx,
+          screenX: screen.x,
+          screenY: screen.y,
+          pointerType: this.holdPointerType,
+        });
+      }, HOLD_MS);
 
       // Record drag start. Click vs drag is decided in onPointerMove based on
       // movement distance — we don't dispatch TOGGLE_LOCK yet.
@@ -642,6 +694,14 @@ export class Dice3D {
       // Touch fingers wobble several pixels before any intentional drag, so
       // raise the click-vs-drag threshold on coarse-pointer devices.
       const dragThreshold = ev.pointerType === 'touch' ? 12 : 6;
+      // Cancel the long-press timer at the shared MOVE_TOLERANCE_PX threshold
+      // so any finger jiggle past 8px aborts the tooltip. On touch this fires
+      // well before the 12px drag threshold; on mouse the 6px drag threshold
+      // is below this, so a drag-armed gesture also cancels the tip.
+      if (this.holdTimer != null && dist > MOVE_TOLERANCE_PX) {
+        clearTimeout(this.holdTimer);
+        this.holdTimer = null;
+      }
       if (!this.isDragging && dist > dragThreshold) {
         const die = this.dice[this.dragStart.dieIdx];
         if (!die || !die.locked) {
@@ -694,6 +754,11 @@ export class Dice3D {
     this.onPointerUp = (_ev: PointerEvent) => {
       if (!this.dragStart) return;
       const draggedIdx = this.dragStart.dieIdx;
+      // Always clear any pending hold timer on release.
+      if (this.holdTimer != null) {
+        clearTimeout(this.holdTimer);
+        this.holdTimer = null;
+      }
       if (this.isDragging) {
         const draggedDie = this.dice[draggedIdx];
         if (draggedDie) {
@@ -717,6 +782,10 @@ export class Dice3D {
         this.disposeGhostSlot();
         this.isDragging = false;
         this.canvas.style.cursor = '';
+      } else if (this.holdTriggered) {
+        // Long-press already fired SHOW_DIE_TIP; swallow the synthesized click
+        // so the same gesture doesn't also toggle the lock.
+        this.holdTriggered = false;
       } else {
         // No movement past threshold → treat as click.
         dispatch({ type: 'TOGGLE_LOCK', dieIdx: draggedIdx });
@@ -727,6 +796,11 @@ export class Dice3D {
     this.onPointerCancel = (_ev: PointerEvent) => {
       // Browser/OS preempted the pointer (e.g. system gesture). Clear drag
       // state so we don't leave the die mid-air on next pointerdown.
+      if (this.holdTimer != null) {
+        clearTimeout(this.holdTimer);
+        this.holdTimer = null;
+      }
+      this.holdTriggered = false;
       if (this.isDragging) {
         this.cancelDrag();
       } else {
@@ -789,6 +863,11 @@ export class Dice3D {
 
   private cancelDrag(): void {
     if (!this.dragStart || !this.isDragging) return;
+    if (this.holdTimer != null) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+    this.holdTriggered = false;
     const die = this.dice[this.dragStart.dieIdx];
     if (die) {
       die.group.position.x = this.dragOriginalSlotX;
@@ -836,6 +915,11 @@ export class Dice3D {
 
   destroy(): void {
     if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
+    if (this.holdTimer != null) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+    this.holdTriggered = false;
     this.unsubscribers.forEach((u) => u());
     if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
     if (this.onPointerMove) document.removeEventListener('pointermove', this.onPointerMove);

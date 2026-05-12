@@ -32,7 +32,7 @@ export const diceHandler: ActionHandler = (a, s) => {
       };
     }
     case 'RESET_ROUND':
-      return { state: { ...s, round: initialRoundSlice() }, events: [] };
+      return { state: { ...s, round: initialRoundSlice(), ui: { ...s.ui, dieTip: null } }, events: [] };
     case 'ATTACH_MOD': {
       if (!lookupMod(a.modId)) return { state: s, events: [] };
       const slots = s.run.diceMods[a.dieIdx];

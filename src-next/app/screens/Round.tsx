@@ -18,6 +18,7 @@ import { ClearShardsToast } from '../hud/ClearShardsToast';
 import { ConsumableTray } from '../hud/ConsumableTray';
 import { DiceStackStrip } from '../hud/DiceStackStrip';
 import { FaceReadout } from '../hud/FaceReadout';
+import { DieTip } from '../hud/DieTip';
 import { ScoreMoment } from '../hud/ScoreMoment';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { ScoreExplain } from '../hud/ScoreExplain';
@@ -97,6 +98,7 @@ export function Round() {
       <DiceStackStrip />
 
       <FaceReadout />
+      <DieTip />
       <ScoreBreakdown />
       <ScoreMoment />
       <AstralHint />
