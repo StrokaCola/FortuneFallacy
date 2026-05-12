@@ -57,7 +57,7 @@ export function BossDebuffBadge() {
           </span>
         </div>
       )}
-      <span className="tip">
+      <span className={tight ? 'tip tip-above' : 'tip'}>
         <span className="tip-title">{def.name} · Boss Debuff</span>
         {def.description}
       </span>

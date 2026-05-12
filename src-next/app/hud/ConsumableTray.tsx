@@ -5,7 +5,7 @@ import { lookupConsumable, consumableRarity } from '../../core/consumables';
 import { hasDebuff } from '../../core/round/debuffs';
 import { SellButton } from './SellButton';
 import { Z } from './zLayers';
-import { useIsWideMode } from '../hooks/useIsCompactStage';
+import { useIsWideMode, useIsTightStage } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { bus } from '../../events/bus';
 
@@ -17,6 +17,10 @@ export function ConsumableTray() {
   const items = useStore(selectConsumables);
   const diceCount = useStore(selectDiceCount);
   const wide = useIsWideMode();
+  // Tight viewports anchor tooltips ABOVE the tray cards so the player's
+  // thumb (which holds the card during long-press) doesn't cover the
+  // tip. Mirrors the CatalystStrip treatment.
+  const tight = useIsTightStage();
   const locked = useStore(selectConsumablesLocked);
   const [armed, setArmed] = useState<{ index: number; def: ReturnType<typeof lookupConsumable> } | null>(null);
 
@@ -118,7 +122,7 @@ export function ConsumableTray() {
                   {def.name}
                 </div>
               </button>
-              <div className="tip">
+              <div className={tight ? 'tip tip-above' : 'tip'}>
                 <span className="tip-title">{def.name}</span>
                 {def.description}
                 {def.requiresTarget && <span style={{ display: 'block', marginTop: 4, color: '#7be3ff' }}>Click, then pick a die.</span>}

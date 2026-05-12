@@ -60,7 +60,7 @@ export function VoidstormBadge() {
           </span>
         </div>
       )}
-      <span className="tip">
+      <span className={tight ? 'tip tip-above' : 'tip'}>
         <span className="tip-title">{def.name} · Voidstorm {def.tone === 'boon' ? 'Boon' : 'Curse'}</span>
         {def.flavor}
       </span>
