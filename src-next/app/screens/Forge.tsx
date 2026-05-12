@@ -114,6 +114,25 @@ export function Forge() {
   // effect stays glued to the die when the Forge content scrolls.
   const dieAnchorRef = useRef<HTMLDivElement>(null);
 
+  // Lift the shared dice canvas above the React tree while we're on the
+  // Forge. Default architecture pins the canvas at z-index:1 inside
+  // #stage-root with #next-root above at z-index:2, so any React
+  // background (.panel chrome, picker bg, sticky col) literally paints
+  // over the dice behind it. Here the dice ARE the centerpiece and the
+  // panel/picker chrome is supposed to be around them, not on top —
+  // raising the canvas inverts that. The canvas is only painted at
+  // each DieView's screen rect via scissor, so non-dice areas stay
+  // transparent and the rest of the Forge UI still composes normally.
+  // Restored on unmount so modals like Pause / Settings on other
+  // screens keep covering the dice.
+  useEffect(() => {
+    const canvas = document.querySelector('canvas[data-shared-renderer]') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const prev = canvas.style.zIndex;
+    canvas.style.zIndex = '15';
+    return () => { canvas.style.zIndex = prev; };
+  }, []);
+
   return (
     <div data-forge-scroll style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <ForgeVFX anchorRef={dieAnchorRef} />
@@ -456,19 +475,13 @@ export function Forge() {
               overflow: 'visible',
               paddingTop: 16,
               paddingBottom: 16,
-              // CRITICAL: the WebGL dice render into a shared canvas
-              // mounted at z-index:1 inside #stage-root, while every
-              // React element here paints from z-index:2 up. That
-              // means any opaque CSS background here literally covers
-              // the dice behind it.
-              //
-              // So the bg is transparent across the central band where
-              // the cubes render (top:25% to bottom:25%) and only fades
-              // to opaque on the top/bottom rails — those rails sit in
-              // the strip's padding above/below the dice and are what
-              // we actually need to cover to stop inventory text from
-              // bleeding through the gaps between panel/picker/detach.
-              background: 'linear-gradient(180deg, rgba(15,9,37,0.85) 0%, rgba(15,9,37,0.55) 18%, transparent 30%, transparent 70%, rgba(15,9,37,0.55) 82%, rgba(15,9,37,0.85) 100%)',
+              // Solid translucent backdrop blocks inventory bleed-through.
+              // We can be opaque here without dimming the dice because
+              // the shared dice canvas is elevated to z-index 15 while
+              // we're on the Forge (see Forge mount effect), so the
+              // cubes physically paint on top of this background rather
+              // than alpha-blending with it from behind.
+              background: 'rgba(15,9,37,0.86)',
               borderRadius: 14,
             }}>
           <div
