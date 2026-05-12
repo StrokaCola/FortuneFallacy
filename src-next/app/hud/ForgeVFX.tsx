@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * ForgeVFX Refined — Integrated cosmic rituals that respond to game state
  *
  * Ties visual effects to game data:
- * - Mod rarity (legendary → bigger burst, more stars)
+ * - Mod rarity (legendary → denser, larger stellar collapse)
  * - Edition power (foil/holo/poly each have signature glow)
  * - Affinity activations (golden resonance rings on new pairs)
  * - Active affinity count (ambient constellation sigil intensity)
@@ -17,8 +17,26 @@ type AttachEvent = { modId: string; rarity: Rarity; edition: Edition; key: strin
 type ForgeEvent = { modId: string; edition: Edition; key: string };
 type AffinityEvent = { affinityId: string; modIds: string[]; key: string };
 
-type RarityConfig = { color: string; starCount: number; dustCount: number };
+type RarityConfig = { color: string; intensity: number };
 type EditionConfig = { glow: string; filter: string };
+
+// Rarity → stellar intensity (1..5). Each step scales particle count,
+// orbit radius, core peak, and shockwave reach for the attachment
+// ritual. Tuned so legendary feels noticeably bigger than rare without
+// pushing the particle count past what mobile can comfortably draw.
+const RARITY_INTENSITY: Record<Rarity, number> = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  legendary: 5,
+};
+
+// Stellar ritual total runtime: collapse (1300–1800ms) + core flash
+// (1500ms delay + 700ms = 2200ms) + shockwave (1650ms + 900ms = 2550ms).
+// We hold the attachment event in state long enough for everything to
+// finish; the particles are inside this wrapper, so they get unmounted
+// the instant we drop it.
+const STELLAR_LIFE_MS = 2200;
 
 export const forgeVFX = {
   callbacks: {
@@ -57,7 +75,7 @@ export function ForgeVFX() {
       const key = `attach-${modId}-${Date.now()}`;
       const event: AttachEvent = { modId, rarity, edition, key };
       setAttachments((prev) => [...prev, event]);
-      setTimeout(() => setAttachments((prev) => prev.filter((a) => a.key !== key)), 900);
+      setTimeout(() => setAttachments((prev) => prev.filter((a) => a.key !== key)), STELLAR_LIFE_MS);
     };
 
     forgeVFX.callbacks.forge = (modId, edition) => {
@@ -87,10 +105,10 @@ export function ForgeVFX() {
   }, []);
 
   const rarityConfig: Record<Rarity, RarityConfig> = {
-    common: { color: '#bba8ff', starCount: 6, dustCount: 3 },
-    uncommon: { color: '#7be3ff', starCount: 8, dustCount: 4 },
-    rare: { color: '#f5c451', starCount: 12, dustCount: 5 },
-    legendary: { color: '#ff7847', starCount: 16, dustCount: 8 },
+    common: { color: '#bba8ff', intensity: RARITY_INTENSITY.common },
+    uncommon: { color: '#7be3ff', intensity: RARITY_INTENSITY.uncommon },
+    rare: { color: '#f5c451', intensity: RARITY_INTENSITY.rare },
+    legendary: { color: '#ff7847', intensity: RARITY_INTENSITY.legendary },
   };
 
   const editionConfig: Record<Edition, EditionConfig> = {
@@ -154,28 +172,53 @@ export function ForgeVFX() {
 }
 
 /**
- * Rarity-scaled burst: legendary gets bigger, more stars, longer tail.
+ * Stellar ritual — particles spiral inward from an outer ring, collapse
+ * into a white-hot core, and finish with a shockwave. Intensity
+ * (1..5, derived from the installed mod's rarity) scales:
+ *   - particle count: legendary clouds the stage; common stays sparse
+ *   - outer orbit radius: bigger rarities reach wider
+ *   - core peak scale + shockwave reach: legendary lands harder
+ *
+ * The motion uses `rotate(angle) translateX(r)` as the orbit anchor and
+ * lets `stellarCollapse` (defined in ForgeVFX.css) sweep angle inward
+ * to r=0 over the particle's lifetime.
  */
 function ModAttachmentRitual({ event, config }: { event: AttachEvent; config: RarityConfig }) {
-  const stars = Array.from({ length: config.starCount }, (_, i) => {
-    const angle = (i / config.starCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-    const distance = 50 + Math.random() * (config.starCount === 16 ? 60 : 40);
-    return {
-      id: i,
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-      delay: i * 30,
-      duration: 600 + Math.random() * 300,
-    };
-  });
+  const intensity = Math.max(1, Math.min(5, config.intensity));
 
-  const dust = Array.from({ length: config.dustCount }, (_, i) => ({
-    id: i,
-    x: (Math.random() - 0.5) * 120,
-    y: (Math.random() - 0.5) * 120,
-    delay: i * 60,
-    duration: 700 + Math.random() * 200,
-  }));
+  // Particle count, orbit radius, core/shockwave peaks all key off
+  // intensity so the ritual scales linearly with rarity. The Math.min
+  // ceilings keep mobile FPS sane on legendary attaches.
+  const particleCount = Math.min(28, 14 + intensity * 3);
+  const baseRadius = 110 + intensity * 14;       // 124 (common) → 180 (legendary)
+  const radiusJitter = 60 + intensity * 8;       // adds a bit of "cloud" thickness
+  const corePeak = 1.6 + intensity * 0.4;        // 2.0 → 3.6
+  const shockPeak = 2.4 + intensity * 0.4;       // 2.8 → 4.4
+  const stageRadius = baseRadius + radiusJitter; // sets the wrapper size so absolutely-positioned particles aren't clipped
+
+  // Build the particle list once per event (the random jitter would
+  // shuffle on every render otherwise, snapping particles mid-flight).
+  const particles = useMemo(() => {
+    const arr: Array<{
+      id: number;
+      angle: number;
+      rStart: number;
+      dur: number;
+      delay: number;
+      size: number;
+      isStar: boolean;
+    }> = [];
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * 360 + (Math.random() - 0.5) * 18;
+      const rStart = baseRadius + Math.random() * radiusJitter;
+      const dur = 1300 + Math.random() * 500;
+      const delay = Math.random() * 350;
+      const size = 8 + Math.random() * 10;
+      arr.push({ id: i, angle, rStart, dur, delay, size, isStar: i % 3 === 0 });
+    }
+    return arr;
+    // event.key is unique per attach, so this remounts the particle field on every fire
+  }, [event.key, particleCount, baseRadius, radiusJitter]);
 
   return (
     <div
@@ -183,65 +226,82 @@ function ModAttachmentRitual({ event, config }: { event: AttachEvent; config: Ra
         position: 'fixed',
         left: '50%',
         top: '50%',
-        marginLeft: -40,
-        marginTop: -40,
-        width: 80,
-        height: 80,
+        marginLeft: -stageRadius,
+        marginTop: -stageRadius,
+        width: stageRadius * 2,
+        height: stageRadius * 2,
         pointerEvents: 'none',
       }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${config.color}88 0%, transparent 100%)`,
-          animation: `dieAttachPulse ${config.starCount === 16 ? 700 : 600}ms cubic-bezier(0.34, 1.06, 0.64, 1)`,
-        }}
-      />
-
-      {stars.map((star) => (
+      {particles.map((p) => (
         <div
-          key={`star-${star.id}`}
+          key={`star-${p.id}`}
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            marginLeft: -6,
-            marginTop: -6,
+            marginLeft: -p.size / 2,
+            marginTop: -p.size / 2,
             color: config.color,
-            textShadow: `0 0 8px ${config.color}`,
-            fontSize: 12,
-            pointerEvents: 'none',
-            ['--burst-x' as never]: `${star.x}px`,
-            ['--burst-y' as never]: `${star.y}px`,
-            animation: `modAttachBurst ${star.duration}ms cubic-bezier(0.34, 1.06, 0.64, 1) ${star.delay}ms forwards`,
+            transformOrigin: '0 0',
+            animation: `stellarCollapse ${p.dur}ms cubic-bezier(0.5, 0, 0.75, 0.2) ${p.delay}ms forwards`,
+            ['--angle' as never]: `${p.angle}deg`,
+            ['--r-start' as never]: `${p.rStart}px`,
           } as React.CSSProperties}
         >
-          ✦
+          {p.isStar ? (
+            <svg width={p.size} height={p.size} viewBox="-20 -20 40 40" style={{ overflow: 'visible' }}>
+              <path
+                d="M0,-18 L5.5,-6 L18,-5 L8.5,3 L11,16 L0,9 L-11,16 L-8.5,3 L-18,-5 L-5.5,-6 Z"
+                fill={config.color}
+                style={{ filter: `drop-shadow(0 0 6px ${config.color})` }}
+              />
+            </svg>
+          ) : (
+            <svg width={p.size} height={p.size} viewBox="-20 -20 40 40" style={{ overflow: 'visible' }}>
+              <path
+                d="M0,-18 C2,-6 6,-2 18,0 C6,2 2,6 0,18 C-2,6 -6,2 -18,0 C-6,-2 -2,-6 0,-18 Z"
+                fill={config.color}
+                style={{ filter: `drop-shadow(0 0 6px ${config.color})` }}
+              />
+            </svg>
+          )}
         </div>
       ))}
 
-      {dust.map((w) => (
-        <div
-          key={`dust-${w.id}`}
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -8,
-            marginTop: -8,
-            width: 16,
-            height: 16,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${config.color}60 0%, transparent 100%)`,
-            pointerEvents: 'none',
-            ['--wisp-x' as never]: `${w.x}px`,
-            ['--wisp-y' as never]: `${w.y}px`,
-            animation: `particleWisp ${w.duration}ms cubic-bezier(0.34, 1.06, 0.64, 1) ${w.delay}ms forwards`,
-          } as React.CSSProperties}
-        />
-      ))}
+      {/* White-hot core that flashes when the particles arrive */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 30,
+          height: 30,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, #fff 0%, ${config.color} 40%, transparent 100%)`,
+          boxShadow: `0 0 40px ${config.color}, 0 0 80px ${config.color}`,
+          transform: 'translate(-50%, -50%) scale(0)',
+          animation: 'stellarCore 700ms cubic-bezier(0.2, 1.6, 0.4, 1) 1500ms forwards',
+          ['--core-peak' as never]: `${corePeak}`,
+        } as React.CSSProperties}
+      />
+
+      {/* Shockwave ring that expands from the core after the collapse */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          border: `2px solid ${config.color}`,
+          transform: 'translate(-50%, -50%)',
+          opacity: 0,
+          animation: 'stellarShockwave 900ms cubic-bezier(0.18, 0.7, 0.3, 1) 1650ms forwards',
+          ['--shock-peak' as never]: `${shockPeak}`,
+        } as React.CSSProperties}
+      />
     </div>
   );
 }
