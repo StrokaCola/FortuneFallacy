@@ -29,7 +29,7 @@ export type ConstellationModifiers = {
   forgeDisabled?: boolean;
   modsDisabled?: boolean;
   catalystSlotBonus?: number;     // Argo
-  faceMultiplierPerCatalyst?: number; // Argo: 0.5 → score = face × (1 + 0.5 × catN)
+  faceMultiplierPerCatalyst?: number; // Argo: 1.0 → score = face × (1 + 1.0 × catN)
 };
 
 export type Constellation = {
@@ -110,16 +110,18 @@ export const CONSTELLATIONS: Constellation[] = [
       'Combos disabled — score = captain × (1 + 1.0 × catalysts) + crew',
       'Captain = highest face this hand; crew = the others',
       'Forge & mods disabled, +2 catalyst slots',
+      'Start with Captain’s Wage (face ≥ 10 → +5 chips)',
     ],
     color: '#34d399',
     dice: [d20Plain(), d20Plain(), d20Plain()],
+    startingCatalysts: ['captains_wage'],
     modifiers: {
       scoringMode: 'captain_crew',
-      // 0.75 → 1.0 per the 2026-05-07 audit: Argo had 0% A1 clear in the sim
-      // because each catalyst added too little weight relative to the d20 face
-      // ceiling. With perCat=1.0, each catalyst doubles the captain's
-      // contribution at +1, tripling at +2 — restores competitive scoring
-      // without removing the catalyst-dependence that defines the constellation.
+      // 2026-05-08 audit: perCat 0.75 → 1.0 restored a competitive captain
+      // multiplier (0% → 21% A1 clear in the full-run sim). Follow-up pass:
+      // seed `captains_wage` so the catalyst-dependent design has a floor on
+      // hand 1 — captain mult opens at 2.0 instead of 1.0, and the +5/scoring
+      // face ≥ 10 trigger gives an early-ante chips floor. Slot bonus stays +2.
       faceMultiplierPerCatalyst: 1.0,
       forgeDisabled: true,
       modsDisabled: true,
