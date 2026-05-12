@@ -471,15 +471,13 @@ export function Forge() {
           <div
             className="forge-dice-strip"
             style={{
-              // Widen the picker on tight viewports so all 5 dice fit
-              // inside its bounds. Each die button is ~68px (56 cube +
-              // 6 padding × 2) so 5 dice with the tightened 4px gap
-              // need 5×68 + 4×4 = 356px — the old 320px cap was
-              // pushing the rightmost die ~50px past the picker edge.
-              width: tight ? 'min(364px, calc(100vw - 16px))' : 360,
+              // A bit wider so the dice row breathes — and so adding a
+              // 6th die from a voucher doesn't force horizontal scroll
+              // until we actually run out of room.
+              width: tight ? 'min(380px, calc(100vw - 8px))' : 360,
               overflow: 'visible',
-              paddingTop: 16,
-              paddingBottom: 16,
+              paddingTop: 14,
+              paddingBottom: 14,
               // Solid translucent backdrop blocks inventory bleed-through.
               // We can be opaque here without dimming the dice because
               // the shared dice canvas is elevated to z-index 15 while
@@ -492,11 +490,17 @@ export function Forge() {
           <div
             style={{
               display: 'flex',
-              // Center on tight so the row sits cleanly inside the
+              // Centred horizontally so the row sits cleanly inside the
               // picker bounds when the user has the default 5 dice.
               // (At 6+ dice the row overflows and `overflowX: auto`
               // takes over, scrolling from the left as before.)
               justifyContent: 'center',
+              // Centred vertically so the cubes sit on the picker's
+              // visual midline. Without this, the buttons stretch to
+              // the full inner cross-axis height and the cubes —
+              // which only occupy their inner padding box — drift
+              // toward the bottom edge.
+              alignItems: 'center',
               flexWrap: 'nowrap',
               overflowX: tight ? 'auto' : 'visible',
               overflowY: 'visible',
@@ -509,14 +513,11 @@ export function Forge() {
               // by the dice falling off the right edge, so no chrome
               // is needed. WebKit rule lives in styles/index.css.
               scrollbarWidth: 'none',
-              // Tightened from 8 → 4 on tight so 5 dice fit inside the
-              // 364px picker rather than overflowing its right edge.
               gap: tight ? 4 : 4,
-              // The inner scroller needs its own vertical breathing
-              // room so the halo glow has room to render before being
-              // clipped by overflow-x auto.
-              paddingTop: 8,
-              paddingBottom: 8,
+              // Vertical breathing room so the selected die's halo
+              // glow has room to render before being clipped.
+              paddingTop: 6,
+              paddingBottom: 6,
             }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
@@ -538,7 +539,13 @@ export function Forge() {
                     // legible while still being visually subordinate
                     // to the selected one.
                     opacity: isSelected ? 1 : 0.85,
-                    transform: isSelected ? 'translateY(-6px) scale(1.05)' : 'translateY(4px) scale(0.94)',
+                    // Cut the translateY magnitudes roughly in half:
+                    // the old (-6, +4) split was pushing non-selected
+                    // dice ~4px below the picker midline, so the row
+                    // visually sat in the bottom half of the strip.
+                    // Smaller offsets still convey "selected pops up"
+                    // without dragging the whole row off-centre.
+                    transform: isSelected ? 'translateY(-3px) scale(1.05)' : 'translateY(0) scale(0.94)',
                     transition: 'all 280ms cubic-bezier(0.2, 1.1, 0.3, 1)',
                     position: 'relative',
                     padding: 6,
