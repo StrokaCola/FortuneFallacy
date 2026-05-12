@@ -189,7 +189,12 @@ textarea:focus-visible,
 /* Tooltips */
 .has-tip { position: relative; }
 .has-tip .tip {
-  position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
+  position: absolute; left: 50%; top: calc(100% + 6px);
+  /* --tip-shift is computed by app/ui/longPressTip.ts (fitTipInViewport)
+     on hover/long-press so a tooltip near a screen edge slides back into
+     the viewport instead of clipping. Default 0 keeps the centered anchor
+     when there's no clipping. */
+  transform: translateX(calc(-50% + var(--tip-shift, 0px)));
   background: rgba(7,5,26,.95); color: #dcd4ff; font-size: 11px; padding: 8px 12px;
   border: 1px solid rgba(149,119,255,.4); border-radius: 6px;
   white-space: normal; max-width: 240px; width: max-content; text-align: center; line-height: 1.4;

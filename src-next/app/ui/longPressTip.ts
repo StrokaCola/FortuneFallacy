@@ -23,6 +23,10 @@
 export const HOLD_MS = 450;
 export const MOVE_TOLERANCE_PX = 8;
 const STUCK_CLASS = 'tip-stuck';
+// Min gap between a tooltip and the viewport edge after shifting. Larger
+// than zero so the tip doesn't hug the screen edge under a notch / camera
+// cutout. Matches the safe-area treatment used elsewhere on the HUD.
+const VIEWPORT_MARGIN_PX = 8;
 
 let installed: { dispose: () => void } | null = null;
 let stuckEl: HTMLElement | null = null;
@@ -32,9 +36,47 @@ function findHasTip(target: EventTarget | null): HTMLElement | null {
   return target.closest('.has-tip') as HTMLElement | null;
 }
 
+// Nudge a tooltip horizontally so it stays inside the viewport. The CSS
+// transform reads `--tip-shift` (default 0); we measure the rendered rect
+// after resetting any prior shift, then write a new shift if either edge
+// is clipped. Called on long-press stick AND on hover-in so the same fit
+// logic works for touch and desktop. Catalyst tooltips on tight viewports
+// would otherwise clip off-screen when the catalyst sits near a screen
+// edge — the tooltip's `left: 50%; translateX(-50%)` anchor extends up
+// to half its max-width (120px) past the card center.
+export function fitTipInViewport(hasTipEl: HTMLElement): void {
+  const tip = hasTipEl.querySelector<HTMLElement>(':scope > .tip');
+  if (!tip) return;
+  // Reset any prior shift so measurement reflects the unshifted layout.
+  tip.style.setProperty('--tip-shift', '0px');
+  // Defer measurement to the next frame so the browser has applied the
+  // reset before getBoundingClientRect. Without this, back-to-back
+  // adjustments compound when re-entering the same card quickly.
+  const measure = () => {
+    const rect = tip.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const vw = window.innerWidth;
+    let shift = 0;
+    if (rect.left < VIEWPORT_MARGIN_PX) {
+      shift = VIEWPORT_MARGIN_PX - rect.left;
+    } else if (rect.right > vw - VIEWPORT_MARGIN_PX) {
+      shift = vw - VIEWPORT_MARGIN_PX - rect.right;
+    }
+    tip.style.setProperty('--tip-shift', `${Math.round(shift)}px`);
+  };
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(measure);
+  } else {
+    measure();
+  }
+}
+
 function clearStuck(): void {
   if (stuckEl) {
     stuckEl.classList.remove(STUCK_CLASS);
+    // Drop the shift so the next tooltip starts from a clean measurement.
+    const tip = stuckEl.querySelector<HTMLElement>(':scope > .tip');
+    if (tip) tip.style.removeProperty('--tip-shift');
     stuckEl = null;
   }
 }
@@ -44,6 +86,7 @@ function setStuck(el: HTMLElement): void {
   if (stuckEl) stuckEl.classList.remove(STUCK_CLASS);
   el.classList.add(STUCK_CLASS);
   stuckEl = el;
+  fitTipInViewport(el);
 }
 
 export function installLongPressTooltips(): { dispose: () => void } {
@@ -139,6 +182,17 @@ export function installLongPressTooltips(): { dispose: () => void } {
     }
   };
 
+  // Hover fit: when the mouse enters a .has-tip element on desktop, fit
+  // the tooltip into the viewport BEFORE the CSS :hover transition makes
+  // it visible. Uses mouseover (bubbles) rather than mouseenter (doesn't
+  // bubble, needs per-element listeners). Cheap: the helper short-circuits
+  // when the tip has no rendered width.
+  const onMouseOver = (e: MouseEvent) => {
+    const target = findHasTip(e.target);
+    if (!target) return;
+    fitTipInViewport(target);
+  };
+
   // Capture phase so we see the click before the React handler claims it
   // when long-press triggered. Move/end stay in bubble phase — they're
   // benign.
@@ -147,6 +201,7 @@ export function installLongPressTooltips(): { dispose: () => void } {
   document.addEventListener('touchend', onTouchEnd, { passive: true });
   document.addEventListener('touchcancel', onTouchEnd, { passive: true });
   document.addEventListener('click', onClick, true);
+  document.addEventListener('mouseover', onMouseOver);
 
   installed = {
     dispose() {
@@ -155,6 +210,7 @@ export function installLongPressTooltips(): { dispose: () => void } {
       document.removeEventListener('touchend', onTouchEnd);
       document.removeEventListener('touchcancel', onTouchEnd);
       document.removeEventListener('click', onClick, true);
+      document.removeEventListener('mouseover', onMouseOver);
       cancelTimer();
       clearStuck();
       installed = null;
