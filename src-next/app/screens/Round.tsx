@@ -20,6 +20,8 @@ import { DiceStackStrip } from '../hud/DiceStackStrip';
 import { FaceReadout } from '../hud/FaceReadout';
 import { DieTip } from '../hud/DieTip';
 import { ScoreMoment } from '../hud/ScoreMoment';
+import { ScoringVFX } from '../hud/ScoringVFX';
+import '../hud/ScoringVFX.css';
 import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { ScoreExplain } from '../hud/ScoreExplain';
 import { AstralHint } from '../hud/AstralHint';
@@ -69,6 +71,7 @@ export function Round() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <ScoringVFX />
       <TopBar
         ante={ante}
         blind={blindName}
