@@ -191,7 +191,7 @@ export function Forge() {
       {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
           Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens.
           Phase 4.x polish — tight viewports add extra paddingBottom so the
-          frosted Done bar at the bottom doesn't overlap the last
+          fixed Done bar at the bottom doesn't overlap the last
           inventory row when fully scrolled. */}
       <div style={{
         position: 'absolute', left: '50%',
@@ -200,7 +200,7 @@ export function Forge() {
         display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
         flexWrap: 'wrap', justifyContent: 'center',
         maxWidth: 'calc(100% - 40px)',
-        paddingBottom: tight ? 140 : 100,
+        paddingBottom: tight ? 200 : 120,
       }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: 'min(360px, 100%)' }}>
@@ -396,24 +396,28 @@ export function Forge() {
           {/* Die selector strip. Tight viewports: horizontal scroll +
               tighter spacing so 6-7 dice don't wrap into the inventory
               panel below. Wide: even space-between as before. */}
-          <div style={{
-            width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
-            display: 'flex',
-            justifyContent: tight ? 'flex-start' : 'space-between',
-            flexWrap: 'nowrap',
-            overflowX: tight ? 'auto' : 'visible',
-            overflowY: 'visible',
-            paddingTop: 12,
-            paddingBottom: 8,
-            // Native scroll-snap so the user can flick between dies
-            // without falling between two on tight viewports.
-            scrollSnapType: tight ? 'x mandatory' : 'none',
-            // Hide scrollbar cosmetically on iOS / Android — the dice
-            // already cue scrollability through their visible overflow
-            // (the row clearly has more than fits).
-            scrollbarWidth: 'thin',
-            gap: tight ? 8 : 4,
-          }}>
+          <div
+            className="forge-dice-strip"
+            style={{
+              width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+              display: 'flex',
+              justifyContent: tight ? 'flex-start' : 'space-between',
+              flexWrap: 'nowrap',
+              overflowX: tight ? 'auto' : 'visible',
+              overflowY: 'visible',
+              paddingTop: 12,
+              paddingBottom: 8,
+              // Native scroll-snap so the user can flick between dies
+              // without falling between two on tight viewports.
+              scrollSnapType: tight ? 'x mandatory' : 'none',
+              // Hide the scrollbar entirely — on Android Chrome a
+              // `thin` bar renders as a visible horizontal "rail" that
+              // cuts through the dice. The row is clearly scrollable
+              // by the dice falling off the right edge, so no chrome
+              // is needed. WebKit rule lives in styles/index.css.
+              scrollbarWidth: 'none',
+              gap: tight ? 8 : 4,
+            }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
               const extraCount = Math.max(0, dieMods.length - 1);
@@ -847,15 +851,17 @@ export function Forge() {
       </div>
 
       {/* Done bar — tight viewports get a full-width frosted-glass bar
-          across the bottom so the inventory panel header isn't obscured
-          by an orphan button. The inner content has matching paddingBottom
-          (see line ~190) so the last inventory row scrolls clear above
-          the bar before reaching it. Wide viewports keep the centered
-          floating button — there's plenty of room. */}
+          pinned to the actual viewport bottom (position: fixed, relative
+          to the transformed ScreenTransition ancestor → reliably tracks
+          the visible viewport across mobile URL-bar resizes). The
+          centered layout above adds paddingBottom so the last inventory
+          row scrolls clear above this bar before reaching it. Wide
+          viewports keep the centered floating button — there's plenty
+          of room. */}
       {tight ? (
         <div
           style={{
-            position: 'absolute', left: 0, right: 0,
+            position: 'fixed', left: 0, right: 0,
             bottom: 0,
             zIndex: 5,
             padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px)',
@@ -864,6 +870,7 @@ export function Forge() {
             WebkitBackdropFilter: 'blur(8px)',
             borderTop: '1px solid rgba(149,119,255,0.18)',
             display: 'flex', justifyContent: 'center',
+            pointerEvents: 'auto',
           }}>
           <button
             className="btn btn-primary mat-interactive"
@@ -874,10 +881,11 @@ export function Forge() {
         </div>
       ) : (
         <div style={{
-          position: 'absolute', left: '50%',
-          bottom: 28,
+          position: 'fixed', left: '50%',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
           transform: 'translateX(-50%)',
           zIndex: 5,
+          pointerEvents: 'auto',
         }}>
           <button className="btn btn-primary mat-interactive" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}>
             ✓ Done
