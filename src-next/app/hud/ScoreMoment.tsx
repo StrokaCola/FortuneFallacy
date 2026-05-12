@@ -7,6 +7,7 @@ import type { Beat } from '../../core/scoring/types';
 import { Z } from './zLayers';
 import { store } from '../../state/store';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { scoringVFX } from './ScoringVFX';
 
 type SlamOverlay = { id: number; label: string; multiplier: number; gold: boolean; tint?: 'gold' | 'magenta' };
 
@@ -85,21 +86,30 @@ export function ScoreMoment() {
         case 'mult-slam': {
           const id = slamId++;
           setSlams((s) => [...s, { id, label: beat.label, multiplier: beat.multiplier, gold: crossed, tint: beat.tint }]);
+          scoringVFX.triggerSlam(beat.label, beat.multiplier, crossed, beat.tint);
           // Bigger mults punch harder. Threshold tuned so common pair-mults
           // don't shake; only meaningful x4+ slams or post-cross slams do.
-          if (beat.multiplier >= 4 || crossed) triggerShake('tiny');
+          if (beat.multiplier >= 4 || crossed) {
+            triggerShake('tiny');
+            scoringVFX.shakeScreen('tiny');
+          }
           schedule(() => setSlams((s) => s.filter((x) => x.id !== id)), 600);
           break;
         }
         case 'cross-target':
           crossed = true;
           setStamp('target');
+          scoringVFX.triggerTargetBeat();
           triggerShake('mid');
+          scoringVFX.shakeScreen('mid');
           schedule(() => setStamp((cur) => (cur === 'target' ? null : cur)), 700);
           break;
         case 'boom': {
           const gold = beat.crossedTarget;
-          if (gold) triggerShake('big');
+          if (gold) {
+            triggerShake('big');
+            scoringVFX.shakeScreen('big');
+          }
           const reduced = isReducedMotion();
           // Mega-boom hit-stop: when the final score is ≥ 3× the target,
           // freeze the stage with chromatic aberration for ~480ms so the
@@ -114,6 +124,7 @@ export function ScoreMoment() {
               const dur = ratio >= 8 ? 720 : 480;
               schedule(() => stage.classList.remove(tier), dur);
             }
+            scoringVFX.chromatic(ratio >= 8 ? 720 : 480);
           }
           const useStars = gold && !reduced;
           const hold = gold ? HOLD_GOLD_MS : HOLD_BASE_MS;
@@ -125,6 +136,7 @@ export function ScoreMoment() {
           // matching your record is itself a moment).
           const peakHandNow = store.getState().run.runStats?.peakHand ?? 0;
           const isNewBest = peakHandNow > 0 && peakHandNow === beat.finalTotal;
+          scoringVFX.triggerBoom(beat.finalTotal, gold, isNewBest);
 
           setBoom({ phase: 'hold', total: beat.finalTotal, gold, isNewBest });
 
@@ -162,7 +174,9 @@ export function ScoreMoment() {
         }
         case 'bail':
           setStamp('bail');
+          scoringVFX.triggerBail();
           triggerShake('mid');
+          scoringVFX.shakeScreen('mid');
           schedule(() => {
             setActive(false);
             setStamp(null);

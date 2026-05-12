@@ -1,0 +1,394 @@
+/* Scoring VFX Animations
+   Enhanced visual feedback for multiplier slams, stamps, boom reveal, star flies, and chromatic aberration.
+   Mobile-optimized with performance in mind (GPU-accelerated transforms).
+*/
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CHROMATIC ABERRATION (CA) & SCREEN EFFECTS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Mega-boom chromatic aberration: red/cyan channel shift + vignette */
+@keyframes screenChromatic {
+  0% {
+    filter: 
+      drop-shadow(2px 0 0 #ff0099) 
+      drop-shadow(-2px 0 0 #00ffff)
+      brightness(1.1);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    filter: 
+      drop-shadow(0px 0 0 #ff0099) 
+      drop-shadow(0px 0 0 #00ffff)
+      brightness(1);
+    opacity: 0;
+  }
+}
+
+/* Screen shake horizontal */
+@keyframes screenShakeH {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-3px); }
+  20% { transform: translateX(4px); }
+  30% { transform: translateX(-3px); }
+  40% { transform: translateX(2px); }
+  50% { transform: translateX(-2px); }
+  60% { transform: translateX(3px); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(1px); }
+  90% { transform: translateX(-1px); }
+}
+
+/* Screen shake vertical (smaller amplitude) */
+@keyframes screenShakeV {
+  0%, 100% { transform: translateY(0); }
+  15% { transform: translateY(-2px); }
+  30% { transform: translateY(2px); }
+  45% { transform: translateY(-2px); }
+  60% { transform: translateY(2px); }
+  75% { transform: translateY(-1px); }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MULTIPLIER SLAM ENHANCEMENTS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Enhanced slam pop with scale overshoot */
+@keyframes slamPopEnhanced {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(20px);
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 20px currentColor);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+}
+
+/* Slam glow pulse during hold */
+@keyframes slamGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 24px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 40px currentColor, inset 0 0 12px currentColor;
+  }
+}
+
+/* Slam fade and drift after hold */
+@keyframes slamDriftAway {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.7) translateY(-30px);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TARGET BEAT / BAIL STAMPS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* TARGET BEAT: Gold glow with letter-spacing pulse */
+@keyframes targetBeatPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotateY(90deg);
+    filter: drop-shadow(0 0 0 #f5c451);
+    letterSpacing: '0.1em';
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 40px #f5c451) drop-shadow(0 0 80px rgba(245, 196, 81, 0.5));
+    letterSpacing: '0.5em';
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotateY(0deg);
+    filter: drop-shadow(0 0 30px #f5c451);
+    letterSpacing: '0.2em';
+  }
+}
+
+/* BAIL: Red glow with fade-out */
+@keyframes bailStampPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    filter: drop-shadow(0 0 0 #ff4d6d);
+  }
+  60% {
+    opacity: 1;
+    filter: drop-shadow(0 0 40px #ff4d6d) drop-shadow(0 0 80px rgba(255, 77, 109, 0.4));
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: drop-shadow(0 0 20px #ff4d6d);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BOOM NUMBER REVEAL & COLLECTION
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Boom number pops into view with overshoot */
+@keyframes boomNumberPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  50% {
+    transform: scale(1.25);
+    filter: drop-shadow(0 0 40px currentColor);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 24px currentColor);
+  }
+}
+
+/* Boom number holds with steady glow */
+@keyframes boomNumberHold {
+  0%, 100% {
+    filter: drop-shadow(0 0 24px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 40px currentColor) drop-shadow(0 0 60px currentColor);
+  }
+}
+
+/* Boom number shrinks and flies to counter */
+@keyframes boomNumberFly {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.2) translate(var(--fly-x), var(--fly-y));
+  }
+}
+
+/* NEW BEST stamp glow */
+@keyframes newBestGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 14px #f5c451) drop-shadow(0 0 28px rgba(245, 196, 81, 0.6));
+    text-shadow: '0 0 14px #f5c451, 0 0 28px rgba(245, 196, 81, 0.6)';
+  }
+  50% {
+    filter: drop-shadow(0 0 28px #f5c451) drop-shadow(0 0 56px rgba(245, 196, 81, 0.8));
+    text-shadow: '0 0 28px #f5c451, 0 0 56px rgba(245, 196, 81, 0.8)';
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STAR FLY SEQUENCE (ENHANCED)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Star spawns and flies toward score counter with curve */
+@keyframes starFlyEnhanced {
+  0% {
+    opacity: 1;
+    transform: 
+      translate(0, 0) 
+      scale(1.2)
+      rotate(0deg);
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 16px currentColor);
+  }
+  85% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: 
+      translate(var(--fly-x), var(--fly-y)) 
+      scale(0.3)
+      rotate(180deg);
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+}
+
+/* Star trails effect (secondary glow layer) */
+@keyframes starTrail {
+  0% {
+    opacity: 0.6;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--trail-x), var(--trail-y));
+  }
+}
+
+/* Score counter catch pulse (lands the star) */
+@keyframes scoreCounterCatch {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CROSS-TARGET CROSSING EFFECT
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Screen flash when crossing target */
+@keyframes crossTargetFlash {
+  0% {
+    background: rgba(245, 196, 81, 0);
+  }
+  50% {
+    background: rgba(245, 196, 81, 0.3);
+  }
+  100% {
+    background: rgba(245, 196, 81, 0);
+  }
+}
+
+/* Gold ring expands from center */
+@keyframes targetCrossRing {
+  0% {
+    box-shadow: 0 0 0 0 #f5c45177;
+  }
+  100% {
+    box-shadow: 0 0 0 80px #f5c45100;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   COSMIC PARTICLE EFFECTS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Radiant burst from boom center */
+@keyframes radioBurst {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.8;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  100% {
+    width: 400px;
+    height: 400px;
+    opacity: 0;
+    box-shadow: 0 0 40px 80px currentColor;
+  }
+}
+
+/* Orbiting particle halo */
+@keyframes particleHalo {
+  0% {
+    transform: rotate(0deg) translateX(60px) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(360deg) translateX(60px) rotate(-360deg);
+    opacity: 0;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TRANSITION & EMPHASIS EFFECTS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Slam count emphasis pulse */
+@keyframes slamCountPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.8;
+  }
+}
+
+/* Glow flare on significant multipliers */
+@keyframes glowFlare {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(12px);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(0px);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   UTILITY & OPTIMIZATION
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.vfx-scoring-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 9997;
+}
+
+.vfx-slam {
+  will-change: transform, opacity, filter;
+  transform: translateZ(0); /* Force GPU accel */
+}
+
+.vfx-boom {
+  will-change: transform, opacity, filter;
+  transform: translateZ(0);
+}
+
+.vfx-star {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile optimization: reduce particle count on small screens */
+@media (max-width: 768px) {
+  .vfx-particle {
+    /* Stars rendered as emojis; browser handles emoji rendering efficiently */
+  }
+  
+  .vfx-star {
+    /* Smaller font size on mobile to save fill rate */
+    font-size: clamp(16px, 4vw, 24px);
+  }
+}

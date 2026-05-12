@@ -1,0 +1,277 @@
+/* Forge VFX Animations & Styles
+   Cosmic/ethereal visual effects for mod attachment, forging rituals, and affinity visualization.
+   Mobile-optimized with performance in mind.
+*/
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOD ATTACHMENT CEREMONY
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Attachment burst: stars and orbs radiating outward from mod icon */
+@keyframes modAttachBurst {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.3) translate(var(--burst-x), var(--burst-y));
+    filter: drop-shadow(0 0 24px currentColor);
+  }
+}
+
+/* Pulse out from the die when a mod connects */
+@keyframes dieAttachPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(123, 227, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(123, 227, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(123, 227, 255, 0);
+  }
+}
+
+/* Mod icon grows and glows when attached */
+@keyframes modIconAttach {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px currentColor);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}
+
+/* Orbital ceremony: mods orbiting around the die slot before settling */
+@keyframes modOrbitalApproach {
+  0% {
+    opacity: 0;
+    transform: translate(var(--orbit-x), var(--orbit-y)) scale(0.6);
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+  70% {
+    opacity: 1;
+    filter: drop-shadow(0 0 16px currentColor);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FORGE EDITION RITUAL
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Edition orbs pulse and brighten on hover */
+@keyframes forgeEditionPulse {
+  0%, 100% {
+    box-shadow: 0 0 16px var(--edition-glow), inset 0 0 12px var(--edition-glow-inner);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 32px var(--edition-glow), inset 0 0 18px var(--edition-glow-inner);
+    filter: brightness(1.2);
+  }
+}
+
+/* Forge confirmation: orb shrinks and merges into the mod card */
+@keyframes forgeConfirm {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.2) translate(var(--merge-x), var(--merge-y));
+  }
+}
+
+/* Shimmering edge light on edition-forged mods */
+@keyframes editionShimmer {
+  0%, 100% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   AFFINITY LINKS & CONSTELLATION SIGILS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Affinity arcs glow and pulse when active */
+@keyframes affinityArcPulse {
+  0%, 100% {
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 6px rgba(245, 196, 81, 0.75));
+    opacity: 0.55;
+  }
+  50% {
+    stroke-width: 2;
+    filter: drop-shadow(0 0 16px rgba(245, 196, 81, 0.95));
+    opacity: 0.85;
+  }
+}
+
+/* Affinity anchor points glow */
+@keyframes affinityNodeGlow {
+  0%, 100% {
+    r: 3;
+    filter: drop-shadow(0 0 6px rgba(245, 196, 81, 0.85));
+  }
+  50% {
+    r: 5;
+    filter: drop-shadow(0 0 12px rgba(245, 196, 81, 0.95));
+  }
+}
+
+/* Constellation sigil rotates slowly and glows */
+@keyframes constellationFloat {
+  0%, 100% {
+    opacity: 0.18;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  50% {
+    opacity: 0.28;
+    filter: drop-shadow(0 0 16px currentColor);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   AMBIENT BREATHING & AURAS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Light shaft pulses gently */
+@keyframes lightShaftBreathe {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Halo ring pulses around selected die */
+@keyframes dieHaloPulse {
+  0%, 100% {
+    box-shadow: 0 0 14px var(--halo-color, #7be3ff), inset 0 0 12px var(--halo-color-inner, rgba(123, 227, 255, 0.2));
+    opacity: 0.7;
+  }
+  50% {
+    box-shadow: 0 0 28px var(--halo-color, #7be3ff), inset 0 0 18px var(--halo-color-inner, rgba(123, 227, 255, 0.3));
+    opacity: 1;
+  }
+}
+
+/* Glow layer intensifies on focus */
+@keyframes focusGlow {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 0.5;
+    filter: blur(8px);
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   INTERACTIVE STATES & FEEDBACK
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Hover expansion on mod rows */
+@keyframes modRowExpand {
+  0% {
+    background: linear-gradient(135deg, rgba(15, 9, 37, 0.65) 0%, var(--mod-color, #7be3ff)08 100%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  100% {
+    background: linear-gradient(135deg, rgba(15, 9, 37, 0.75) 0%, var(--mod-color, #7be3ff)16 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 20px var(--mod-color, #7be3ff)22;
+  }
+}
+
+/* Particle wisps float up from attachment point */
+@keyframes particleWisp {
+  0% {
+    opacity: 0.6;
+    transform: translate(0, 0) scale(1);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--wisp-x), var(--wisp-y)) scale(0.3);
+    filter: blur(3px);
+  }
+}
+
+/* Sparkle twinkle for legendary/special mods */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   UTILITY CLASSES
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.vfx-glow {
+  filter: drop-shadow(0 0 8px currentColor);
+  will-change: filter;
+}
+
+.vfx-glow-intense {
+  filter: drop-shadow(0 0 16px currentColor);
+  will-change: filter;
+}
+
+.vfx-aura {
+  position: relative;
+  overflow: visible;
+}
+
+.vfx-aura::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: radial-gradient(circle, currentColor 0%, transparent 70%);
+  opacity: 0.1;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.vfx-cosmic-bg {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(123, 227, 255, 0.05) 0%,
+    rgba(91, 33, 182, 0.02) 100%
+  );
+}
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

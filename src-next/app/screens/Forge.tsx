@@ -17,6 +17,8 @@ import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
+import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
+import '../hud/ForgeVFX.css';
 
 const FORGE_COST = 5;
 const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
@@ -102,6 +104,7 @@ export function Forge() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+      <ForgeVFX />
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
@@ -614,16 +617,32 @@ export function Forge() {
                           // Drop the preview on click — the real attach now drives
                           // the DieView mods list.
                           setHoveredModId(null);
+                          const prevModIds = diceMods[selectedDie] ?? [];
+                          const prevPairs = activeAffinitiesOnDie(prevModIds);
+                          forgeVFX.triggerAttach(r.id);
                           dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                           sfxPlay('modAttach');
+                          const newPairs = activeAffinitiesOnDie([...prevModIds, r.id]);
+                          if (newPairs.length > prevPairs.length) {
+                            const added = newPairs.find((p) => !prevPairs.some((pp) => pp.id === p.id));
+                            if (added) forgeVFX.triggerAffinityPulse(added.id);
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (!canAttach) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             setHoveredModId(null);
+                            const prevModIds = diceMods[selectedDie] ?? [];
+                            const prevPairs = activeAffinitiesOnDie(prevModIds);
+                            forgeVFX.triggerAttach(r.id);
                             dispatch({ type: 'ATTACH_MOD', dieIdx: selectedDie, modId: r.id });
                             sfxPlay('modAttach');
+                            const newPairs = activeAffinitiesOnDie([...prevModIds, r.id]);
+                            if (newPairs.length > prevPairs.length) {
+                              const added = newPairs.find((p) => !prevPairs.some((pp) => pp.id === p.id));
+                              if (added) forgeVFX.triggerAffinityPulse(added.id);
+                            }
                           }
                         }}
                         onMouseEnter={() => setHoveredModId(r.id)}
@@ -758,6 +777,7 @@ export function Forge() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    forgeVFX.triggerForge(id, ed);
                                     dispatch({ type: 'FORGE_MOD', modId: id, targetEdition: ed });
                                     setForgeOpenFor(null);
                                     sfxPlay('modAttach');
