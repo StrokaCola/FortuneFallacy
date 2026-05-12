@@ -17,8 +17,7 @@ import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
-import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
-import '../hud/ForgeVFX.css';
+import { forgeVFX } from '../hud/ForgeVFX';
 
 const FORGE_COST = 5;
 const ALL_EDITIONS: ModEdition[] = ['foil', 'holo', 'poly'];
@@ -104,7 +103,6 @@ export function Forge() {
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
-      <ForgeVFX />
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
