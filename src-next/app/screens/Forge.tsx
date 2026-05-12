@@ -212,12 +212,24 @@ export function Forge() {
             scrolls through the mod inventory below — they need the die
             visible to know what they're modifying. On wide viewports
             (no wrap) the right column is its own flex item and scrolls
-            past the sticky left col naturally. */}
+            past the sticky left col naturally.
+
+            The translucent dark backdrop + bottom fade is what makes
+            the sticky behavior visually correct on tight viewports.
+            Without it, the inventory column scrolls up *behind* the
+            pane and bleeds through the transparent gaps between the
+            panel, picker strip, and detach row. zIndex 20 keeps the
+            picker's selected-die halo glow above the inventory panel
+            below. */}
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: 14, width: 'min(360px, 100%)',
-          position: 'sticky', top: 0, zIndex: 3,
+          position: 'sticky', top: 0, zIndex: 20,
           alignSelf: 'flex-start',
+          padding: '8px 0 14px',
+          background: 'linear-gradient(180deg, rgba(15,9,37,0.94) 0%, rgba(15,9,37,0.92) 80%, rgba(15,9,37,0) 100%)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}>
           {/* Selected die orbit — Phase 1.1 layered visuals:
               - Light shaft: vertical gradient column descending from above.
@@ -410,18 +422,29 @@ export function Forge() {
 
           {/* Die selector strip. Tight viewports: horizontal scroll +
               tighter spacing so 6-7 dice don't wrap into the inventory
-              panel below. Wide: even space-between as before. */}
+              panel below. Wide: even space-between as before.
+
+              The horizontal scroll lives on an INNER wrapper so the
+              outer strip can keep `overflow: visible` — the selected
+              die's halo glow extends ~14px past the cube and would
+              otherwise be clipped vertically (the CSS rule that
+              `overflowX: auto` forces overflowY to auto would cut the
+              glow off and let the inventory below cover what remains). */}
           <div
             className="forge-dice-strip"
             style={{
               width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+              overflow: 'visible',
+              paddingTop: 16,
+              paddingBottom: 16,
+            }}>
+          <div
+            style={{
               display: 'flex',
               justifyContent: tight ? 'flex-start' : 'space-between',
               flexWrap: 'nowrap',
               overflowX: tight ? 'auto' : 'visible',
               overflowY: 'visible',
-              paddingTop: 12,
-              paddingBottom: 8,
               // Native scroll-snap so the user can flick between dies
               // without falling between two on tight viewports.
               scrollSnapType: tight ? 'x mandatory' : 'none',
@@ -432,6 +455,11 @@ export function Forge() {
               // is needed. WebKit rule lives in styles/index.css.
               scrollbarWidth: 'none',
               gap: tight ? 8 : 4,
+              // The inner scroller needs its own vertical breathing
+              // room so the halo glow has room to render before being
+              // clipped by overflow-x auto.
+              paddingTop: 8,
+              paddingBottom: 8,
             }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
@@ -495,6 +523,7 @@ export function Forge() {
                 </button>
               );
             })}
+          </div>
           </div>
 
           {/* Attached mods detach row */}
