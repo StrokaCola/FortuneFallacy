@@ -490,13 +490,12 @@ export function Forge() {
               // until we actually run out of room.
               width: tight ? 'min(380px, calc(100vw - 8px))' : 360,
               overflow: 'visible',
-              // Tighter top padding to pull the dice higher in the
-              // picker — the previous 14/14 split looked symmetric in
-              // CSS terms but the cubes still read as "too low",
-              // probably because the selected die's scale(1.05) blooms
-              // the bottom half of the cube more visibly than the top.
-              paddingTop: 6,
-              paddingBottom: 12,
+              // Trimmed outer paddings to compensate for the larger
+              // inner paddings below — the halo glow needs room
+              // *inside* the scroll-clipped inner wrapper, not outside
+              // it. Net picker height grows ~12px to make room.
+              paddingTop: 4,
+              paddingBottom: 8,
               // Solid translucent backdrop blocks inventory bleed-through.
               // We can be opaque here without dimming the dice because
               // the shared dice canvas is elevated to z-index 15 while
@@ -533,10 +532,20 @@ export function Forge() {
               // is needed. WebKit rule lives in styles/index.css.
               scrollbarWidth: 'none',
               gap: tight ? 4 : 4,
-              // Vertical breathing room so the selected die's halo
-              // glow has room to render before being clipped.
-              paddingTop: 6,
-              paddingBottom: 6,
+              // The inner wrapper effectively gets `overflow-y: auto`
+              // too because `overflow-x: auto` is set above (CSS spec:
+              // when one axis is non-visible, `visible` on the other
+              // computes to `auto`). That means the selected die's
+              // halo, which is `position: absolute` inside its button
+              // and projects a 14px box-shadow blur ~50px outward
+              // from the cube centre, gets *clipped* at the inner
+              // wrapper's bounds. We pad the inner wrapper vertically
+              // by enough to hold a full halo glow: 36px halo radius
+              // + 14px shadow blur = 50px from the cube centre, and
+              // half a button is 35.5px, so 16px of padding on each
+              // side leaves a 0.5px margin before clipping.
+              paddingTop: 16,
+              paddingBottom: 14,
             }}>
             {dice.map((d, i) => {
               const dieMods = allDiceMods[i] ?? [];
