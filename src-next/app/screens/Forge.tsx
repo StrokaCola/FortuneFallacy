@@ -450,11 +450,16 @@ export function Forge() {
               // the inventory scrolls up behind the sticky pane. This
               // is a plain `background` (not `backdrop-filter`) so it
               // doesn't break the WebGL DieView canvases that render
-              // each die — those have opaque cube faces and only let
-              // the background show through where the canvas is empty,
-              // which is exactly the in-between space we *want*
-              // covered.
-              background: 'rgba(15,9,37,0.88)',
+              // each die.
+              //
+              // The colour is warm-toned to match the Forge ambient
+              // the dice were designed to read against — the celestial
+              // DieView style has translucent pixels around the cube,
+              // and a cool-purple backdrop alpha-blends those pixels
+              // into something muddy. A dark warm amber lets the blue
+              // cubes pop the same way they do against the rest of
+              // the Forge backdrop.
+              background: 'radial-gradient(ellipse at center, rgba(60,30,16,0.88) 0%, rgba(32,16,10,0.92) 100%)',
               borderRadius: 14,
             }}>
           <div
