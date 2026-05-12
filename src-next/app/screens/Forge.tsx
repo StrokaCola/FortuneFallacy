@@ -490,8 +490,13 @@ export function Forge() {
               // until we actually run out of room.
               width: tight ? 'min(380px, calc(100vw - 8px))' : 360,
               overflow: 'visible',
-              paddingTop: 14,
-              paddingBottom: 14,
+              // Tighter top padding to pull the dice higher in the
+              // picker — the previous 14/14 split looked symmetric in
+              // CSS terms but the cubes still read as "too low",
+              // probably because the selected die's scale(1.05) blooms
+              // the bottom half of the cube more visibly than the top.
+              paddingTop: 6,
+              paddingBottom: 12,
               // Solid translucent backdrop blocks inventory bleed-through.
               // We can be opaque here without dimming the dice because
               // the shared dice canvas is elevated to z-index 15 while
@@ -568,6 +573,18 @@ export function Forge() {
                     border: 'none',
                     flexShrink: 0,
                     scrollSnapAlign: 'center',
+                    // Explicit flex centering on the button itself so
+                    // the DieView placeholder always sits at the
+                    // button's geometric centre. Default <button>
+                    // content layout is inline-block-style, which
+                    // baseline-aligns the placeholder div and sinks
+                    // it toward the bottom of the button — that's
+                    // what was producing the offset between the cube
+                    // (rendered at placeholder.getBoundingClientRect)
+                    // and the halo (which uses top:50% of the button).
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}>
                   {isSelected && (
                     // Halo ring for the selected die — pulses faintly so
