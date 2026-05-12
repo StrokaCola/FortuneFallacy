@@ -49,7 +49,17 @@ function ensureRenderer(): THREE.WebGLRenderer {
   // made any rendered DieView (e.g. Forge thumbnails) punch through modals.
   // The host fallback to document.body keeps unit-test envs (no #stage-root)
   // working.
-  _canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;width:100vw;height:100vh;';
+  //
+  // IMPORTANT: we size the canvas in CSS pixels from window.inner{Width,Height}
+  // rather than `width:100vw;height:100vh`. On mobile, `100vh` measures the
+  // *largest* viewport (URL bar collapsed), so when the bar is visible the
+  // canvas DOM is taller than the WebGL render area (window.innerHeight),
+  // and the WebGL output gets stretched downward — dice render below where
+  // their placeholder divs actually are. Pixel-matching the CSS to the WebGL
+  // backing store eliminates that stretch.
+  _canvas.style.cssText = 'position:fixed;left:0;top:0;pointer-events:none;z-index:1;';
+  _canvas.style.width = window.innerWidth + 'px';
+  _canvas.style.height = window.innerHeight + 'px';
   _canvas.setAttribute('data-shared-renderer', '1');
   const host = document.getElementById('stage-root') ?? document.body;
   host.appendChild(_canvas);
@@ -66,6 +76,13 @@ function ensureRenderer(): THREE.WebGLRenderer {
   const invalidate = () => { _rectStale = true; };
   _onResize = () => {
     if (_renderer) _renderer.setSize(window.innerWidth, window.innerHeight, false);
+    // Keep canvas CSS pixel-matched to the WebGL backing store on resize
+    // (URL-bar show/hide on mobile fires resize) — otherwise the dice
+    // start drifting again the moment the address bar appears.
+    if (_canvas) {
+      _canvas.style.width = window.innerWidth + 'px';
+      _canvas.style.height = window.innerHeight + 'px';
+    }
     invalidate();
   };
   _onScroll = invalidate;
