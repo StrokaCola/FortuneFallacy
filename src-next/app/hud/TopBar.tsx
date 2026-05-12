@@ -5,6 +5,8 @@ import { lookupVoucher } from '../../data/vouchers';
 import { useStore, type GameState } from '../../state/store';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
+import { BOSS_BLINDS } from '../../data/blinds';
+import { BossIcon } from '../visual/BossIcon';
 import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useReportHudHeight } from './useReportHudHeight';
@@ -28,6 +30,12 @@ function formatScore(n: number): { display: string; full: string } {
 
 const selectStakeId = (s: GameState) => s.run.stakeId;
 const selectChallengeId = (s: GameState) => s.run.challengeId;
+// Boss debuff readout — folded into TopBar's center panel so the player
+// always has a small, well-known spot to check what's hitting them this
+// trial. Active only while the round is live and the blind is a boss.
+const selectIsBoss = (s: GameState) => s.round.isBoss;
+const selectRoundActive = (s: GameState) => s.round.active;
+const selectBlindId = (s: GameState) => s.round.blindId;
 
 export function TopBar({
   ante = 1,
@@ -56,8 +64,14 @@ export function TopBar({
 }) {
   const stakeId = useStore(selectStakeId);
   const challengeId = useStore(selectChallengeId);
+  const isBoss = useStore(selectIsBoss);
+  const roundActive = useStore(selectRoundActive);
+  const blindId = useStore(selectBlindId);
   const stake = lookupStake(stakeId);
   const challenge = challengeId ? lookupChallenge(challengeId) : null;
+  const bossDef = (roundActive && isBoss && blindId)
+    ? BOSS_BLINDS.find((b) => b.id === blindId) ?? null
+    : null;
   // Hide the badge on Spark when no challenge is active — that's the
   // canonical run and the badge would just be noise.
   const showStakeBadge = stake.id !== 'spark' || !!challenge;
@@ -135,6 +149,39 @@ export function TopBar({
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
           hands {hands} · rerolls {rerolls}
         </div>
+        {/* Boss debuff readout — small chip with the boss's name + icon,
+            long-press / hover for the full description. Always sits in
+            the same well-known spot in TopBar so the player never has to
+            hunt for it on a boss blind. */}
+        {bossDef && (
+          <div
+            className="has-tip"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              marginTop: 6, padding: '2px 8px', borderRadius: 4,
+              background: `${bossDef.color}22`,
+              border: `1px solid ${bossDef.color}88`,
+              boxShadow: `0 0 10px ${bossDef.color}44`,
+              cursor: 'help', position: 'relative',
+            }}
+          >
+            <span style={{
+              display: 'inline-flex',
+              filter: `drop-shadow(0 0 4px ${bossDef.color}aa)`,
+            }}>
+              <BossIcon boss={bossDef} size={11} />
+            </span>
+            <span className="f-mono uc" style={{
+              fontSize: 9, letterSpacing: '0.22em', color: bossDef.color,
+            }}>
+              boss · {bossDef.name.toLowerCase()}
+            </span>
+            <span className={tight ? 'tip tip-above' : 'tip'}>
+              <span className="tip-title">{bossDef.name} · Boss Debuff</span>
+              {bossDef.description}
+            </span>
+          </div>
+        )}
         {showStakeBadge && (
           <div className="has-tip" style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,

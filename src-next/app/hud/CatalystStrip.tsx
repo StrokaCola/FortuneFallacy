@@ -686,7 +686,7 @@ export function CatalystStrip() {
                 {f.text}
               </div>
             ))}
-            <div className="tip">
+            <div className={tight ? 'tip tip-above' : 'tip'}>
               <span className="tip-title">{c.name}</span>
               {c.desc}
               {c.flavor && <span className="tip-flavor">{c.flavor}</span>}

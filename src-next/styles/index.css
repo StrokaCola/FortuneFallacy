@@ -189,7 +189,12 @@ textarea:focus-visible,
 /* Tooltips */
 .has-tip { position: relative; }
 .has-tip .tip {
-  position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
+  position: absolute; left: 50%; top: calc(100% + 6px);
+  /* --tip-shift is computed by app/ui/longPressTip.ts (fitTipInViewport)
+     on hover/long-press so a tooltip near a screen edge slides back into
+     the viewport instead of clipping. Default 0 keeps the centered anchor
+     when there's no clipping. */
+  transform: translateX(calc(-50% + var(--tip-shift, 0px)));
   background: rgba(7,5,26,.95); color: #dcd4ff; font-size: 11px; padding: 8px 12px;
   border: 1px solid rgba(149,119,255,.4); border-radius: 6px;
   white-space: normal; max-width: 240px; width: max-content; text-align: center; line-height: 1.4;
@@ -379,6 +384,12 @@ textarea:focus-visible,
 
 /* Forge orbit ring — gated on motion preference like the rest of the app. */
 html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
+
+/* Forge dice-strip scrollbar — hidden across browsers. Standard
+   `scrollbar-width: none` is set inline (TS); this rule kills the
+   WebKit/Blink bar that otherwise renders as a visible horizontal
+   line cutting through the dice on Android Chrome. */
+.forge-dice-strip::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* Forge mod row hover (desktop only — touch uses tap) */
 @media (hover: hover) {
