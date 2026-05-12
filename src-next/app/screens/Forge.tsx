@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupMod } from '../../core/mods';
@@ -109,9 +109,14 @@ export function Forge() {
     forgeVFX.updateConstellation(activeAffinitiesOnDie(modIds).length);
   }, [diceMods, selectedDie]);
 
+  // VFX anchor: the stellar ritual + edition burst + affinity rings all
+  // center on this ref's bounding rect rather than the viewport, so the
+  // effect stays glued to the die when the Forge content scrolls.
+  const dieAnchorRef = useRef<HTMLDivElement>(null);
+
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
-      <ForgeVFX />
+      <ForgeVFX anchorRef={dieAnchorRef} />
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
@@ -209,7 +214,7 @@ export function Forge() {
               - Inner sigil ring: constellation glyph rotating slowly behind the die.
               - Outer dashed orbit + 4 orbital nodes (already present, unchanged).
               - Centerpiece DieView levitates with a slow vertical bob. */}
-          <div className="panel" style={{
+          <div ref={dieAnchorRef} className="panel" style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
             position: 'relative', display: 'grid', placeItems: 'center',
