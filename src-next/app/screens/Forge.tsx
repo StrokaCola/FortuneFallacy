@@ -456,21 +456,19 @@ export function Forge() {
               overflow: 'visible',
               paddingTop: 16,
               paddingBottom: 16,
-              // Simple opaque-ish dark backdrop blocks the inventory
-              // empty-state copy / mod rows from bleeding through when
-              // the inventory scrolls up behind the sticky pane. This
-              // is a plain `background` (not `backdrop-filter`) so it
-              // doesn't break the WebGL DieView canvases that render
-              // each die.
+              // CRITICAL: the WebGL dice render into a shared canvas
+              // mounted at z-index:1 inside #stage-root, while every
+              // React element here paints from z-index:2 up. That
+              // means any opaque CSS background here literally covers
+              // the dice behind it.
               //
-              // The colour is warm-toned to match the Forge ambient
-              // the dice were designed to read against — the celestial
-              // DieView style has translucent pixels around the cube,
-              // and a cool-purple backdrop alpha-blends those pixels
-              // into something muddy. A dark warm amber lets the blue
-              // cubes pop the same way they do against the rest of
-              // the Forge backdrop.
-              background: 'radial-gradient(ellipse at center, rgba(60,30,16,0.88) 0%, rgba(32,16,10,0.92) 100%)',
+              // So the bg is transparent across the central band where
+              // the cubes render (top:25% to bottom:25%) and only fades
+              // to opaque on the top/bottom rails — those rails sit in
+              // the strip's padding above/below the dice and are what
+              // we actually need to cover to stop inventory text from
+              // bleeding through the gaps between panel/picker/detach.
+              background: 'linear-gradient(180deg, rgba(15,9,37,0.85) 0%, rgba(15,9,37,0.55) 18%, transparent 30%, transparent 70%, rgba(15,9,37,0.55) 82%, rgba(15,9,37,0.85) 100%)',
               borderRadius: 14,
             }}>
           <div
