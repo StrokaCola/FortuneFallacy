@@ -393,15 +393,26 @@ export function Forge() {
                 </div>
               );
             })()}
-            <DieView
-              face={selectedFace}
-              size={tight ? 112 : 140}
-              style="celestial"
-              shape={selectedShape}
-              faceValues={diceSpec[selectedDie]?.faces}
-              mods={previewMods}
-              levitate
-            />
+            {/* Wrap the centerpiece die in a positioned div so it stacks
+                on top of the absolutely-positioned SVG chrome (sigil
+                ring, dashed orbit, affinity arcs). Per CSS painting
+                rules, positioned elements paint over in-flow static
+                ones with equal z-index, so without this wrapper the
+                constellation glyph and orbital nodes literally render
+                over the 3D die. zIndex 2 lifts it above all the panel
+                decorations without touching the preview pill (zIndex
+                auto) or the affinity badge (also auto). */}
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <DieView
+                face={selectedFace}
+                size={tight ? 112 : 140}
+                style="celestial"
+                shape={selectedShape}
+                faceValues={diceSpec[selectedDie]?.faces}
+                mods={previewMods}
+                levitate
+              />
+            </div>
             {/* Preview indicator — a tiny "preview" pill appears below
                 the die when a mod is being hover-previewed, so the
                 player understands the change is temporary. */}
@@ -450,11 +461,16 @@ export function Forge() {
               // the inventory scrolls up behind the sticky pane. This
               // is a plain `background` (not `backdrop-filter`) so it
               // doesn't break the WebGL DieView canvases that render
-              // each die — those have opaque cube faces and only let
-              // the background show through where the canvas is empty,
-              // which is exactly the in-between space we *want*
-              // covered.
-              background: 'rgba(15,9,37,0.88)',
+              // each die.
+              //
+              // The colour is warm-toned to match the Forge ambient
+              // the dice were designed to read against — the celestial
+              // DieView style has translucent pixels around the cube,
+              // and a cool-purple backdrop alpha-blends those pixels
+              // into something muddy. A dark warm amber lets the blue
+              // cubes pop the same way they do against the rest of
+              // the Forge backdrop.
+              background: 'radial-gradient(ellipse at center, rgba(60,30,16,0.88) 0%, rgba(32,16,10,0.92) 100%)',
               borderRadius: 14,
             }}>
           <div
@@ -495,7 +511,11 @@ export function Forge() {
                   aria-pressed={isSelected}
                   style={{
                     cursor: 'pointer',
-                    opacity: isSelected ? 1 : 0.55,
+                    // 0.55 left non-selected dice looking faded behind
+                    // the picker backdrop — 0.85 keeps them clearly
+                    // legible while still being visually subordinate
+                    // to the selected one.
+                    opacity: isSelected ? 1 : 0.85,
                     transform: isSelected ? 'translateY(-6px) scale(1.05)' : 'translateY(4px) scale(0.94)',
                     transition: 'all 280ms cubic-bezier(0.2, 1.1, 0.3, 1)',
                     position: 'relative',
@@ -510,6 +530,12 @@ export function Forge() {
                     // Halo ring for the selected die — pulses faintly so
                     // the player's eye returns to the active pick on
                     // every visit. Constellation accent for identity.
+                    // The inset shadow used to project a constellation
+                    // tint INWARD over the die area, which alpha-blended
+                    // with the celestial DieView and made the selected
+                    // cube look duller than its neighbors. Dropping it
+                    // lets the cube read cleanly inside the halo while
+                    // the outer glow still marks selection.
                     <div aria-hidden="true" style={{
                       position: 'absolute',
                       left: '50%', top: '50%',
@@ -517,12 +543,19 @@ export function Forge() {
                       marginLeft: -36, marginTop: -36,
                       borderRadius: '50%',
                       border: `1px solid ${constellation.color}80`,
-                      boxShadow: `0 0 14px ${constellation.color}55, inset 0 0 12px ${constellation.color}33`,
+                      boxShadow: `0 0 14px ${constellation.color}55`,
                       pointerEvents: 'none',
                       animation: 'forge-die-pick-halo 3200ms ease-in-out infinite',
                     }} />
                   )}
-                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
+                  {/* Wrap the cube in a positioned div so it stacks on
+                      top of the absolutely-positioned halo (positioned
+                      elements would otherwise paint over in-flow static
+                      elements with the same z-index, sinking the die
+                      behind its own halo). */}
+                  <div style={{ position: 'relative', zIndex: 2 }}>
+                    <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
+                  </div>
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,
