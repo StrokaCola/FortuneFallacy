@@ -471,7 +471,12 @@ export function Forge() {
           <div
             className="forge-dice-strip"
             style={{
-              width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+              // Widen the picker on tight viewports so all 5 dice fit
+              // inside its bounds. Each die button is ~68px (56 cube +
+              // 6 padding × 2) so 5 dice with the tightened 4px gap
+              // need 5×68 + 4×4 = 356px — the old 320px cap was
+              // pushing the rightmost die ~50px past the picker edge.
+              width: tight ? 'min(364px, calc(100vw - 16px))' : 360,
               overflow: 'visible',
               paddingTop: 16,
               paddingBottom: 16,
@@ -487,7 +492,11 @@ export function Forge() {
           <div
             style={{
               display: 'flex',
-              justifyContent: tight ? 'flex-start' : 'space-between',
+              // Center on tight so the row sits cleanly inside the
+              // picker bounds when the user has the default 5 dice.
+              // (At 6+ dice the row overflows and `overflowX: auto`
+              // takes over, scrolling from the left as before.)
+              justifyContent: 'center',
               flexWrap: 'nowrap',
               overflowX: tight ? 'auto' : 'visible',
               overflowY: 'visible',
@@ -500,7 +509,9 @@ export function Forge() {
               // by the dice falling off the right edge, so no chrome
               // is needed. WebKit rule lives in styles/index.css.
               scrollbarWidth: 'none',
-              gap: tight ? 8 : 4,
+              // Tightened from 8 → 4 on tight so 5 dice fit inside the
+              // 364px picker rather than overflowing its right edge.
+              gap: tight ? 4 : 4,
               // The inner scroller needs its own vertical breathing
               // room so the halo glow has room to render before being
               // clipped by overflow-x auto.
