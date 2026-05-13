@@ -40,11 +40,11 @@ function makeCtx(
 describe('evaluation phase — held-only base scoring', () => {
   it('uses only scoringOrder-indexed faces for sumFaces', () => {
     // Dice: [3, 5, 1, 6, 2]. scoringOrder [0, 4] (held d0=3 and d4=2).
-    // sumFaces = 3 + 2 = 5 (NOT 17). Combo on [3,2] is 'chance' (0 chips, 1 mult).
-    // chips = 0 + 5 = 5.
+    // sumFaces = 3 + 2 = 5 (NOT 17). Combo on [3,2] is 'chance' (5 chips floor, 1 mult).
+    // chips = 5 (chance floor) + 5 (face sum) = 10.
     const ctx = makeCtx([3, 5, 1, 6, 2], [0, 4]);
     const out = evaluation(ctx);
-    expect(out.chips).toBe(5);
+    expect(out.chips).toBe(10);
     expect(out.combo?.scoringFaces).toEqual([3, 2]);
   });
 
@@ -64,10 +64,12 @@ describe('evaluation phase — held-only base scoring', () => {
     expect(out.combo?.scoringFaces).toEqual([3, 3]);
   });
 
-  it('zero held dice → zero chips + zero mult-baseline', () => {
+  it('zero held dice → chance-floor chips + zero mult-baseline', () => {
+    // 2026-05-13: Chance combo gained a 5-chip consolation floor; degenerate
+    // hand returns 5 (the floor) + 0 (no face sum) = 5.
     const ctx = makeCtx([6, 6, 6, 6, 6], []);
     const out = evaluation(ctx);
-    expect(out.chips).toBe(0);
+    expect(out.chips).toBe(5);
     expect(out.mult).toBe(1); // high-card mult on zero faces; degenerate but stable
     expect(out.combo?.scoringFaces).toEqual([]);
   });

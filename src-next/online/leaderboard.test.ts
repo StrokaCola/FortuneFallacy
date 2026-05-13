@@ -1,0 +1,44 @@
+import { describe, it, expect } from 'vitest';
+import { sanitizeLeaderboardName } from './leaderboard';
+
+describe('sanitizeLeaderboardName', () => {
+  it('passes a clean name through unchanged', () => {
+    expect(sanitizeLeaderboardName('Aria')).toBe('Aria');
+  });
+
+  it('strips HTML angle brackets and ampersands', () => {
+    expect(sanitizeLeaderboardName('<script>alert(1)</script>')).toBe('scriptalert(1)/script');
+  });
+
+  it('caps the length at 24 characters', () => {
+    const long = 'A'.repeat(50);
+    const out = sanitizeLeaderboardName(long);
+    expect(out.length).toBeLessThanOrEqual(24);
+  });
+
+  it('trims surrounding whitespace and collapses runs', () => {
+    expect(sanitizeLeaderboardName('   Aria    Stark   ')).toBe('Aria Stark');
+  });
+
+  it('falls back to "Wanderer" when the cleaned name is empty', () => {
+    expect(sanitizeLeaderboardName('')).toBe('Wanderer');
+    expect(sanitizeLeaderboardName('   ')).toBe('Wanderer');
+    expect(sanitizeLeaderboardName('<>&"\'')).toBe('Wanderer');
+  });
+
+  it('strips zero-width and bidi/RTL marks', () => {
+    // Right-to-Left Override (U+202E) + Pop Directional Formatting (U+202C)
+    // around the name. Built from String.fromCharCode so the source file
+    // stays pure ASCII.
+    const RLO = String.fromCharCode(0x202E);
+    const PDF = String.fromCharCode(0x202C);
+    const griefed = `${RLO}Aria${PDF}`;
+    expect(sanitizeLeaderboardName(griefed)).toBe('Aria');
+  });
+
+  it('strips C0/C1 control characters', () => {
+    const NUL = String.fromCharCode(0x00);
+    const BEL = String.fromCharCode(0x07);
+    expect(sanitizeLeaderboardName(`Aria${NUL}${BEL}`)).toBe('Aria');
+  });
+});

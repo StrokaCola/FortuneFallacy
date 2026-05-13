@@ -111,44 +111,48 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
 
   // ---------- Stake Ladder (6) ----------
+  // 2026-05-13: stake-ladder names lifted from "X Cleared" placeholders to
+  // an evocative fire-ladder set matching the spark/ember/pyre/beacon/nova/
+  // supernova metaphor the stake names already imply. IDs are stable so
+  // saves and tests hold.
   {
     id: 'stake_spark',
-    name: 'Spark Cleared',
+    name: 'Match Struck',
     description: 'Clear the Spark stake on any constellation.',
     dust: 15, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'spark',
   },
   {
     id: 'stake_ember',
-    name: 'Ember Cleared',
+    name: 'Coals Kept',
     description: 'Clear the Ember stake on any constellation.',
     dust: 25, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'ember',
   },
   {
     id: 'stake_pyre',
-    name: 'Pyre Cleared',
+    name: 'The Pyre Lights',
     description: 'Clear the Pyre stake on any constellation.',
     dust: 40, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'pyre',
   },
   {
     id: 'stake_beacon',
-    name: 'Beacon Cleared',
+    name: 'Distant Beacon',
     description: 'Clear the Beacon stake on any constellation.',
     dust: 60, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'beacon',
   },
   {
     id: 'stake_nova',
-    name: 'Nova Cleared',
+    name: 'Nova Witness',
     description: 'Clear the Nova stake on any constellation.',
     dust: 90, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'nova',
   },
   {
     id: 'stake_supernova',
-    name: 'Supernova Cleared',
+    name: 'All The Sky On Fire',
     description: 'Clear the Supernova stake on any constellation.',
     dust: 150, category: 'stake_ladder',
     check: (s, e) => isWonRunEnd(e) && s.run.stakeId === 'supernova',

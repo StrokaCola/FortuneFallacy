@@ -38,11 +38,15 @@ class ScreenMusicImpl {
   private getOrCreate(screen: ScreenId): Howl {
     let h = this.howls.get(screen);
     if (!h) {
+      // Music beds stream via <audio> (html5:true) — see AudioEngine.ts for
+      // the rationale. Source array prefers .opus when present, .wav fallback.
+      const baseFile = TRACK_FILES[screen];
+      const opusFile = baseFile.replace(/\.wav$/, '.opus');
       h = new Howl({
-        src: [`${BASE_PATH}/${TRACK_FILES[screen]}`],
+        src: [`${BASE_PATH}/${opusFile}`, `${BASE_PATH}/${baseFile}`],
         loop: true,
         volume: 0,
-        html5: false,
+        html5: true,
       });
       this.howls.set(screen, h);
     }

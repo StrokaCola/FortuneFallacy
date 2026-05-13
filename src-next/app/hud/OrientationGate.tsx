@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Z } from './zLayers';
 import { store } from '../../state/store';
+import { getOrientationOverride, subscribeOrientationOverride } from '../a11y/inputPrefs';
 
 // Phones now play in PORTRAIT (was landscape). Phone screens are designed
 // for portrait usage, and the dice tray + HUD have plenty of room when
@@ -9,6 +10,9 @@ import { store } from '../../state/store';
 //
 // Desktop (no coarse pointer) is unaffected — landscape continues to be
 // the default and only orientation that matters there.
+//
+// Motor-a11y override: players who can only hold their device in a fixed
+// orientation can disable this gate via Settings → Allow landscape on phone.
 function isPhoneLandscape(): boolean {
   if (typeof window === 'undefined') return false;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
@@ -18,10 +22,12 @@ function isPhoneLandscape(): boolean {
 }
 
 export function OrientationGate() {
-  const [locked, setLocked] = useState(isPhoneLandscape);
+  const [override, setOverride] = useState(getOrientationOverride);
+  const [phoneLand, setPhoneLand] = useState(isPhoneLandscape);
+  const locked = phoneLand && !override;
 
   useEffect(() => {
-    const update = () => setLocked(isPhoneLandscape());
+    const update = () => setPhoneLand(isPhoneLandscape());
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     return () => {
@@ -29,6 +35,8 @@ export function OrientationGate() {
       window.removeEventListener('orientationchange', update);
     };
   }, []);
+
+  useEffect(() => subscribeOrientationOverride(() => setOverride(getOrientationOverride())), []);
 
   useEffect(() => {
     const three = document.getElementById('three-next');

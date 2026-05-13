@@ -41,5 +41,9 @@ export const COMBOS: ComboDef[] = [
   { id: 'three_kind',  name: 'Three of a Kind', tier: 3, chips: 30,  mult: 5,  test: (v, _s, c = DEFAULT_CTX) => has(v, 3, c) },
   { id: 'two_pair',    name: 'Two Pair',        tier: 2, chips: 20,  mult: 3,  test: (v, _s, c = DEFAULT_CTX) => hasTwoOf(v, 2, 2, c) },
   { id: 'one_pair',    name: 'One Pair',        tier: 1, chips: 10,  mult: 2,  test: (v, _s, c = DEFAULT_CTX) => has(v, 2, c) },
-  { id: 'chance',      name: 'Chance',          tier: 0, chips: 0,   mult: 1,  test: () => true },
+  // 2026-05-13 floor lift: was chips:0 (a true zero). A bare-roll Chance now
+  // pays a small consolation 5 chips so the score readout never reads as
+  // mockery on a no-pattern hand. Catalysts targeting Chance (Cold Hand,
+  // Pair Dynamo's miss-floor) still proc on top.
+  { id: 'chance',      name: 'Chance',          tier: 0, chips: 5,   mult: 1,  test: () => true },
 ];
