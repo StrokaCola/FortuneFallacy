@@ -76,6 +76,11 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
   // For non-cube shapes the polyhedron lives on a unit sphere; scaling its
   // vertex cloud by HALF (matches old half-extent) keeps similar tray feel.
   const HALF = 0.4;
+  // collider-handle → die index map so collision events can be attributed
+  // to specific dice. Built alongside body creation. Rapier's
+  // drainCollisionEvents callback gets collider handles (not body handles),
+  // so this map keys on the collider returned by createCollider.
+  const colliderToIdx = new Map<number, number>();
   for (let i = 0; i < diceCount; i++) {
     const x = (i - (diceCount - 1) / 2) * 1.6;
     const z = (rng.next() - 0.5) * 1.5;
@@ -86,11 +91,15 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     const body = world.createRigidBody(bodyDesc);
     const shape = shapes[i] ?? 'd6';
     const collider = colliderForShape(r, shape, HALF);
-    world.createCollider(collider, body);
+    const created = world.createCollider(collider, body);
+    if (created && typeof created.handle === 'number') {
+      colliderToIdx.set(created.handle, i);
+    }
     bodies.push(body);
   }
 
   let collisionCount = 0;
+  const collisionPairs: Array<[number, number]> = [];
   let peakVelocity = 0;
   const bounceHeights: number[] = bodies.map(() => 0);
   const settleMs: number[] = bodies.map(() => 0);
@@ -103,7 +112,13 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
 
   for (let step = 0; step < 240; step++) {
     world.step(eventQueue);
-    eventQueue.drainCollisionEvents(() => { collisionCount += 1; });
+    eventQueue.drainCollisionEvents((h1: number, h2: number, started: boolean) => {
+      if (!started) return;
+      collisionCount += 1;
+      const a = colliderToIdx.get(h1);
+      const b = colliderToIdx.get(h2);
+      if (a != null && b != null) collisionPairs.push([a, b]);
+    });
     bodies.forEach((b, i) => {
       const v = b.linvel();
       const speed = Math.hypot(v.x, v.y, v.z);
@@ -183,6 +198,7 @@ export async function runRapierSim(req: SimulationRequest, prevFaces: number[]):
     settleMs,
     peakVelocity,
     collisionCount,
+    collisionPairs,
     bounceHeights,
     frames,
   };
