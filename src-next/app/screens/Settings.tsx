@@ -4,6 +4,10 @@ import * as audioSettings from '../../audio/audioSettings';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
 import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
 import { getColorblindPref, setColorblindPref, subscribeColorblind } from '../visual/colorblind';
+import {
+  getOrientationOverride, setOrientationOverride, subscribeOrientationOverride,
+  getLongPressPref, setLongPressPref, subscribeLongPressPref, type LongPressPref,
+} from '../a11y/inputPrefs';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
 
@@ -159,6 +163,78 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
   );
 }
 
+// Motor a11y: replace the phone-landscape rotate-prompt wall with an
+// override toggle so players who can only hold their device fixed can play.
+function OrientationOverrideToggle() {
+  const [on, setOn] = useState(getOrientationOverride);
+  useEffect(() => subscribeOrientationOverride(() => setOn(getOrientationOverride())), []);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>allow landscape on phone</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Allow phone-landscape preference">
+        {[
+          { id: 'off', label: 'Default', hint: 'Show rotate prompt when a phone is held landscape', val: false },
+          { id: 'on',  label: 'Allow',   hint: 'Skip the rotate prompt — useful for mounted devices and motor-accessibility cases', val: true  },
+        ].map((o) => {
+          const active = on === o.val;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setOrientationOverride(o.val)}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Motor a11y: shorten the tooltip hold duration for players with tremors,
+// arthritis, or limited dexterity. Three presets: standard / quick / instant.
+function LongPressToggle() {
+  const [pref, setPref] = useState<LongPressPref>(getLongPressPref);
+  useEffect(() => subscribeLongPressPref(() => setPref(getLongPressPref())), []);
+  const opts: { id: LongPressPref; label: string; hint: string }[] = [
+    { id: 'standard', label: 'Standard', hint: '450 ms hold to pin a tooltip (default)' },
+    { id: 'quick',    label: 'Quick',    hint: '200 ms hold — easier on tremors / arthritis' },
+    { id: 'instant',  label: 'Instant',  hint: '60 ms — almost any tap pins the tooltip' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>long-press hold</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Long-press hold duration preference">
+        {opts.map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setLongPressPref(o.id)}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MotionToggle({ pref }: { pref: MotionPref }) {
   const opts: { id: MotionPref; label: string; hint: string }[] = [
     { id: 'allow', label: 'Full',    hint: 'Always animate' },
@@ -247,6 +323,10 @@ export function Settings() {
         <CaptionsToggle />
 
         <ColorblindToggle />
+
+        <OrientationOverrideToggle />
+
+        <LongPressToggle />
 
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 

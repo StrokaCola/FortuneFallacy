@@ -20,8 +20,14 @@
 // Exported so the 3D dice long-press handler (Dice3D.ts) shares the same hold
 // duration and movement tolerance as the HTML `.has-tip` system — keeps the
 // gesture feel consistent across React UI and the in-round dice canvas.
+//
+// The 450ms baseline is overridden at runtime by the player's a11y pref
+// (Settings → Long-press hold). HOLD_MS stays exported as the *default*
+// for tests and Dice3D's import; the controller below resolves the
+// pref-aware value via getLongPressMs() on every touchstart.
 export const HOLD_MS = 450;
 export const MOVE_TOLERANCE_PX = 8;
+import { getLongPressMs } from '../a11y/inputPrefs';
 const STUCK_CLASS = 'tip-stuck';
 // Min gap between a tooltip and the viewport edge after shifting. Larger
 // than zero so the tip doesn't hug the screen edge under a notch / camera
@@ -147,7 +153,7 @@ export function installLongPressTooltips(): { dispose: () => void } {
         didTrigger = true;
       }
       timer = null;
-    }, HOLD_MS) as unknown as number;
+    }, getLongPressMs()) as unknown as number;
   };
 
   const onTouchMove = (e: TouchEvent) => {
