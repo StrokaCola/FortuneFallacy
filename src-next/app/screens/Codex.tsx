@@ -14,7 +14,7 @@ import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS } from '../visual/rarityStyles';
 
-type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets';
+type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets' | 'about';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'catalysts', label: 'Catalysts' },
@@ -26,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'resonances', label: 'Resonances' },
   { id: 'achievements', label: 'Ascensions' },
   { id: 'secrets', label: 'Whispers' },
+  { id: 'about', label: 'About' },
 ];
 
 const selectDiscovered = (s: GameState) => s.meta.discovered;
@@ -88,6 +89,8 @@ export function Codex() {
           <AchievementsView unlocked={achievements.unlocked} />
         ) : tab === 'secrets' ? (
           <SecretsView found={easterEggs} />
+        ) : tab === 'about' ? (
+          <AboutView />
         ) : (
           <>
             <CodexProgressHeader tab={tab} discovered={discovered} stakeProgress={stakeProgress} />
@@ -647,6 +650,7 @@ function AchievementsView({ unlocked }: { unlocked: string[] }) {
 // The hint is always visible — that's the point. The unfound egg still
 // gives the player something to chew on.
 import { EASTER_EGGS } from '../../data/easterEggs';
+import pkg from '../../../package.json';
 
 function SecretsView({ found }: { found: string[] }) {
   const foundSet = new Set(found);
@@ -710,6 +714,80 @@ function SecretsView({ found }: { found: string[] }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// About tab — studio/version/credits surface so a curious player has
+// somewhere to land for "what is this and where do I follow it?"
+function AboutView() {
+  const version: string = (pkg as { version: string }).version;
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff',
+  };
+  const valueStyle: React.CSSProperties = {
+    fontSize: 13, color: '#f3f0ff', marginTop: 4,
+  };
+  const sectionStyle: React.CSSProperties = {
+    background: 'rgba(28,18,69,0.55)',
+    border: '1px solid rgba(149,119,255,0.25)',
+    borderRadius: 8,
+    padding: '14px 16px',
+  };
+  return (
+    <div style={{
+      maxWidth: 720, margin: '0 auto',
+      display: 'flex', flexDirection: 'column', gap: 14,
+      paddingBottom: 24,
+    }}>
+      <div style={sectionStyle}>
+        <div className="f-mono uc" style={labelStyle}>game</div>
+        <div className="f-display" style={{ ...valueStyle, fontSize: 24 }}>FortuneFallacy</div>
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', marginTop: 6, lineHeight: 1.5 }}>
+          A Balatro-style dice roguelike. Roll, lock, score; build a deck of
+          catalysts and mods that change how the dice answer to you.
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <div style={sectionStyle}>
+          <div className="f-mono uc" style={labelStyle}>version</div>
+          <div className="f-mono" style={valueStyle}>v{version}</div>
+        </div>
+        <div style={sectionStyle}>
+          <div className="f-mono uc" style={labelStyle}>license</div>
+          <div className="f-mono" style={valueStyle}>MIT</div>
+        </div>
+        <div style={sectionStyle}>
+          <div className="f-mono uc" style={labelStyle}>status</div>
+          <div className="f-mono" style={valueStyle}>Pre-alpha</div>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div className="f-mono uc" style={labelStyle}>built with</div>
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', marginTop: 8, lineHeight: 1.7 }}>
+          React · TypeScript · Vite · Three.js · Rapier · PixiJS · Howler · Tone.js · Zustand
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div className="f-mono uc" style={labelStyle}>privacy</div>
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', marginTop: 8, lineHeight: 1.6 }}>
+          Your save is stored in this browser's localStorage. When you complete
+          a run, your name + score are submitted to a public leaderboard
+          (no other tracking, no analytics). You can clear local data via
+          your browser's site settings.
+        </div>
+      </div>
+
+      <div style={{ ...sectionStyle, borderColor: 'rgba(245,196,81,0.35)' }}>
+        <div className="f-mono uc" style={{ ...labelStyle, color: '#f5c451' }}>thanks</div>
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', marginTop: 8, lineHeight: 1.6 }}>
+          To everyone who playtested, broke things, and told us. The dice are
+          better because of you.
+        </div>
       </div>
     </div>
   );
