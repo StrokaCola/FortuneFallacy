@@ -1,7 +1,7 @@
 import { store, type GameState } from './store';
 import { safeReadJSON, safeWriteJSON } from './storage';
 import { migrateRetheme } from './migrations/v1_retheme';
-import { SEEDED_UNLOCKS, SEEDED_DISCOVERED_CONSUMABLES } from './slices/meta';
+import { SEEDED_UNLOCKS, SEEDED_DISCOVERED_CONSUMABLES, GATED_CONSTELLATION_IDS } from './slices/meta';
 import { begin as perfBegin } from '../devtools/perf';
 
 const KEY = 'ff_next_save';
@@ -34,8 +34,15 @@ export function applySavedToInitial(s: GameState): GameState {
   const mergedMeta = { ...s.meta, ...saved.meta };
   // Saves predating the seeded-unlocks change can carry an empty or partial
   // unlocks array; union with the current seed so legacy players don't see
-  // every constellation locked after upgrading.
-  const savedUnlocks = saved.meta?.unlocks ?? [];
+  // every catalyst/maneuver locked after upgrading.
+  //
+  // Constellations introduced gating after launch — strip any of the 7
+  // gated constellation IDs out of legacy saves so returning players
+  // start from Lyra only, same as a fresh save. Lyra is in SEEDED_UNLOCKS
+  // and re-added through the union below regardless of what the save held.
+  const savedUnlocks = (saved.meta?.unlocks ?? []).filter(
+    (id: string) => !(GATED_CONSTELLATION_IDS as readonly string[]).includes(id),
+  );
   mergedMeta.unlocks = Array.from(new Set([...SEEDED_UNLOCKS, ...savedUnlocks]));
   // Defensive defaults for fields added after a player's first save.
   mergedMeta.stakeProgress = mergedMeta.stakeProgress ?? {};

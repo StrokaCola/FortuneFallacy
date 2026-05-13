@@ -150,6 +150,22 @@ export const metaHandler: ActionHandler = (a, s) => {
         ],
       };
     }
+    case 'UNLOCK_CONSTELLATION': {
+      // Dedupe gate. The listener fires speculatively on every event, so a
+      // constellation already in meta.unlocks short-circuits here. No dust
+      // grant or toast — the celebration is the lock visually opening in
+      // the picker, mirrored by the Codex transitioning the entry out of
+      // its ??? state.
+      const unlocks = s.meta.unlocks ?? [];
+      if (unlocks.includes(a.constellationId)) return { state: s, events: [] };
+      return {
+        state: {
+          ...s,
+          meta: { ...s.meta, unlocks: [...unlocks, a.constellationId] },
+        },
+        events: [],
+      };
+    }
     case 'SHOW_DIE_TIP': {
       // Guard against a stale tip for a die that no longer exists (e.g. a
       // race with RESET_ROUND). The tooltip is in-round UI only.

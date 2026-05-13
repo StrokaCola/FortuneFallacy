@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
+import { lookupConstellationUnlock } from '../../data/constellationUnlocks';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
 import { useStore, type GameState } from '../../state/store';
 import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
+const selectUnlocks = (s: GameState) => s.meta.unlocks;
 
 export function ConstellationSelect() {
   const compact = useIsCompactStage();
   const tight = useIsTightStage();
   const stakeProgress = useStore(selectStakeProgress);
+  const unlocks = useStore(selectUnlocks);
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
@@ -60,6 +63,7 @@ export function ConstellationSelect() {
               compact={compact}
               tight={tight}
               progressId={stakeProgress[c.id] ?? null}
+              unlocked={unlocks.includes(c.id)}
             />
           ))}
         </div>
@@ -75,15 +79,17 @@ export function ConstellationSelect() {
   );
 }
 
-function Card({ c, compact, tight, progressId }: { c: Constellation; compact: boolean; tight: boolean; progressId: string | null }) {
+function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; compact: boolean; tight: boolean; progressId: string | null; unlocked: boolean }) {
   const accent = '#7be3ff';
   // Highest stake the player has cleared for this constellation. Stakes up to
   // and including (cleared + 1) are playable. Spark is always playable.
   const clearedIdx = progressId ? stakeIndex(progressId) : -1;
   const maxPlayable = Math.min(STAKES.length - 1, clearedIdx + 1);
   const [picked, setPicked] = useState<number>(0);
-  const playable = picked <= maxPlayable;
+  const stakePlayable = picked <= maxPlayable;
+  const playable = unlocked && stakePlayable;
   const stake = STAKES[picked]!;
+  const unlockHint = unlocked ? null : lookupConstellationUnlock(c.id)?.description ?? null;
   return (
     <div
       className="panel mat-interactive"
@@ -91,16 +97,22 @@ function Card({ c, compact, tight, progressId }: { c: Constellation; compact: bo
         textAlign: 'left',
         padding: tight ? 8 : compact ? 12 : 16,
         background: 'rgba(15,9,37,0.6)',
-        border: '1px solid rgba(149,119,255,0.25)',
+        border: `1px solid ${unlocked ? 'rgba(149,119,255,0.25)' : 'rgba(149,119,255,0.12)'}`,
         borderRadius: 12,
         display: 'flex', flexDirection: 'column', gap: tight ? 4 : compact ? 6 : 10,
         minHeight: tight ? 190 : compact ? 240 : 320,
+        // Whole card desaturates when locked. Glyph + text stay legible enough
+        // to telegraph "this is real content you'll unlock", not a placeholder.
+        opacity: unlocked ? 1 : 0.55,
+        filter: unlocked ? undefined : 'grayscale(0.6)',
       }}>
       <Glyph points={c.glyph} accent={accent} tight={tight} />
       <div className="f-display" style={{
         fontSize: tight ? 16 : compact ? 22 : 18,
         color: '#f3f0ff', lineHeight: 1.1,
+        display: 'flex', alignItems: 'center', gap: 6,
       }}>
+        {!unlocked && <span aria-hidden="true" style={{ fontSize: '0.85em', color: '#bba8ff' }}>🔒</span>}
         {c.name}
       </div>
       <div className="f-mono uc" style={{
@@ -171,18 +183,39 @@ function Card({ c, compact, tight, progressId }: { c: Constellation; compact: bo
         </div>
       </div>
 
-      <button
-        className="btn btn-primary mat-interactive"
-        disabled={!playable}
-        onClick={() => playable && dispatch({ type: 'NEW_RUN', constellationId: c.id, stakeId: stake.id })}
-        style={{
-          marginTop: 8, width: '100%', padding: '8px 14px', fontSize: 12,
-          opacity: playable ? 1 : 0.4,
-          cursor: playable ? 'pointer' : 'not-allowed',
-        }}
-      >
-        Begin · {stake.name}
-      </button>
+      {unlocked ? (
+        <button
+          className="btn btn-primary mat-interactive"
+          disabled={!playable}
+          onClick={() => playable && dispatch({ type: 'NEW_RUN', constellationId: c.id, stakeId: stake.id })}
+          style={{
+            marginTop: 8, width: '100%', padding: '8px 14px', fontSize: 12,
+            opacity: playable ? 1 : 0.4,
+            cursor: playable ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Begin · {stake.name}
+        </button>
+      ) : (
+        <div
+          className="f-mono"
+          title={unlockHint ?? undefined}
+          style={{
+            marginTop: 8, width: '100%', padding: '8px 14px',
+            fontSize: 10, letterSpacing: '0.08em',
+            color: '#bba8ff', textAlign: 'center',
+            border: '1px dashed rgba(149,119,255,0.35)',
+            borderRadius: 6,
+            background: 'rgba(28,18,69,0.4)',
+            lineHeight: 1.3,
+          }}
+        >
+          <span style={{ display: 'block', color: '#7be3ff', fontSize: 9, letterSpacing: '0.22em', marginBottom: 2 }}>
+            LOCKED
+          </span>
+          {unlockHint ?? 'Discover its unlock condition through play.'}
+        </div>
+      )}
     </div>
   );
 }

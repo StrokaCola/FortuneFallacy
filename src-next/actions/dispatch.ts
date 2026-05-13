@@ -21,6 +21,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   SKIP_ONBOARDING: metaHandler,
   RESET_ONBOARDING: metaHandler,
   UNLOCK_ACHIEVEMENT: metaHandler,
+  UNLOCK_CONSTELLATION: metaHandler,
   CLAIM_DAILY_LOGIN: metaHandler,
   RESOLVE_AUDIT: metaHandler,
   SHOW_DIE_TIP: metaHandler,

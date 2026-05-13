@@ -38,6 +38,7 @@ export type Action =
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
+  | { type: 'UNLOCK_CONSTELLATION'; constellationId: string }
   | { type: 'CLAIM_DAILY_LOGIN'; date: string }
   | { type: 'RESOLVE_AUDIT'; choice: 'gamble' | 'skip' }
   | { type: 'SEE_COACHMARK'; id: string }
