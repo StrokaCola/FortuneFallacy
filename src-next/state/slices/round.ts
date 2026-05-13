@@ -49,6 +49,13 @@ export type RoundSlice = {
   // non-boss blinds roll one. See core/round/voidstorms.ts. Null when
   // no storm is active.
   voidstormId: string | null;
+  // Boss Phase Escalation (Pillar B) — boss blinds escalate mid-blind.
+  // Phase 1 is the legacy state (only base debuffs apply). Phase 2 fires
+  // when the boss's `secondWind.trigger` is met (after a SCORE_HAND), and
+  // unions the second-wind debuffs (or, for Callisto, removes a base
+  // debuff). Non-boss blinds stay at 1. Saved state from before this
+  // shipped defaults to 1 via persistence migration.
+  bossPhase: 1 | 2;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -105,6 +112,7 @@ export const initialRoundSlice = (): RoundSlice => ({
   hotHandsInRow: 0,
   hotStreakFiredThisBlind: false,
   voidstormId: null,
+  bossPhase: 1,
   errisAppleFlipped: false,
   mirroredHandConsumed: false,
   piApproxArmed: false,

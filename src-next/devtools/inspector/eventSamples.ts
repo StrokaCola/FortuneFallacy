@@ -83,6 +83,12 @@ export const eventSamples: { [K in keyof GameEventMap]: GameEventMap[K] } = {
   onModAttached: { dieIdx: 0, modId: 'edge_scoring' },
   onModDetached: { dieIdx: 0, modId: 'edge_scoring' },
   onSellTrigger: { catalystId: 'stipend', label: 'Stipend', shardsBefore: 5, shardsAfter: 9 },
+  onBossSecondWind: {
+    blindId: 'pluto',
+    flavor: 'the gambler\'s bones tighten — fewer dice answer the call.',
+    addedDebuffs: ['hand_size_cap_4'],
+    removedDebuffs: [],
+  },
 } satisfies { [K in keyof GameEventMap]: GameEventMap[K] };
 
 export const eventKeys: (keyof GameEventMap)[] = Object.keys(eventSamples) as (keyof GameEventMap)[];

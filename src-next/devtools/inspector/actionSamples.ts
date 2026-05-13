@@ -58,6 +58,9 @@ export const actionSamples = {
   RESET_ONBOARDING:     { type: 'RESET_ONBOARDING' },
   SHOW_DIE_TIP:         { type: 'SHOW_DIE_TIP', dieIdx: 0, screenX: 100, screenY: 100, pointerType: 'touch' },
   HIDE_DIE_TIP:         { type: 'HIDE_DIE_TIP' },
+  RESOLVE_SKIP_BOUNTY:  { type: 'RESOLVE_SKIP_BOUNTY', optionIdx: 0 },
+  START_COSMIC_LAP:     { type: 'START_COSMIC_LAP' },
+  RESOLVE_EVENT_CHOICE: { type: 'RESOLVE_EVENT_CHOICE', eventId: 'wandering_oracle', choiceIdx: 0 },
 } satisfies ActionSamples;
 
 export const actionTypes: Action['type'][] = Object.keys(actionSamples) as Action['type'][];

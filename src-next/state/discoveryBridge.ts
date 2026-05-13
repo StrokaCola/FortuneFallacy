@@ -88,6 +88,27 @@ export function startDiscoveryBridge(): () => void {
         };
       });
     }),
+    // 2026-05-13 (Pillar E) — capture resonance fires for the Codex.
+    // applyResonances emits 'resonance:<pairId>' onUpgradeTriggered events
+    // once per scoring hand when a pair is active. First fire ever appends
+    // to meta.discovered.resonances; subsequent fires are a no-op. The
+    // ResonanceToast subscribes to the same event for the live reveal.
+    bus.on('onUpgradeTriggered', (payload: { id: string }) => {
+      const RESONANCE_PREFIX = 'resonance:';
+      if (!payload.id.startsWith(RESONANCE_PREFIX)) return;
+      const pairId = payload.id.slice(RESONANCE_PREFIX.length);
+      setStateRaw((s) => {
+        const cur = s.meta.discovered.resonances ?? [];
+        if (cur.includes(pairId)) return s;
+        return {
+          ...s,
+          meta: {
+            ...s.meta,
+            discovered: { ...s.meta.discovered, resonances: [...cur, pairId] },
+          },
+        };
+      });
+    }),
   ];
 
   // Track consumables added via GRANT_CONSUMABLE (skip rewards, packs).

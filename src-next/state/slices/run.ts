@@ -121,6 +121,16 @@ export type RunSlice = {
   // palindromic names are owned. Causes the first hand's scoring dice to
   // retrigger once.
   mirroredHandActive: boolean;
+  // Cosmic Lap (Pillar D) — endless-mode loop counter. 0 during the
+  // normal 4-ante run. Increments by 1 each time the player clears Ante
+  // 4 Final Trial and picks "Continue into the Cosmic Lap". Drives
+  // target scaling (`Math.pow(2.25, lap)`) and selects the active
+  // cosmic affliction below.
+  endlessLap?: number;
+  // ID of the current cosmic affliction (from data/cosmicAfflictions.ts).
+  // Set when endlessLap > 0; null during the normal run. Affliction
+  // effects are applied in startBlind / pipeline phases as needed.
+  cosmicAfflictionId?: string | null;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -189,4 +199,6 @@ export const initialRunSlice = (): RunSlice => ({
   diceModStacks: Array.from({ length: 5 }, () => [] as number[]),
   theAnswerArmed: false,
   mirroredHandActive: false,
+  endlessLap: 0,
+  cosmicAfflictionId: null,
 });

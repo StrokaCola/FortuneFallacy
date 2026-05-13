@@ -80,6 +80,9 @@ import type { Screen } from '../../state/slices/ui';
 const SCREEN_MODES: Record<Screen, number> = {
   title: 0, nameentry: 0, constellation_select: 0, scores: 0, win: 1, fail: 0,
   round: 1, hub: 2, shop: 2, forge: 2, pause: 0, settings: 0, codex: 0, challenges: 0,
+  // Pillar D + C additions — astral_forge reuses the title backdrop;
+  // event reuses the hub backdrop (player is between fights).
+  astral_forge: 0, event: 2,
 };
 
 let gl: WebGLRenderingContext | null = null;

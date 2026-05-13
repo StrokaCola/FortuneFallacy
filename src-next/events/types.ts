@@ -110,6 +110,16 @@ export type GameEventMap = {
   // banner. Sticky for the rest of the blind so subsequent hot hands
   // don't re-fire the banner.
   onHotStreak: { length: number };
+  // Fired once per boss blind when the second-wind trigger fires and
+  // the boss promotes from phase 1 to phase 2. Drives the
+  // BossPhaseBanner cinematic. Sticky for the rest of the blind because
+  // bossPhase only transitions 1→2 (never back).
+  onBossSecondWind: {
+    blindId: string;
+    flavor: string;
+    addedDebuffs: string[];
+    removedDebuffs: string[];
+  };
   // Mod attached to a die in the Forge. Drives the attach SFX + a small
   // visual pulse on the die that just received the mod.
   onModAttached: { dieIdx: number; modId: string };

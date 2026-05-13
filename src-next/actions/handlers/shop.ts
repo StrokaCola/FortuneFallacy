@@ -402,6 +402,9 @@ export const shopHandler: ActionHandler = (a, s) => {
         ],
       };
     }
+    case 'RESOLVE_SKIP_BOUNTY': {
+      return resolveSkipBounty(s, a.optionIdx);
+    }
     case 'SELL_UPGRADE': {
       const removeAt = <T,>(arr: T[], idx: number): T[] => arr.filter((_, i) => i !== idx);
       if (a.kind === 'catalyst') {
@@ -500,3 +503,105 @@ export const shopHandler: ActionHandler = (a, s) => {
       return { state: s, events: [] };
   }
 };
+
+// Pillar G — applies the player's chosen bounty option from the
+// SkipBountyModal. Clears pendingSkipBounty either way. Slot caps are
+// respected: a 'consumable' option converts to shards if the inventory
+// is full; a 'catalyst' option converts to shards if the slot is full.
+// The fallback shard amount (8) matches the "pool exhausted" copy
+// authored in rollSkipBountyOptions for symmetry.
+function resolveSkipBounty(s: GameState, optionIdx: number): { state: GameState; events: GameEventEmission[] } {
+  const bounty = s.shop.pendingSkipBounty;
+  if (!bounty) return { state: s, events: [] };
+  const option = bounty.options[optionIdx];
+  if (!option) return { state: s, events: [] };
+  const cleared: GameState = {
+    ...s,
+    shop: { ...s.shop, pendingSkipBounty: null },
+  };
+  if (option.kind === 'shards') {
+    return {
+      state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + option.amount } },
+      events: [],
+    };
+  }
+  if (option.kind === 'consumable') {
+    const def = lookupConsumable(option.consumableId);
+    if (!def) return { state: cleared, events: [] };
+    if (cleared.run.consumables.length >= maxConsumableSlots(cleared)) {
+      // Inventory full — convert to 8 shards as the courteous fallback.
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    return {
+      state: {
+        ...cleared,
+        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId] },
+      },
+      events: [],
+    };
+  }
+  if (option.kind === 'catalyst') {
+    if (cleared.run.catalysts.length >= maxCatalystSlots(cleared)) {
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    return {
+      state: {
+        ...cleared,
+        run: { ...cleared.run, catalysts: [...cleared.run.catalysts, option.catalystId] },
+      },
+      events: [{
+        type: 'onOfferBought',
+        payload: { kind: 'catalyst', id: option.catalystId, price: 0 },
+      }],
+    };
+  }
+  if (option.kind === 'pack') {
+    // Stage a celestial pack so the next shop visit opens it. Falls back
+    // to shards if pack metadata is missing (shouldn't happen in prod).
+    const packDef = lookupPack(option.packKind);
+    if (!packDef) {
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    const galaxyIds = rollPackContents(packDef.showCount, Math.random, packDef.quasarWeightMultiplier ?? 1);
+    const unlockedAtOpen = [...(cleared.meta.unlocks ?? [])];
+    const newUnlocks = new Set(unlockedAtOpen);
+    const events: GameEventEmission[] = [];
+    for (const gid of galaxyIds) {
+      if (!newUnlocks.has(gid)) {
+        newUnlocks.add(gid);
+        events.push({ type: 'onGalaxyDiscovered', payload: { galaxyId: gid } });
+      }
+    }
+    events.push({
+      type: 'onPackOpened',
+      payload: { kind: option.packKind, galaxyIds, picksAllowed: packDef.pickCount },
+    });
+    return {
+      state: {
+        ...cleared,
+        meta: { ...cleared.meta, unlocks: [...newUnlocks] },
+        shop: {
+          ...cleared.shop,
+          pendingPack: {
+            kind: option.packKind,
+            galaxyIds,
+            picksLeft: packDef.pickCount,
+            pickedSoFar: [],
+            unlockedAtOpen,
+          },
+        },
+      },
+      events,
+    };
+  }
+  return { state: cleared, events: [] };
+}

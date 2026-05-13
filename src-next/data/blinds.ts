@@ -43,6 +43,29 @@ export type SigilGroup = {
   filled?: boolean;       // when true: fill=boss.color, stroke=none
 };
 
+// Boss Phase Escalation (Pillar B) — every boss gains a "Second Wind"
+// trigger mid-blind. When fired, additional debuffs union into
+// activeDebuffs() and a BossPhaseBanner toasts the new rule. The trigger
+// is one of:
+//   - 'hand-2'       — promotes after the FIRST scored hand (i.e. the
+//                       second hand is about to be played)
+//   - 'half-target'  — promotes the instant the running score crosses
+//                       50% of target
+//   - 'last-hand'    — promotes when only one hand remains
+// Bosses that are already run-enders (Callisto) use the half-target
+// gate paired with a SOFTENING phase-2 — see BOSS_BLINDS below.
+export type BossPhaseTrigger = 'hand-2' | 'half-target' | 'last-hand';
+
+export type BossSecondWind = {
+  trigger: BossPhaseTrigger;
+  debuffs: string[];
+  flavor: string;
+  // Some bosses (Callisto) get *softened* in phase 2 rather than harder —
+  // their phase-2 step REMOVES one of the base debuffs. Listed by string
+  // id to match the entries in `debuffs` above.
+  removeDebuffs?: string[];
+};
+
 export type BossBlind = {
   id: string;
   name: string;
@@ -55,6 +78,11 @@ export type BossBlind = {
   // boss gets its own "the void approaches" — pluto's bones, ceres's
   // belt, etc. Falls back to a generic line if absent.
   cinematicFlavor?: string;
+  // Boss Phase Escalation — fires mid-blind to add (or, for Callisto,
+  // remove) debuffs and re-engage the player. Optional so saved state
+  // from before this field shipped just behaves as the legacy one-phase
+  // boss.
+  secondWind?: BossSecondWind;
 };
 
 // Per-boss cinematic flavor — looked up by id from the BOSS_BLINDS
@@ -121,6 +149,15 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'pluto', name: 'Pluto', color: '#44bb66',
     description: 'Demoted. 1s refuse to transform.', debuffs: ['no_mod_transforms_on_ones'],
+    secondWind: {
+      // Pluto's identity is "1s can't transform" — phase-2 keeps that
+      // thematic shape by also capping the hand size, so the player
+      // has fewer dice in which to dodge the transform lock. Rerolls
+      // stay on; no_rerolls was tested and tanked Spark win-rates.
+      trigger: 'hand-2',
+      debuffs: ['hand_size_cap_4'],
+      flavor: 'the gambler\'s bones tighten — fewer dice answer the call.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 7 12 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0',
       'M 17 12 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0',
@@ -145,6 +182,11 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'ceres', name: 'Ceres', color: '#ffaa44',
     description: 'Belt-bound. Hand capped at 4.', debuffs: ['hand_size_cap_4'],
+    secondWind: {
+      trigger: 'half-target',
+      debuffs: ['consumables_locked'],
+      flavor: 'the belt closes — your provisions are sealed.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 12 12 m -2 0 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0',
       'M 21 12 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0',
@@ -171,6 +213,14 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'triton', name: 'Triton', color: '#aa6644',
     description: 'Single flyby. No rerolls.', debuffs: ['no_rerolls'],
+    secondWind: {
+      // Triton is already harsh (no rerolls all blind). Half-target gate
+      // means the player has to commit to a heavy hand 2 to feel this —
+      // it telegraphs that the flyby is leaving.
+      trigger: 'half-target',
+      debuffs: ['hand_size_cap_4'],
+      flavor: 'the flyby pulls away — fewer dice answer the call.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 12 4 A 8 8 0 0 0 4 12',
       'M 4 12 A 8 8 0 0 0 12 20',
@@ -198,6 +248,16 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'phobos', name: 'Phobos', color: '#cc2244',
     description: 'Orbit decays. Locks release on roll.', debuffs: ['auto_unlock_after_roll'],
+    secondWind: {
+      // Phobos already invalidates locks (auto_unlock_after_roll).
+      // Phase-2 doubles down on the timing pressure by sealing
+      // consumables — no calibration to pin a face mid-blind, no
+      // Spare Reroll bail-out. Lighter than mod_slots_capped_1 which
+      // tested as too brutal at Spark.
+      trigger: 'hand-2',
+      debuffs: ['consumables_locked'],
+      flavor: 'orbit fully decayed — your relics drift out of reach.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 12 4 a 8 8 0 1 1 -0.01 0',
       'M 12 8 a 4 4 0 1 1 -0.01 0',
@@ -224,6 +284,18 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'callisto', name: 'Callisto', color: '#aa66ff',
     description: 'Cratered silence. Catalysts inert.', debuffs: ['disable_catalysts'],
+    // Phase 2 RELAXES Callisto. QA flagged Callisto as a run-ender for
+    // catalyst-heavy builds (60% of buy power vaporized for a full
+    // blind). The half-target gate gives the player a real path to
+    // *earn* their catalysts back: hit 50% under silence, the void
+    // remembers your voice. Triggered phase-2 REMOVES disable_catalysts
+    // so the rest of the blind plays at full power.
+    secondWind: {
+      trigger: 'half-target',
+      debuffs: [],
+      removeDebuffs: ['disable_catalysts'],
+      flavor: 'the cratered silence breaks — your voice carries again.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 12 4 a 8 8 0 1 0 0.01 0',
       'M 8 9 a 1.5 1.5 0 1 0 3 0 a 1.5 1.5 0 1 0 -3 0',
@@ -251,6 +323,16 @@ export const BOSS_BLINDS: BossBlind[] = [
     // first two hands so the boss reads as a real speed-bump but not
     // a run-ender like Callisto.
     description: 'Catalysts inert on first 2 hands.', debuffs: ['disable_catalysts_first_2_hands'],
+    secondWind: {
+      // Eris's whole identity is "catalysts come back, harder fights
+      // begin." Phase 2 re-engages with a freshly cinematic shape — the
+      // base debuff already expires by hand 3, so phase 2 lands with a
+      // *different* threat (mod slot squeeze) rather than re-running
+      // the same trick.
+      trigger: 'half-target',
+      debuffs: ['mod_slots_capped_1'],
+      flavor: 'the unmaker returns — marks crumble from the dice.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 3 14 A 11 6 -25 1 0 21 10',
       'M 12 12 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0',
@@ -272,6 +354,15 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'charon', name: 'Charon', color: '#8a8aaa',
     description: 'Ferryman\'s tariff. Consumables sealed in stasis.', debuffs: ['consumables_locked'],
+    secondWind: {
+      // Charon already locks consumables — phase-2 adds the
+      // no-transforms-on-1s squeeze. Lyra players keep all 5 dice; the
+      // pain shifts to mod synergy. Tested gentler than hand_size_cap_4
+      // for Spark.
+      trigger: 'hand-2',
+      debuffs: ['no_mod_transforms_on_ones'],
+      flavor: 'the ferryman silences your marks — 1s stay 1s.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 4 16 L 20 16',
       'M 6 16 L 8 10',
@@ -304,6 +395,15 @@ export const BOSS_BLINDS: BossBlind[] = [
   {
     id: 'sedna', name: 'Sedna', color: '#4477cc',
     description: 'Mod slots capped at 1.', debuffs: ['mod_slots_capped_1'],
+    secondWind: {
+      // Sedna's identity is mod compression. Phase 2 deepens that with
+      // the no-transform rule so even the surviving mods can't reshape
+      // 1s. Triggers on last-hand so the player makes peace with their
+      // squeezed loadout before this lands as the climax.
+      trigger: 'last-hand',
+      debuffs: ['no_mod_transforms_on_ones'],
+      flavor: 'the slot pulls deeper — the dice forget their marks.',
+    },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 12 12 m -10 -2 a 10 4 -15 1 0 20 4 a 10 4 -15 1 0 -20 -4',
       'M 12 12 a 1.5 1.5 0 1 0 3 0 a 1.5 1.5 0 1 0 -3 0',
@@ -322,10 +422,15 @@ export const BOSS_BLINDS: BossBlind[] = [
   },
 ];
 
-export function targetForBlind(ante: number, blindIndex: number): number {
+// Targets scale by (2.25 ^ lap) in Cosmic Lap (Pillar D) — passing lap=0
+// reproduces the legacy formula exactly. The exponent base was tuned to
+// roughly match the "every lap meaningfully harder, but reachable with
+// a strong build" feel: lap 1 = 2.25x, lap 2 = ~5x, lap 3 = ~11x.
+export function targetForBlind(ante: number, blindIndex: number, lap = 0): number {
   const row = ANTE_BASE_TARGETS[Math.min(ante, ANTE_BASE_TARGETS.length) - 1]!;
   const base = row[blindIndex]!;
-  return Math.ceil(base * BLIND_DEFS[blindIndex]!.targetMult);
+  const lapMul = lap > 0 ? Math.pow(2.25, lap) : 1;
+  return Math.ceil(base * BLIND_DEFS[blindIndex]!.targetMult * lapMul);
 }
 
 export function blindDefAt(idx: number): BlindDef {

@@ -1,5 +1,5 @@
 import type { ActionHandler } from './types';
-import { startBlind, clearBlind, bustBlind, skipBlind } from '../../core/round/transitions';
+import { startBlind, clearBlind, bustBlind, skipBlind, startCosmicLap } from '../../core/round/transitions';
 import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
@@ -7,6 +7,8 @@ import { applyConstellation } from '../../core/run/applyConstellation';
 import { applyAstralPerksToNewRun } from '../../core/run/applyAstralPerks';
 import { lookupConstellation } from '../../data/constellations';
 import { getDailyChallenge } from '../../online/dailyChallenge';
+import { resolveEventChoice } from '../../core/run/resolveEvent';
+import { lookupEvent } from '../../data/events';
 import type { HandlerResult } from './types';
 
 // Any round transition wipes the long-press die tooltip — the die it pointed
@@ -27,6 +29,13 @@ export const roundHandler: ActionHandler = (a, s) => {
       return clearDieTip(bustBlind(s));
     case 'SKIP_BLIND':
       return clearDieTip(skipBlind(s));
+    case 'START_COSMIC_LAP':
+      return clearDieTip(startCosmicLap(s));
+    case 'RESOLVE_EVENT_CHOICE': {
+      const def = lookupEvent(a.eventId);
+      if (!def) return { state: s, events: [] };
+      return clearDieTip(resolveEventChoice(s, def, a.choiceIdx));
+    }
     case 'NEW_RUN': {
       // Daily challenge: deterministic seed + constellation + stake derived
       // from today's UTC date so every player gets the same run on the same

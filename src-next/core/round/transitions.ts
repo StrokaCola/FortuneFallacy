@@ -10,8 +10,8 @@ import { stakeIndex } from '../../data/stakes';
 import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
 import { firstBlindExtraHands } from '../run/applyAstralPerks';
-import { pickVoidstorm } from './voidstorms';
-import { mulberry32 } from '../rng';
+import { getVoidstormForBlind, lookupVoidstorm } from './voidstorms';
+import { lookupCosmicAffliction, pickAfflictionForLap } from '../../data/cosmicAfflictions';
 import { accrueBlindCleared, isPalindrome } from './scalingHooks';
 import { lookupCatalyst } from '../../data/catalysts';
 import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
@@ -79,16 +79,49 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   const blindIndex = s.run.goalIdx % 3;
   const def = BLIND_DEFS[blindIndex]!;
   const ctx = stakeContext(s);
-  const target = Math.ceil(targetForBlind(ante, blindIndex) * ctx.targetMult);
+  const lap = s.run.endlessLap ?? 0;
+  // Cosmic Affliction target-tax (Pillar D) — multiplies the base
+  // target by the affliction's value. Voidstorm-force is consumed in
+  // the voidstorm derivation below; hands-delta in the handsMax calc;
+  // compounding-tax in the per-blind ramp.
+  const affliction = lookupCosmicAffliction(s.run.cosmicAfflictionId);
+  let afflictionTargetMul = 1;
+  if (affliction?.effect.kind === 'target-tax') {
+    afflictionTargetMul = affliction.effect.multiplier;
+  } else if (affliction?.effect.kind === 'compounding-tax') {
+    // Blinds cleared this lap = goalIdx since lap start = goalIdx
+    // (we reset goalIdx to 0 on lap continue). Each cleared blind
+    // adds perBlindMul to the target tax — so the FIRST blind of the
+    // lap is at 1x and it compounds from there.
+    afflictionTargetMul = 1 + affliction.effect.perBlindMul * s.run.goalIdx;
+  }
+  const target = Math.ceil(
+    targetForBlind(ante, blindIndex, lap) * ctx.targetMult * afflictionTargetMul,
+  );
   const isBoss = def.isBoss;
   const blindId = isBoss
     ? BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id
     : def.name.toLowerCase().replace(/\s+/g, '_');
+  // Voidstorm derivation — deterministic so the Hub preview chip and the
+  // in-blind storm match exactly. Boss blinds always pass through as null.
+  // Computed BEFORE handsMax so `onBlindStart.handsDelta` can apply.
+  // Cosmic Affliction "voidstorm-force" (Pillar D) overrides the
+  // deterministic pick when active.
+  let voidstormId = getVoidstormForBlind(s.run.seed, s.run.goalIdx, isBoss);
+  if (!isBoss && affliction?.effect.kind === 'voidstorm-force') {
+    voidstormId = affliction.effect.voidstormId;
+  }
+  const stormDef = lookupVoidstorm(voidstormId);
+  const stormBlindStart = stormDef?.onBlindStart?.(s) ?? {};
   const baseHandsMax = 3;
   // First Breath astral perk: +N hands on the very first blind of the run
   // (goalIdx === 0). Stacks with vouchers and stake hands deltas.
   const firstBlindBonus = s.run.goalIdx === 0 ? firstBlindExtraHands(s) : 0;
-  const handsMax = Math.max(1, baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus);
+  const afflictionHandsDelta = affliction?.effect.kind === 'hands-delta' ? affliction.effect.delta : 0;
+  const handsMax = Math.max(
+    1,
+    baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus + (stormBlindStart.handsDelta ?? 0) + afflictionHandsDelta,
+  );
   // Build the dice array sized to whatever the active constellation declares.
   // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
   const spec = getDiceSpec(s);
@@ -113,15 +146,17 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     return meta ? isPalindrome(meta.name) : false;
   }).length;
   const mirroredHandActive = palindromicCount >= 2;
-  // Voidstorm — derived from the run seed mixed with goalIdx so each blind
-  // gets a stable but distinct roll. Boss blinds always skip.
-  const stormRng = mulberry32((s.run.seed ^ (s.run.goalIdx * 0x9e3779b1)) >>> 0);
-  const voidstormId = pickVoidstorm(() => stormRng.next(), isBoss);
+  // Voidstorm onBlindStart hooks for shards / rerolls already collapsed
+  // into stormBlindStart above; apply the shard delta to run.shards now.
+  // Shards clamp at zero — a Singularity tithe on an empty wallet just
+  // sets the player to 0 rather than rolling negative.
+  const stormShardsDelta = stormBlindStart.shardsDelta ?? 0;
+  const runShards = Math.max(0, s.run.shards + shardLungBonus + stormShardsDelta);
   return {
     state: {
       ...s,
       ui: { ...s.ui, screen: 'round' },
-      run: { ...s.run, shards: s.run.shards + shardLungBonus, mirroredHandActive },
+      run: { ...s.run, shards: runShards, mirroredHandActive },
       round: {
         ...initialRoundSlice(),
         active: true,
@@ -131,7 +166,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         target,
         handsMax,
         handsLeft: handsMax,
-        rerollsLeft: rerollsPerHand(s),
+        rerollsLeft: rerollsPerHand(s) + (stormBlindStart.rerollsDelta ?? 0),
         dice,
         scoringOrder,
         voidstormId,
@@ -233,11 +268,37 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     s.run.constellationId,
     newDustLifetime,
   );
+  // Cosmic Lap (Pillar D) highwater — if this clear ended the lap (any
+  // clear during endlessLap > 0), record the lap/ante/score against the
+  // constellation's high-water mark. On a normal-run clear, also record
+  // (lap=0) to seed the table so the Codex/Hub can show a "best run"
+  // ahead of endless engagement.
+  const lapNow = s.run.endlessLap ?? 0;
+  let endlessHighwater = s.meta.endlessHighwater ?? {};
+  if (won || lapNow > 0) {
+    const cid = s.run.constellationId;
+    const prev = endlessHighwater[cid];
+    const candidate = {
+      lap: lapNow,
+      ante: s.run.ante,
+      score: s.round.score,
+      date: Date.now(),
+      stake: s.run.stakeId,
+    };
+    // Sort key (lap, ante, score) — replace only if strictly better.
+    const isBetter =
+      !prev ||
+      candidate.lap > prev.lap ||
+      (candidate.lap === prev.lap && candidate.ante > prev.ante) ||
+      (candidate.lap === prev.lap && candidate.ante === prev.ante && candidate.score > prev.score);
+    if (isBetter) endlessHighwater = { ...endlessHighwater, [cid]: candidate };
+  }
   const nextMeta = {
     ...baseMeta,
     unlocks: unlocksAfterClear,
     cosmicDust: newDustTotal,
     cosmicDustLifetime: newDustLifetime,
+    endlessHighwater,
     // Daily run completion: only the WON path of a clearBlind ends the run
     // (the player just cleared the final boss). Record/update the daily
     // history entry so the Title screen shows today's status.
@@ -306,6 +367,34 @@ function upgradeStakeProgress(s: GameState): GameState['meta']['stakeProgress'] 
   // is one rung above. ConstellationSelect filters by progress.)
   if (cur && stakeIndex(cur) >= stakeIndex(ranOn)) return s.meta.stakeProgress;
   return { ...s.meta.stakeProgress, [s.run.constellationId]: ranOn };
+}
+
+// Cosmic Lap (Pillar D) — invoked from the Win screen's "Continue"
+// button. Resets the run to ante 1 / goalIdx 0, increments endlessLap,
+// picks the affliction for the new lap, and routes back to the Hub.
+//
+// The player keeps EVERYTHING from the prior lap: catalysts, mods,
+// vouchers, consumables, shards. Targets ramp via `targetForBlind`'s
+// lap arg and the affliction's tax. Bust on a lap busts the WHOLE
+// endless attempt — they don't get to retry just the current lap.
+export function startCosmicLap(s: GameState): { state: GameState; events: GameEventEmission[] } {
+  const nextLap = (s.run.endlessLap ?? 0) + 1;
+  const affliction = pickAfflictionForLap(nextLap);
+  return {
+    state: {
+      ...s,
+      ui: { ...s.ui, screen: 'hub' },
+      run: {
+        ...s.run,
+        ante: 1,
+        goalIdx: 0,
+        endlessLap: nextLap,
+        cosmicAfflictionId: affliction?.id ?? null,
+      },
+      round: { ...s.round, active: false },
+    },
+    events: [],
+  };
 }
 
 export function bustBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
@@ -438,65 +527,33 @@ function pushHighScore(s: GameState, score: number) {
 }
 
 import { BLIND_DEFS as DEFS } from '../../data/blinds';
-const SKIP_TAGS = [
-  { id: 'shard',   label: '+5 shards' },
-  { id: 'reroll',  label: '+1 reroll next round' },
-  { id: 'hand',    label: '+1 hand next round' },
-  // Skip-blind sometimes drops a free Celestial Pack into the next shop
-  // visit. Implemented by pre-staging shop.pendingPack here; the shop UI
-  // already renders the overlay whenever pendingPack is set.
-  { id: 'pack',    label: 'Free Celestial Pack' },
-];
+import { rollSkipBountyOptions } from '../run/skipBounty';
 
 export function skipBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const blindIdx = s.run.goalIdx % 3;
   const def = DEFS[blindIdx]!;
   if (def.isBoss) return { state: s, events: [] };
   const reward = def.skipReward;
-  const tag = SKIP_TAGS[Math.floor(Math.random() * SKIP_TAGS.length)]!;
+  // Pillar G — instead of randomly assigning ONE of 4 bonus tags, we roll
+  // 3 OPTIONS and let the player pick. The pending bounty blocks the
+  // SkipBountyModal until resolved. Base skipReward is still paid up
+  // front (legacy contract), the bounty option is the bonus on top.
+  const bountyRng = () => Math.random();
+  const bountyOptions = rollSkipBountyOptions({
+    rng: bountyRng,
+    baseShards: reward,
+    ownedConsumables: s.run.consumables,
+    ownedCatalysts: s.run.catalysts,
+  });
   let nextState: GameState = {
     ...s,
     run: { ...s.run, shards: s.run.shards + reward, goalIdx: s.run.goalIdx + 1 },
+    shop: {
+      ...s.shop,
+      pendingSkipBounty: { options: bountyOptions, blindIdx },
+    },
   };
   const events: GameEventEmission[] = [];
-  if (tag.id === 'shard') {
-    nextState = { ...nextState, run: { ...nextState.run, shards: nextState.run.shards + 5 } };
-  } else if (tag.id === 'reroll') {
-    nextState = { ...nextState, round: { ...nextState.round, rerollsLeft: s.round.rerollsLeft + 1 } };
-  } else if (tag.id === 'hand') {
-    nextState = { ...nextState, round: { ...nextState.round, handsLeft: s.round.handsLeft + 1 } };
-  } else if (tag.id === 'pack') {
-    const def = lookupPack('celestial')!;
-    const galaxyIds = rollPackContents(def.showCount, Math.random, def.quasarWeightMultiplier ?? 1);
-    // Snapshot pre-open unlocks BEFORE we mutate meta.unlocks below.
-    const currentUnlocks = nextState.meta.unlocks ?? [];
-    const unlockedAtOpen = [...currentUnlocks];
-    const newUnlocks = new Set(currentUnlocks);
-    for (const gid of galaxyIds) {
-      if (!newUnlocks.has(gid)) {
-        newUnlocks.add(gid);
-        events.push({ type: 'onGalaxyDiscovered', payload: { galaxyId: gid } });
-      }
-    }
-    nextState = {
-      ...nextState,
-      meta: { ...nextState.meta, unlocks: [...newUnlocks] },
-      shop: {
-        ...nextState.shop,
-        pendingPack: {
-          kind: 'celestial',
-          galaxyIds,
-          picksLeft: def.pickCount,
-          pickedSoFar: [],
-          unlockedAtOpen,
-        },
-      },
-    };
-    events.push({
-      type: 'onPackOpened',
-      payload: { kind: 'celestial', galaxyIds, picksAllowed: def.pickCount },
-    });
-  }
   // Silver Tongue (catalyst): when the player skips a blind, grant 2 random
   // consumables (drawn from the regular pool — galaxies/spectrals excluded).
   // Stops at the consumable cap so high-end players don't break inventory.

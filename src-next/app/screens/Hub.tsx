@@ -3,9 +3,12 @@ import { useStore, type GameState } from '../../state/store';
 import { PortalGate } from '../portal/PortalGate';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
+import { TrialModifierChip } from '../hud/TrialModifierChip';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { TierSigil } from '../visual/TierSigil';
 import { currentPrestigeTier, nextPrestigeTier } from '../../data/prestigeTiers';
+import { getVoidstormForBlind } from '../../core/round/voidstorms';
+import { getEventForBlind, lookupEvent } from '../../data/events';
 import {
   selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
   selectEffectiveCatalystSlotsUsed,
@@ -20,6 +23,8 @@ import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
 const selectCosmicDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime ?? 0;
+const selectSeed = (s: GameState) => s.run.seed;
+const selectGoalIdxRaw = (s: GameState) => s.run.goalIdx;
 
 const selectHandsLeft = (s: GameState) => s.round.handsLeft;
 const selectRerollsLeft = (s: GameState) => s.round.rerollsLeft;
@@ -43,6 +48,8 @@ export function Hub() {
   const constellation = lookupConstellation(constellationId);
   const forgeDisabled = useStore(selectForgeDisabled);
   const lifetimeDust = useStore(selectCosmicDustLifetime);
+  const seed = useStore(selectSeed);
+  const goalIdxRaw = useStore(selectGoalIdxRaw);
   const prestige = currentPrestigeTier(lifetimeDust);
   const next = nextPrestigeTier(lifetimeDust);
   const compact = useIsCompactStage();
@@ -51,16 +58,28 @@ export function Hub() {
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
 
-  const blinds = BLIND_DEFS.map((def, i) => ({
-    def,
-    cleared: i < blindIdx,
-    current: i === blindIdx,
-    locked: i > blindIdx,
-    target: targetForBlind(ante, i),
-    tierColor: TIER_SIGILS[i]?.color ?? '#9577ff',
-    reward: def.isBoss ? 8 : 5,
-    mult: def.targetMult,
-  }));
+  // Deterministic voidstorm derivation per trial slot. `floor(goalIdxRaw/3)*3 + i`
+  // walks back to the start of the current ante (rounded down) and picks
+  // the goalIdx that would be active when slot `i` runs. The same
+  // (seed, goalIdx) call in `transitions.startBlind` returns the same
+  // ID, so the chip on the Hub always matches the storm that fires.
+  const anteStartGoalIdx = Math.floor(goalIdxRaw / 3) * 3;
+  const blinds = BLIND_DEFS.map((def, i) => {
+    const slotGoalIdx = anteStartGoalIdx + i;
+    const eventId = getEventForBlind(seed, slotGoalIdx, ante, def.isBoss);
+    return {
+      def,
+      cleared: i < blindIdx,
+      current: i === blindIdx,
+      locked: i > blindIdx,
+      target: targetForBlind(ante, i),
+      tierColor: TIER_SIGILS[i]?.color ?? '#9577ff',
+      reward: def.isBoss ? 8 : 5,
+      mult: def.targetMult,
+      voidstormId: eventId ? null : getVoidstormForBlind(seed, slotGoalIdx, def.isBoss),
+      eventId,
+    };
+  });
 
   return (
     <div style={{
@@ -182,7 +201,16 @@ export function Hub() {
           const cur = b.current;
           const cleared = b.cleared;
           const locked = b.locked;
-          const frameColor = cur ? accent : isBoss ? 'rgba(226,51,74,0.6)' : 'rgba(245,196,81,0.4)';
+          // Event slot (Pillar C) — non-cleared, non-locked, has an
+          // event id from the deterministic helper. Renders the slot
+          // with the event's name + glyph and routes Begin to the
+          // EventScreen instead of starting a blind.
+          const eventDef = !cleared && !locked && b.eventId ? lookupEvent(b.eventId) : undefined;
+          const hasEvent = !!eventDef;
+          const eventAccent = '#cc88ff';
+          const frameColor = cur
+            ? (hasEvent ? eventAccent : accent)
+            : isBoss ? 'rgba(226,51,74,0.6)' : 'rgba(245,196,81,0.4)';
           return (
             <div
               key={i}
@@ -217,9 +245,9 @@ export function Hub() {
                   {!tight && (
                     <div className="f-mono uc" style={{
                       fontSize: 9, letterSpacing: '0.3em',
-                      color: cur ? accent : locked ? '#7a6fa6' : '#bba8ff',
+                      color: cur ? (hasEvent ? eventAccent : accent) : locked ? '#7a6fa6' : '#bba8ff',
                     }}>
-                      trial {String(i + 1).padStart(2, '0')}
+                      {hasEvent ? 'encounter' : `trial ${String(i + 1).padStart(2, '0')}`}
                     </div>
                   )}
                   <div className="f-display" style={{
@@ -235,8 +263,21 @@ export function Hub() {
                     textAlign: 'center',
                     minHeight: '2.36em',
                   }}>
-                    {b.def.name}
+                    {hasEvent ? eventDef!.name : b.def.name}
                   </div>
+                  {/* Trial modifier preview (Pillar A) — shown for any
+                      non-cleared, non-locked-far-ahead slot so the player
+                      can plan around the upcoming voidstorm. Cleared
+                      slots drop the chip to keep the cleared style
+                      muted. */}
+                  {!cleared && (isBoss || b.voidstormId) && (
+                    <TrialModifierChip
+                      voidstormId={b.voidstormId}
+                      isBoss={isBoss}
+                      tight={tight}
+                      compact={compact}
+                    />
+                  )}
                   <div style={{
                     // Tight: sigil shrinks and the slot stretches to fill,
                     // pushing the target row to the bottom edge so the
@@ -248,21 +289,43 @@ export function Hub() {
                   }}>
                     {cleared
                       ? <ClearedNode color={b.tierColor} />
-                      : <TierSigil tier={i} size={tight ? 36 : 96} animate={cur ? 'idle' : 'none'} />}
+                      : hasEvent
+                        ? (
+                          <div style={{
+                            fontSize: tight ? 36 : 72,
+                            color: eventAccent,
+                            textShadow: `0 0 20px ${eventAccent}cc, 0 0 40px ${eventAccent}55`,
+                            lineHeight: 1,
+                          }}>
+                            {eventDef!.glyph}
+                          </div>
+                        )
+                        : <TierSigil tier={i} size={tight ? 36 : 96} animate={cur ? 'idle' : 'none'} />}
                   </div>
                   <div style={{ marginTop: 'auto', textAlign: 'center', width: '100%' }}>
-                    <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.2em', color: '#bba8ff' }}>target</div>
-                    <div className="f-display num" style={{
-                      fontSize: tight ? 18 : 26, color: '#f3f0ff',
-                    }}>{b.target.toLocaleString()}</div>
-                    {/* Multiplier + reward subtext drops on tight to
-                        free vertical space — the tooltip still has it. */}
-                    {!tight && (
+                    {hasEvent ? (
+                      <div className="f-mono" style={{
+                        fontSize: tight ? 10 : 11, color: eventAccent,
+                        letterSpacing: '0.18em', lineHeight: 1.3,
+                      }}>
+                        a choice waits
+                      </div>
+                    ) : (
                       <>
-                        <div className="f-mono" style={{ fontSize: 10, color: accent, marginTop: 2 }}>×{b.mult.toFixed(1)} multiplier</div>
-                        <div className="f-mono" style={{ fontSize: 10, color: '#f5c451', marginTop: 6 }}>
-                          ◇ +{b.reward} shards
-                        </div>
+                        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.2em', color: '#bba8ff' }}>target</div>
+                        <div className="f-display num" style={{
+                          fontSize: tight ? 18 : 26, color: '#f3f0ff',
+                        }}>{b.target.toLocaleString()}</div>
+                        {/* Multiplier + reward subtext drops on tight to
+                            free vertical space — the tooltip still has it. */}
+                        {!tight && (
+                          <>
+                            <div className="f-mono" style={{ fontSize: 10, color: accent, marginTop: 2 }}>×{b.mult.toFixed(1)} multiplier</div>
+                            <div className="f-mono" style={{ fontSize: 10, color: '#f5c451', marginTop: 6 }}>
+                              ◇ +{b.reward} shards
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
                     {/* Tight-mode Begin button sits inside the card so
@@ -271,11 +334,13 @@ export function Hub() {
                     {tight && cur && (
                       <button
                         className="btn btn-primary mat-interactive"
-                        onClick={() => dispatch({ type: 'START_BLIND' })}
+                        onClick={() => dispatch(hasEvent
+                          ? { type: 'SET_SCREEN', screen: 'event' }
+                          : { type: 'START_BLIND' })}
                         style={{
                           marginTop: 6, fontSize: 11, padding: '6px 12px',
                         }}>
-                        Begin
+                        {hasEvent ? 'Open' : 'Begin'}
                       </button>
                     )}
                     {tight && cleared && (
@@ -294,12 +359,14 @@ export function Hub() {
               {!tight && cur && (
                 <button
                   className="btn btn-primary mat-interactive"
-                  onClick={() => dispatch({ type: 'START_BLIND' })}
+                  onClick={() => dispatch(hasEvent
+                    ? { type: 'SET_SCREEN', screen: 'event' }
+                    : { type: 'START_BLIND' })}
                   style={{
                     position: 'absolute', bottom: -18, left: '50%', transform: 'translateX(-50%)',
                     fontSize: 13, padding: '10px 18px',
                   }}>
-                  Begin
+                  {hasEvent ? 'Open Event' : 'Begin'}
                 </button>
               )}
               {!tight && cleared && (

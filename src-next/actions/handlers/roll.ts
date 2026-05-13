@@ -2,6 +2,7 @@ import type { ActionHandler } from './types';
 import { runRollPipelineUpToSim, runRollPipelineAfterSim } from '../../core/pipeline/runRollPipeline';
 import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
+import { evaluateBossPhase } from '../../core/round/bossPhase';
 import { rerollsPerHand } from '../../core/run/stakeContext';
 import { lookupMod } from '../../core/mods';
 import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
@@ -306,9 +307,40 @@ export const rollHandler: ActionHandler = (a, s) => {
       } else if (workingState.round.active && newHandsLeft === 0 && newScore < workingState.round.target) {
         pendingRoundEnd = 'bust';
       }
-      const stateWithPending = pendingRoundEnd
+      // Boss Phase Escalation (Pillar B) — evaluate the per-boss
+      // second-wind trigger against the *post-score* round shape. Only
+      // promotes when the blind continues (no clear/bust pending) and
+      // the trigger condition matches. Banner is fired via
+      // onBossSecondWind so the UI can react without polling state.
+      const phaseEval = evaluateBossPhase({
+        isBoss: workingState.round.isBoss,
+        blindId: workingState.round.blindId,
+        bossPhase: workingState.round.bossPhase,
+        stakeId: workingState.run.stakeId,
+        newScore,
+        newHandsLeft,
+        handsMax: workingState.round.handsMax,
+        target: workingState.round.target,
+        pendingRoundEnd,
+      });
+      let stateWithPending = pendingRoundEnd
         ? { ...baseState, round: { ...baseState.round, pendingRoundEnd } }
         : baseState;
+      if (phaseEval.promote) {
+        stateWithPending = {
+          ...stateWithPending,
+          round: { ...stateWithPending.round, bossPhase: 2 },
+        };
+        baseEvents.push({
+          type: 'onBossSecondWind',
+          payload: {
+            blindId: workingState.round.blindId ?? 'unknown',
+            flavor: phaseEval.secondWind.flavor,
+            addedDebuffs: [...phaseEval.secondWind.debuffs],
+            removedDebuffs: [...(phaseEval.secondWind.removeDebuffs ?? [])],
+          },
+        });
+      }
       return { state: stateWithPending, events: baseEvents };
     }
     case 'END_SCORING': {
