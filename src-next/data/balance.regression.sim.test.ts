@@ -29,8 +29,17 @@ const BASE_SEED = 9001;
 // fibonacci/spark hovering ~3-5% as before. Keeping the upper bound
 // at 0.95 so a true catastrophic regression (~95% win-rate would
 // indicate game completely trivialized) still trips this guard.
+//
+// 2026-05-13 (dead-pick audit): lyra/spark min ALSO dropped 0.01 → 0.00
+// after removing consumables from shop offers (replaced by Skip
+// Bounty + Events per Pillar G/C). The heuristic_shop strategy used
+// consumables as a cheap 3-shard buy that smoothed cohort outcomes
+// at Spark; without them, the bot under-spends and the 30-seed cell
+// dips below 1%. The change is intentional and player-favourable
+// (consumables come from skip bounties, which require player action);
+// the bound matches the other unstable Spark cells.
 const BOUNDS: Record<string, [min: number, max: number]> = {
-  'lyra/spark':       [0.01, 0.95],
+  'lyra/spark':       [0.00, 0.95],
   'mensa/spark':      [0.00, 0.95],
   'fibonacci/spark':  [0.00, 0.95],
   'eclipse/spark':    [0.00, 0.95],
