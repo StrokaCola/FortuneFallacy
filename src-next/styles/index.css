@@ -498,6 +498,18 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   100% { transform: scale(1);     box-shadow: 0 0 10px rgba(123,227,255,0.45); filter: brightness(1); }
 }
 
+/* Collision-catalyst fire pulse — sharp electric jolt rather than the
+   slow ramp of scaling. Reads as the tray physics having paid out:
+   fast attack, brief shake, gold spark halo (matches COLLISION_RING_COLOR).
+   Two micro-skews stand in for an impact wobble without rotating the card. */
+@keyframes mat-pulse-collision {
+  0%   { transform: scale(1)    skew(0,    0);    box-shadow: 0 0 12px rgba(255,216,74,0.55); filter: brightness(1)   contrast(1); }
+  12%  { transform: scale(1.18) skew(-2deg, 1deg); box-shadow: 0 0 36px rgba(255,216,74,0.95), 0 0 60px rgba(255,184,80,0.55); filter: brightness(1.55) contrast(1.1); }
+  34%  { transform: scale(0.96) skew(1.5deg, -0.5deg); box-shadow: 0 0 20px rgba(255,216,74,0.7); filter: brightness(1.2); }
+  62%  { transform: scale(1.05) skew(-0.5deg, 0); }
+  100% { transform: scale(1)    skew(0,    0);    box-shadow: 0 0 12px rgba(255,216,74,0.55); filter: brightness(1)   contrast(1); }
+}
+
 /* Corner badge bump — fires when run.catalystStacks[id] increments, so
    the player SEES the number tick up rather than discovering it on
    their next tooltip open. Brief, doesn't overstay. */
