@@ -260,4 +260,64 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     edge: 0xff7847, halo: 0xffb47a,
     transmission: 0.12, rough: 0.45, eIntensity: 1.8,
   },
+  // ─── Banish-face family (2026-05-13) ────────────────────────────────────
+  // Shared visual language: cool blue/violet "void-glass" body; the mods'
+  // re-tumble identity is carried by the Dice3D pop-up animation rather
+  // than by the idle material. Bespoke shaders can ship later; these
+  // borrow the family closest in vibe so the dice still read distinctly.
+  // 38. Aversion — Pale void-glass; subtle rejection.
+  aversion: {
+    bodyTint: 0x2a3a5a, bodyDeep: 0x0a1228,
+    edge: 0xa4d4ff, halo: 0xa4d4ff,
+    transmission: 0.30, rough: 0.25, ior: 1.55, eIntensity: 1.4,
+  },
+  // 39. Anti-One Sigil — Brighter cyan halo, +chip payoff signal.
+  anti_one_sigil: {
+    bodyTint: 0x1a3a5a, bodyDeep: 0x07121a,
+    edge: 0x7be3ff, halo: 0x7be3ff,
+    transmission: 0.28, rough: 0.22, ior: 1.55, eIntensity: 1.7,
+  },
+  // 40. Restless Die — Phasing violet; never settles on the same face.
+  restless_die: {
+    bodyTint: 0x4a2a6a, bodyDeep: 0x1a0a30,
+    edge: 0xcc88ff, halo: 0xcc88ff,
+    transmission: 0.35, rough: 0.25, eIntensity: 1.8,
+  },
+  // 41. Wide Net — Deep emerald with wider rim; many faces banished.
+  wide_net: {
+    bodyTint: 0x1a4a3a, bodyDeep: 0x072a1a,
+    edge: 0x5be8a4, halo: 0x5be8a4,
+    transmission: 0.20, rough: 0.30, eIntensity: 1.5,
+  },
+  // 42. High Tide — Twilight blue, dual-edge halo (banishes both extremes).
+  high_tide: {
+    bodyTint: 0x1a3a5a, bodyDeep: 0x07111a,
+    edge: 0x88ddff, halo: 0x88ddff,
+    transmission: 0.28, rough: 0.25, eIntensity: 1.6,
+  },
+  // 43. Mirror Banish — Lavender prism; reads the other dice.
+  mirror_banish: {
+    bodyTint: 0x5a3a8a, bodyDeep: 0x1a0a30,
+    edge: 0xe0c8ff, halo: 0xe0c8ff,
+    transmission: 0.32, rough: 0.18, ior: 1.70, metalness: 0.45,
+  },
+  // 44. Pyre Pact — Crimson contract with cold gold accent (milestone reward).
+  pyre_pact: {
+    bodyTint: 0x5a1010, bodyDeep: 0x1a0404,
+    edge: 0xff7847, halo: 0xffd84a,
+    transmission: 0.10, rough: 0.45, eIntensity: 2.0,
+  },
+  // 45. Three Banished — Tri-tone violet with shifting emissive; gambler's pick.
+  three_banished: {
+    bodyTint: 0x4a3a6a, bodyDeep: 0x1a0a30,
+    edge: 0xbba8ff, halo: 0xbba8ff,
+    transmission: 0.28, rough: 0.30, eIntensity: 1.4,
+  },
+  // 46. Voidlock — Sealed gold-on-black; only one face survives.
+  voidlock: {
+    bodyTint: 0x1a1a1a, bodyDeep: 0x000000,
+    edge: 0xffd84a, halo: 0xffd84a,
+    transmission: 0.05, rough: 0.20, ior: 1.75, eIntensity: 2.2,
+    metalness: 0.65, sheen: 0.55, sheenColor: 0xffd84a,
+  },
 };

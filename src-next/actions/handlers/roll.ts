@@ -15,6 +15,34 @@ import { lookupResonance } from '../../data/resonances';
 import type { RunSlice } from '../../state/slices/run';
 import { accrueScalingStacks, checkEasterEggs } from '../../core/round/scalingHooks';
 
+// Banish-face support — pull per-die substitution counts off the simRequest
+// and produce both the bus events (one per die that retried at least once)
+// and the updated `banishTriggersByDie` tally for state.
+function readBanishFromSim(
+  simRequest: { banishSubstitutions?: number[]; predeterminedFaces: number[] } | undefined,
+  prev: number[],
+): { events: GameEventEmission[]; nextTally: number[] } {
+  if (!simRequest?.banishSubstitutions) return { events: [], nextTally: prev };
+  const subs = simRequest.banishSubstitutions;
+  const events: GameEventEmission[] = [];
+  const nextTally: number[] = [];
+  for (let i = 0; i < subs.length; i++) {
+    const n = subs[i] ?? 0;
+    nextTally[i] = (prev[i] ?? 0) + n;
+    if (n > 0) {
+      events.push({
+        type: 'onDieBanishTriggered',
+        payload: {
+          dieIdx: i,
+          substitutions: n,
+          finalFace: simRequest.predeterminedFaces[i] ?? 0,
+        },
+      });
+    }
+  }
+  return { events, nextTally };
+}
+
 export const rollHandler: ActionHandler = (a, s) => {
   switch (a.type) {
     case 'ROLL_REQUESTED': {
@@ -37,6 +65,7 @@ export const rollHandler: ActionHandler = (a, s) => {
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);
+      const banish = readBanishFromSim(ctx.simRequest, workingState.round.banishTriggersByDie ?? []);
       const events: GameEventEmission[] = [
         {
           type: 'onRollStart',
@@ -45,14 +74,22 @@ export const rollHandler: ActionHandler = (a, s) => {
         ...(ctx.simRequest
           ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
           : []),
+        ...banish.events,
       ];
-      return { state: workingState, events };
+      return {
+        state: {
+          ...workingState,
+          round: { ...workingState.round, banishTriggersByDie: banish.nextTally },
+        },
+        events,
+      };
     }
     case 'REROLL_REQUESTED': {
       if (s.round.rerollsLeft <= 0) return { state: s, events: [] };
       if (hasDebuff(s, 'no_rerolls')) return { state: s, events: [] };
       const advanced = { ...s, run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 } };
       const ctx = runRollPipelineUpToSim(advanced);
+      const banish = readBanishFromSim(ctx.simRequest, advanced.round.banishTriggersByDie ?? []);
       const events: GameEventEmission[] = [
         {
           type: 'onRollStart',
@@ -61,6 +98,7 @@ export const rollHandler: ActionHandler = (a, s) => {
         ...(ctx.simRequest
           ? [{ type: 'onSimulationStart' as const, payload: { request: ctx.simRequest } }]
           : []),
+        ...banish.events,
       ];
       return {
         state: {
@@ -70,6 +108,7 @@ export const rollHandler: ActionHandler = (a, s) => {
             handInProgress: true,
             rerollsLeft: advanced.round.rerollsLeft - 1,
             rollsWithoutLock: (advanced.round.rollsWithoutLock ?? 0) + 1,
+            banishTriggersByDie: banish.nextTally,
           },
         },
         events,
@@ -280,6 +319,11 @@ export const rollHandler: ActionHandler = (a, s) => {
           tithePrimedThisHand: 0,
           hotHandsInRow,
           hotStreakFiredThisBlind: hotStreakFiredThisBlind || shouldFireHotStreak,
+          // Banish-face family (2026-05-13) — capture the just-scored
+          // faces per die so the NEXT roll's Restless Die / Mirror Banish
+          // resolvers can consult them. Stores 0 for unlocked dice (didn't
+          // contribute to this score). Length matches dice count.
+          prevHandFaces: workingState.round.dice.map((d) => (d.locked ? d.face : 0)),
           lastScoringCtx: {
             combo: final.combo ?? null,
             chips: final.chips ?? 0,

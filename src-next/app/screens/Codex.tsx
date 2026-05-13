@@ -284,6 +284,10 @@ function ModGrid({ discovered }: { discovered: string[] }) {
       {MODS.map((m) => {
         const seen = discovered.includes(m.id);
         const accent = m.visual?.accentColor ?? '#bba8ff';
+        // Banish-face family badge (2026-05-13) — surface the
+        // category at-a-glance so synergy-hunters can spot the
+        // tribe in the Codex.
+        const isBanish = !!(m.banishFaces || m.banishFaceResolver);
         return (
           <Cell key={m.id} locked={!seen} accent={accent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -292,7 +296,20 @@ function ModGrid({ discovered }: { discovered: string[] }) {
               </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>
-                  <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{m.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{m.name}</div>
+                    {isBanish && (
+                      <span className="f-mono uc" style={{
+                        fontSize: 8, letterSpacing: '0.2em',
+                        padding: '1px 5px', borderRadius: 4,
+                        color: '#cc88ff',
+                        border: '1px solid rgba(204,136,255,0.45)',
+                        background: 'rgba(15,9,37,0.7)',
+                      }}>
+                        ✥ banish
+                      </span>
+                    )}
+                  </div>
                   <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.24em', color: RARITY_COLORS[m.rarity] ?? accent }}>
                     {m.rarity}
                   </div>

@@ -25,6 +25,12 @@ export type SimulationRequest = {
   // the per-shape face axes used by `faceCorrection`. Length matches
   // `predeterminedFaces`. Older callers may omit; rapierSim falls back to d6.
   diceShapes?: DieShape[];
+  // Banish-face family (2026-05-13) — per-die count of value-pick
+  // substitutions that happened in initSimulation's retry loop. Drives
+  // the Dice3D pop-up + re-tumble visual and the Pyre Pact milestone
+  // counter. 0 = no substitution; positive = die's initial pick was
+  // banished and re-rolled. Length matches predeterminedFaces.
+  banishSubstitutions?: number[];
 };
 
 export type DieFrame = { px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number };
@@ -119,6 +125,15 @@ export type GameEventMap = {
     flavor: string;
     addedDebuffs: string[];
     removedDebuffs: string[];
+  };
+  // Banish-face family (2026-05-13) — fired once per die per roll when
+  // the initSimulation retry loop substituted the die's predetermined
+  // value. Drives the Dice3D pop-up + re-tumble animation. `substitutions`
+  // is the number of retries that fired on this die this roll (≥1).
+  onDieBanishTriggered: {
+    dieIdx: number;
+    substitutions: number;
+    finalFace: number;
   };
   // Mod attached to a die in the Forge. Drives the attach SFX + a small
   // visual pulse on the die that just received the mod.

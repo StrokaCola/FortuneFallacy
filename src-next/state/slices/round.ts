@@ -83,6 +83,18 @@ export type RoundSlice = {
   // this blind. clearBlind checks this and resets the catalyst's stack
   // counter if any consumable was used.
   consumableUsedThisBlind: boolean;
+  // Banish-face family (2026-05-13) — per-die face values from the LAST
+  // scored hand of this blind. Length matches dice count; 0 = not
+  // scored last hand. Read by `restless_die.banishFaceResolver` so the
+  // die avoids re-rolling its previous face. Updated at the tail of
+  // SCORE_HAND in actions/handlers/roll.ts.
+  prevHandFaces?: number[];
+  // Banish-trigger counter per die, accumulated each time the
+  // initSimulation retry loop substituted a value on that die this
+  // blind. Drives Pyre Pact's milestone reward — when the cumulative
+  // count crosses `banishMilestone`, applies `banishMilestoneMult` to
+  // mult next hand. Reset on START_BLIND.
+  banishTriggersByDie?: number[];
 };
 
 export const initialRoundSlice = (): RoundSlice => ({
@@ -117,4 +129,6 @@ export const initialRoundSlice = (): RoundSlice => ({
   mirroredHandConsumed: false,
   piApproxArmed: false,
   consumableUsedThisBlind: false,
+  prevHandFaces: [],
+  banishTriggersByDie: [],
 });
