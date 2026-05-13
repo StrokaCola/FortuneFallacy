@@ -8,6 +8,9 @@ import {
   getOrientationOverride, setOrientationOverride, subscribeOrientationOverride,
   getLongPressPref, setLongPressPref, subscribeLongPressPref, type LongPressPref,
 } from '../a11y/inputPrefs';
+import {
+  getPerfMode, setPerfMode, subscribePerfMode, type PerfMode,
+} from '../perf/perfMode';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
 
@@ -235,6 +238,45 @@ function LongPressToggle() {
   );
 }
 
+// Performance Mode: governs the renderer quality tier. 'auto' (default)
+// uses a low-end heuristic + a live frame-budget watcher; 'on' forces
+// degraded; 'off' forces full quality. DPR / antialias changes take
+// effect on next page reload; nebula framerate updates live.
+function PerfModeToggle() {
+  const [pref, setPref] = useState<PerfMode>(getPerfMode);
+  useEffect(() => subscribePerfMode(() => setPref(getPerfMode())), []);
+  const opts: { id: PerfMode; label: string; hint: string }[] = [
+    { id: 'off',  label: 'Full',    hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.' },
+    { id: 'auto', label: 'Auto',    hint: 'Adapts to device + live frame budget. Default. (Recommended)' },
+    { id: 'on',   label: 'Performance', hint: 'Force lower DPR + no AA + 20fps backdrop. Reload to fully apply.' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>performance mode</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Performance mode preference">
+        {opts.map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setPerfMode(o.id)}
+              style={{
+                padding: '8px 14px', fontSize: 11,
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MotionToggle({ pref }: { pref: MotionPref }) {
   const opts: { id: MotionPref; label: string; hint: string }[] = [
     { id: 'allow', label: 'Full',    hint: 'Always animate' },
@@ -327,6 +369,8 @@ export function Settings() {
         <OrientationOverrideToggle />
 
         <LongPressToggle />
+
+        <PerfModeToggle />
 
         <div style={{ height: 1, background: 'rgba(149,119,255,0.2)' }} />
 
