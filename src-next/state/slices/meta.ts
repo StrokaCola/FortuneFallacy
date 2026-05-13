@@ -100,10 +100,11 @@ export type MetaSlice = {
 // authorship in one place.
 import { MANEUVERS } from '../../core/consumables/maneuvers';
 
-// All constellations are seeded as unlocked while the gameplay-side
-// unlock-grant logic is still TBD. Codex tabs already render a `???`
-// locked state for any id not present here, so flipping this to a smaller
-// list (or `[]`) re-enables locking without further code changes.
+// Only Lyra ships unlocked. The other 7 constellations gate behind
+// custom predicates in data/constellationUnlocks.ts; the listener in
+// core/constellations/listener.ts dispatches UNLOCK_CONSTELLATION when
+// a predicate fires. Codex tabs already render a `???` locked state
+// for any id not present in meta.unlocks.
 //
 // Maneuver IDs are appended so the PackOverlay (which reads from a
 // snapshot of `meta.unlocks` at pack-open time) renders maneuvers with
@@ -112,6 +113,14 @@ import { MANEUVERS } from '../../core/consumables/maneuvers';
 // category and don't benefit from being hidden behind a reveal.
 export const SEEDED_UNLOCKS: string[] = [
   'lyra',
+  ...MANEUVERS.map((m) => m.id),
+];
+
+// Constellation IDs that are gated behind unlock predicates. Used by the
+// persistence migration to strip legacy seeds out of saved unlocks so
+// returning players see the new gating instead of inheriting an
+// already-unlocked roster.
+export const GATED_CONSTELLATION_IDS = [
   'mensa',
   'triumvirate',
   'argo',
@@ -119,8 +128,7 @@ export const SEEDED_UNLOCKS: string[] = [
   'eclipse',
   'polyhedra',
   'ophiuchus',
-  ...MANEUVERS.map((m) => m.id),
-];
+] as const;
 
 // Galaxy + maneuver consumables ship as Codex-discovered from day one.
 // They only appear in their respective packs (Celestial / Stellar /

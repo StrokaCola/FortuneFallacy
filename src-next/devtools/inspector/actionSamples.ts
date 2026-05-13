@@ -51,6 +51,7 @@ export const actionSamples = {
   FORGE_MOD:            { type: 'FORGE_MOD', modId: 'edge_scoring', targetEdition: 'foil' },
   BUY_ASTRAL_PERK:      { type: 'BUY_ASTRAL_PERK', perkId: 'starting_bank' },
   UNLOCK_ACHIEVEMENT:   { type: 'UNLOCK_ACHIEVEMENT', achievementId: 'first_run' },
+  UNLOCK_CONSTELLATION: { type: 'UNLOCK_CONSTELLATION', constellationId: 'mensa' },
   CLAIM_DAILY_LOGIN:    { type: 'CLAIM_DAILY_LOGIN', date: new Date().toISOString().slice(0, 10) },
   RESOLVE_AUDIT:        { type: 'RESOLVE_AUDIT', choice: 'skip' },
   SEE_COACHMARK:        { type: 'SEE_COACHMARK', id: 'first_roll' },
