@@ -16,16 +16,41 @@ export function loadSaved(): SavedState | null {
 
 export function startPersistence(): () => void {
   let timer: number | null = null;
-  return store.subscribe((s) => {
+  // The `shop` slice is intentionally excluded from the snapshot — the shop
+  // re-rolls on every Hub re-entry by design (see core/shop/catalystDraw.ts),
+  // so persisting it would only cause a stale-offer flash on reload.
+  const flush = (s: ReturnType<typeof store.getState>): void => {
+    timer = null;
+    const end = perfBegin('persistence');
+    const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
+    safeWriteJSON(KEY, snapshot);
+    end();
+  };
+
+  const unsub = store.subscribe((s) => {
     if (timer != null) return;
-    timer = window.setTimeout(() => {
-      timer = null;
-      const end = perfBegin('persistence');
-      const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
-      safeWriteJSON(KEY, snapshot);
-      end();
-    }, 400);
+    timer = window.setTimeout(() => flush(s), 400);
   });
+
+  // Tab-close / visibility-hidden is the most common way to lose state to the
+  // 400ms debounce. Synchronously flush whatever's pending so the player
+  // doesn't lose mid-blind progress on close.
+  const onPageHide = (): void => {
+    if (timer != null) window.clearTimeout(timer);
+    flush(store.getState());
+  };
+  const onVisibility = (): void => {
+    if (document.visibilityState === 'hidden') onPageHide();
+  };
+  window.addEventListener('pagehide', onPageHide);
+  document.addEventListener('visibilitychange', onVisibility);
+
+  return () => {
+    unsub();
+    if (timer != null) window.clearTimeout(timer);
+    window.removeEventListener('pagehide', onPageHide);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
 }
 
 export function applySavedToInitial(s: GameState): GameState {
