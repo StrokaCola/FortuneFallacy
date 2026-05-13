@@ -130,3 +130,56 @@ describe('drawWeightedCatalysts', () => {
     expect(coherent / TRIALS).toBeGreaterThan(0.75);
   });
 });
+
+describe('drawWeightedCatalysts — face-universe gating (Dead Pick Audit)', () => {
+  // Eclipse's universe is [0, 1]. Face-gated catalysts that key on 5/6
+  // (iron_six, solar_flare, high_roller catalyst) should never appear
+  // in offers there. Universal catalysts still draw normally.
+  it('drops iron_six / solar_flare / high_roller when face 5/6 missing', () => {
+    const eclipseUniverse = new Set<number>([0, 1]);
+    let droppedHits = 0;
+    let totalOffers = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      // Draw three catalysts at ante 4 (so legendary tier rolls too) on
+      // Eclipse. Iterate enough seeds to make a missed pool likely if the
+      // gate weren't doing its job.
+      const offers = drawWeightedCatalysts(3, 4, ['eclipse'], rng, [], 'eclipse', eclipseUniverse);
+      totalOffers += offers.length;
+      for (const id of offers) {
+        if (id === 'iron_six' || id === 'solar_flare' || id === 'high_roller') droppedHits++;
+      }
+    }
+    expect(totalOffers).toBeGreaterThan(0);
+    expect(droppedHits).toBe(0);
+  });
+
+  it('does NOT drop face-gated catalysts when the face universe contains the trigger', () => {
+    const lyraUniverse = new Set<number>([1, 2, 3, 4, 5, 6]);
+    let allowedHits = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offers = drawWeightedCatalysts(3, 4, [], rng, [], 'lyra', lyraUniverse);
+      for (const id of offers) {
+        if (id === 'iron_six' || id === 'solar_flare' || id === 'high_roller') allowedHits++;
+      }
+    }
+    // Across 300 ante-4 draws of 3 with rarity weights tilted toward
+    // rare/legendary, the three face-keyed entries should reliably appear.
+    expect(allowedHits).toBeGreaterThan(0);
+  });
+
+  it('omitting faceUniverse preserves legacy behaviour (no gating)', () => {
+    // Old call sites that don't pass faceUniverse must still get the full
+    // unfiltered pool — back-compat guarantee for tests, dev tools, sim.
+    let allowedHits = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offers = drawWeightedCatalysts(3, 4, [], rng);
+      for (const id of offers) {
+        if (id === 'iron_six' || id === 'solar_flare' || id === 'high_roller') allowedHits++;
+      }
+    }
+    expect(allowedHits).toBeGreaterThan(0);
+  });
+});

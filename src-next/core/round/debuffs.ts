@@ -20,6 +20,16 @@ export function activeDebuffs(s: GameState): Set<Debuff> {
   if (!s.round.isBoss || !s.round.blindId) return new Set();
   const def = BOSS_BLINDS.find((b) => b.id === s.round.blindId);
   const debuffs = new Set((def?.debuffs ?? []) as Debuff[]);
+  // Boss Phase Escalation (Pillar B) — once promoted to phase 2, union the
+  // boss's `secondWind.debuffs` into the active set, then remove any
+  // entries listed in `removeDebuffs` (Callisto's silence breaking, etc.).
+  // Phase promotion happens in actions/handlers/roll.ts SCORE_HAND.
+  if (def?.secondWind && s.round.bossPhase === 2) {
+    for (const d of def.secondWind.debuffs) debuffs.add(d as Debuff);
+    if (def.secondWind.removeDebuffs) {
+      for (const d of def.secondWind.removeDebuffs) debuffs.delete(d as Debuff);
+    }
+  }
   // Eris Apple easter egg — once the player has scored an all-prime hand
   // in Eris's blind, her catalyst-disable debuff is lifted for the rest
   // of the blind. The flag clears on START_BLIND.

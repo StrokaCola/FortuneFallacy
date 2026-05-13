@@ -7,13 +7,14 @@ import { VOUCHERS } from '../../data/vouchers';
 import { CONSTELLATIONS } from '../../data/constellations';
 import { BOSS_BLINDS } from '../../data/blinds';
 import { CONSUMABLES, consumableRarity } from '../../core/consumables';
+import { RESONANCES } from '../../data/resonances';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { RARITY_COLORS } from '../visual/rarityStyles';
 
-type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'achievements' | 'secrets';
+type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'catalysts', label: 'Catalysts' },
@@ -22,6 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'consumables', label: 'Consumables' },
   { id: 'constellations', label: 'Constellations' },
   { id: 'bosses', label: 'Bosses' },
+  { id: 'resonances', label: 'Resonances' },
   { id: 'achievements', label: 'Ascensions' },
   { id: 'secrets', label: 'Whispers' },
 ];
@@ -113,6 +115,9 @@ export function Codex() {
               {tab === 'bosses' && (
                 <BossGrid discovered={discovered.bosses} />
               )}
+              {tab === 'resonances' && (
+                <ResonanceGrid discovered={discovered.resonances ?? []} />
+              )}
             </div>
           </>
         )}
@@ -159,6 +164,11 @@ function CodexProgressHeader({
       label = 'consumables'; count = discovered.consumables.length; total = CONSUMABLES.length; break;
     case 'bosses':
       label = 'bosses'; count = discovered.bosses.length; total = BOSS_BLINDS.length; break;
+    case 'resonances':
+      label = 'resonances';
+      count = (discovered.resonances ?? []).length;
+      total = RESONANCES.length;
+      break;
     case 'constellations':
       label = 'constellations cleared';
       count = Object.keys(stakeProgress).length;
@@ -274,6 +284,10 @@ function ModGrid({ discovered }: { discovered: string[] }) {
       {MODS.map((m) => {
         const seen = discovered.includes(m.id);
         const accent = m.visual?.accentColor ?? '#bba8ff';
+        // Banish-face family badge (2026-05-13) — surface the
+        // category at-a-glance so synergy-hunters can spot the
+        // tribe in the Codex.
+        const isBanish = !!(m.banishFaces || m.banishFaceResolver);
         return (
           <Cell key={m.id} locked={!seen} accent={accent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -282,7 +296,20 @@ function ModGrid({ discovered }: { discovered: string[] }) {
               </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>
-                  <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{m.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="f-head" style={{ fontSize: 13, color: '#f3f0ff' }}>{m.name}</div>
+                    {isBanish && (
+                      <span className="f-mono uc" style={{
+                        fontSize: 8, letterSpacing: '0.2em',
+                        padding: '1px 5px', borderRadius: 4,
+                        color: '#cc88ff',
+                        border: '1px solid rgba(204,136,255,0.45)',
+                        background: 'rgba(15,9,37,0.7)',
+                      }}>
+                        ✥ banish
+                      </span>
+                    )}
+                  </div>
                   <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.24em', color: RARITY_COLORS[m.rarity] ?? accent }}>
                     {m.rarity}
                   </div>
@@ -393,6 +420,56 @@ function ConstellationGrid({ stakeProgress }: { stakeProgress: Record<string, st
                 }} />
               ))}
             </div>
+          </Cell>
+        );
+      })}
+    </>
+  );
+}
+
+function ResonanceGrid({ discovered }: { discovered: string[] }) {
+  // Locked: the resonance hasn't fired yet. We still show the pair's
+  // halves (the two catalyst ids) and a "??? — fires when both are owned"
+  // teaser, so players can chase the discovery. Once fired, the name +
+  // flavor + effect reveal in full.
+  return (
+    <>
+      {RESONANCES.map((r) => {
+        const seen = discovered.includes(r.id);
+        const accent = '#7be3ff';
+        const effectStr =
+          r.effect.kind === 'chips' ? `+${r.effect.value} chips`
+          : r.effect.kind === 'mult' ? `+${r.effect.value} mult`
+          : `+${r.effect.chips} chips, +${r.effect.mult} mult`;
+        const a = CATALYST_META.find((c) => c.id === r.a);
+        const b = CATALYST_META.find((c) => c.id === r.b);
+        return (
+          <Cell key={r.id} locked={!seen} accent={accent}>
+            {seen ? (
+              <>
+                <div className="f-head" style={{ fontSize: 14, color: '#f3f0ff', letterSpacing: '0.04em' }}>
+                  {r.name}
+                </div>
+                <div className="f-mono uc" style={{
+                  fontSize: 9, letterSpacing: '0.24em', color: accent, marginTop: 4,
+                }}>
+                  ✦ resonance · {effectStr}
+                </div>
+                <div style={{ fontSize: 11, color: '#bba8ff', marginTop: 6, fontStyle: 'italic', lineHeight: 1.4 }}>
+                  "{r.flavor}"
+                </div>
+                <div style={{ fontSize: 10, color: '#dcd4ff', marginTop: 6 }}>
+                  {a?.name ?? r.a} + {b?.name ?? r.b}
+                </div>
+              </>
+            ) : (
+              <>
+                <LockedTitle />
+                <div style={{ fontSize: 11, color: '#7a6fa6', marginTop: 6 }}>
+                  fires when an owned catalyst pair sings in tune
+                </div>
+              </>
+            )}
           </Cell>
         );
       })}

@@ -49,6 +49,13 @@ export type RoundSlice = {
   // non-boss blinds roll one. See core/round/voidstorms.ts. Null when
   // no storm is active.
   voidstormId: string | null;
+  // Boss Phase Escalation (Pillar B) — boss blinds escalate mid-blind.
+  // Phase 1 is the legacy state (only base debuffs apply). Phase 2 fires
+  // when the boss's `secondWind.trigger` is met (after a SCORE_HAND), and
+  // unions the second-wind debuffs (or, for Callisto, removes a base
+  // debuff). Non-boss blinds stay at 1. Saved state from before this
+  // shipped defaults to 1 via persistence migration.
+  bossPhase: 1 | 2;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -76,6 +83,18 @@ export type RoundSlice = {
   // this blind. clearBlind checks this and resets the catalyst's stack
   // counter if any consumable was used.
   consumableUsedThisBlind: boolean;
+  // Banish-face family (2026-05-13) — per-die face values from the LAST
+  // scored hand of this blind. Length matches dice count; 0 = not
+  // scored last hand. Read by `restless_die.banishFaceResolver` so the
+  // die avoids re-rolling its previous face. Updated at the tail of
+  // SCORE_HAND in actions/handlers/roll.ts.
+  prevHandFaces?: number[];
+  // Banish-trigger counter per die, accumulated each time the
+  // initSimulation retry loop substituted a value on that die this
+  // blind. Drives Pyre Pact's milestone reward — when the cumulative
+  // count crosses `banishMilestone`, applies `banishMilestoneMult` to
+  // mult next hand. Reset on START_BLIND.
+  banishTriggersByDie?: number[];
 };
 
 export const initialRoundSlice = (): RoundSlice => ({
@@ -105,8 +124,11 @@ export const initialRoundSlice = (): RoundSlice => ({
   hotHandsInRow: 0,
   hotStreakFiredThisBlind: false,
   voidstormId: null,
+  bossPhase: 1,
   errisAppleFlipped: false,
   mirroredHandConsumed: false,
   piApproxArmed: false,
   consumableUsedThisBlind: false,
+  prevHandFaces: [],
+  banishTriggersByDie: [],
 });

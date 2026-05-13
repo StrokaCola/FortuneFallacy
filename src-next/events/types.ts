@@ -25,6 +25,12 @@ export type SimulationRequest = {
   // the per-shape face axes used by `faceCorrection`. Length matches
   // `predeterminedFaces`. Older callers may omit; rapierSim falls back to d6.
   diceShapes?: DieShape[];
+  // Banish-face family (2026-05-13) — per-die count of value-pick
+  // substitutions that happened in initSimulation's retry loop. Drives
+  // the Dice3D pop-up + re-tumble visual and the Pyre Pact milestone
+  // counter. 0 = no substitution; positive = die's initial pick was
+  // banished and re-rolled. Length matches predeterminedFaces.
+  banishSubstitutions?: number[];
 };
 
 export type DieFrame = { px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number };
@@ -110,6 +116,25 @@ export type GameEventMap = {
   // banner. Sticky for the rest of the blind so subsequent hot hands
   // don't re-fire the banner.
   onHotStreak: { length: number };
+  // Fired once per boss blind when the second-wind trigger fires and
+  // the boss promotes from phase 1 to phase 2. Drives the
+  // BossPhaseBanner cinematic. Sticky for the rest of the blind because
+  // bossPhase only transitions 1→2 (never back).
+  onBossSecondWind: {
+    blindId: string;
+    flavor: string;
+    addedDebuffs: string[];
+    removedDebuffs: string[];
+  };
+  // Banish-face family (2026-05-13) — fired once per die per roll when
+  // the initSimulation retry loop substituted the die's predetermined
+  // value. Drives the Dice3D pop-up + re-tumble animation. `substitutions`
+  // is the number of retries that fired on this die this roll (≥1).
+  onDieBanishTriggered: {
+    dieIdx: number;
+    substitutions: number;
+    finalFace: number;
+  };
   // Mod attached to a die in the Forge. Drives the attach SFX + a small
   // visual pulse on the die that just received the mod.
   onModAttached: { dieIdx: number; modId: string };

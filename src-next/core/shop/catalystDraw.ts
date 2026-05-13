@@ -44,6 +44,25 @@ const ARCHETYPE_BIAS_RATE = 0.7;
 // toward catalysts whose archetype matches one in the set. Bias only fires
 // 70% of the time so the player still sees variety. Empty intersection or
 // missing archetypes fall back to uniform pool selection.
+// Face-gated catalysts (2026-05-13 dead-pick audit). When the constellation's
+// face universe lacks ALL the required faces, the catalyst is unreachable —
+// no scoring die can ever match its trigger. Filtered out of the offer pool
+// in the same shape `gateModsByFaceUniverse` uses for face-keyed mods.
+//
+//   iron_six       — +chips on face 6 → dead on Eclipse [0,1] + Ophiuchus
+//                     [1-5, WILD]. WILD substitutes up to 5; never 6.
+//   solar_flare    — needs 3+ scoring 5/6 → dead on Eclipse, weak elsewhere
+//                     but lets the player still earn it on Ophiuchus via 5s.
+//   high_roller    — scoring 5 or 6 grants bonus → dead on Eclipse only.
+//
+// six_bias is NOT gated: it transforms face 1 into face 6 on reroll, so it
+// MAKES face 6 exist where it didn't, which is a genuine Eclipse synergy.
+const FACE_GATED_CATALYSTS: Record<string, ReadonlyArray<number>> = {
+  iron_six: [6],
+  solar_flare: [5, 6],
+  high_roller: [5, 6],
+};
+
 function pickFromRarity(
   rarity: keyof RarityWeights,
   unlocks: readonly string[],
@@ -51,6 +70,7 @@ function pickFromRarity(
   rng: () => number,
   preferredArchetypes?: ReadonlySet<CatalystArchetype>,
   constellationId?: string,
+  faceUniverse?: ReadonlySet<number>,
 ): string | null {
   const order: (keyof RarityWeights)[] = ['legendary', 'rare', 'uncommon', 'common'];
   const startIdx = order.indexOf(rarity);
@@ -64,7 +84,13 @@ function pickFromRarity(
         // Constellation-locked catalysts only spawn when the active
         // constellation matches their requirement. Catalysts without a
         // requirement are universally available.
-        (m.requiresConstellation == null || m.requiresConstellation === constellationId),
+        (m.requiresConstellation == null || m.requiresConstellation === constellationId) &&
+        // Face-gate: drop catalysts whose trigger face never appears in
+        // the active universe. No-op when faceUniverse is undefined
+        // (preserves the legacy call shape).
+        (faceUniverse == null ||
+          !(m.id in FACE_GATED_CATALYSTS) ||
+          FACE_GATED_CATALYSTS[m.id]!.some((f) => faceUniverse.has(f))),
     );
     if (pool.length === 0) continue;
 
@@ -104,6 +130,11 @@ export function drawWeightedCatalysts(
   rng: () => number,
   ownedCatalysts: readonly string[] = [],
   constellationId?: string,
+  // 2026-05-13: optional face universe (e.g. {0,1} for Eclipse) used to
+  // filter face-gated catalysts out of the pool when their trigger face
+  // can never appear. Caller computes from getComboCtx(state).faceUniverse.
+  // Undefined falls back to the legacy "no face gate" behaviour for tests.
+  faceUniverse?: ReadonlySet<number>,
 ): string[] {
   const weights = rarityWeightsForAnte(ante);
   const out: string[] = [];
@@ -112,7 +143,7 @@ export function drawWeightedCatalysts(
   for (let i = 0; i < count; i++) {
     const tier = rollRarity(weights, rng);
     const bias = preferred.size > 0 ? preferred : undefined;
-    const id = pickFromRarity(tier, unlocks, excluded, rng, bias, constellationId);
+    const id = pickFromRarity(tier, unlocks, excluded, rng, bias, constellationId, faceUniverse);
     if (!id) break;
     out.push(id);
     excluded.add(id);

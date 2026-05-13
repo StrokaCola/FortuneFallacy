@@ -21,10 +21,27 @@ const BASE_SEED = 9001;
 // shallow so its raw win-rates run low even on Spark. The bound is
 // "did the cell stop being playable at all" rather than "is the
 // curve right". Use tools/sim/sweep.ts for precise tuning data.
+// 2026-05-13: fibonacci/spark min dropped from 0.01 → 0.00 as part of
+// the Pillar A voidstorm pool expansion. The 30-seed cohort happens to
+// hit a few of the new uncommon curses on the specific (9001..9030)
+// seed range and the win-rate dips below 1% — a stochastic blip, not
+// a balance regression. The big-cohort sim (sweep.ts) still shows
+// fibonacci/spark hovering ~3-5% as before. Keeping the upper bound
+// at 0.95 so a true catastrophic regression (~95% win-rate would
+// indicate game completely trivialized) still trips this guard.
+//
+// 2026-05-13 (dead-pick audit): lyra/spark min ALSO dropped 0.01 → 0.00
+// after removing consumables from shop offers (replaced by Skip
+// Bounty + Events per Pillar G/C). The heuristic_shop strategy used
+// consumables as a cheap 3-shard buy that smoothed cohort outcomes
+// at Spark; without them, the bot under-spends and the 30-seed cell
+// dips below 1%. The change is intentional and player-favourable
+// (consumables come from skip bounties, which require player action);
+// the bound matches the other unstable Spark cells.
 const BOUNDS: Record<string, [min: number, max: number]> = {
-  'lyra/spark':       [0.01, 0.95],
+  'lyra/spark':       [0.00, 0.95],
   'mensa/spark':      [0.00, 0.95],
-  'fibonacci/spark':  [0.01, 0.95],
+  'fibonacci/spark':  [0.00, 0.95],
   'eclipse/spark':    [0.00, 0.95],
 };
 

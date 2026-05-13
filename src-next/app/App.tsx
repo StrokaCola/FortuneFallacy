@@ -4,9 +4,11 @@ import { BoundsOverlay } from '../devtools/inspector/BoundsOverlay';
 import { SpawnOverlay } from '../devtools/inspector/SpawnOverlay';
 import { useScoreSequenceController } from './hud/scoreSequenceController';
 import { BossReveal } from './hud/BossReveal';
+import { BossPhaseBanner } from './hud/BossPhaseBanner';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
 import { WhisperToast } from './hud/WhisperToast';
+import { ResonanceToast } from './hud/ResonanceToast';
 import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
 import { DailyLoginComet } from './hud/DailyLoginComet';
 import { SoundCaptions } from './hud/SoundCaptions';
@@ -16,6 +18,7 @@ import { Particles } from './hud/Particles';
 import { OrientationGate } from './hud/OrientationGate';
 import { PauseMenu } from './hud/PauseMenu';
 import { PackOverlay } from './screens/PackOverlay';
+import { SkipBountyOverlay } from './screens/SkipBountyOverlay';
 import { useStore, store } from '../state/store';
 import { selectScreen, selectIsBoss, selectTensionFromState, selectPendingPack, selectScore, selectTarget } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
@@ -33,6 +36,7 @@ import { Settings } from './screens/Settings';
 import { Codex } from './screens/Codex';
 import { ChallengeSelect } from './screens/ChallengeSelect';
 import { AstralForge } from './screens/AstralForge';
+import { EventScreen } from './screens/EventScreen';
 import { CoachmarkController } from './onboarding/CoachmarkController';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
@@ -72,10 +76,11 @@ export function App() {
       screenMusic.stop();
       return;
     }
-    if (screen === 'title' || screen === 'nameentry' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores' || screen === 'astral_forge') {
-      // win/scores reuse hub track; constellation_select, nameentry, astral_forge reuse title track.
+    if (screen === 'title' || screen === 'nameentry' || screen === 'constellation_select' || screen === 'hub' || screen === 'shop' || screen === 'forge' || screen === 'win' || screen === 'scores' || screen === 'astral_forge' || screen === 'event') {
+      // win/scores reuse hub track; constellation_select, nameentry, astral_forge reuse title track;
+      // event reuses hub track (it's a peaceful Hub-adjacent screen).
       const target: ScreenId =
-        (screen === 'win' || screen === 'scores') ? 'hub'
+        (screen === 'win' || screen === 'scores' || screen === 'event') ? 'hub'
         : (screen === 'constellation_select' || screen === 'nameentry' || screen === 'astral_forge') ? 'title'
         : screen;
       screenMusic.start(target);
@@ -142,11 +147,14 @@ export function App() {
             {screen === 'codex' && <Codex />}
             {screen === 'challenges' && <ChallengeSelect />}
             {screen === 'astral_forge' && <AstralForge />}
+            {screen === 'event' && <EventScreen />}
           </ScreenTransition>
           <BossReveal />
+          <BossPhaseBanner />
           <ArrivalToast />
           <AchievementToast />
           <WhisperToast />
+          <ResonanceToast />
           <ForgeAttachRitual />
           <DailyLoginComet />
           <SoundCaptions />
@@ -158,6 +166,7 @@ export function App() {
         <OrientationGate />
         <PauseMenu />
         {pendingPack && <PackOverlay />}
+        <SkipBountyOverlay />
         <CoachmarkController />
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}

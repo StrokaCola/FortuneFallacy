@@ -44,6 +44,18 @@ export const MOD_IDS = [
   'dormant',
   'ballast',
   'pyre_mark',
+  // 2026-05-13 banish-face family — die literally pops up and re-tumbles
+  // when it would settle on a banned face. See ModDef.banishFaces /
+  // banishFaceResolver fields and core/phases/initSimulation.ts retry loop.
+  'aversion',
+  'anti_one_sigil',
+  'restless_die',
+  'wide_net',
+  'high_tide',
+  'mirror_banish',
+  'pyre_pact',
+  'three_banished',
+  'voidlock',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -173,7 +185,49 @@ export type ModDef = {
   // Pyre Mark — face 1 re-rolls (via the face-remap flow handled elsewhere)
   // AND grants +1 chip permanent. +N chips per stack.
   pyreChipPerStack?: number;
+  // ─── Banish-face family (2026-05-13) ──────────────────────────────────
+  // Banished faces: integers (or WILD sentinel -1) that this mod prevents
+  // the die from landing on. When a die's roll picks one of these values,
+  // the value is re-picked (initSimulation retry loop, cap 8). If the
+  // banish list would empty the die's face universe, the ban is ignored
+  // for that die (Eclipse [0,1] + Aversion → die rolls 0 deterministically;
+  // attaching enough banishes to cover all faces falls back to unrestricted).
+  banishFaces?: ReadonlyArray<number>;
+  // Dynamic banish: when present, called PER-ROLL with the current run
+  // state + die context to compute the banish set for this attachment.
+  // Used by mods whose banish depends on the prior hand (Restless Die),
+  // other dice's current rolls (Mirror Banish), or randomization at
+  // blind start (Three Banished). When both `banishFaces` and
+  // `banishFaceResolver` are present, results union.
+  banishFaceResolver?: (input: BanishResolverInput) => ReadonlyArray<number>;
+  // Banish-trigger payoff: when this mod's banish list fires (i.e. the
+  // retry loop substituted a value on this die), grants +N chips and/or
+  // +N mult on this die when it next scores. Lets the Anti-One Sigil
+  // and Pyre Pact pay players for the re-tumble moment.
+  banishTriggerChips?: number;
+  banishTriggerMult?: number;
+  // Pyre-Pact-style threshold: when the cumulative banish trigger count
+  // this blind crosses `banishMilestone`, grant `banishMilestoneMult`
+  // mult on the next hand played. Implemented in actions/handlers/roll.ts
+  // SCORE_HAND.
+  banishMilestone?: number;
+  banishMilestoneMult?: number;
   visual?: ModVisual;
+};
+
+// Inputs available to a banishFaceResolver. Pure read shape — resolvers
+// must not mutate. `prevHandFaces` is the per-die face values from the
+// LAST scored hand of this blind (length matches dice count; 0 = not
+// scored last hand). `currentDieFaces` is the values of OTHER dice
+// already settled this roll (Mirror Banish reads this).
+export type BanishResolverInput = {
+  dieIdx: number;
+  faceUniverse: ReadonlyArray<number>;
+  prevHandFaces: ReadonlyArray<number>;
+  currentDieFaces: ReadonlyArray<number>;
+  // RNG for resolvers that bake their banish list at blind start
+  // (Three Banished). Returns a value in [0, 1).
+  rng: () => number;
 };
 
 export const MODS: ModDef[] = [
@@ -407,6 +461,111 @@ export const MODS: ModDef[] = [
     desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
     pyreChipPerStack: 2, rarity: 'common',
     visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'etched' },
+  },
+  // ─── Banish-face family (2026-05-13) ────────────────────────────────────
+  // A die wearing one of these mods literally pops up and re-tumbles when
+  // it would settle on a banned face. Mechanically: the roll's predetermined
+  // value is re-picked in initSimulation until it falls outside the banish
+  // set, capped at 8 retries (Eclipse degenerate guard). Visuals layered in
+  // Dice3D via onDieBanishTriggered.
+  //
+  // 8 ship across all four rarities; reserve pool documented in the plan.
+  {
+    id: 'aversion', name: 'Aversion', icon: '✥',
+    desc: 'This die cannot land on face 1. It pops up and re-tumbles.',
+    banishFaces: [1], rarity: 'common',
+    visual: { materialKey: 'aversion', accentColor: '#a4d4ff', triggerFx: 'pulse', geometricVariant: 'etched' },
+  },
+  {
+    id: 'anti_one_sigil', name: 'Anti-One Sigil', icon: '✦',
+    desc: 'This die cannot land on face 1. +2 chips on this die when the banish fires.',
+    banishFaces: [1], banishTriggerChips: 2, rarity: 'common',
+    visual: { materialKey: 'anti_one_sigil', accentColor: '#7be3ff', triggerFx: 'pulse', geometricVariant: 'crystalline' },
+  },
+  {
+    id: 'restless_die', name: 'Restless Die', icon: '↻',
+    desc: 'This die cannot land on the same face it scored last hand.',
+    rarity: 'common',
+    banishFaceResolver: ({ dieIdx, prevHandFaces }) => {
+      const f = prevHandFaces[dieIdx];
+      return typeof f === 'number' && f > 0 ? [f] : [];
+    },
+    visual: { materialKey: 'restless_die', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'pulsing' },
+  },
+  {
+    id: 'wide_net', name: 'Wide Net', icon: '⊞',
+    desc: 'This die cannot land on faces 1 or 2. Re-tumbles until midrange or higher.',
+    banishFaces: [1, 2], rarity: 'uncommon',
+    visual: { materialKey: 'wide_net', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'plated' },
+  },
+  {
+    id: 'high_tide', name: 'High Tide', icon: '≈',
+    desc: 'This die cannot land on the extremes (faces 1 or 6).',
+    banishFaces: [1, 6], rarity: 'uncommon',
+    visual: { materialKey: 'high_tide', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'orbital' },
+  },
+  {
+    id: 'mirror_banish', name: 'Mirror Banish', icon: '◇',
+    desc: 'This die cannot land on a face another scoring die already shows this hand.',
+    rarity: 'uncommon',
+    banishFaceResolver: ({ dieIdx, currentDieFaces }) => {
+      const others: number[] = [];
+      for (let i = 0; i < currentDieFaces.length; i++) {
+        if (i === dieIdx) continue;
+        const f = currentDieFaces[i];
+        if (typeof f === 'number' && f > 0) others.push(f);
+      }
+      return others;
+    },
+    visual: { materialKey: 'mirror_banish', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'recessed' },
+  },
+  {
+    // Pyre Pact's banish-trigger milestone reward (+20 mult next hand
+    // after 3 banishes fire this blind) is structurally authored via
+    // `banishMilestone` / `banishMilestoneMult` but the upgrades-phase
+    // hook that READS the threshold isn't wired yet — tracked as the
+    // first banish-family follow-up. Today Pyre Pact behaves as a
+    // pure rare banish mod with thematic intent for the reward;
+    // shipping the data fields now keeps the storyline in the codex.
+    id: 'pyre_pact', name: 'Pyre Pact', icon: '☄',
+    desc: 'This die cannot land on face 1.',
+    banishFaces: [1], banishMilestone: 3, banishMilestoneMult: 20, rarity: 'rare',
+    visual: { materialKey: 'pyre_pact', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
+  },
+  {
+    id: 'three_banished', name: 'Three Banished', icon: '☰',
+    desc: 'At blind start, three random faces are banished from this die.',
+    rarity: 'rare',
+    banishFaceResolver: ({ faceUniverse, rng }) => {
+      // Sample 3 distinct faces from the die's universe, leaving at least
+      // one face available so the initSimulation degenerate guard
+      // doesn't have to bail. Drawn once per blind via the rng input,
+      // which is seeded from (run.seed ^ goalIdx ^ dieIdx) at blind start.
+      const pool = [...faceUniverse];
+      const picks: number[] = [];
+      const sampleCount = Math.min(3, Math.max(0, pool.length - 1));
+      for (let i = 0; i < sampleCount; i++) {
+        const idx = Math.floor(rng() * pool.length);
+        picks.push(pool[idx]!);
+        pool.splice(idx, 1);
+      }
+      return picks;
+    },
+    visual: { materialKey: 'three_banished', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'asymmetric' },
+  },
+  {
+    id: 'voidlock', name: 'Voidlock', icon: '⌬',
+    desc: 'This die can ONLY land on the highest face in its universe.',
+    rarity: 'legendary',
+    banishFaceResolver: ({ faceUniverse }) => {
+      // Banish everything except the maximum face. Pins the die at max
+      // value (face 6 on d6, face 12 on d12, etc.). Cap-N retry guard
+      // in initSimulation handles the unlikely loop budget overflow.
+      if (faceUniverse.length === 0) return [];
+      const max = Math.max(...faceUniverse);
+      return faceUniverse.filter((f) => f !== max);
+    },
+    visual: { materialKey: 'voidlock', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'haloed-theatrical' },
   },
 ];
 

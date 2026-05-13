@@ -1,6 +1,6 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
-import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
+import { lookupConsumable } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled, getDiceSpec, getComboCtx } from '../../core/run/diceContext';
@@ -12,22 +12,42 @@ import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
-// Mods whose effects key on a specific face value that some constellations
-// can never roll. When the active face universe doesn't include that face,
-// the mod is removed from the offer pool so the player can't be sold a
-// trap (Risk on Eclipse is strictly negative-EV — face 6 never rolls, face
-// 1 rolls 50% of the time). Other face-keyed mods are merely "dead" rather
-// than negative; those stay in the pool because they at least don't punish.
-const FACE_GATED_MODS: Record<string, number> = {
-  risk: 6,
+// Mods whose effects key on specific face values that some constellations
+// can never roll. When the active face universe lacks ALL the required
+// faces, the mod is removed from the offer pool so the player isn't sold
+// a trap (e.g. Crown's +1.5× mult on face 6 on Eclipse, whose universe is
+// [0, 1] and never rolls a 6).
+//
+// 2026-05-13 (dead-pick audit): expanded from risk-only to cover every
+// face-gated mod. Each entry is the SET of faces that satisfy the mod —
+// the mod stays in the pool iff at least one face is present in the
+// constellation's universe. Risk stays a single-face gate because its
+// asymmetric +6/-3 still loses on Triumvirate-like universes that lack 6
+// even when they have 1.
+const FACE_GATED_MODS: Record<string, ReadonlyArray<number>> = {
+  // Risk: +6 mult on 6, -3 mult on 1. Strictly negative when 6 never
+  // rolls, even if 1 does. Gate keys on 6.
+  risk: [6],
+  // Crown: ×1.5 mult on face 6. Universal dead pick when 6 missing.
+  crown: [6],
+  // High Roller: +1 mult on 5 OR 6. Survives Ophiuchus (face 5 exists)
+  // but dies on Eclipse where neither rolls.
+  high_roller: [5, 6],
+  // Even Keel: +2 mult on faces 2/4/6 specifically (the mod's desc
+  // enumerates these — face 0 doesn't count even though it's
+  // mathematically even). Eclipse [0, 1] lacks all three.
+  even_keel: [2, 4, 6],
+  // Glutton: only stacks on face 6 rolls. Dead on Eclipse, Ophiuchus
+  // (no native 6 in either universe).
+  glutton: [6],
 };
 
 function gateModsByFaceUniverse(modIds: readonly string[], s: GameState): string[] {
   const universe = new Set(getComboCtx(s).faceUniverse);
   return modIds.filter((id) => {
-    const requiredFace = FACE_GATED_MODS[id];
-    if (requiredFace == null) return true;
-    return universe.has(requiredFace);
+    const requiredFaces = FACE_GATED_MODS[id];
+    if (!requiredFaces) return true;
+    return requiredFaces.some((f) => universe.has(f));
   });
 }
 
@@ -129,23 +149,23 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId);
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse));
   for (const id of catalystIds) {
     const edition = rollCatalystEdition(Math.random);
     offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
   }
 
   const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
-  // Galaxies and spectrals are excluded from the regular consumable pool.
-  // Galaxies are gated behind Galaxy Packs (Phase 2). Spectrals (Catalyze,
-  // future Void) are rare and meant to come from boss rewards / dedicated
-  // Spectral Packs — never the everyday consumable slot.
-  const consumableIds = CONSUMABLES
-    .filter((c) => c.type !== 'galaxy' && c.type !== 'spectral')
-    .map((c) => c.id);
+  // 2026-05-13 (post-Pillar-G): Consumables are no longer offered in the
+  // shop. They're acquired exclusively via Skip Bounty (Pillar G) and
+  // event encounters (Pillar C), which gives skipping a real second-
+  // axis payoff and tightens the shop's identity around mods, catalysts,
+  // vouchers, and packs. Galaxy/spectral consumables continue to drop
+  // through their dedicated packs.
 
-  // Three-way roll for the final slot: pack | voucher | consumable.
-  // ~25% pack, then voucher-vs-consumable resolves like before.
+  // Two-way roll for the final slot: pack | voucher.
+  // ~25% pack, then voucher when one is unowned; otherwise an extra
+  // catalyst keeps the offer count stable when no voucher is available.
   const r = Math.random();
   if (r < 0.25) {
     // Pack tier weighted: 45% Celestial, 22% Stellar, 8% Galactic, 25% Maneuver.
@@ -157,14 +177,17 @@ function rollOffers(s: GameState): ShopOffer[] {
       tierRoll < 0.75 ? PACK_DEFS[2]! :
       PACK_DEFS[3]!;
     offers.push({ kind: 'pack', id: pack.kind, price: pack.price });
+  } else if (availableVouchers.length > 0) {
+    const v = shuffle(availableVouchers)[0]!;
+    offers.push({ kind: 'voucher', id: v.id, price: v.price });
   } else {
-    const useVoucher = availableVouchers.length > 0 && (consumableIds.length === 0 || Math.random() < 0.5);
-    if (useVoucher) {
-      const v = shuffle(availableVouchers)[0]!;
-      offers.push({ kind: 'voucher', id: v.id, price: v.price });
-    } else if (consumableIds.length > 0) {
-      const consId = shuffle(consumableIds)[0]!;
-      offers.push({ kind: 'consumable', id: consId, price: 3 });
+    // No vouchers left to offer — fill the slot with one extra catalyst
+    // so the shop doesn't shrink late-run. Mirrors the modsOff branch's
+    // approach of using catalyst breadth as the fallback currency.
+    const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId);
+    if (extra[0]) {
+      const edition = rollCatalystEdition(Math.random);
+      offers.push({ kind: 'catalyst', id: extra[0], price: 5, ...(edition ? { edition } : {}) });
     }
   }
 
@@ -402,6 +425,9 @@ export const shopHandler: ActionHandler = (a, s) => {
         ],
       };
     }
+    case 'RESOLVE_SKIP_BOUNTY': {
+      return resolveSkipBounty(s, a.optionIdx);
+    }
     case 'SELL_UPGRADE': {
       const removeAt = <T,>(arr: T[], idx: number): T[] => arr.filter((_, i) => i !== idx);
       if (a.kind === 'catalyst') {
@@ -500,3 +526,105 @@ export const shopHandler: ActionHandler = (a, s) => {
       return { state: s, events: [] };
   }
 };
+
+// Pillar G — applies the player's chosen bounty option from the
+// SkipBountyModal. Clears pendingSkipBounty either way. Slot caps are
+// respected: a 'consumable' option converts to shards if the inventory
+// is full; a 'catalyst' option converts to shards if the slot is full.
+// The fallback shard amount (8) matches the "pool exhausted" copy
+// authored in rollSkipBountyOptions for symmetry.
+function resolveSkipBounty(s: GameState, optionIdx: number): { state: GameState; events: GameEventEmission[] } {
+  const bounty = s.shop.pendingSkipBounty;
+  if (!bounty) return { state: s, events: [] };
+  const option = bounty.options[optionIdx];
+  if (!option) return { state: s, events: [] };
+  const cleared: GameState = {
+    ...s,
+    shop: { ...s.shop, pendingSkipBounty: null },
+  };
+  if (option.kind === 'shards') {
+    return {
+      state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + option.amount } },
+      events: [],
+    };
+  }
+  if (option.kind === 'consumable') {
+    const def = lookupConsumable(option.consumableId);
+    if (!def) return { state: cleared, events: [] };
+    if (cleared.run.consumables.length >= maxConsumableSlots(cleared)) {
+      // Inventory full — convert to 8 shards as the courteous fallback.
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    return {
+      state: {
+        ...cleared,
+        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId] },
+      },
+      events: [],
+    };
+  }
+  if (option.kind === 'catalyst') {
+    if (cleared.run.catalysts.length >= maxCatalystSlots(cleared)) {
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    return {
+      state: {
+        ...cleared,
+        run: { ...cleared.run, catalysts: [...cleared.run.catalysts, option.catalystId] },
+      },
+      events: [{
+        type: 'onOfferBought',
+        payload: { kind: 'catalyst', id: option.catalystId, price: 0 },
+      }],
+    };
+  }
+  if (option.kind === 'pack') {
+    // Stage a celestial pack so the next shop visit opens it. Falls back
+    // to shards if pack metadata is missing (shouldn't happen in prod).
+    const packDef = lookupPack(option.packKind);
+    if (!packDef) {
+      return {
+        state: { ...cleared, run: { ...cleared.run, shards: cleared.run.shards + 8 } },
+        events: [],
+      };
+    }
+    const galaxyIds = rollPackContents(packDef.showCount, Math.random, packDef.quasarWeightMultiplier ?? 1);
+    const unlockedAtOpen = [...(cleared.meta.unlocks ?? [])];
+    const newUnlocks = new Set(unlockedAtOpen);
+    const events: GameEventEmission[] = [];
+    for (const gid of galaxyIds) {
+      if (!newUnlocks.has(gid)) {
+        newUnlocks.add(gid);
+        events.push({ type: 'onGalaxyDiscovered', payload: { galaxyId: gid } });
+      }
+    }
+    events.push({
+      type: 'onPackOpened',
+      payload: { kind: option.packKind, galaxyIds, picksAllowed: packDef.pickCount },
+    });
+    return {
+      state: {
+        ...cleared,
+        meta: { ...cleared.meta, unlocks: [...newUnlocks] },
+        shop: {
+          ...cleared.shop,
+          pendingPack: {
+            kind: option.packKind,
+            galaxyIds,
+            picksLeft: packDef.pickCount,
+            pickedSoFar: [],
+            unlockedAtOpen,
+          },
+        },
+      },
+      events,
+    };
+  }
+  return { state: cleared, events: [] };
+}

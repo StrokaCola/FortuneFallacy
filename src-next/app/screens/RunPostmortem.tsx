@@ -380,18 +380,65 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           {hook.label}
         </div>
 
+        {/* Cosmic Lap badge (Pillar D) — surfaces the current lap if
+            the player is mid-endless, plus the constellation's
+            high-water mark from prior endless runs. Hidden when the
+            player has never entered endless mode. */}
+        {(() => {
+          const lapNow = run.endlessLap ?? 0;
+          const highwater = meta.endlessHighwater?.[run.constellationId];
+          if (lapNow === 0 && !highwater) return null;
+          return (
+            <div style={{
+              marginTop: 6,
+              padding: '6px 12px', borderRadius: 8,
+              border: '1px solid rgba(245,196,81,0.4)',
+              background: 'rgba(15,9,37,0.7)',
+              display: 'inline-flex', gap: 12, alignItems: 'center',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#f5c451',
+            }}>
+              {lapNow > 0 && <span>✦ Cosmic Lap {lapNow}</span>}
+              {highwater && (lapNow > 0 ? (
+                <span style={{ color: '#bba8ff' }}>
+                  best: lap {highwater.lap} / ante {highwater.ante}
+                </span>
+              ) : (
+                <span style={{ color: '#bba8ff' }}>
+                  endless best: lap {highwater.lap} / ante {highwater.ante}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Action row — kept identical between modes so the button
-            position is muscle-memory across runs. */}
+            position is muscle-memory across runs. The Cosmic Lap
+            "Continue" CTA appears only on the Win path — busts and the
+            normal Run-Again path don't carry forward endless state. */}
         <div style={{
           marginTop: 6,
           display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
           animation: 'fadein 600ms ease-out 1400ms both',
         }}>
+          {mode === 'win' && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'START_COSMIC_LAP' })}
+              className="btn btn-primary mat-interactive tap"
+              data-autofocus
+              style={{
+                background: 'linear-gradient(180deg, rgba(245,196,81,0.25), rgba(204,136,255,0.18))',
+                border: '1px solid rgba(245,196,81,0.7)',
+              }}
+            >
+              ✦ Continue into Cosmic Lap {(run.endlessLap ?? 0) + 1}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
             className="btn btn-primary mat-interactive tap"
-            data-autofocus
+            data-autofocus={mode === 'fail'}
           >
             {mode === 'win' ? '✦ Run Again' : '↻ Try Again'}
           </button>

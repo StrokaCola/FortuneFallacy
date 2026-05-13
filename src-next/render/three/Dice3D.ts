@@ -85,6 +85,11 @@ type DieAnim = {
   faceLensMats: FaceMatMap<THREE.MeshStandardMaterial>;
   faceHaloMats: FaceMatMap<THREE.SpriteMaterial>;
   scorePopStart: number;                  // ms timestamp when this die last scored a beat; 0 = idle
+  // Banish-face family (2026-05-13) — ms timestamp when this die was
+  // hit by a banish substitution. Render loop adds a 400ms Y-axis hop +
+  // tilt once `performance.now()` crosses this value (set ~700ms in
+  // the future to land after the primary tumble settles). 0 = idle.
+  banishPopStart: number;
   // Physical shape (d4/d6/d8/d10/d12/d20). Drives the lock-snap rotation
   // table and tells the lens/halo loop how many faces this die has.
   shape: DieShape;
@@ -550,6 +555,22 @@ export class Dice3D {
           this.activeScoringDie = -1;
           this.pendingPulses.clear();
         }
+      }),
+      // Banish-face family (2026-05-13) — when a die's value was
+      // substituted in initSimulation, fire a violet "pop-up" pulse +
+      // schedule a brief Y-axis hop on the die once it settles. The
+      // pulse fires immediately so the player sees the cue during the
+      // tumble; the hop is deferred so it lands as a punctuation on
+      // the otherwise-settled die.
+      bus.on('onDieBanishTriggered', ({ dieIdx }) => {
+        const d = this.dice[dieIdx];
+        if (!d) return;
+        const pos = d.group.position.clone();
+        firePulse(this.scene, pos, '#cc88ff', DIE_SIZE);
+        // Schedule the hop to land ~700ms later (after the simulation
+        // playback completes for a typical roll). The render loop reads
+        // banishPopStart and lifts the die in a 400ms bounce.
+        d.banishPopStart = performance.now() + 700;
       }),
       bus.on('onModFired', ({ dieIdx, modId, faceValue }) => {
         const def = lookupMod(modId);
@@ -1028,6 +1049,7 @@ export class Dice3D {
         faceLensMats: built.faceLensMats,
         faceHaloMats: built.faceHaloMats,
         scorePopStart: 0,
+        banishPopStart: 0,
         shape,
         faceValues,
         baseScale,
@@ -1147,6 +1169,7 @@ export class Dice3D {
           faceLensMats: built.faceLensMats,
           faceHaloMats: built.faceHaloMats,
           scorePopStart: 0,
+        banishPopStart: 0,
           shape,
           faceValues,
           baseScale,
@@ -1653,6 +1676,32 @@ export class Dice3D {
           }
           d.group.scale.setScalar(sc * popMul);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);
+
+          // Banish-face hop (Pillar mod family) — once the scheduled
+          // banishPopStart is reached, lift the die ~0.6 units over
+          // 400ms (parabolic) and add a small wobble. Reduced-motion
+          // skips the entire effect via `reduced` (see hold-bob path).
+          if (d.banishPopStart > 0 && now >= d.banishPopStart) {
+            const HOP_MS = 400;
+            const HOP_HEIGHT = 0.6;
+            const hopDt = now - d.banishPopStart;
+            if (hopDt < HOP_MS) {
+              const u = hopDt / HOP_MS;
+              // Symmetric parabola peaks at u=0.5.
+              const hopY = HOP_HEIGHT * (4 * u * (1 - u));
+              d.group.position.y += hopY;
+              // Subtle wobble around Y axis for "the die is questioning
+              // itself" reading.
+              const wobble = Math.sin(u * Math.PI * 4) * 0.18 * (1 - u);
+              const wobQ = new THREE.Quaternion().setFromAxisAngle(
+                new THREE.Vector3(0, 1, 0),
+                wobble,
+              );
+              d.group.quaternion.multiply(wobQ);
+            } else {
+              d.banishPopStart = 0;
+            }
+          }
 
           // Floaty held-die idle: bob + drift + gentle rotational shimmer once
           // the lerp into the hold slot has settled.

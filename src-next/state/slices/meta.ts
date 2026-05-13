@@ -17,6 +17,12 @@ export type MetaSlice = {
     vouchers: string[];
     bosses: string[];
     consumables: string[];
+    // 2026-05-13 (Pillar E) — resonance pair ids the player has fired
+    // at least once during scoring. Drives the Codex "Resonances"
+    // section + ResonanceToast's first-discovery treatment.
+    // Optional for back-compat with pre-Pillar-E saves; selectors and
+    // bridges default to []. Always written as an array going forward.
+    resonances?: string[];
   };
   // 2026-05-11 easter egg discovery log. Each entry is a stable id from
   // EASTER_EGGS in data/easterEggs.ts. Persisted across runs so the codex
@@ -74,6 +80,17 @@ export type MetaSlice = {
   dailyLogin: {
     lastDate: string | null; // 'YYYY-MM-DD' UTC, null if never
   };
+  // Cosmic Lap high-water marks (Pillar D). Keyed by constellation id —
+  // each entry records the furthest the player has reached in endless
+  // mode on that constellation. Sort key is (lap, ante, score) in that
+  // order. Persisted across runs.
+  endlessHighwater?: Record<string, {
+    lap: number;
+    ante: number;
+    score: number;
+    date: number;
+    stake: string;
+  }>;
 };
 
 // Import maneuvers up-front so the seed lists below can both reference
@@ -135,6 +152,7 @@ export const initialMetaSlice = (): MetaSlice => ({
     vouchers: [],
     bosses: [],
     consumables: [...SEEDED_DISCOVERED_CONSUMABLES],
+    resonances: [],
   },
   cosmicDust: 0,
   cosmicDustLifetime: 0,
@@ -144,4 +162,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   achievements: { unlocked: [], unlockedAt: {} },
   dailyLogin: { lastDate: null },
   easterEggs: [],
+  endlessHighwater: {},
 });

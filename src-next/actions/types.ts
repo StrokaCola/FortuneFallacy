@@ -32,6 +32,9 @@ export type Action =
   | { type: 'END_SCORING' }
   | { type: 'PICK_FROM_PACK'; galaxyIdx: number }
   | { type: 'SKIP_PACK' }
+  | { type: 'RESOLVE_SKIP_BOUNTY'; optionIdx: number }
+  | { type: 'START_COSMIC_LAP' }
+  | { type: 'RESOLVE_EVENT_CHOICE'; eventId: string; choiceIdx: number }
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
