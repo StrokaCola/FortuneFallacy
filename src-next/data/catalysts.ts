@@ -422,6 +422,16 @@ export const RETRIGGER_CATALYST_IDS: ReadonlySet<string> = new Set([
   'mirrored_hand',
 ]);
 
+// 2026-05-13 — collision-pack catalysts. Drive a distinct pulse kind on
+// the CatalystStrip (sharp electric flash) and a punchier SFX class so
+// the tray-physics origin of the trigger reads in the moment.
+// Read by:
+//   - app/hud/CatalystStrip.tsx     (pulse + ring color)
+//   - audio/listeners/scalingSfx.ts (SFX voice routing)
+export const COLLISION_CATALYST_IDS: ReadonlySet<string> = new Set([
+  'kinetic_charge', 'chain_reaction', 'kindred_clatter',
+]);
+
 // Awakening — once a catalyst has fired N times in a single run, it
 // reads as "Awakened" with a ★ badge on the strip. v1 is purely
 // cosmetic; mechanical scaling will follow once playtesting confirms

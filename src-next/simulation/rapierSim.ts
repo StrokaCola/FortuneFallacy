@@ -39,16 +39,25 @@ const FLOOR_Y = 0;
 // match the old cube extent. If `convexHull` returns null (degenerate input)
 // we fall back to a cuboid of equivalent size — the visible mesh still
 // renders as the polyhedron, just with cube-fairness physics.
-function colliderForShape(r: RapierModule, shape: DieShape, half: number) {
+//
+// COLLISION_EVENTS is required: ColliderDesc defaults to ActiveEvents.NONE,
+// which silently drops every drainCollisionEvents callback. Without this
+// the collision-pack catalysts (kinetic_charge, chain_reaction,
+// kindred_clatter) never fire in real physics — the headless seeded
+// fallback masks the regression because it synthesizes its own count.
+export function colliderForShape(r: RapierModule, shape: DieShape, half: number) {
+  const events = r.ActiveEvents.COLLISION_EVENTS;
   if (shape === 'd6') {
-    return r.ColliderDesc.cuboid(half, half, half).setRestitution(0.35).setDensity(1.5);
+    return r.ColliderDesc.cuboid(half, half, half)
+      .setRestitution(0.35).setDensity(1.5).setActiveEvents(events);
   }
   const data = SHAPE_DATA[shape];
   const cloud = new Float32Array(data.vertices.length);
   for (let i = 0; i < data.vertices.length; i++) cloud[i] = data.vertices[i]! * half;
   const hull = r.ColliderDesc.convexHull(cloud);
-  if (hull) return hull.setRestitution(0.35).setDensity(1.5);
-  return r.ColliderDesc.cuboid(half, half, half).setRestitution(0.35).setDensity(1.5);
+  if (hull) return hull.setRestitution(0.35).setDensity(1.5).setActiveEvents(events);
+  return r.ColliderDesc.cuboid(half, half, half)
+    .setRestitution(0.35).setDensity(1.5).setActiveEvents(events);
 }
 
 export async function runRapierSim(req: SimulationRequest, prevFaces: number[]): Promise<SimulationResult | null> {

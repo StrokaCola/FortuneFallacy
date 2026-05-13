@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
-import { lookupCatalyst, awakeningThreshold, isAwakened, SCALING_CATALYST_IDS, RETRIGGER_CATALYST_IDS } from '../../data/catalysts';
+import { lookupCatalyst, awakeningThreshold, isAwakened, SCALING_CATALYST_IDS, RETRIGGER_CATALYST_IDS, COLLISION_CATALYST_IDS } from '../../data/catalysts';
 import { bus } from '../../events/bus';
 import { SellButton } from './SellButton';
 import { editionColor } from '../../core/upgrades/editions';
@@ -39,6 +39,11 @@ const PULSE_DURATION_LEGENDARY_MS = 540;
 // for the cyan ring + brightness ramp to read but short enough the strip
 // doesn't visibly throb during a long combo chain.
 const PULSE_DURATION_SCALING_MS = 460;
+// Collision pulse — sharper attack than fire; reads as an electric jolt
+// from the tray physics. Shorter than scaling so back-to-back collisions
+// in the same hand (kinetic + kindred together) don't visually overlap.
+const PULSE_DURATION_COLLISION_MS = 320;
+const COLLISION_RING_COLOR = '#ffd84a';
 const BADGE_BUMP_DURATION_MS = 360;
 const CHAIN_PULSE_STEP_MS = 80;
 const FLOATER_DURATION_MS = 900;
@@ -191,7 +196,7 @@ export function CatalystStrip() {
   const lunarBaked = useStore(selectLunarBaked);
   const mirroredHandActive = useStore(selectMirroredHand);
 
-  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | 'scaling' | undefined>>({});
+  const [pulsing, setPulsing] = useState<Record<string, 'fire' | 'fire-legendary' | 'chain' | 'scaling' | 'collision' | undefined>>({});
   // Tracks corner badges currently mid-bump so the CSS animation can
   // re-fire on the next stack change. Keyed by catalyst id; the value is
   // the last-bumped key so React re-mounts the badge on each bump.
@@ -301,15 +306,22 @@ export function CatalystStrip() {
       const meta = lookupCatalyst(catalystId);
       const isLegendary = meta?.rarity === 'legendary';
       const isScaling = SCALING_CATALYST_IDS.has(catalystId);
-      // Priority: legendary > scaling > regular fire. Legendary catalysts
-      // that are ALSO scaling (heirloom_locket) keep the legendary pulse
-      // because their rarity is the stronger signal; the scaling tooltip
-      // line + corner badge already mark them as scaling-class.
-      const pulseKind: 'fire' | 'fire-legendary' | 'scaling' =
-        isLegendary ? 'fire-legendary' : (isScaling ? 'scaling' : 'fire');
+      const isCollision = COLLISION_CATALYST_IDS.has(catalystId);
+      // Priority: legendary > scaling > collision > regular fire.
+      // Legendary catalysts that are ALSO scaling (heirloom_locket) keep
+      // the legendary pulse because their rarity is the stronger signal;
+      // the scaling tooltip line + corner badge already mark them as
+      // scaling-class. Collision sits between scaling and regular fire —
+      // it's a real visual class but rarity overrides it the same way.
+      const pulseKind: 'fire' | 'fire-legendary' | 'scaling' | 'collision' =
+        isLegendary ? 'fire-legendary'
+        : isScaling ? 'scaling'
+        : isCollision ? 'collision'
+        : 'fire';
       const pulseDuration =
         isLegendary ? PULSE_DURATION_LEGENDARY_MS :
         isScaling ? PULSE_DURATION_SCALING_MS :
+        isCollision ? PULSE_DURATION_COLLISION_MS :
         PULSE_DURATION_MS;
 
       setPulsing((s) => ({ ...s, [catalystId]: pulseKind }));
@@ -325,7 +337,10 @@ export function CatalystStrip() {
       // screens where 4+ concurrent rings stack into visual mud.
       if (!tight) {
         const ringKey = ++ringKeyRef.current;
-        const ringColor = isLegendary ? '#ff9466' : meta?.color ?? '#7be3ff';
+        const ringColor =
+          isLegendary ? '#ff9466'
+          : isCollision ? COLLISION_RING_COLOR
+          : meta?.color ?? '#7be3ff';
         setRings((rs) => [...rs, { key: ringKey, catalystId, color: ringColor }]);
         track(() => {
           setRings((rs) => rs.filter((r) => r.key !== ringKey));
@@ -442,6 +457,8 @@ export function CatalystStrip() {
           ? `mat-pulse-fire ${PULSE_DURATION_MS}ms cubic-bezier(0.2, 1.2, 0.4, 1)`
           : pulseKind === 'scaling'
           ? `mat-pulse-scaling ${PULSE_DURATION_SCALING_MS}ms cubic-bezier(0.25, 0.9, 0.35, 1)`
+          : pulseKind === 'collision'
+          ? `mat-pulse-collision ${PULSE_DURATION_COLLISION_MS}ms cubic-bezier(0.32, 0, 0.12, 1)`
           : undefined;
         const isLegendary = c.rarity === 'legendary';
         const cardFloaters = floaters.filter((f) => f.catalystId === id);

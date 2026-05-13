@@ -1,8 +1,11 @@
 // 2026-05-11 polish — audio class for the scaling pack.
 //
-// Classifies onUpgradeTriggered events into three SFX channels:
+// Classifies onUpgradeTriggered events into four SFX channels:
 //   * Scaling-catalyst contributions  → scalingTick (soft cyan bell)
 //   * Retrigger-catalyst fires         → retriggerEcho (short staccato)
+//   * Collision-catalyst fires         → multSlam (percussive impact;
+//     reuses the existing slam voice so the tray-physics origin reads
+//     in the moment without authoring a new sample).
 //   * Easter egg discoveries           → whisperChime (the WhisperToast
 //     component plays this directly on first show — we DON'T double-play
 //     here. The classifier skips easter_egg:* events.)
@@ -18,7 +21,11 @@
 import { bus } from '../../events/bus';
 import { sfxPlay } from '../sfx';
 import { catalystIdFromEvent } from '../../core/upgrades/eventId';
-import { SCALING_CATALYST_IDS, RETRIGGER_CATALYST_IDS } from '../../data/catalysts';
+import {
+  SCALING_CATALYST_IDS,
+  RETRIGGER_CATALYST_IDS,
+  COLLISION_CATALYST_IDS,
+} from '../../data/catalysts';
 
 // Per-scaling-catalyst pent-index offset so each catalyst plays a
 // distinguishable note. Repeating offsets get the same note, which
@@ -70,6 +77,14 @@ export function startScalingSfxListener(): () => void {
     }
     if (RETRIGGER_CATALYST_IDS.has(id)) {
       sfxPlay('retriggerEcho', { idx: RETRIGGER_NOTE_IDX[id] ?? 6 });
+      return;
+    }
+    if (COLLISION_CATALYST_IDS.has(id)) {
+      // Kindred Clatter is the rare/headliner — give it the heavier slam;
+      // kinetic_charge and chain_reaction land on softer-but-still-punchy
+      // settings so a single tumble doesn't auditorily over-promise.
+      const gain = id === 'kindred_clatter' ? 0.9 : 0.6;
+      sfxPlay('multSlam', { gain });
       return;
     }
   });
