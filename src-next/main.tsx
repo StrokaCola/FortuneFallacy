@@ -2,7 +2,6 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { bus } from './events/bus';
-import { startSimRunner } from './simulation/runSimulation';
 import { dispatch } from './actions/dispatch';
 import { store, setStateRaw } from './state/store';
 import { applySavedToInitial, startPersistence } from './state/persistence';
@@ -14,24 +13,20 @@ import { startScalingSfxListener } from './audio/listeners/scalingSfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { startFrameBudgetWatcher } from './app/perf/perfMode';
+import { ensureRoundBundle } from './app/perf/roundBundle';
 import { startAchievementListener } from './core/achievements/listener';
 import { startConstellationUnlockListener } from './core/constellations/listener';
 import { startDiceLandShake } from './app/visual/diceLandShake';
 import { applyColorblindClass } from './app/visual/colorblind';
-import { Dice3D } from './render/three/Dice3D';
 import { installStage } from './render/stage';
 import './styles/index.css';
 
 installStage();
 
+// The dice canvas .active class still flips with the screen so the
+// CSS layer paints correctly the moment the round bundle resolves.
 const threeCanvas = document.getElementById('three-next');
 if (threeCanvas instanceof HTMLCanvasElement) {
-  try {
-    const d3 = new Dice3D(threeCanvas);
-    (window as unknown as { __dice3d: Dice3D }).__dice3d = d3;
-  } catch (e) {
-    console.error('[Dice3D] init failed:', e);
-  }
   store.subscribe((s, prev) => {
     if (s.ui.screen !== prev.ui.screen) {
       threeCanvas.classList.toggle('active', s.ui.screen === 'round');
@@ -52,7 +47,11 @@ if (portal?.fromPortal) {
   }));
 }
 
-startSimRunner();
+// Kick off the round-time bundle (Three.js + Rapier + Dice3D + sim
+// runner) in the background. Non-blocking - the shell renders
+// immediately while the chunks stream in. Round.tsx gates the Roll
+// button on readiness via useRoundBundleReady().
+void ensureRoundBundle();
 startAudioBridge();
 startHapticsBridge();
 startDiscoveryBridge();
