@@ -4,7 +4,13 @@
 // modifier becomes a redundant identity (kept for documentation; flavor text
 // still references it).
 const CHAIN_MAX_DEFAULT = 4;
-const CHAIN_STEP_DEFAULT = 0.25;
+// 2026-05-13 step bump: was 0.25 → realized peak chain mult of 1.75× (per
+// the 2026-05-07 audit table), which was a small reward for a system the
+// player has to learn (climb tier-up across consecutive hands without
+// dropping). Bumped to 0.5 → realized peak 2.5×, in line with other peak
+// payoffs in the game. Re-validate with tools/sim/sweep.ts after any
+// follow-up balance pass.
+const CHAIN_STEP_DEFAULT = 0.5;
 
 export type ChainResult = {
   chainLen: number;

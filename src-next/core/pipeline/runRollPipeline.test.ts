@@ -73,7 +73,7 @@ describe('runRollPipelineAfterSim', () => {
   });
 
   it('scores only held dice (scoringOrder subset)', () => {
-    // Only hold d0=1 and d1=2 → chance combo, chips = sum of those two faces
+    // Only hold d0=1 and d1=2 → chance combo, chips = chance-floor + sum of those two faces
     const state = makeState([0, 1]);
     const ctx: PipelineCtx = { state, chips: 0, mult: 0, total: 0, events: [], rng: mulberry32(42) };
     const out = runRollPipelineAfterSim(ctx, makeSimResult([1, 2, 3, 4, 5]));
@@ -81,8 +81,8 @@ describe('runRollPipelineAfterSim', () => {
     const scoreEvt = out.events.find((e) => e.type === 'onScoreCalculated') as
       { type: 'onScoreCalculated'; payload: { chips: number; mult: number; total: number } } | undefined;
     expect(scoreEvt).toBeDefined();
-    // chips = sum of held faces (1+2=3) for chance combo
-    expect(scoreEvt!.payload.chips).toBe(3);
+    // chips = chance floor (5) + sum of held faces (1+2=3) = 8
+    expect(scoreEvt!.payload.chips).toBe(8);
   });
 
   it('attaches chain data to the context output', () => {

@@ -46,6 +46,11 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'Chance → +4 Mult',              flavor: "No pattern? The book says you're due. The book is wrong, but you score anyway.", rarity: 'common', archetype: 'combo' },
   { id: 'entropy_index',  name: 'Entropy Index',  icon: '◈',   color: '#a080c0',
     desc: 'Each unique face → ×1.25 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare', archetype: 'face' },
+  // Shipped value: +0.10×/clear. The 2026-05-07 perf-balance audit modeled
+  // this catalyst at +0.05×/clear as a conservative under-count in the
+  // sim's build-multiplier abstraction. The game itself has always paid
+  // the higher 0.10× rate; real clear-rates are higher than the audit's
+  // 'synergy' profile suggests for any build that actually slots this card.
   { id: 'compounding_bias', name: 'Compounding Bias', icon: '∆', color: '#88ddff',
     desc: 'Each cleared trial: +0.10× mult permanently. Resets on bust.',
     flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon', archetype: 'scaling' },

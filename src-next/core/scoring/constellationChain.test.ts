@@ -13,12 +13,12 @@ describe('applyChain', () => {
   it('extends on equal-or-higher tier', () => {
     const r1 = applyChain(3, 1, 3);
     expect(r1.chainLen).toBe(2);
-    expect(r1.chainMult).toBe(1.25);
+    expect(r1.chainMult).toBe(1.5);
 
     const r2 = applyChain(5, 2, 3);
     expect(r2.chainLen).toBe(3);
     expect(r2.chainTier).toBe(5);
-    expect(r2.chainMult).toBe(1.5);
+    expect(r2.chainMult).toBe(2);
   });
 
   it('breaks on lower tier', () => {
@@ -30,7 +30,8 @@ describe('applyChain', () => {
   it('caps at 4 (default)', () => {
     const r = applyChain(8, 4, 8);
     expect(r.chainLen).toBe(4);
-    expect(r.chainMult).toBe(1 + 0.25 * 3);
+    // Step bumped 0.25 → 0.5 on 2026-05-13; max chain mult is now 1 + 0.5*3 = 2.5
+    expect(r.chainMult).toBe(1 + 0.5 * 3);
   });
 });
 
