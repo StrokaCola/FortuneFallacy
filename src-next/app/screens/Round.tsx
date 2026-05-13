@@ -26,6 +26,7 @@ import { ScoreExplain } from '../hud/ScoreExplain';
 import { AstralHint } from '../hud/AstralHint';
 import { RoundDebugOverlay } from '../hud/RoundDebugOverlay';
 import { useScoreDisplay } from '../hud/useScoreDisplay';
+import { useRoundBundleReady } from '../perf/roundBundle';
 import {
   selectHandsLeft, selectRerollsLeft,
   selectTarget, selectShards, selectAnte,
@@ -65,6 +66,9 @@ export function Round() {
   }, [tense]);
   // Constellation accent (red on boss). See selectAccent in state/selectors.ts.
   const accent = useStore(selectAccent);
+  // Round-time bundle readiness — gates the Roll button while the lazy
+  // Three.js + Rapier chunks are still streaming in (see app/perf/roundBundle).
+  const ready = useRoundBundleReady();
 
   const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
 
@@ -105,7 +109,7 @@ export function Round() {
       <AstralHint />
       <ScoreExplain />
 
-      <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} />
+      <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} ready={ready} />
       {/* Invisible anchor for the post-first-roll "tap to lock" coachmark.
           Sits roughly where the dice settle so the bubble points at them
           rather than at the entire stage canvas. See app/onboarding/. */}
@@ -129,7 +133,7 @@ export function Round() {
 // determined speedrunner will barely notice on subsequent attempts.
 const PULL_DURATION_MS = 520;
 
-function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean }) {
+function ActionBar({ hands, rerolls, accent, firstRollDone, ready }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean; ready: boolean }) {
   // Self-measure so the dice canvas can shrink to the play area above
   // this bar (#three-next reads --hud-bottom-h) and pinned overlays can
   // align upward from the bar's top edge.
@@ -171,16 +175,18 @@ function ActionBar({ hands, rerolls, accent, firstRollDone }: { hands: number; r
         <button
           data-coach="roll-btn"
           className={`btn btn-ghost mat-interactive tap${pulling ? ' is-pulling' : ''}`}
-          disabled={hands === 0 || pulling}
-          onClick={triggerFirstRoll}>
+          disabled={hands === 0 || pulling || !ready}
+          onClick={triggerFirstRoll}
+          title={!ready ? 'Loading dice physics…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: accent }}>⤴</span> {pulling ? 'Pulling…' : 'Roll'}
+            <span style={{ color: accent }}>⤴</span>
+            {!ready ? 'Warming up…' : pulling ? 'Pulling…' : 'Roll'}
           </span>
         </button>
       )}
       <button
         className="btn btn-primary mat-interactive tap"
-        disabled={hands === 0 || !firstRollDone}
+        disabled={hands === 0 || !firstRollDone || !ready}
         onClick={() => dispatch({ type: 'SCORE_HAND' })}>
         ✦ Play Hand
       </button>
