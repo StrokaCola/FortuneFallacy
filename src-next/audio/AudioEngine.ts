@@ -74,11 +74,20 @@ class AudioEngineImpl {
     this.started = true;
     Howler.volume(1.0);
 
+    // Music beds use html5:true (streamed via <audio> rather than fully
+    // decoded into memory). Trade a few ms of latency — fine for music — to
+    // shed ~100MB of resident PCM on devices that load all four loops at
+    // once. SFX still use html5:false elsewhere for sample-accurate timing.
+    //
+    // Source array prefers .opus when present, falling back to .wav for
+    // browsers that lack Opus support (Safari < 17 on macOS). Run
+    // `scripts/encode-audio.sh` to generate the .opus files; until then,
+    // the .wav fallback ships the game without a regression.
     this.layers = {
-      base:  new Howl({ src: [`${BASE_PATH}/base-loop.wav`],  loop: true, volume: 0, html5: false }),
-      combo: new Howl({ src: [`${BASE_PATH}/combo-loop.wav`], loop: true, volume: 0, html5: false }),
-      peak:  new Howl({ src: [`${BASE_PATH}/peak-loop.wav`],  loop: true, volume: 0, html5: false }),
-      fail:  new Howl({ src: [`${BASE_PATH}/fail-loop.wav`],  loop: true, volume: 0, html5: false }),
+      base:  new Howl({ src: [`${BASE_PATH}/base-loop.opus`,  `${BASE_PATH}/base-loop.wav`],  loop: true, volume: 0, html5: true }),
+      combo: new Howl({ src: [`${BASE_PATH}/combo-loop.opus`, `${BASE_PATH}/combo-loop.wav`], loop: true, volume: 0, html5: true }),
+      peak:  new Howl({ src: [`${BASE_PATH}/peak-loop.opus`,  `${BASE_PATH}/peak-loop.wav`],  loop: true, volume: 0, html5: true }),
+      fail:  new Howl({ src: [`${BASE_PATH}/fail-loop.opus`,  `${BASE_PATH}/fail-loop.wav`],  loop: true, volume: 0, html5: true }),
     };
 
     this.layers.base.play();
@@ -86,9 +95,10 @@ class AudioEngineImpl {
     this.layers.peak.play();
     this.layers.fail.play();
 
-    // iOS Safari can ignore the `volume: 0` constructor option for html5:false
-    // Howls and play the first frames at full volume — pin each gain to 0 here
-    // so the tick() lerp ramps up from silence.
+    // iOS Safari historically ignored the `volume: 0` constructor option for
+    // html5:false Howls and played the first frames at full volume — pin each
+    // gain to 0 here so the tick() lerp ramps up from silence. Belt-and-
+    // suspenders that survives the html5 toggle above.
     this.layers.base.volume(0);
     this.layers.combo.volume(0);
     this.layers.peak.volume(0);

@@ -50,7 +50,9 @@ describe('ScreenMusic', () => {
   it('starts a screen track lazily on start()', () => {
     screenMusic.start('hub');
     expect(howlInstances).toHaveLength(1);
-    expect(howlInstances[0]!.src).toContain('hub-loop.wav');
+    // src is now an array of [opus, wav] sources; Howler picks the first
+    // playable. The mock records the array as-passed.
+    expect(howlInstances[0]!.src).toMatch(/hub-loop\.(opus|wav)/);
     expect(howlInstances[0]!.played).toBe(true);
     expect(howlInstances[0]!.fadeCalls.at(0)?.[1]).toBeGreaterThan(0);
   });
