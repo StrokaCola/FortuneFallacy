@@ -1586,6 +1586,10 @@ export class Dice3D {
   private start() {
     const loop = () => {
       this.rafHandle = requestAnimationFrame(loop);
+      // Skip the per-frame transform + render work when the tab is hidden.
+      // Browser-level rAF throttling already drops background tabs to ~1Hz;
+      // this is belt-and-suspenders so any residual wakeup is a no-op.
+      if (typeof document !== 'undefined' && document.hidden) return;
       const now = performance.now();
       // Drain a deferred mod rebuild as soon as no die is mid-roll/playback.
       if (this.pendingDiceMods != null

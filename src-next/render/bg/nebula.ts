@@ -177,6 +177,10 @@ function startLoop() {
   let lastTickAt = 0;
   const loop = () => {
     rafHandle = requestAnimationFrame(loop);
+    // Skip all work when the tab is hidden. Browsers already throttle rAF
+    // for background tabs to ~1Hz, but an explicit early-return avoids any
+    // residual GPU draws on tab-switch.
+    if (typeof document !== 'undefined' && document.hidden) return;
     const now = performance.now();
     // Frame-rate cap: skip this tick if we drew within the target window.
     // The -2ms slack lets rAF land on or just before the deadline rather

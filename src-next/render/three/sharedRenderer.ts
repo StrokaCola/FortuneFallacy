@@ -94,6 +94,13 @@ function ensureRenderer(): THREE.WebGLRenderer {
 }
 
 function loop(): void {
+  // Skip GPU work when the tab is hidden. Browsers throttle rAF for
+  // background tabs but an explicit guard removes any residual render
+  // cost while keeping the loop alive to resume on visibility.
+  if (typeof document !== 'undefined' && document.hidden) {
+    _rafHandle = requestAnimationFrame(loop);
+    return;
+  }
   perfTick();
   if (_views.length === 0 || !_renderer) {
     // Clear stale pixels left behind by the last view (otherwise they
