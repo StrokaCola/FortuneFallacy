@@ -12,6 +12,8 @@ export const Phase = {
   SCORING:             6,
   EMIT:                7,
   ROLL_END:            8,
+  ON_COLLISION:        9,
+  UNHELD_SCAN:        10,
 } as const;
 export type Phase = typeof Phase[keyof typeof Phase];
 

@@ -75,6 +75,15 @@ import './heirloomLocket';
 // applyRetriggers, invoked from phases/upgrades.ts. Importing here
 // keeps the file in the bundle and matches the existing pattern.
 import './retriggers';
+// 2026-05-13 unheld + collision pack — registers in the new
+// UNHELD_SCAN and ON_COLLISION phases (see core/pipeline/types.ts).
+import './shadowCache';
+import './reservoir';
+import './silentWitness';
+import './unseenChorus';
+import './kineticCharge';
+import './chainReaction';
+import './kindredClatter';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -113,5 +122,8 @@ export const CATALYST_IDS = [
   // explicitly from phases/upgrades.ts, not via the standard registry).
   'polaris', 'refrain', 'mirror_edge', 'curtain_call', 'stutter',
   'recursion_lens', 'cardinal_compass', 'echo_chamber',
+  // 2026-05-13 unheld + collision pack
+  'shadow_cache', 'reservoir', 'silent_witness', 'unseen_chorus',
+  'kinetic_charge', 'chain_reaction', 'kindred_clatter',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

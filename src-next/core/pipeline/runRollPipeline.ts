@@ -7,6 +7,8 @@ import { preRollModifiers } from '../phases/preRollModifiers';
 import { initSimulation }   from '../phases/initSimulation';
 import { postRollModifiers } from '../phases/postRollModifiers';
 import { evaluation }       from '../phases/evaluation';
+import { onCollision }      from '../phases/onCollision';
+import { unheldScan }       from '../phases/unheldScan';
 import { upgrades }         from '../phases/upgrades';
 import { scoring }          from '../phases/scoring';
 import { emitEvents }       from '../phases/emitEvents';
@@ -40,6 +42,8 @@ export function runRollPipelineAfterSim(ctx: PipelineCtx, simResult: SimulationR
   let next: PipelineCtx = { ...ctx, sim: simResult, metrics: deriveMetrics(simResult) };
   next = postRollModifiers(next);
   next = evaluation(next);
+  next = onCollision(next);
+  next = unheldScan(next);
   next = upgrades(next);
   next = scoring(next);
   next = emitEvents(next);

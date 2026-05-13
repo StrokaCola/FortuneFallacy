@@ -41,6 +41,13 @@ export type SimulationResult = {
   settleMs: number[];
   peakVelocity: number;
   collisionCount: number;
+  // Per-pair collision events captured from rapier's drain callback during
+  // the physics tumble. Each entry [a, b] is two die indices that started
+  // touching in the same step. Order within the pair matches rapier handle
+  // order — pair-based catalysts should treat [a,b] and [b,a] as equivalent.
+  // Optional: synth/test sim paths may omit it, in which case readers fall
+  // back to using collisionCount alone.
+  collisionPairs?: Array<[number, number]>;
   bounceHeights: number[];
   cameraShake?: number;
   frames?: DieFrame[][];

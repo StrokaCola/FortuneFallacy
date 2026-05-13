@@ -15,7 +15,8 @@ export type CatalystArchetype =
   | 'scaling'
   | 'mods'
   | 'timing'
-  | 'utility';
+  | 'utility'
+  | 'collision';
 
 export type CatalystMeta = {
   id: string;
@@ -359,6 +360,39 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'When 4+ dice score, the first scoring die fires its mods twice.',
     flavor: 'A wide room sustains a single note.',
     rarity: 'uncommon', archetype: 'mods' },
+
+  // ─── Unheld + collision pack (2026-05-13) ─────────────────────────
+  // Two new pipeline phases (UNHELD_SCAN, ON_COLLISION) opened up two
+  // archetypes nothing previously paid off: the dice you dropped, and
+  // the chaos of the tumble itself.
+  { id: 'shadow_cache', name: 'Shadow Cache', icon: '⬚', color: '#a4d4ff',
+    desc: 'Each unheld die showing 5+ → +3 chips.',
+    flavor: 'The dice you set aside still owe you something.',
+    rarity: 'common', archetype: 'face' },
+  { id: 'reservoir', name: 'Reservoir', icon: '⛁', color: '#5be8a4',
+    desc: '+1 chip per pip on every unheld die.',
+    flavor: 'Nothing rolled is ever truly wasted.',
+    rarity: 'common', archetype: 'face' },
+  { id: 'silent_witness', name: 'Silent Witness', icon: '◌', color: '#cc88ff',
+    desc: 'All unheld dice even (and ≥2 unheld) → +10 chips, ×1.1 mult.',
+    flavor: 'The half you ignored is paying attention.',
+    rarity: 'uncommon', archetype: 'combo' },
+  { id: 'unseen_chorus', name: 'Unseen Chorus', icon: '⋮', color: '#bba8ff',
+    desc: '3+ unheld dice, all different values → ×1.5 mult.',
+    flavor: 'They sing in the back of the room.',
+    rarity: 'uncommon', archetype: 'combo' },
+  { id: 'kinetic_charge', name: 'Kinetic Charge', icon: '⚡', color: '#ffd84a',
+    desc: 'Each die collision in the tray → +1 chip (cap +30).',
+    flavor: 'Every bump is a tiny dividend.',
+    rarity: 'common', archetype: 'collision' },
+  { id: 'chain_reaction', name: 'Chain Reaction', icon: '⛓', color: '#ff7847',
+    desc: '15+ collisions this roll → ×1.5 mult.',
+    flavor: 'Cascade past the threshold and the room ignites.',
+    rarity: 'uncommon', archetype: 'collision' },
+  { id: 'kindred_clatter', name: 'Kindred Clatter', icon: '◈', color: '#a080c0',
+    desc: '+3 mult for each collision between dice that ended on the same value.',
+    flavor: 'Twins find each other in mid-air.',
+    rarity: 'rare', archetype: 'collision' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

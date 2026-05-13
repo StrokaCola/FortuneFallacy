@@ -76,6 +76,17 @@ function runSeededSim(
     const bounceHeights = finalFaces.map(() => 1 + rng.next() * 2);
     const peakVelocity = 6 + rng.next() * 6;
     const collisionCount = rng.int(4, 24);
+    // Synthesize a plausible pair list for the headless path. With <2 dice
+    // there's no second body to collide with, so emit nothing.
+    const collisionPairs: Array<[number, number]> = [];
+    if (diceCount >= 2) {
+      for (let k = 0; k < collisionCount; k++) {
+        const a = rng.int(0, diceCount - 1);
+        let b = rng.int(0, diceCount - 1);
+        if (b === a) b = (a + 1) % diceCount;
+        collisionPairs.push([a, b]);
+      }
+    }
 
     setTimeout(
       () =>
@@ -85,6 +96,7 @@ function runSeededSim(
           settleMs,
           peakVelocity,
           collisionCount,
+          collisionPairs,
           bounceHeights,
         }),
       SETTLE_MS,
