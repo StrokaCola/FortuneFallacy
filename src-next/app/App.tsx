@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { DevConsole } from '../devtools/DevConsole';
 import { BoundsOverlay } from '../devtools/inspector/BoundsOverlay';
 import { SpawnOverlay } from '../devtools/inspector/SpawnOverlay';
@@ -29,7 +29,12 @@ import { Round } from './screens/Round';
 import { Shop }  from './screens/Shop';
 import { Win }   from './screens/Win';
 import { Fail }  from './screens/Fail';
-import { Forge } from './screens/Forge';
+// Forge is the only screen that statically imports the Three.js DieView
+// renderer. Lazy-load it so `three` (~580 KB raw / ~130 KB gz) stays out
+// of the initial bundle - the screen is reachable from Hub, so users who
+// never open the Forge never pay for it. See app/perf/roundBundle for
+// the matching dynamic split on the round-time stack.
+const Forge = lazy(() => import('./screens/Forge').then((m) => ({ default: m.Forge })));
 import { Scores } from './screens/Scores';
 import { NameEntry } from './screens/NameEntry';
 import { Settings } from './screens/Settings';
@@ -139,7 +144,20 @@ export function App() {
             {screen === 'hub'    && <Hub />}
             {screen === 'round'  && <Round />}
             {screen === 'shop'   && <Shop />}
-            {screen === 'forge'  && <Forge />}
+            {screen === 'forge'  && (
+              <Suspense fallback={
+                <div className="f-mono uc" style={{
+                  position: 'absolute', inset: 0,
+                  display: 'grid', placeItems: 'center',
+                  color: '#bba8ff', letterSpacing: '0.3em', fontSize: 12,
+                  pointerEvents: 'none',
+                }}>
+                  the forge stirs…
+                </div>
+              }>
+                <Forge />
+              </Suspense>
+            )}
             {screen === 'win'    && <Win />}
             {screen === 'fail'   && <Fail />}
             {screen === 'scores' && <Scores />}
