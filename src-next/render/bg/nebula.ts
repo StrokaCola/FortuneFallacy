@@ -76,6 +76,7 @@ void main() {
 `;
 
 import type { Screen } from '../../state/slices/ui';
+import { isPerfDegraded, subscribePerfMode } from '../../app/perf/perfMode';
 
 const SCREEN_MODES: Record<Screen, number> = {
   title: 0, nameentry: 0, constellation_select: 0, scores: 0, win: 1, fail: 0,
@@ -160,19 +161,33 @@ export function setNebulaTension(t: number): void {
   _vigTarget = clamped < 0.6 ? 0 : (clamped - 0.6) / 0.4;
 }
 
-// Cap the nebula at 30fps. The shader is a 5-octave fbm × 3 calls per pixel
-// = expensive fragment work that previously ran at the display refresh
-// (60-144Hz). The backdrop motion is so slow (time multiplier 0.035) that
-// 30fps is visually indistinguishable from 60fps, and the GPU savings are
-// substantial on mobile. Both decay rates below are converted to time-based
-// so the cap doesn't slow the flash / vignette animations.
-const TARGET_FRAME_MS = 1000 / 30;
+// Cap the nebula at 30fps normally, 20fps when Performance Mode is on. The
+// shader is a 5-octave fbm × 3 calls per pixel = expensive fragment work
+// that previously ran at the display refresh (60-144Hz). The backdrop
+// motion is so slow (time multiplier 0.035) that 30fps is visually
+// indistinguishable from 60fps, and 20fps is fine for the degraded path
+// too. Both decay rates below are converted to time-based so the cap
+// doesn't slow the flash / vignette animations.
+const TARGET_FRAME_MS_NORMAL = 1000 / 30;
+const TARGET_FRAME_MS_DEGRADED = 1000 / 20;
+let _targetFrameMs = TARGET_FRAME_MS_NORMAL;
 const FLASH_DECAY_PER_SEC = 0.022 * 60;          // was 0.022/frame at 60fps
 const VIG_RATE_PER_SEC = -Math.log(1 - 0.04) * 60; // was 0.04/frame at 60fps
 
+function refreshNebulaTargetFrameMs(): void {
+  _targetFrameMs = isPerfDegraded()
+    ? TARGET_FRAME_MS_DEGRADED
+    : TARGET_FRAME_MS_NORMAL;
+}
+
 let rafHandle: number | null = null;
+let _perfModeUnsub: (() => void) | null = null;
 function startLoop() {
   if (rafHandle != null) return;
+  refreshNebulaTargetFrameMs();
+  if (_perfModeUnsub == null) {
+    _perfModeUnsub = subscribePerfMode(refreshNebulaTargetFrameMs);
+  }
   const start = performance.now();
   let lastTickAt = 0;
   const loop = () => {
@@ -185,7 +200,7 @@ function startLoop() {
     // Frame-rate cap: skip this tick if we drew within the target window.
     // The -2ms slack lets rAF land on or just before the deadline rather
     // than always one frame late.
-    if (lastTickAt > 0 && now - lastTickAt < TARGET_FRAME_MS - 2) return;
+    if (lastTickAt > 0 && now - lastTickAt < _targetFrameMs - 2) return;
     const dt = lastTickAt === 0 ? 1 / 30 : (now - lastTickAt) / 1000;
     lastTickAt = now;
 

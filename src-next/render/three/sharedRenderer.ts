@@ -1,6 +1,7 @@
 // src-next/render/three/sharedRenderer.ts
 import * as THREE from 'three';
 import { tick as perfTick } from '../../devtools/perf';
+import { isPerfDegraded } from '../../app/perf/perfMode';
 
 type ViewSpec = {
   scene: THREE.Scene;
@@ -27,18 +28,9 @@ let _onScroll: (() => void) | null = null;
 let _onVis: (() => void) | null = null;
 let _rectStale = true;
 
-// Heuristic: lower-end mobiles benefit from disabling MSAA and capping pixel
-// ratio more aggressively. We detect via hardware concurrency + coarse
-// pointer (matches phone/tablet without exposing UA sniffing). Desktop with a
-// touch screen still gets the high-fidelity path.
-function isLowEndMobile(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const lowCpu = (navigator.hardwareConcurrency ?? 8) <= 4;
-  const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(pointer: coarse)').matches
-    : false;
-  return lowCpu && coarse;
-}
+// Heuristic moved to `app/perf/perfMode.ts` so the renderer init and the
+// user-facing Performance Mode preference share one signal. See
+// `isLowEndDevice` / `isPerfDegraded` from that module.
 
 function ensureRenderer(): THREE.WebGLRenderer {
   if (_renderer) return _renderer;
@@ -63,11 +55,16 @@ function ensureRenderer(): THREE.WebGLRenderer {
   _canvas.setAttribute('data-shared-renderer', '1');
   const host = document.getElementById('stage-root') ?? document.body;
   host.appendChild(_canvas);
-  const lowEnd = isLowEndMobile();
-  _renderer = new THREE.WebGLRenderer({ canvas: _canvas, alpha: true, antialias: !lowEnd });
-  // DPR cap: 2 on desktop / capable mobile, 1.5 on low-end mobile. Halves
-  // fragment-shader work on high-DPR phones with weak GPUs.
-  const dprCap = lowEnd ? 1.5 : 2;
+  // Renderer init reads `isPerfDegraded()` at boot. Includes both the
+  // low-end heuristic (was the only signal) and the user-facing Performance
+  // Mode preference. Mode flips after init require a page reload to apply
+  // to DPR / antialias; live-tweakable surfaces (nebula framerate) update
+  // immediately via subscribePerfMode().
+  const degraded = isPerfDegraded();
+  _renderer = new THREE.WebGLRenderer({ canvas: _canvas, alpha: true, antialias: !degraded });
+  // DPR cap: 2 normally, 1.5 when degraded. Halves fragment-shader work on
+  // high-DPR phones with weak GPUs.
+  const dprCap = degraded ? 1.5 : 2;
   _renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprCap));
   _renderer.setSize(window.innerWidth, window.innerHeight, false);
   _renderer.setScissorTest(true);
