@@ -58,15 +58,19 @@ export const STAKES: Stake[] = [
     rerollsDelta: -1,
     shopPriceMult: 1.0,
   },
+  // 2026-05-12 QA pass: stake cliff softened. Sim showed Lyra/scaling
+  // any-clear dropping 51% (Pyre) → 15% (Beacon) → 12% → 9%. Beacon now
+  // keeps 3 hands (was 2) so the top three stakes feel like a graded ramp
+  // instead of a single brick wall after Pyre.
   {
     id: 'beacon',
     name: 'Beacon',
     color: '#7be3ff',
-    flavor: 'Fewer hands; the bazaar grows greedy.',
-    rules: ['Targets +35%', '−1 hand per round', 'Shop +25%'],
-    targetMult: 1.35,
-    handsDelta: -1,
-    rerollsDelta: 0,
+    flavor: 'The bazaar grows greedy.',
+    rules: ['Targets +30%', '−1 reroll', 'Shop +25%'],
+    targetMult: 1.30,
+    handsDelta: 0,
+    rerollsDelta: -1,
     shopPriceMult: 1.25,
   },
   {
@@ -74,8 +78,8 @@ export const STAKES: Stake[] = [
     name: 'Nova',
     color: '#cc88ff',
     flavor: 'Every choice is the choice. Every loss is final.',
-    rules: ['Targets +50%', '−1 hand', '−1 reroll', 'Shop +25%'],
-    targetMult: 1.5,
+    rules: ['Targets +45%', '−1 hand', '−1 reroll', 'Shop +25%'],
+    targetMult: 1.45,
     handsDelta: -1,
     rerollsDelta: -1,
     shopPriceMult: 1.25,
@@ -85,8 +89,8 @@ export const STAKES: Stake[] = [
     name: 'Supernova',
     color: '#e2334a',
     flavor: 'The trial that ends trials.',
-    rules: ['Targets +75%', '−1 hand', '−1 reroll', 'Shop +50%'],
-    targetMult: 1.75,
+    rules: ['Targets +60%', '−1 hand', '−1 reroll', 'Shop +50%'],
+    targetMult: 1.60,
     handsDelta: -1,
     rerollsDelta: -1,
     shopPriceMult: 1.5,

@@ -4,39 +4,110 @@ import { getComboCtx, getDiceSpec, getScoringMode, getBaseScoreMults, getFaceMul
 import { GALAXY_BONUS } from '../consumables/galaxies';
 
 // Resolve a hand of faces (some of which may be 'WILD') into the substitution
-// that maximises the combo tier. Tries each candidate value once and picks
-// the highest-tier match. Linear in (universe × wildcards) which is fine for
-// the dice counts in play.
+// that maximises the combo tier. Strategy:
+//
+//   ≤ 3 wildcards: exhaustive over universe^wildcards (≤6^3 = 216 ops).
+//                  Necessary because combo tier isn't monotonic in matches
+//                  (e.g. two wildcards completing a small straight beats
+//                  the greedy "match the existing pair" choice).
+//   ≥ 4 wildcards: combinatorial blowup (6^5 = 7776 per resolve) makes
+//                  exhaustive too slow inside the balance simulator. Fall
+//                  back to a smarter two-pass heuristic: (a) try assigning
+//                  every wildcard to each universe value (n-of-a-kind path),
+//                  and (b) try filling missing values to extend the longest
+//                  contiguous run (straight path), then take whichever
+//                  produces the higher tier. Both passes are O(universe).
+//
+// The ≥4-wildcards case only happens in Ophiuchus pathological hands or
+// with multiple Wildcard mod copies; the heuristic still captures both
+// dominant strategies (mass-match vs gap-fill) so it dominates the legacy
+// greedy without paying the exponential cost.
 function resolveWildcards(
   faces: readonly (number | 'WILD' | 'BLANK')[],
   universe: number[],
   ctx: ReturnType<typeof getComboCtx>,
 ): { faces: number[]; combo: ReturnType<typeof detectCombo> } {
   const concrete: number[] = [];
-  const wildIdxs: number[] = [];
-  faces.forEach((f, i) => {
-    if (f === 'WILD') wildIdxs.push(i);
+  let wildCount = 0;
+  for (const f of faces) {
+    if (f === 'WILD') wildCount++;
     else concrete.push(typeof f === 'number' ? f : 0);
-  });
-  if (wildIdxs.length === 0) {
+  }
+  if (wildCount === 0) {
     return { faces: concrete, combo: detectCombo(concrete, { comboCtx: ctx }) };
   }
-  // Iteratively resolve wildcards greedily: for each wildcard, try every
-  // universe value and pick the one that produces the highest-tier combo
-  // when combined with the rest. Greedy is sufficient here because wildcards
-  // are interchangeable and combo tiers are monotonic in matches.
-  let working = [...concrete];
-  for (let _ = 0; _ < wildIdxs.length; _++) {
-    let bestVal = universe[0] ?? 1;
-    let bestTier = -1;
-    for (const v of universe) {
-      const candidate = [...working, v];
-      const tier = detectCombo(candidate, { comboCtx: ctx }).tier;
-      if (tier > bestTier) { bestTier = tier; bestVal = v; }
-    }
-    working.push(bestVal);
+  const u = universe.length;
+  if (u === 0) {
+    return { faces: concrete, combo: detectCombo(concrete, { comboCtx: ctx }) };
   }
-  return { faces: working, combo: detectCombo(working, { comboCtx: ctx }) };
+
+  const EXHAUSTIVE_LIMIT = 3;
+
+  // Helper: pick the better of two candidates (higher tier, ties → higher sum).
+  const sumOf = (arr: number[]): number => arr.reduce((s, f) => s + f, 0);
+  let bestFaces: number[] = [...concrete, ...new Array(wildCount).fill(universe[0]!)];
+  let bestCombo = detectCombo(bestFaces, { comboCtx: ctx });
+  let bestSum = sumOf(bestFaces);
+  const offer = (candidate: number[]): void => {
+    const combo = detectCombo(candidate, { comboCtx: ctx });
+    if (combo.tier > bestCombo.tier) {
+      bestCombo = combo;
+      bestFaces = candidate;
+      bestSum = sumOf(candidate);
+      return;
+    }
+    if (combo.tier === bestCombo.tier) {
+      const sum = sumOf(candidate);
+      if (sum > bestSum) {
+        bestCombo = combo;
+        bestFaces = candidate;
+        bestSum = sum;
+      }
+    }
+  };
+
+  if (wildCount <= EXHAUSTIVE_LIMIT) {
+    const pick: number[] = new Array(wildCount).fill(0);
+    const totalCombos = u ** wildCount;
+    // Skip index 0 (the seed assignment, already evaluated above).
+    for (let n = 1; n < totalCombos; n++) {
+      let q = n;
+      for (let i = 0; i < wildCount; i++) {
+        pick[i] = q % u;
+        q = Math.floor(q / u);
+      }
+      const candidate = [...concrete];
+      for (let i = 0; i < wildCount; i++) candidate.push(universe[pick[i]!]!);
+      offer(candidate);
+    }
+    return { faces: bestFaces, combo: bestCombo };
+  }
+
+  // wildCount > EXHAUSTIVE_LIMIT — two-pass heuristic.
+  // Pass 1: n-of-a-kind. Assign every wildcard to the same universe value.
+  for (const v of universe) {
+    const candidate = [...concrete];
+    for (let i = 0; i < wildCount; i++) candidate.push(v);
+    offer(candidate);
+  }
+  // Pass 2: straight extension. Find the longest run already in `concrete`
+  // and assign wildcards to fill gaps + extend either edge greedily within
+  // the universe. We try each starting anchor in the universe and fill
+  // wildCount consecutive values forward.
+  const sortedUniverse = [...universe].sort((a, b) => a - b);
+  for (let start = 0; start < sortedUniverse.length; start++) {
+    const candidate = [...concrete];
+    // Take the next `wildCount` values from `start` (wrapping at the end of
+    // the universe is meaningless — runs need consecutive ints — so just
+    // stop). Pick whichever the universe contains; if we run out, repeat
+    // the last value (degenerates to pass 1's behaviour at the tail).
+    for (let i = 0; i < wildCount; i++) {
+      const v = sortedUniverse[Math.min(start + i, sortedUniverse.length - 1)]!;
+      candidate.push(v);
+    }
+    offer(candidate);
+  }
+  return { faces: bestFaces, combo: bestCombo };
 }
 
 export const evaluation: PhaseFn = (ctx) => {

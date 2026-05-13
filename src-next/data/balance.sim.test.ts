@@ -57,16 +57,53 @@ function resolveWildcards(
     else concrete.push(typeof f === 'number' ? f : 0);
   }
   const universe = comboCtx?.faceUniverse?.length ? comboCtx.faceUniverse : [1, 2, 3, 4, 5, 6];
-  for (let _ = 0; _ < wildCount; _++) {
-    let bestVal = universe[0]!;
-    let bestTier = -1;
-    for (const v of universe) {
-      const tier = detectCombo([...concrete, v], { comboCtx }).tier;
-      if (tier > bestTier) { bestTier = tier; bestVal = v; }
+  if (wildCount === 0 || universe.length === 0) return concrete;
+  // Mirror of evaluation.ts resolveWildcards (exhaustive when feasible,
+  // heuristic when wildCount > 3 — see that file for rationale).
+  const u = universe.length;
+  const EXHAUSTIVE_LIMIT = 3;
+  let best: number[] = [...concrete, ...new Array(wildCount).fill(universe[0]!)];
+  let bestTier = detectCombo(best, { comboCtx }).tier;
+  let bestSum = best.reduce((s, f) => s + f, 0);
+  const offer = (candidate: number[]): void => {
+    const t = detectCombo(candidate, { comboCtx }).tier;
+    if (t > bestTier) {
+      bestTier = t; best = candidate; bestSum = candidate.reduce((s, f) => s + f, 0); return;
     }
-    concrete.push(bestVal);
+    if (t === bestTier) {
+      const sum = candidate.reduce((s, f) => s + f, 0);
+      if (sum > bestSum) { best = candidate; bestSum = sum; }
+    }
+  };
+  if (wildCount <= EXHAUSTIVE_LIMIT) {
+    const pick: number[] = new Array(wildCount).fill(0);
+    const totalCombos = u ** wildCount;
+    for (let n = 1; n < totalCombos; n++) {
+      let q = n;
+      for (let i = 0; i < wildCount; i++) {
+        pick[i] = q % u;
+        q = Math.floor(q / u);
+      }
+      const candidate = [...concrete];
+      for (let i = 0; i < wildCount; i++) candidate.push(universe[pick[i]!]!);
+      offer(candidate);
+    }
+    return best;
   }
-  return concrete;
+  for (const v of universe) {
+    const candidate = [...concrete];
+    for (let i = 0; i < wildCount; i++) candidate.push(v);
+    offer(candidate);
+  }
+  const sortedUniverse = [...universe].sort((a, b) => a - b);
+  for (let start = 0; start < sortedUniverse.length; start++) {
+    const candidate = [...concrete];
+    for (let i = 0; i < wildCount; i++) {
+      candidate.push(sortedUniverse[Math.min(start + i, sortedUniverse.length - 1)]!);
+    }
+    offer(candidate);
+  }
+  return best;
 }
 
 function scoreHand(c: Constellation, rolledFaces: DieFace[], catN = 0): number {

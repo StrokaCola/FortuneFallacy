@@ -3,7 +3,7 @@ import type { GameState } from '../../state/store';
 import { CONSUMABLES, lookupConsumable } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
-import { areModsDisabled } from '../../core/run/diceContext';
+import { areModsDisabled, getDiceSpec, getComboCtx } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sellTriggerFor } from '../../core/shop/sellTriggers';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
@@ -12,7 +12,24 @@ import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
-import { getDiceSpec } from '../../core/run/diceContext';
+// Mods whose effects key on a specific face value that some constellations
+// can never roll. When the active face universe doesn't include that face,
+// the mod is removed from the offer pool so the player can't be sold a
+// trap (Risk on Eclipse is strictly negative-EV — face 6 never rolls, face
+// 1 rolls 50% of the time). Other face-keyed mods are merely "dead" rather
+// than negative; those stay in the pool because they at least don't punish.
+const FACE_GATED_MODS: Record<string, number> = {
+  risk: 6,
+};
+
+function gateModsByFaceUniverse(modIds: readonly string[], s: GameState): string[] {
+  const universe = new Set(getComboCtx(s).faceUniverse);
+  return modIds.filter((id) => {
+    const requiredFace = FACE_GATED_MODS[id];
+    if (requiredFace == null) return true;
+    return universe.has(requiredFace);
+  });
+}
 
 // When the extra_die voucher is purchased, pad the per-die parallel
 // arrays so their length matches the new dice spec. Mirrors how new
@@ -49,18 +66,32 @@ function initialRerollCost(s: GameState): number {
   return Math.max(0, BASE_REROLL_COST - rerollDiscount(s));
 }
 
-// 4+ catalysts held simultaneously unlocks the All-Band legendary. Stored
-// in meta.unlocks under the LEGENDARY_UNLOCK_PREFIX so subsequent runs see
-// the gate as open. Pure helper; no side effects.
-function maybeUnlockAllBand(s: GameState): { state: GameState; events: GameEventEmission[] } {
-  if (s.run.catalysts.length < 4) return { state: s, events: [] };
-  const unlockId = `${LEGENDARY_UNLOCK_PREFIX}all_band`;
-  if (s.meta.unlocks.includes(unlockId)) return { state: s, events: [] };
+// Catalyst-count gates for legendary unlocks. Each tier opens a different
+// legendary so the player has a progression staircase tied to the natural
+// "stack more catalysts" loop.
+//   4 catalysts → All-Band (was the original gate)
+//   6 catalysts → Recursion Lens (high catalyst density rewards a retrigger
+//                 legendary)
+// Eclipse Pact and Heirloom Locket use non-shop conditions and are unlocked
+// in core/round/transitions.ts at clearBlind time.
+function maybeUnlockLegendaries(s: GameState): { state: GameState; events: GameEventEmission[] } {
+  const count = s.run.catalysts.length;
+  const toAdd: string[] = [];
+  if (count >= 4 && !s.meta.unlocks.includes(`${LEGENDARY_UNLOCK_PREFIX}all_band`)) {
+    toAdd.push(`${LEGENDARY_UNLOCK_PREFIX}all_band`);
+  }
+  if (count >= 6 && !s.meta.unlocks.includes(`${LEGENDARY_UNLOCK_PREFIX}recursion_lens`)) {
+    toAdd.push(`${LEGENDARY_UNLOCK_PREFIX}recursion_lens`);
+  }
+  if (toAdd.length === 0) return { state: s, events: [] };
   return {
-    state: { ...s, meta: { ...s.meta, unlocks: [...s.meta.unlocks, unlockId] } },
+    state: { ...s, meta: { ...s.meta, unlocks: [...s.meta.unlocks, ...toAdd] } },
     events: [],
   };
 }
+
+// Back-compat alias: existing call sites still reference maybeUnlockAllBand.
+const maybeUnlockAllBand = maybeUnlockLegendaries;
 
 const BASE_REROLL_COST = 3;
 const MOD_OFFER_PRICE = 4;
@@ -85,7 +116,8 @@ function rollOffers(s: GameState): ShopOffer[] {
   const modsOff = areModsDisabled(s);
 
   if (!modsOff) {
-    const modIds = shuffle([...MOD_IDS]).slice(0, 2);
+    const eligible = gateModsByFaceUniverse([...MOD_IDS], s);
+    const modIds = shuffle(eligible).slice(0, 2);
     for (const id of modIds) {
       // Mod editions roll independently, same drop weights as catalysts:
       // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.

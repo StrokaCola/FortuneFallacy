@@ -246,7 +246,11 @@ export const BOSS_BLINDS: BossBlind[] = [
   },
   {
     id: 'eris', name: 'Eris', color: '#ff7847',
-    description: 'Catalysts inert on first hand.', debuffs: ['disable_catalysts_first_hand'],
+    // 2026-05-12 QA pass: Eris was a much weaker version of Callisto
+    // (which disables catalysts for the whole blind). Extended to the
+    // first two hands so the boss reads as a real speed-bump but not
+    // a run-ender like Callisto.
+    description: 'Catalysts inert on first 2 hands.', debuffs: ['disable_catalysts_first_2_hands'],
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 3 14 A 11 6 -25 1 0 21 10',
       'M 12 12 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0',

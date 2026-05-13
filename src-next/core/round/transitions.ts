@@ -14,6 +14,29 @@ import { pickVoidstorm } from './voidstorms';
 import { mulberry32 } from '../rng';
 import { accrueBlindCleared, isPalindrome } from './scalingHooks';
 import { lookupCatalyst } from '../../data/catalysts';
+import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
+
+// Legendary unlock conditions tied to per-blind progression. Run from inside
+// clearBlind so the unlock lands the moment the qualifying clear happens.
+//   - Eclipse Pact: clear any blind while on the Eclipse constellation
+//     ("Sign once. Score forever." — first contact with Eclipse seals it).
+//   - Heirloom Locket: cosmic-dust lifetime ≥ 100 (a meta-progression
+//     threshold roughly matching ~20 cleared blinds, in keeping with the
+//     "bequest" flavor and the catalyst's cross-run carryover effect).
+function clearBlindLegendaryUnlocks(
+  unlocks: string[],
+  constellationId: string,
+  cosmicDustLifetime: number,
+): string[] {
+  const add: string[] = [];
+  if (constellationId === 'eclipse' && !unlocks.includes(`${LEGENDARY_UNLOCK_PREFIX}eclipse_pact`)) {
+    add.push(`${LEGENDARY_UNLOCK_PREFIX}eclipse_pact`);
+  }
+  if (cosmicDustLifetime >= 100 && !unlocks.includes(`${LEGENDARY_UNLOCK_PREFIX}heirloom_locket`)) {
+    add.push(`${LEGENDARY_UNLOCK_PREFIX}heirloom_locket`);
+  }
+  return add.length === 0 ? unlocks : [...unlocks, ...add];
+}
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
 // the blind. Engraved (Phase 5d) protects ALL mods on the same die from this
@@ -138,7 +161,19 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     SHARDS_INTEREST_CAP,
     Math.floor(Math.max(0, s.run.shards) / SHARDS_INTEREST_DIVISOR),
   );
-  const reward = baseAmount + voucherBonus + handsBonus + interest;
+  // 2026-05-12 QA pass: overscore bonus. The post-2026-05-08 shard curve
+  // capped one-hand high-rollers below the legacy income (see
+  // balance.shards.sim.test.ts: "lucky" -266, "high-roll" -367). Restore
+  // some of that incentive by paying +1 shard per 100% of target above
+  // 200%, capped at +5. So a 3× clear earns +1, a 5× clear earns +3, a
+  // 7×+ clear caps at +5. Tight clears (under 2×) get nothing — the
+  // curve still rewards the bursty player without unbounded snowballing.
+  const SHARDS_OVERSCORE_CAP = 5;
+  const overscoreRatio = s.round.target > 0 ? s.round.score / s.round.target : 1;
+  const overscoreBonus = overscoreRatio > 2
+    ? Math.min(SHARDS_OVERSCORE_CAP, Math.floor(overscoreRatio - 2))
+    : 0;
+  const reward = baseAmount + voucherBonus + handsBonus + interest + overscoreBonus;
   const nextGoal = s.run.goalIdx + 1;
   const nextAnte = Math.floor(nextGoal / 3) + 1;
   const won = nextGoal >= 12;
@@ -170,6 +205,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
           voucher: voucherBonus,
           hands: handsBonus,
           interest,
+          overscore: overscoreBonus,
           total: reward,
         },
       },
@@ -191,10 +227,17 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     });
   }
   const baseMeta = won ? { ...s.meta, highScores, stakeProgress, challengeWins } : s.meta;
+  const newDustLifetime = (s.meta.cosmicDustLifetime ?? 0) + dustGained;
+  const unlocksAfterClear = clearBlindLegendaryUnlocks(
+    baseMeta.unlocks ?? [],
+    s.run.constellationId,
+    newDustLifetime,
+  );
   const nextMeta = {
     ...baseMeta,
+    unlocks: unlocksAfterClear,
     cosmicDust: newDustTotal,
-    cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+    cosmicDustLifetime: newDustLifetime,
     // Daily run completion: only the WON path of a clearBlind ends the run
     // (the player just cleared the final boss). Record/update the daily
     // history entry so the Title screen shows today's status.

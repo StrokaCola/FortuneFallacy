@@ -7,7 +7,10 @@ import type { DiceSpec } from '../../data/dice';
 import { lookupConstellation } from '../../data/constellations';
 import type { ConstellationModifiers, ScoringMode } from '../../data/constellations';
 
-const CHAIN_CAP_DEFAULT = 8;
+// 2026-05-12 QA fix: lowered 8 → 4 per the 2026-05-07 audit that already
+// updated constellationChain.ts and balance.fullrun.sim.test.ts. The previous
+// value here meant runtime cap diverged from the sim's expectations.
+const CHAIN_CAP_DEFAULT = 4;
 const CHAIN_STEP_DEFAULT = 0.25;
 
 function modsOf(state: GameState): ConstellationModifiers {

@@ -56,7 +56,7 @@ describe('clearBlind', () => {
     const result = clearBlind(s);
     expect(result.state.run.shards).toBe(5);
     expect((result.events[0]!.payload as any).reward).toEqual({
-      base: 5, voucher: 0, hands: 0, interest: 0, total: 5,
+      base: 5, voucher: 0, hands: 0, interest: 0, overscore: 0, total: 5,
     });
   });
 
@@ -105,7 +105,7 @@ describe('clearBlind', () => {
     const result = clearBlind(s);
     expect(result.state.run.shards).toBe(25 + 14);
     const reward = (result.events[0]!.payload as any).reward;
-    expect(reward).toEqual({ base: 8, voucher: 1, hands: 2, interest: 3, total: 14 });
+    expect(reward).toEqual({ base: 8, voucher: 1, hands: 2, interest: 3, overscore: 0, total: 14 });
   });
 
   it('does not pay interest on a negative held balance', () => {
@@ -211,14 +211,15 @@ describe('skipBlind — silver_tongue catalyst', () => {
   });
 });
 
-describe('Eris boss (disable_catalysts_first_hand)', () => {
+describe('Eris boss (disable_catalysts_first_2_hands)', () => {
   it('hasDebuff returns true when Eris boss active', () => {
     const s = makeState();
     s.round.isBoss = true;
     s.round.blindId = 'eris';
     s.round.handsLeft = 3;
     s.round.handsMax = 3;
-    expect(hasDebuff(s, 'disable_catalysts_first_hand')).toBe(true);
+    // 2026-05-12 QA pass: Eris emits the 2-hand variant of the disable.
+    expect(hasDebuff(s, 'disable_catalysts_first_2_hands')).toBe(true);
   });
 
   it('first hand check uses firstHandPlayed flag (false = first hand)', () => {
