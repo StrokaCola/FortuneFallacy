@@ -14,9 +14,14 @@ export const upgrades: PhaseFn = (ctx) => {
   let next = ctx;
 
   const isFirstHand = !ctx.state.round.firstHandPlayed;
+  // 2026-05-12 QA pass: Eris is now first-TWO-hands. Count hands played as
+  // (handsMax - handsLeft). Hands 1 and 2 mean handsPlayed < 2.
+  const handsPlayed = ctx.state.round.handsMax - ctx.state.round.handsLeft;
+  const isFirstTwoHands = handsPlayed < 2;
   const catalystsBlocked =
     hasDebuff(ctx.state, 'disable_catalysts') ||
-    (isFirstHand && hasDebuff(ctx.state, 'disable_catalysts_first_hand'));
+    (isFirstHand && hasDebuff(ctx.state, 'disable_catalysts_first_hand')) ||
+    (isFirstTwoHands && hasDebuff(ctx.state, 'disable_catalysts_first_2_hands'));
 
   if (!catalystsBlocked) {
     const owned = new Set(ctx.state.run.catalysts);

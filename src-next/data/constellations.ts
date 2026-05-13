@@ -23,8 +23,8 @@ export type ConstellationModifiers = {
   chainCap?: number;              // override chain cap (default 4)
   chainStep?: number;             // override chain step (default 0.25)
   chainNeverBreaks?: boolean;
-  baseChipsMult?: number;         // multiply combo base chips (Eclipse 0.25)
-  baseMultMult?: number;          // multiply combo base mult (Eclipse 0.25)
+  baseChipsMult?: number;         // multiply combo base chips (Eclipse / Ophiuchus 0.5)
+  baseMultMult?: number;          // multiply combo base mult (Eclipse / Ophiuchus 0.5)
   scoringMode?: ScoringMode;
   forgeDisabled?: boolean;
   modsDisabled?: boolean;
@@ -98,7 +98,10 @@ export const CONSTELLATIONS: Constellation[] = [
     ],
     color: '#fbbf24',
     dice: [d12Plain(), d12Plain(), d12Plain()],
-    modifiers: { straightLenBonus: -2 },
+    // 2026-05-12 QA pass: baseChipsMult 1.3 added. Sim flagged Triumvirate
+    // at 24% A4 (vs Lyra 82%); the "three colossal d12, big numbers"
+    // identity needed actual chip uplift to back the flavor.
+    modifiers: { straightLenBonus: -2, baseChipsMult: 1.3 },
     glyph: [{ x: 25, y: 50 }, { x: 50, y: 30 }, { x: 75, y: 50 }],
   },
   {
@@ -117,12 +120,12 @@ export const CONSTELLATIONS: Constellation[] = [
     startingCatalysts: ['captains_wage'],
     modifiers: {
       scoringMode: 'captain_crew',
-      // 2026-05-08 audit: perCat 0.75 → 1.0 restored a competitive captain
-      // multiplier (0% → 21% A1 clear in the full-run sim). Follow-up pass:
-      // seed `captains_wage` so the catalyst-dependent design has a floor on
-      // hand 1 — captain mult opens at 2.0 instead of 1.0, and the +5/scoring
-      // face ≥ 10 trigger gives an early-ante chips floor. Slot bonus stays +2.
-      faceMultiplierPerCatalyst: 1.0,
+      // 2026-05-12 QA pass: perCat 1.0 → 1.25 to close the Argo A4 gap
+      // (sim flagged Argo at 12% A4 vs Lyra 82%). Slot bonus stays +2.
+      // Combined with the seeded Captain's Wage from 2026-05-08, captain
+      // multiplier now opens at 2.25 on hand 1 and climbs faster as the
+      // run builds catalysts.
+      faceMultiplierPerCatalyst: 1.25,
       forgeDisabled: true,
       modsDisabled: true,
       catalystSlotBonus: 2,
@@ -173,6 +176,15 @@ export const CONSTELLATIONS: Constellation[] = [
     ],
     color: '#60a5fa',
     dice: [d4Plain(), d6Plain(), d8Plain(), d10Plain(), d12Plain()],
+    // 2026-05-12 QA pass: baseChipsMult 1.25 + straightLenBonus -1
+    // added. Sim originally flagged Polyhedra at 22% A4. Pure chip
+    // boost barely moved the dial (30 → 32%) because the constellation's
+    // bottleneck is combo TIER — heterogeneous dice rarely produce
+    // 3+ of a kind. Dropping the small-straight requirement to a
+    // run of 3 (was 4) lets a d4+d6+d8 line score as a real combo
+    // and pushes A4 clear past 50%. Matches the "different dice, each
+    // tells a story" flavor: the variety should reward you.
+    modifiers: { baseChipsMult: 1.25, straightLenBonus: -1 },
     glyph: [
       { x: 15, y: 65 }, { x: 33, y: 35 }, { x: 50, y: 60 },
       { x: 70, y: 30 }, { x: 88, y: 55 },
@@ -189,10 +201,13 @@ export const CONSTELLATIONS: Constellation[] = [
     ],
     color: '#a78bfa',
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
-    // chainCap: 4 was Ophiuchus's punishment but matches the new default
-    // (post-2026-05-07 audit) — removed as identity. Constellation may want a
-    // fresh drawback to maintain its high-risk identity; flagged in audit.
-    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5 },
+    // 2026-05-12 QA pass: chainStep dropped 0.25 → 0.15 to replace the
+    // identity penalty Ophiuchus lost when the chain cap was unified to 4
+    // for everyone (chainCap: 4 used to be Ophiuchus-only). Wildcards
+    // already make combo tiers trivially climbable, so the offsetting
+    // drawback is now "each step of the chain pays less" — matches the
+    // "high-risk hidden sign" framing in the flavor.
+    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5, chainStep: 0.15 },
     glyph: [
       { x: 20, y: 55 }, { x: 38, y: 35 }, { x: 50, y: 60 },
       { x: 65, y: 35 }, { x: 85, y: 55 },

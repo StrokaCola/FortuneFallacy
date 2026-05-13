@@ -47,52 +47,58 @@ function makeCtx(overrides: {
   };
 }
 
-describe('upgrades phase — Eris first-hand gate (firstHandPlayed)', () => {
+describe('upgrades phase — Eris first-two-hands gate', () => {
   beforeAll(() => {
     // catalysts auto-register on import
   });
 
-  it('blocks catalysts on first hand when Eris active and firstHandPlayed=false', () => {
+  // 2026-05-12 QA pass: Eris was buffed from "first hand" to "first 2 hands"
+  // to match Callisto's tier of punishment. The gate is keyed on handsPlayed
+  // (handsMax - handsLeft), not the legacy firstHandPlayed flag.
+
+  it('blocks catalysts on hand 1 when Eris active (handsPlayed=0)', () => {
     const ctx = makeCtx({
       isBoss: true,
       blindId: 'eris',
       firstHandPlayed: false,
+      handsLeft: 3,
+      handsMax: 3,
       catalysts: ['compounding_bias'],
       compoundingStacks: 2,
     });
     const out = upgrades(ctx);
-    // compounding_bias would multiply mult by 1.10; blocked → mult unchanged
+    // compounding_bias would multiply mult by 1.20; blocked → mult unchanged
     expect(out.mult).toBe(4);
   });
 
-  it('allows catalysts after first hand played when Eris active', () => {
+  it('blocks catalysts on hand 2 when Eris active (handsPlayed=1)', () => {
     const ctx = makeCtx({
       isBoss: true,
       blindId: 'eris',
       firstHandPlayed: true,
+      handsLeft: 2,
+      handsMax: 3,
+      catalysts: ['compounding_bias'],
+      compoundingStacks: 2,
+    });
+    const out = upgrades(ctx);
+    // Still inside the first-two-hands window.
+    expect(out.mult).toBe(4);
+  });
+
+  it('allows catalysts from hand 3 onward when Eris active (handsPlayed=2)', () => {
+    const ctx = makeCtx({
+      isBoss: true,
+      blindId: 'eris',
+      firstHandPlayed: true,
+      handsLeft: 1,
+      handsMax: 3,
       catalysts: ['compounding_bias'],
       compoundingStacks: 2,
     });
     const out = upgrades(ctx);
     // compounding_bias bonus = 4 * (1 + 2*0.10) = 4.8
     expect(out.mult).toBeCloseTo(4.8, 5);
-  });
-
-  it('roll_token-safe: handsLeft === handsMax does not retrigger Eris block once firstHandPlayed=true', () => {
-    // Scenario: player on hand 2, plays roll_token consumable, handsLeft bumps to 3 == handsMax.
-    // Old check (handsLeft === handsMax) would falsely re-block. New flag must not.
-    const ctx = makeCtx({
-      isBoss: true,
-      blindId: 'eris',
-      firstHandPlayed: true,
-      handsLeft: 3,
-      handsMax: 3,
-      catalysts: ['compounding_bias'],
-      compoundingStacks: 1,
-    });
-    const out = upgrades(ctx);
-    // 4 * (1 + 0.10) = 4.4; if blocked would stay 4
-    expect(out.mult).toBeCloseTo(4.4, 5);
   });
 
   it('non-Eris boss with firstHandPlayed=false does not block catalysts', () => {

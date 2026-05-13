@@ -21,7 +21,11 @@ export const VOUCHERS: VoucherDef[] = [
   // 6-8 range above) and the largest single-purchase power swing in the
   // game; rare-by-cost rather than rare-by-pool to keep shop logic
   // unchanged. Read site: getDiceSpec() in core/run/diceContext.ts.
-  { id: 'extra_die',    name: 'Sixth Star',   description: '+1 die for the rest of the run', price: 12, rarity: 'rare' },
+  // 2026-05-12 QA fix: priced 12 → 18 because the +1 die effect is the
+  // largest single-purchase power swing in the game and was dominating the
+  // voucher slot. 18 keeps it as a "save up for it" target without
+  // overshadowing the 6–8 shard utility vouchers.
+  { id: 'extra_die',    name: 'Sixth Star',   description: '+1 die for the rest of the run', price: 18, rarity: 'rare' },
 ];
 
 export function lookupVoucher(id: string): VoucherDef | undefined {

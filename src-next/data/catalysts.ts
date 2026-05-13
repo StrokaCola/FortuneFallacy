@@ -78,7 +78,10 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'solar_flare', name: 'Solar Flare', icon: '☀', color: '#ff7847',
     desc: '3+ scoring dice show 5 or 6 → ×1.5 mult.',
     flavor: 'High pressure ignites. The sky bleaches.', rarity: 'uncommon', archetype: 'face' },
-  { id: 'tempo', name: 'Tempo', icon: '♪', color: '#5be8a4',
+  // 2026-05-12 QA fix: name changed to the palindrome "Solos" so the
+  // Mirrored Hand easter egg has a reachable pair (zero palindromic names
+  // existed before). ID stays `tempo` so save data and tests are intact.
+  { id: 'tempo', name: 'Solos', icon: '♪', color: '#5be8a4',
     desc: 'Each consecutive higher-tier hand: +0.5× mult, capping at ×3.0.',
     flavor: 'Each measure climbs. Don\'t miss the beat.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'conductor', name: 'Conductor', icon: '⌘', color: '#bba8ff',
@@ -325,7 +328,10 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'The highest-face scoring die retriggers once.',
     flavor: 'Find the still point and the rest moves.',
     rarity: 'uncommon', archetype: 'mods' },
-  { id: 'refrain', name: 'Refrain', icon: '⤺', color: '#cc88ff',
+  // 2026-05-12 QA fix: renamed to "Rotor" — palindrome that still reads as
+  // a cyclic/repeating motif, fitting the retrigger flavor. Pairs with
+  // "Solos" to make the Mirrored Hand egg reachable.
+  { id: 'refrain', name: 'Rotor', icon: '⤺', color: '#cc88ff',
     desc: 'If this hand matches the previous hand\'s combo tier: every scoring die retriggers once.',
     flavor: 'The chorus repeats. The chorus pays.',
     rarity: 'rare', archetype: 'mods' },

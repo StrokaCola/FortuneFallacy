@@ -236,11 +236,15 @@ textarea:focus-visible,
   transform: translateY(-2px); z-index: var(--z-hud-control);
 }
 /* Touch devices don't rely on hover, so give the badge an invisible
-   hit-area extension via padding-box that meets the 44px target. */
+   hit-area extension via padding-box that meets the 44px target. The
+   visual chip is 22px tall; vertical padding of 12px on each side
+   pushes the total to 46px so we clear WCAG 2.5.5 (44×44) without
+   making the visible chip itself larger. Was 10/12 before — short
+   by 2px on the height axis. */
 @media (hover: none) {
   .has-sell .sell-btn {
-    padding: 10px 12px;
-    margin: -8px -8px 0 0;
+    padding: 12px 12px;
+    margin: -10px -8px 0 0;
   }
 }
 .has-sell .sell-btn:hover { background: rgba(245,196,81,0.18); }

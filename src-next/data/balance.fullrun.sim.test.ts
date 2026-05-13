@@ -98,16 +98,57 @@ function resolveWildcards(
     else concrete.push(typeof f === 'number' ? f : 0);
   }
   const universe = comboCtx?.faceUniverse?.length ? comboCtx.faceUniverse : [1, 2, 3, 4, 5, 6];
-  for (let _ = 0; _ < wildCount; _++) {
-    let bestVal = universe[0]!;
-    let bestTier = -1;
-    for (const v of universe) {
-      const tier = detectCombo([...concrete, v], { comboCtx }).tier;
-      if (tier > bestTier) { bestTier = tier; bestVal = v; }
+  if (wildCount === 0 || universe.length === 0) return concrete;
+  // Mirror of evaluation.ts resolveWildcards. Exhaustive when feasible
+  // (wildCount ≤ 3); n-of-a-kind + straight-fill heuristic past that
+  // to keep the simulator's hot loop bounded.
+  const u = universe.length;
+  const EXHAUSTIVE_LIMIT = 3;
+  let best: number[] = [...concrete, ...new Array(wildCount).fill(universe[0]!)];
+  let bestTier = detectCombo(best, { comboCtx }).tier;
+  let bestSum = best.reduce((s, f) => s + f, 0);
+  const offer = (candidate: number[]): void => {
+    const t = detectCombo(candidate, { comboCtx }).tier;
+    if (t > bestTier) {
+      bestTier = t;
+      best = candidate;
+      bestSum = candidate.reduce((s, f) => s + f, 0);
+      return;
     }
-    concrete.push(bestVal);
+    if (t === bestTier) {
+      const sum = candidate.reduce((s, f) => s + f, 0);
+      if (sum > bestSum) { best = candidate; bestSum = sum; }
+    }
+  };
+  if (wildCount <= EXHAUSTIVE_LIMIT) {
+    const pick: number[] = new Array(wildCount).fill(0);
+    const totalCombos = u ** wildCount;
+    for (let n = 1; n < totalCombos; n++) {
+      let q = n;
+      for (let i = 0; i < wildCount; i++) {
+        pick[i] = q % u;
+        q = Math.floor(q / u);
+      }
+      const candidate = [...concrete];
+      for (let i = 0; i < wildCount; i++) candidate.push(universe[pick[i]!]!);
+      offer(candidate);
+    }
+    return best;
   }
-  return concrete;
+  for (const v of universe) {
+    const candidate = [...concrete];
+    for (let i = 0; i < wildCount; i++) candidate.push(v);
+    offer(candidate);
+  }
+  const sortedUniverse = [...universe].sort((a, b) => a - b);
+  for (let start = 0; start < sortedUniverse.length; start++) {
+    const candidate = [...concrete];
+    for (let i = 0; i < wildCount; i++) {
+      candidate.push(sortedUniverse[Math.min(start + i, sortedUniverse.length - 1)]!);
+    }
+    offer(candidate);
+  }
+  return best;
 }
 
 type HandResult = { score: number; tier: number };
@@ -360,7 +401,11 @@ function fmt(n: number, w = 5): string {
 }
 
 describe('balance simulation: full-run win-rate ladder', () => {
-  it(`reports per-(constellation × stake × profile) clear rates over ${RUNS_PER_CELL} runs/cell`, () => {
+  // 2026-05-12: bumped from default 5s. The exhaustive wildcard solver
+  // (≤3 wildcards) is ~7× slower per Ophiuchus hand than the legacy
+  // greedy, which pushes this sim from ~3s to ~7s. The sim runs ≈1.4M
+  // hands so the headroom is needed.
+  it(`reports per-(constellation × stake × profile) clear rates over ${RUNS_PER_CELL} runs/cell`, { timeout: 30_000 }, () => {
     const allCells: Cell[] = [];
     for (const c of CONSTELLATIONS) {
       for (const stake of STAKES) {
