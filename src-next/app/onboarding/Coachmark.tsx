@@ -24,23 +24,37 @@ function readAnchorRect(anchor: string): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
+function rectsEqual(a: Rect | null, b: Rect | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
+}
+
 export function Coachmark({ def }: { def: CoachmarkDef }) {
   const [rect, setRect] = useState<Rect | null>(() => readAnchorRect(def.anchor));
 
   useEffect(() => {
     // Re-measure on a short interval initially so the anchor's
     // post-mount layout is captured (some elements settle a frame or two
-    // after first paint when their content streams in).
+    // after first paint when their content streams in). Each measure
+    // builds a fresh Rect; bail the setRect call when nothing actually
+    // changed so we don't churn renders 30 frames in a row.
     let raf = 0;
     let ticks = 0;
+    let lastRect: Rect | null = null;
+    const apply = (next: Rect | null) => {
+      if (rectsEqual(lastRect, next)) return;
+      lastRect = next;
+      setRect(next);
+    };
     const tick = () => {
       const next = readAnchorRect(def.anchor);
-      if (next) setRect(next);
+      if (next) apply(next);
       ticks++;
       if (ticks < 30) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    const onResize = () => setRect(readAnchorRect(def.anchor));
+    const onResize = () => apply(readAnchorRect(def.anchor));
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onResize, true);
     return () => {

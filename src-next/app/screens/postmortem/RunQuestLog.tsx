@@ -112,9 +112,13 @@ export function buildQuestLog(state: GameState): Nudge[] {
   return nudges.slice(0, 3);
 }
 
-// Selector reads the slim slice the quest log needs, memoizing on the
-// individual fields rather than the whole state object so the panel
-// doesn't churn on unrelated store mutations.
+// Selector pulls the whole state — buildQuestLog reads several
+// independent slices (meta.achievements, meta.unlocks, meta.stakeProgress,
+// run.constellationId, run.runStats.peakHand, meta.discovered.catalysts).
+// `(s) => s` returns the underlying state reference which is stable
+// until any store mutation — so this only re-renders RunQuestLog on
+// actual state changes, not unbounded loops. Suboptimal (re-renders
+// on unrelated mutations too) but correct.
 const selectQuestLogState = (s: GameState) => s;
 
 export function RunQuestLog() {
