@@ -8,6 +8,7 @@ import { BossPhaseBanner } from './hud/BossPhaseBanner';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
 import { WhisperToast } from './hud/WhisperToast';
+import { EventFlash } from './hud/EventFlash';
 import { ToastHost } from './hud/toastQueue';
 import { ResonanceToast } from './hud/ResonanceToast';
 import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
@@ -164,6 +165,7 @@ export function App() {
           <ArrivalToast />
           <AchievementToast />
           <WhisperToast />
+          <EventFlash />
           {/* Centralised toast queue (see app/hud/toastQueue/). Migrated
               toasts push via `pushToast(...)`; this host renders the
               visible slots with priority + throttle + same-key

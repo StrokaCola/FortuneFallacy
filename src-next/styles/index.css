@@ -1093,6 +1093,84 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   animation: none;
 }
 
+/* Cosmos stardust parallax. Two layers drift diagonally at different
+   speeds; together they read as "stuff is moving in the background"
+   without being legible as individual particles. */
+.cosmos-stardust-near {
+  animation: cosmos-stardust-drift 90s linear infinite;
+}
+.cosmos-stardust-far {
+  animation: cosmos-stardust-drift 140s linear infinite reverse;
+}
+@keyframes cosmos-stardust-drift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: -320px 320px, -280px 280px, -360px 360px, -240px 240px; }
+}
+.reduce-motion .cosmos-stardust-near,
+.reduce-motion .cosmos-stardust-far { animation: none; }
+
+/* Lightning flash — tension-driven storm flash. The container fades
+   the radial-gradient in for 30ms then out over 160ms, total 190ms
+   per pulse. Single-shot per mount of the LightningFlash component
+   (re-mounted by pulseKey for each new strike). */
+.cosmos-lightning {
+  animation: cosmos-lightning-flash 190ms ease-out forwards;
+}
+@keyframes cosmos-lightning-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+.reduce-motion .cosmos-lightning { animation: none; opacity: 0; }
+
+/* EventFlash — universal one-shot screen flash for achievement +
+   blind-clear moments. Peak opacity comes from a CSS custom property
+   so each event type can tune its own intensity (default 0.4). */
+.event-flash-pulse {
+  animation-name: event-flash-pulse;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes event-flash-pulse {
+  0%   { opacity: 0; }
+  20%  { opacity: var(--event-flash-peak, 0.4); }
+  100% { opacity: 0; }
+}
+.event-flash-ring {
+  animation-name: event-flash-ring;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes event-flash-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4); }
+}
+.reduce-motion .event-flash-pulse,
+.reduce-motion .event-flash-ring { animation: none; opacity: 0; }
+
+/* Stellar dive — entry overlay when committing to a Round. Each of
+   14 streak lines fades in + collapses opacity over 500ms, staggered
+   so the cosmos "narrows" onto the play table as one continuous
+   sweep rather than 14 simultaneous flashes. */
+.stellar-dive { opacity: 0; animation: stellar-dive-fade 500ms ease-out forwards; }
+@keyframes stellar-dive-fade {
+  0%   { opacity: 0; }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.stellar-dive-streak {
+  opacity: 0;
+  animation: stellar-dive-streak 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes stellar-dive-streak {
+  0%   { opacity: 0; stroke-width: 0.05; }
+  40%  { opacity: 1; stroke-width: 0.35; }
+  100% { opacity: 0; stroke-width: 0.1; }
+}
+.reduce-motion .stellar-dive,
+.reduce-motion .stellar-dive-streak { animation: none; opacity: 0; }
+
 /* New-best stamp on the boom moment — drops down with overshoot,
    holds, then floats up + fades. Tied to the same lifecycle as the
    boom number so it tracks the celebration arc. */
