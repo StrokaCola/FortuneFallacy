@@ -39,6 +39,12 @@ import { getDigitTexture } from './digitTexture';
 import { projectToScreen } from './projectToScreen';
 import { HOLD_MS, MOVE_TOLERANCE_PX } from '../../app/ui/longPressTip';
 
+// Mouse-only hover dwell before the die-info tooltip surfaces. Shorter than
+// HOLD_MS because mouse users aren't constrained by the "did I really mean
+// to hold?" ambiguity touch users face; 300ms is the common tooltip dwell
+// convention in desktop UIs and feels intentional without lagging.
+const HOVER_DWELL_MS = 300;
+
 const DIE_SIZE = 0.85;
 const DICE_GAP = 1.7;
 // Top-down camera: rolling tray sits at world Y=0 in upper half of screen
@@ -305,6 +311,16 @@ export class Dice3D {
   private holdTimer: number | null = null;
   private holdTriggered = false;
   private holdPointerType: 'mouse' | 'touch' | 'pen' = 'mouse';
+  // Mouse-hover tooltip dwell state. Touch/pen still uses the long-press
+  // path above; mouse users get a 300ms dwell that fires SHOW_DIE_TIP as
+  // soon as the cursor settles on a die. `hoverDieIdx` tracks the die the
+  // dwell is armed for so a move to a different die can re-arm cleanly.
+  // `hoverShown` distinguishes hover-driven tips from press-driven tips —
+  // a press-driven tip stays open after the cursor leaves the die (matches
+  // the long-press "tap outside to dismiss" semantics).
+  private hoverDieIdx = -1;
+  private hoverDwellTimer: number | null = null;
+  private hoverShown = false;
   private scoringActive = false;
   private activeScoringDie = -1;
   // Queued FX requests per die — `onModFired` enqueues; `die-tick` drains.
@@ -658,6 +674,69 @@ export class Dice3D {
       // pipeline detects an affinitied pair on a die, it emits a
       // synthetic `affinity:<id>@<dieIdx>` event. We translate that into
       // a gold halo pulse queued for the die's score-tick.
+      // Crystalline edge catch — on cross-target, every die's accent
+      // edge briefly brightens via an opacity bounce, so the dice
+      // themselves acknowledge the moment instead of leaving the
+      // celebration to the overlay UI. Re-uses the edgeAccent
+      // LineSegments added in the dice-readability pass; no new mesh
+      // allocations.
+      bus.on('onCrystallineEdgeCatch', () => {
+        const t0 = performance.now();
+        const DURATION = 360;
+        for (const d of this.dice) {
+          d.group.traverse((node) => {
+            const mat = (node as THREE.LineSegments).material as
+              | THREE.LineBasicMaterial
+              | undefined;
+            // The accent edge is at scale 1.004; the base edge at 1.002.
+            // We catch both by name pattern (LineSegments don't carry
+            // a name by default, so just animate any LineBasicMaterial
+            // that's transparent — both edge passes match).
+            if (
+              node instanceof THREE.LineSegments &&
+              mat &&
+              mat.transparent &&
+              mat.userData.__originalOpacity === undefined
+            ) {
+              mat.userData.__originalOpacity = mat.opacity;
+            }
+          });
+        }
+        const tick = () => {
+          const dt = performance.now() - t0;
+          const t = Math.min(1, dt / DURATION);
+          // Bell curve peaking at 30% — quick brighten, slower decay.
+          const boost = t < 0.3 ? (t / 0.3) : (1 - (t - 0.3) / 0.7);
+          for (const d of this.dice) {
+            d.group.traverse((node) => {
+              if (node instanceof THREE.LineSegments) {
+                const mat = node.material as THREE.LineBasicMaterial;
+                if (mat.userData.__originalOpacity !== undefined) {
+                  const base = mat.userData.__originalOpacity as number;
+                  mat.opacity = Math.min(1, base + 0.45 * boost);
+                }
+              }
+            });
+          }
+          if (t < 1) requestAnimationFrame(tick);
+          else {
+            // Restore base opacity + clear the marker so subsequent
+            // catches re-capture cleanly.
+            for (const d of this.dice) {
+              d.group.traverse((node) => {
+                if (node instanceof THREE.LineSegments) {
+                  const mat = node.material as THREE.LineBasicMaterial;
+                  if (mat.userData.__originalOpacity !== undefined) {
+                    mat.opacity = mat.userData.__originalOpacity as number;
+                    delete mat.userData.__originalOpacity;
+                  }
+                }
+              });
+            }
+          }
+        };
+        requestAnimationFrame(tick);
+      }),
       bus.on('onUpgradeTriggered', ({ id }) => {
         if (!id.startsWith('affinity:')) return;
         const at = id.indexOf('@');
@@ -713,6 +792,17 @@ export class Dice3D {
       if (curTip != null && curTip.dieIdx !== idx) {
         dispatch({ type: 'HIDE_DIE_TIP' });
       }
+
+      // A press is taking over — cancel any pending hover dwell so the
+      // long-press path is the one that fires SHOW_DIE_TIP, and clear
+      // the hover-driven flag so a subsequent hover-off doesn't kill
+      // the press tip.
+      if (this.hoverDwellTimer != null) {
+        clearTimeout(this.hoverDwellTimer);
+        this.hoverDwellTimer = null;
+      }
+      this.hoverShown = false;
+      this.hoverDieIdx = -1;
 
       // Arm the long-press timer. Cleared on move (>MOVE_TOLERANCE_PX),
       // pointerup, pointercancel, drag start, and destroy().
@@ -777,6 +867,58 @@ export class Dice3D {
         }
         const isLocked = hoverIdx >= 0 && !!this.dice[hoverIdx]?.locked;
         this.canvas.style.cursor = isLocked ? 'grab' : '';
+
+        // Mouse-hover tooltip dwell. Touch/pen falls through to the
+        // long-press path in onPointerDown. We re-arm the dwell whenever
+        // the die under the cursor changes; moving off any die hides a
+        // hover-driven tip (press-driven tips stay open).
+        if (ev.pointerType === 'mouse') {
+          if (hoverIdx >= 0) {
+            if (hoverIdx !== this.hoverDieIdx) {
+              if (this.hoverDwellTimer != null) {
+                clearTimeout(this.hoverDwellTimer);
+                this.hoverDwellTimer = null;
+              }
+              this.hoverDieIdx = hoverIdx;
+              const armIdx = hoverIdx;
+              this.hoverDwellTimer = window.setTimeout(() => {
+                this.hoverDwellTimer = null;
+                if (this.hoverDieIdx !== armIdx) return;
+                const die = this.dice[armIdx];
+                if (!die) return;
+                const screen = projectToScreen(
+                  die.group.position,
+                  this.camera,
+                  this.canvas.getBoundingClientRect(),
+                );
+                // Drop any prior tip first so the new die's tip doesn't
+                // visually trail the previous one.
+                const curTip = store.getState().ui.dieTip;
+                if (curTip != null && curTip.dieIdx !== armIdx) {
+                  dispatch({ type: 'HIDE_DIE_TIP' });
+                }
+                dispatch({
+                  type: 'SHOW_DIE_TIP',
+                  dieIdx: armIdx,
+                  screenX: screen.x,
+                  screenY: screen.y,
+                  pointerType: 'mouse',
+                });
+                this.hoverShown = true;
+              }, HOVER_DWELL_MS);
+            }
+          } else {
+            if (this.hoverDwellTimer != null) {
+              clearTimeout(this.hoverDwellTimer);
+              this.hoverDwellTimer = null;
+            }
+            if (this.hoverShown) {
+              dispatch({ type: 'HIDE_DIE_TIP' });
+              this.hoverShown = false;
+            }
+            this.hoverDieIdx = -1;
+          }
+        }
         return;
       }
 
@@ -907,6 +1049,19 @@ export class Dice3D {
 
     this.onPointerLeave = () => {
       if (this.isDragging) this.cancelDrag();
+      // Cursor left the dice canvas — drop any hover-driven tip so it
+      // doesn't linger over neighbouring HUD widgets. Press-driven tips
+      // (hoverShown === false) stay open until the user taps elsewhere,
+      // matching the long-press "tap outside to dismiss" semantics.
+      if (this.hoverDwellTimer != null) {
+        clearTimeout(this.hoverDwellTimer);
+        this.hoverDwellTimer = null;
+      }
+      if (this.hoverShown) {
+        dispatch({ type: 'HIDE_DIE_TIP' });
+        this.hoverShown = false;
+      }
+      this.hoverDieIdx = -1;
     };
 
     document.addEventListener('pointerdown', this.onPointerDown);
@@ -1012,7 +1167,13 @@ export class Dice3D {
       clearTimeout(this.holdTimer);
       this.holdTimer = null;
     }
+    if (this.hoverDwellTimer != null) {
+      clearTimeout(this.hoverDwellTimer);
+      this.hoverDwellTimer = null;
+    }
     this.holdTriggered = false;
+    this.hoverShown = false;
+    this.hoverDieIdx = -1;
     this.unsubscribers.forEach((u) => u());
     if (this.onPointerDown) document.removeEventListener('pointerdown', this.onPointerDown);
     if (this.onPointerMove) document.removeEventListener('pointermove', this.onPointerMove);
@@ -1270,6 +1431,28 @@ export class Dice3D {
   // swaps (Lyra d6 [1..6] → Eclipse d6 [0,0,0,1,1,1]); the latter would
   // otherwise leave the renderer on the pip-pattern path and never pick up
   // the digit textures. Mirrors syncDiceMods but keys off the spec.
+  /**
+   * Returns viewport-relative pixel positions for the LOCKED (scoring)
+   * dice. Used by the scoring fancy-FX (conductive arcs from a virtual
+   * constellation anchor down to each scoring die) so the overlay can
+   * draw its bezier paths to where the dice actually are on screen
+   * without re-doing the 3D math.
+   *
+   * Empty array when the canvas isn't visible (no rect) or no dice
+   * are locked.
+   */
+  public getScoringDieScreenPositions(): Array<{ x: number; y: number }> {
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return [];
+    const out: Array<{ x: number; y: number }> = [];
+    for (const d of this.dice) {
+      if (!d.locked) continue;
+      const screen = projectToScreen(d.group.position, this.camera, rect);
+      out.push({ x: screen.x, y: screen.y });
+    }
+    return out;
+  }
+
   private syncDiceSpecs(): void {
     const state = store.getState();
     const spec = getDiceSpec(state);
