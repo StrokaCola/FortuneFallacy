@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isPerfDegraded, subscribePerfMode } from '../perf/perfMode';
+import { bus } from '../../events/bus';
 
 export type ThemeKey = 'midnight' | 'voidlit' | 'sandstorm' | 'abyssal';
 
@@ -139,6 +140,14 @@ export function CosmosBackground({
     }}>
       <Nebula theme={theme} intensity={nebula ? 1 : 0.3} />
       <Starfield density={density} theme={theme} drift={drift} tension={tensionClamped} />
+      {/* Meteor shower — graceful shooting stars across the cosmos
+          sky, triggered by mega booms via the onMeteorShowerTriggered
+          bus event. Sits behind the celebratory gold/halo overlays so
+          a crushed hand's halo still reads as the dominant signal,
+          but in front of the static starfield + nebula so the streaks
+          read as cosmic foreground motion. Skipped in degraded mode
+          (same gate as stardust + halo). */}
+      <MeteorShowerLayer enabled={!degraded} />
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,1) 100%)',
@@ -224,6 +233,74 @@ export function CosmosBackground({
     </div>
   );
   return host ? createPortal(tree, host) : tree;
+}
+
+// Graceful cosmic meteor shower. Subscribes to `onMeteorShowerTriggered`
+// (emitted by ScoreMoment on mega booms) and renders N streaks that
+// arc diagonally across the cosmos backdrop with soft fade-in / fade-
+// out, slower travel times, and gentler downward angles than the
+// foreground-VFX predecessor. Each shower auto-clears after 3500ms.
+//
+// Geometry: outer wrapper carries the rotation + start position; the
+// inner `.cosmos-meteor` translates along its local X axis so the
+// rotation and the translate compose cleanly (avoids the keyframe
+// transform clobbering the inline rotate).
+function MeteorShowerLayer({ enabled }: { enabled: boolean }) {
+  const [showers, setShowers] = useState<Array<{ id: number; accent: string; count: number }>>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let nextId = 1;
+    const off = bus.on('onMeteorShowerTriggered', ({ accent, count }) => {
+      const id = nextId++;
+      setShowers((prev) => [...prev, { id, accent, count }]);
+      window.setTimeout(() => {
+        setShowers((prev) => prev.filter((s) => s.id !== id));
+      }, 3500);
+    });
+    return off;
+  }, [enabled]);
+  if (!enabled || showers.length === 0) return null;
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
+    }}>
+      {showers.flatMap((shower) =>
+        Array.from({ length: shower.count }).map((_, i) => {
+          // Deterministic per-streak parameters keyed off index so a
+          // shower's streaks scatter consistently without re-render
+          // jitter.
+          const startXPct = 5 + ((i * 41) % 70);          // 5-75% from the left
+          const angleDeg = 22 + ((i * 17) % 14);          // 22-36° below horizontal
+          const delay = (i * 220) % 1400;                 // 0-1400ms stagger
+          const duration = 1900 + ((i * 71) % 600);       // 1900-2500ms travel
+          return (
+            <div
+              key={`${shower.id}-${i}`}
+              style={{
+                position: 'absolute',
+                top: `${-12 - ((i * 9) % 10)}vmax`,
+                left: `${startXPct}%`,
+                transform: `rotate(${angleDeg}deg)`,
+                transformOrigin: '0 0',
+              }}
+            >
+              <div
+                className="cosmos-meteor"
+                style={{
+                  animationDelay: `${delay}ms`,
+                  animationDuration: `${duration}ms`,
+                  ['--meteor-accent' as string]: shower.accent,
+                }}
+              >
+                <div className="cosmos-meteor-trail" />
+                <div className="cosmos-meteor-head" />
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
 }
 
 // Tension-driven random lightning flashes. Schedules itself between

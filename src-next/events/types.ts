@@ -162,6 +162,19 @@ export type GameEventMap = {
   // Decoupled from ScoreMoment so Dice3D handles the per-die material
   // animation without ScoreMoment needing scene access.
   onCrystallineEdgeCatch: { color: string };
+  // Meteor shower triggered by a mega boom — rendered in the cosmos
+  // background (CosmosBackground.MeteorShowerLayer) so the streaks
+  // read as actual shooting stars in the game's sky rather than a
+  // foreground overlay flying across the play area.
+  onMeteorShowerTriggered: { accent: string; count: number };
+  // Score-counter fill — emitted by ScoreMoment after the boom number
+  // flies, timed to land when the first star trail reaches the score
+  // counter. TopBar tweens its displayed total from the pre-boom
+  // value to the committed `round.score` over `durationMs`, then
+  // fires the catch-pulse on the counter element. Bail and non-boom
+  // updates bypass this event — the counter updates immediately on
+  // state change.
+  onScoreCounterFill: { durationMs: number };
 };
 
 export type GameEventEmission = {

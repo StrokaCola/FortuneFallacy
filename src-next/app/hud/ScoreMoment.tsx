@@ -21,6 +21,15 @@ import { lookupConstellation } from '../../data/constellations';
 const BOOM_FLY_START_MS = 1700;
 const BOOM_FLY_MS = 800;
 const BAIL_HOLD_MS = 2400;
+// Star-trail timing (must match `vfx-star-fly` keyframe in
+// ScoringVFX.css). Trails emit when BoomNumber switches to 'fly'
+// (BOOM_FLY_START_MS) and each takes STAR_TRAIL_MS to reach the
+// counter. We start the counter fill when the FIRST star arrives so
+// the meter visibly fills as the trails land on it — the user-facing
+// fix for the old behavior where the counter caught ~500ms before
+// the trails got there.
+const STAR_TRAIL_MS = 820;
+const COUNTER_FILL_MS = 360;
 
 function isReducedMotion(): boolean {
   if (typeof document === 'undefined') return false;
@@ -64,15 +73,9 @@ export function ScoreMoment() {
     };
 
     const finishBoom = () => {
-      // Catch pulse on the score counter when the star trails arrive, then
-      // advance the round.
-      const counter = document.querySelector<HTMLElement>('[data-score-counter]');
-      if (counter) {
-        counter.style.animation = 'scoreCounterCatch 220ms cubic-bezier(0.2, 1.6, 0.4, 1)';
-        schedule(() => {
-          if (counter) counter.style.animation = '';
-        }, 240);
-      }
+      // 2026-05-14 revision: the counter catch-pulse + value tween are
+      // now owned by TopBar (driven by the onScoreCounterFill bus event
+      // scheduled below). finishBoom is just the round-advance hand-off.
       dispatch({ type: 'END_SCORING' });
     };
 
@@ -158,13 +161,19 @@ export function ScoreMoment() {
 
           // Meteor shower — only on mega booms. Constellation accent
           // for the streaks; count scales with megaRatio so a 6×
-          // crush gets more streaks than a 3×.
+          // crush gets more streaks than a 3×. Rendered in the cosmos
+          // background via CosmosBackground.MeteorShowerLayer so the
+          // streaks read as actual shooting stars in the game's sky
+          // (not a foreground overlay across the play area).
           if (variant === 'mega') {
             const constellation = lookupConstellation(
               store.getState().run.constellationId,
             );
             const streakCount = Math.max(3, Math.min(7, Math.round(2 + ratio)));
-            scoringVFX.fireMeteorShower(constellation.color, streakCount);
+            bus.emit('onMeteorShowerTriggered', {
+              accent: constellation.color,
+              count: streakCount,
+            });
           }
 
           // Mega-boom hit-stop on #stage-root (separate from ScoringVFX's
@@ -180,8 +189,19 @@ export function ScoreMoment() {
             }
           }
 
-          // Counter catch + END_SCORING right as the number lands.
+          // END_SCORING right as the boom number lands at the counter
+          // (the round can advance immediately; visual catch is owned
+          // by TopBar via the onScoreCounterFill event below).
           schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 150);
+          // Counter fill — fire exactly when the first star trail
+          // reaches the counter. TopBar tweens its displayed total
+          // from the pre-boom value to the new round.score over
+          // COUNTER_FILL_MS so the meter visually fills under the
+          // trailing stars instead of catching ahead of them.
+          schedule(
+            () => bus.emit('onScoreCounterFill', { durationMs: COUNTER_FILL_MS }),
+            BOOM_FLY_START_MS + STAR_TRAIL_MS,
+          );
           break;
         }
         case 'bail':

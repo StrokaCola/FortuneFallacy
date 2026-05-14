@@ -631,62 +631,6 @@
   100% { opacity: 0; transform: translate(-50%, -50%) scale(38); }
 }
 
-/* Meteor shower: each streak is a rotated container holding a
-   long trailing rect + a head dot. The container slides across
-   the viewport using translate. */
-.vfx-meteor-root {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.vfx-meteor {
-  position: absolute;
-  left: -40%;
-  width: 120%;
-  height: 2px;
-  transform-origin: left center;
-  opacity: 0;
-  animation-name: vfx-meteor-fly;
-  animation-timing-function: cubic-bezier(0.34, 0, 0.78, 0.5);
-  animation-fill-mode: forwards;
-}
-.vfx-meteor-trail {
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: var(--meteor-trail-len, 260px);
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--meteor-accent, #7be3ff) 80%,
-    #fff7e0 100%
-  );
-  filter: drop-shadow(0 0 6px var(--meteor-accent, #7be3ff))
-          drop-shadow(0 0 12px var(--meteor-accent, #7be3ff));
-  border-radius: 2px;
-}
-.vfx-meteor-head {
-  position: absolute;
-  left: var(--meteor-trail-len, 260px);
-  top: -3px;
-  width: 7px;
-  height: 7px;
-  background: #fff7e0;
-  border-radius: 50%;
-  box-shadow:
-    0 0 8px var(--meteor-accent, #7be3ff),
-    0 0 18px var(--meteor-accent, #7be3ff),
-    0 0 32px var(--meteor-accent, #7be3ff);
-}
-@keyframes vfx-meteor-fly {
-  0%   { transform: translateX(0); opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateX(120vw); opacity: 0; }
-}
-
 /* Constellation seal: the run's glyph stamps in the play-area
    center, swells, holds, fades. */
 .vfx-cons-seal-root {

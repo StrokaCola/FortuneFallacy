@@ -1444,8 +1444,24 @@ export class Dice3D {
   public getScoringDieScreenPositions(): Array<{ x: number; y: number }> {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return [];
+    // Walk scoringOrder so the returned positions match the order the dice
+    // will be evaluated by the scoring pipeline. Conductive arcs use this
+    // ordering to chain die-to-die — the first scored die is the anchor,
+    // each subsequent segment traces forward in scoring sequence. Falls
+    // back to natural-locked order if scoringOrder is empty/stale.
+    const order = store.getState().round.scoringOrder ?? [];
     const out: Array<{ x: number; y: number }> = [];
-    for (const d of this.dice) {
+    const seen = new Set<number>();
+    for (const idx of order) {
+      const d = this.dice[idx];
+      if (!d || !d.locked) continue;
+      const screen = projectToScreen(d.group.position, this.camera, rect);
+      out.push({ x: screen.x, y: screen.y });
+      seen.add(idx);
+    }
+    for (let i = 0; i < this.dice.length; i++) {
+      if (seen.has(i)) continue;
+      const d = this.dice[i]!;
       if (!d.locked) continue;
       const screen = projectToScreen(d.group.position, this.camera, rect);
       out.push({ x: screen.x, y: screen.y });
