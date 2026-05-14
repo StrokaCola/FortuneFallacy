@@ -1,152 +1,45 @@
+// Shop screen — the Celestial Bazaar between blinds. Renders the
+// player's three offers, the player's owned collection, hand-level
+// status, and the action bar (Reroll / Collection / Next Trial).
+//
+// This file is intentionally a thin orchestrator. The heavy lifting
+// lives in `shop/`:
+//
+//   offerMeta.ts          — (kind, id) → name/icon/color/desc/rarity
+//   EditionBadge.tsx      — foil/holo/poly/void stamp pill
+//   OfferCard.tsx         — per-offer card render (rarity ring,
+//                           legendary holo, resonance hint, price CTA)
+//   HandLevelsPanel.tsx   — desktop-only side panel showing leveled hands
+//   CollectionPanel.tsx   — CollectionPanel (desktop inline) and
+//                           CollectionSheet (tight bottom-sheet)
+
 import { useEffect, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
-import { SellButton } from '../hud/SellButton';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
   selectComboLevels, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
-import { lookupCatalyst } from '../../data/catalysts';
-import { lookupConsumable } from '../../core/consumables';
-import { lookupVoucher } from '../../data/vouchers';
-import { lookupMod } from '../../core/mods';
-import { maxCatalystSlots, maxConsumableSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
-import { sellRefund } from '../../core/shop/sellRefund';
+import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
-// PackOverlay is mounted at the App level so it shows whether the player
-// is in the shop or not (skip-blind pack rewards open the picker mid-screen).
-import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
-import { editionLabel, editionColor } from '../../core/upgrades/editions';
 import type { CatalystEdition } from '../../state/slices/run';
-import { pairsCompletedBy } from '../../data/resonances';
-import { consumableRarity } from '../../core/consumables';
-import { KindFrame, type UpgradeKind } from '../visual/upgradeKindFrames';
-import { RARITY_COLORS, type Rarity } from '../visual/rarityStyles';
+import { OfferCard } from './shop/OfferCard';
+import { HandLevelsPanel } from './shop/HandLevelsPanel';
+import { CollectionPanel, CollectionSheet } from './shop/CollectionPanel';
 
 // Stable empty-object fallback so the selector returns a consistent ref
 // across renders (avoids useSyncExternalStore tear-loops).
 const EMPTY_CATALYST_EDITIONS: Record<string, never> = {};
-const selectCatalystEditions = (s: GameState) => s.run.catalystEditions ?? EMPTY_CATALYST_EDITIONS;
-
-// Plain-language summary of edition's mechanical effect, scoped by the
-// kind of upgrade it sits on. Catalyst foil/holo are flat-per-fire at
-// bigger magnitudes; mod editions fire many times per hand at smaller
-// magnitudes — the tooltip surfaces the right numbers.
-function editionBonusDescription(kind: 'catalyst' | 'mod', edition: CatalystEdition): string {
-  if (kind === 'catalyst') {
-    if (edition === 'foil') return '+50 chips on each fire';
-    if (edition === 'holo') return '+10 mult on each fire';
-    if (edition === 'void') return 'Costs zero catalyst slots';
-    return '+50% of own contribution';
-  }
-  if (edition === 'foil') return '+20 chips per fire';
-  if (edition === 'holo') return '+4 mult per fire';
-  return '+25% of own contribution per fire';
-}
-
-// Tiny inline pill that renders next to a catalyst's name when it's been
-// stamped with an edition. Color-coded; tooltip text explains the bonus.
-function EditionBadge({ edition }: { edition: CatalystEdition }) {
-  const c = editionColor(edition);
-  const tip =
-    edition === 'foil' ? 'Foil — +50 chips when this catalyst fires.'
-    : edition === 'holo' ? 'Holographic — +10 mult when this catalyst fires.'
-    : edition === 'void' ? 'Void — does not count against your catalyst slot cap.'
-    : 'Polychrome — adds +50% of this catalyst\'s contribution each fire.';
-  return (
-    <span
-      className="f-mono uc has-tip"
-      style={{
-        position: 'relative',
-        marginLeft: 6,
-        padding: '1px 5px',
-        fontSize: edition === 'void' ? 11 : 8,
-        letterSpacing: '0.18em',
-        borderRadius: 3,
-        color: c,
-        border: `1px solid ${c}88`,
-        background: `${c}22`,
-        fontWeight: edition === 'void' ? 700 : undefined,
-        textShadow: edition === 'void' ? `0 0 6px ${c}` : undefined,
-      }}
-    >
-      {edition === 'void' ? '★' : editionLabel(edition).slice(0, 4).toLowerCase()}
-      <span className="tip">{tip}</span>
-    </span>
-  );
-}
-
-type Meta = { name: string; icon: string; color: string; desc: string; kindLabel: string; flavor?: string; rarity?: Rarity };
-
-function offerMeta(kind: string, id: string): Meta {
-  if (kind === 'catalyst') {
-    const c = lookupCatalyst(id);
-    return { name: c?.name ?? id, icon: c?.icon ?? '✦', color: c?.color ?? '#7be3ff', desc: c?.desc ?? '', kindLabel: 'catalyst', flavor: c?.flavor, rarity: c?.rarity };
-  }
-  if (kind === 'consumable') {
-    const c = lookupConsumable(id);
-    return {
-      name: c?.name ?? id,
-      icon: c?.icon ?? '◇',
-      color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
-      desc: c?.description ?? '',
-      kindLabel: c?.type ?? 'calibration',
-      rarity: c ? consumableRarity(c.type) : undefined,
-    };
-  }
-  if (kind === 'voucher') {
-    const v = lookupVoucher(id);
-    return { name: v?.name ?? id, icon: '◆', color: '#f5c451', desc: v?.description ?? '', kindLabel: 'voucher', rarity: v?.rarity };
-  }
-  if (kind === 'mod') {
-    const m = lookupMod(id);
-    return {
-      name: m?.name ?? id,
-      icon: m?.icon ?? '⫶',
-      color: m?.visual?.accentColor ?? '#bba8ff',
-      desc: m?.desc ?? '',
-      kindLabel: 'mod',
-      rarity: m?.rarity,
-    };
-  }
-  if (kind === 'pack') {
-    const p = lookupPack(id);
-    const isManeuver = id === 'maneuver';
-    const tier = id === 'galactic' ? '✸' : id === 'stellar' ? '✹' : isManeuver ? '⤴' : '✦';
-    // Pack rarity derived from tier: galactic = common, stellar = uncommon,
-    // maneuver = rare, anything else (future stellar+) = legendary.
-    const packRarity: Rarity =
-      id === 'galactic' ? 'common'
-      : id === 'stellar' ? 'uncommon'
-      : isManeuver ? 'rare'
-      : 'legendary';
-    return {
-      name: p?.name ?? id,
-      icon: tier,
-      color: isManeuver ? '#7be3ff' : '#cc88ff',
-      desc: p ? `Show ${p.showCount}, pick ${p.pickCount}.` : 'Booster pack.',
-      kindLabel: 'booster',
-      rarity: packRarity,
-      flavor: isManeuver
-        ? 'Tactical maneuvers — shape the next hand.'
-        : 'Levels up the hand types you choose.',
-    };
-  }
-  return { name: id, icon: '◇', color: '#7be3ff', desc: '', kindLabel: kind };
-}
-
-// Rarity tokens live in `app/visual/rarityStyles.ts`. Imported above so all
-// four upgrade-rendering surfaces (Shop card, CatalystStrip, ConsumableTray,
-// Codex) share the same palette and helpers.
-
+const selectCatalystEditions = (s: GameState): Record<string, CatalystEdition> =>
+  s.run.catalystEditions ?? EMPTY_CATALYST_EDITIONS;
 const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectConsumables = (s: GameState) => s.run.consumables;
 
-const accent = '#7be3ff';
+const ACCENT = '#7be3ff';
 
 export function Shop() {
   const tight = useIsTightStage();
@@ -186,6 +79,11 @@ export function Shop() {
     return null;
   };
 
+  // Key includes the full offer set so a reroll forces React to remount
+  // each card (re-firing the spawn animation). Computed once per render
+  // and passed into every OfferCard.
+  const offerVersion = offers.map((x) => x.id).join('|');
+
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
@@ -210,7 +108,7 @@ export function Shop() {
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
-        accent={accent}
+        accent={ACCENT}
       />
       <PauseButton />
 
@@ -250,185 +148,17 @@ export function Shop() {
         {offers.length === 0 && (
           <div className="f-mono panel" style={{ color: '#bba8ff', padding: '24px 36px' }}>— sold out —</div>
         )}
-        {offers.map((o, i) => {
-          const m = offerMeta(o.kind, o.id);
-          const c = m.color;
-          const affordable = shards >= o.price;
-          const refundIfBought = sellRefund(o.kind, o.id);
-          const isLegendary = m.rarity === 'legendary';
-          const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;
-          const cardBorder = isLegendary
-            ? `1.5px solid ${ringColor}cc`
-            : m.rarity === 'rare'
-              ? `1px solid ${ringColor}aa`
-              : `1px solid ${c}55`;
-          // Rarity glow ring — soft halo sitting BEHIND the card. Stronger
-          // for higher rarities; legendary keeps its existing pulsing aura
-          // and skips this layer to avoid double-glow.
-          const ringStrength: Record<Rarity, number> = { common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0 };
-          const ringIntensity = m.rarity ? ringStrength[m.rarity] : 0;
-          // Key includes the full offer set so a reroll forces React to
-          // remount each card and the spawn animation re-fires. Without
-          // this, cards just swap content and feel static after a reroll.
-          const offerVersion = offers.map((x) => x.id).join('|');
-          return (
-            <div
-              key={`${offerVersion}-${i}`}
-              // Skip the wobble idle animation on tight portrait — reading a
-              // vertically stacked column is harder when each card is drifting.
-              // `has-tip` is on this outer wrapper (not the inner panel-strong)
-              // so the tooltip can escape the panel's overflow:hidden, which
-              // clips the legendary holo shimmer. Hover and the long-press
-              // controller both bubble through children to find this ancestor.
-              className={`has-tip${tight ? '' : ' card-wobble'}`}
-              style={{
-                position: 'relative',
-                animation: tight
-                  ? `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both`
-                  : `chipPop 320ms cubic-bezier(0.2,0.8,0.2,1) ${i * 70}ms both, card-wobble 3.4s ease-in-out ${i * 70 + 320}ms infinite`,
-                width: tight ? '100%' : 'auto',
-              }}
-            >
-              {ringIntensity > 0 && (
-                <div
-                  aria-hidden
-                  style={{
-                    position: 'absolute', inset: -10, borderRadius: 18, pointerEvents: 'none',
-                    background: `radial-gradient(circle at center, ${ringColor}${Math.round(ringIntensity * 255).toString(16).padStart(2, '0')} 0%, transparent 65%)`,
-                    filter: 'blur(8px)',
-                    zIndex: 0,
-                  }}
-                />
-              )}
-            <div
-              className={`panel-strong${isLegendary ? ' legendary-aura' : ''}`}
-              onPointerEnter={() => sfxPlay('cardFlip')}
-              onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
-              style={{
-                // Tight portrait: full-width card; height auto so descriptions wrap.
-                width: tight ? '100%' : 180,
-                height: tight ? 'auto' : 250,
-                minHeight: tight ? 200 : undefined,
-                padding: 14,
-                border: cardBorder,
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                cursor: affordable ? 'pointer' : 'not-allowed',
-                opacity: affordable ? 1 : 0.6,
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              {/* Holographic foil sweep — legendary only. Sits above the
-                  panel-strong gradient but below the content via z-index. */}
-              {isLegendary && (
-                <>
-                  <div className="ff-holo" />
-                  <div className="ff-holo-shimmer" />
-                </>
-              )}
-
-              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>
-                <div className="f-mono uc rarity-tag" style={{
-                  color: ringColor, marginBottom: 6,
-                  border: `1px solid ${ringColor}66`,
-                  background: isLegendary ? `${ringColor}14` : 'transparent',
-                }}>
-                  {m.kindLabel}{m.rarity ? ` · ${m.rarity}` : ''}
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <KindFrame
-                    kind={o.kind as UpgradeKind}
-                    rarity={m.rarity ?? null}
-                    accentColor={m.rarity ? undefined : c}
-                    size={84}
-                  >
-                    {/* Icon keeps the offer's own color (catalyst tint, mod
-                        accent, etc.) so identity stays visible inside the
-                        rarity-tinted silhouette. */}
-                    <span style={{
-                      color: c,
-                      filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
-                    }}>{m.icon}</span>
-                  </KindFrame>
-                </div>
-                <div className="f-head" style={{
-                  fontSize: 14, color: '#f3f0ff', marginTop: 12, textAlign: 'center',
-                  textShadow: isLegendary ? `0 0 8px ${ringColor}80` : undefined,
-                }}>
-                  {m.name}
-                  {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
-                </div>
-                {/* Resonance hint — pulses gold when this offer would
-                    complete a pair with an already-owned catalyst.
-                    Subtle on purpose: no number, just "you have a buddy
-                    for this" so synergy stays a discovery for the player. */}
-                {o.kind === 'catalyst' && (() => {
-                  const completed = pairsCompletedBy(o.id, catalysts);
-                  if (completed.length === 0) return null;
-                  return (
-                    <div className="f-mono uc has-tip" style={{
-                      position: 'relative',
-                      marginTop: 4,
-                      fontSize: 9, letterSpacing: '0.24em',
-                      color: '#ffd84a',
-                      textShadow: '0 0 8px rgba(255,216,74,0.65)',
-                      animation: 'shopSynergyPulse 1.6s ease-in-out infinite',
-                    }}>
-                      ✦ resonance
-                      <span className="tip">
-                        <span className="tip-title">Resonance Available</span>
-                        Buying this completes {completed.length === 1 ? 'a pair' : `${completed.length} pairs`} with what you already own.
-                        {completed.map((p) => (
-                          <span key={p.id} style={{
-                            display: 'block',
-                            marginTop: 4,
-                            color: '#ffd84a',
-                          }}>
-                            ▸ {p.name}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  );
-                })()}
-                <div style={{
-                  fontFamily: '"Exo 2", sans-serif',
-                  fontSize: 11, color: '#bba8ff', marginTop: 6, textAlign: 'center', lineHeight: 1.4, flex: 1,
-                }}>
-                  {m.desc}
-                </div>
-                <div style={{
-                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(149,119,255,0.2)',
-                }}>
-                  <span className="f-mono num" style={{ color: '#f5c451', fontSize: 14 }}>◆ {o.price}</span>
-                  <span className="f-mono uc" style={{
-                    fontSize: 9, color: affordable ? (isLegendary ? ringColor : accent) : '#e2334a', letterSpacing: '0.2em',
-                  }}>
-                    {affordable ? 'buy' : 'low'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <span className="tip">
-              <span className="tip-title">{m.name}</span>
-              {m.desc}
-              {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
-              {o.edition && (o.kind === 'catalyst' || o.kind === 'mod') && (
-                <span style={{
-                  display: 'block', marginTop: 6,
-                  color: editionColor(o.edition),
-                }}>
-                  {editionLabel(o.edition)}: {editionBonusDescription(o.kind, o.edition)}
-                </span>
-              )}
-              <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
-                Buy ◆ {o.price} · sell back ◆ {refundIfBought}
-              </span>
-            </span>
-            </div>
-          );
-        })}
+        {offers.map((o, i) => (
+          <OfferCard
+            key={`${offerVersion}-${i}`}
+            offer={o}
+            index={i}
+            shards={shards}
+            catalysts={catalysts}
+            offerVersion={offerVersion}
+            tight={tight}
+          />
+        ))}
       </div>
 
       <HandLevelsPanel comboLevels={comboLevels} />
@@ -510,328 +240,6 @@ export function Shop() {
           onClose={() => setCollectionOpen(false)}
         />
       )}
-    </div>
-  );
-}
-
-type CollectionRowProps = {
-  kindLabel: string;
-  items: { id: string; index: number; name: string; desc: string; icon: string; color: string; rarity?: Rarity; edition?: CatalystEdition; disabled?: boolean; disabledReason?: string }[];
-  emptyHint: string;
-  kind: 'catalyst' | 'voucher' | 'consumable' | 'mod';
-};
-
-function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps) {
-  return (
-    <div style={{ minWidth: 220, maxWidth: 280 }}>
-      <div className="f-mono uc" style={{
-        fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', marginBottom: 6,
-        display: 'flex', justifyContent: 'space-between',
-      }}>
-        <span>◈ {kindLabel}</span>
-        <span style={{ color: '#f5c451' }}>{items.length}</span>
-      </div>
-      {items.length === 0 ? (
-        <div className="f-mono" style={{ fontSize: 10, color: 'rgba(187,168,255,0.5)', fontStyle: 'italic' }}>
-          {emptyHint}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {items.map((it) => {
-            const isLegendary = it.rarity === 'legendary';
-            const rarityRing = it.rarity ? RARITY_COLORS[it.rarity] : it.color;
-            return (
-              <div
-                key={`${it.id}-${it.index}`}
-                className="has-tip"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 8px', borderRadius: 6,
-                  background: 'rgba(15,9,37,0.5)',
-                  border: `1px solid ${isLegendary ? rarityRing + 'aa' : it.color + '40'}`,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  boxShadow: isLegendary ? `0 0 12px ${rarityRing}55, inset 0 0 6px ${rarityRing}22` : undefined,
-                }}
-              >
-                {isLegendary && <div className="ff-holo" style={{ borderRadius: 6, opacity: 0.55 }} />}
-                <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex' }}>
-                  <KindFrame
-                    kind={kind as UpgradeKind}
-                    rarity={it.rarity ?? null}
-                    accentColor={it.rarity ? undefined : it.color}
-                    size={28}
-                  >
-                    <span style={{ color: it.color }}>{it.icon}</span>
-                  </KindFrame>
-                </span>
-                <span className="f-mono" style={{
-                  fontSize: 11, color: '#f3f0ff', flex: 1, minWidth: 0,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  position: 'relative', zIndex: 2,
-                }}>
-                  {it.name}
-                  {it.edition && <EditionBadge edition={it.edition} />}
-                </span>
-                <SellButton kind={kind} id={it.id} index={it.index} disabled={it.disabled} disabledReason={it.disabledReason} />
-                <span className="tip">
-                  <span className="tip-title">{it.name}</span>
-                  {it.desc}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Inputs shared by every Collection surface (desktop panel + tight bottom sheet).
-type CollectionInputs = {
-  catalysts: string[];
-  catalystEditions: Record<string, CatalystEdition>;
-  vouchers: string[];
-  consumables: string[];
-  ownedMods: string[];
-  voucherSellBlock: (id: string) => string | null;
-};
-
-function buildCollectionRows({
-  catalysts, catalystEditions, vouchers, consumables, ownedMods, voucherSellBlock,
-}: CollectionInputs) {
-  const catRows = catalysts.map((id, index) => {
-    const c = lookupCatalyst(id);
-    return {
-      id, index,
-      name: c?.name ?? id,
-      desc: c?.desc ?? '',
-      icon: c?.icon ?? '✦',
-      color: c?.color ?? '#7be3ff',
-      rarity: c?.rarity,
-      edition: catalystEditions[id],
-    };
-  });
-  const voucherRows = vouchers.map((id, index) => {
-    const v = lookupVoucher(id);
-    const block = voucherSellBlock(id);
-    return {
-      id, index,
-      name: v?.name ?? id,
-      desc: v?.description ?? '',
-      icon: '◆',
-      color: '#f5c451',
-      rarity: v?.rarity,
-      disabled: !!block,
-      disabledReason: block ?? undefined,
-    };
-  });
-  const consRows = consumables.map((id, index) => {
-    const c = lookupConsumable(id);
-    return {
-      id, index,
-      name: c?.name ?? id,
-      desc: c?.description ?? '',
-      icon: c?.icon ?? '◇',
-      color: c?.type === 'calibration' ? '#cc88ff' : '#7be3ff',
-      rarity: c ? consumableRarity(c.type) : undefined,
-    };
-  });
-  const modRows = ownedMods.map((id, index) => {
-    const m = lookupMod(id);
-    return {
-      id, index,
-      name: m?.name ?? id,
-      desc: m?.desc ?? '',
-      icon: m?.icon ?? '⫶',
-      color: m?.visual?.accentColor ?? '#bba8ff',
-      rarity: m?.rarity,
-    };
-  });
-  const isEmpty = catalysts.length + vouchers.length + consumables.length + ownedMods.length === 0;
-  return { catRows, voucherRows, consRows, modRows, isEmpty };
-}
-
-// Shared body rendered by both the desktop CollectionPanel and the tight
-// CollectionSheet. Header + the four typed rows.
-function CollectionBody(props: CollectionInputs) {
-  const { catRows, voucherRows, consRows, modRows, isEmpty } = buildCollectionRows(props);
-  return (
-    <>
-      <div className="f-mono uc" style={{
-        fontSize: 10, letterSpacing: '0.32em', color: '#bba8ff', marginBottom: 10,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span>◇ your collection ◇</span>
-        <span className="has-tip" style={{ position: 'relative', fontSize: 9, color: '#f5c451', cursor: 'help' }}>
-          ?
-          <span className="tip tip-above">Sell any owned upgrade for half its buy price (rounded down). Selling a slot-granting voucher is blocked when it would strand items above the post-sell cap.</span>
-        </span>
-      </div>
-      {isEmpty ? (
-        <div style={{ fontSize: 11, color: 'rgba(187,168,255,0.6)', textAlign: 'center', padding: 8, fontStyle: 'italic' }}>
-          You don't own any upgrades yet. Buy from the offers above to start a collection.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'space-around' }}>
-          <CollectionRow kindLabel="catalysts" kind="catalyst" items={catRows} emptyHint="no catalysts" />
-          <CollectionRow kindLabel="vouchers"  kind="voucher"  items={voucherRows} emptyHint="no vouchers" />
-          <CollectionRow kindLabel="consumables" kind="consumable" items={consRows} emptyHint="no consumables" />
-          <CollectionRow kindLabel="mods (inventory)" kind="mod" items={modRows} emptyHint="no mods (attached mods sit in the Forge)" />
-        </div>
-      )}
-    </>
-  );
-}
-
-// Bottom sheet for tight portrait. Slides up from the viewport bottom; tap
-// backdrop or close button to dismiss. Position fixed so it tracks the
-// viewport, not the scroll container — fixes the "Collection floats in the
-// middle of the page" bug we hit with absolute-bottom positioning.
-function CollectionSheet(props: CollectionInputs & { onClose: () => void }) {
-  // Lock body scroll while sheet is open; restore on unmount.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') props.onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [props]);
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Your collection"
-      onClick={props.onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(7,5,26,0.7)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        zIndex: 60, pointerEvents: 'auto',
-        animation: 'fadein 200ms ease-out both',
-      }}
-    >
-      <div
-        className="panel"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 'min(440px, 100%)',
-          maxHeight: '70dvh',
-          padding: '14px 18px 18px',
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-          overflowY: 'auto',
-          paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
-          animation: 'sheetSlide 220ms cubic-bezier(0.2,0.8,0.2,1) both',
-        }}
-      >
-        {/* Drag handle (cosmetic — taps still close via backdrop). */}
-        <div style={{
-          width: 36, height: 4, borderRadius: 2,
-          background: 'rgba(149,119,255,0.4)',
-          margin: '0 auto 10px',
-        }} />
-        <button
-          onClick={props.onClose}
-          aria-label="Close collection"
-          className="f-mono"
-          style={{
-            position: 'absolute', top: 10, right: 12,
-            width: 28, height: 28, borderRadius: 6,
-            background: 'rgba(15,9,37,0.6)',
-            border: '1px solid rgba(149,119,255,0.4)',
-            color: '#bba8ff', fontSize: 14, cursor: 'pointer',
-          }}
-        >
-          ×
-        </button>
-        <CollectionBody {...props} />
-      </div>
-    </div>
-  );
-}
-
-function CollectionPanel(props: CollectionInputs) {
-  // Desktop-only after the 2026-05-07 portrait pass — tight stage uses
-  // CollectionSheet (bottom-sheet modal) instead. Render-gated at the call
-  // site in Shop().
-  return (
-    <div className="panel" style={{
-      position: 'absolute', left: '50%',
-      bottom: 'calc(var(--hud-bottom-h, 60px) + 32px)',
-      transform: 'translateX(-50%)',
-      width: 'min(1100px, calc(100vw - 60px))',
-      // 100dvh tracks the visible viewport on mobile browsers.
-      maxHeight: 'clamp(80px, calc(100dvh - 540px), 220px)',
-      padding: '12px 18px', zIndex: 4, overflowY: 'auto',
-    }}>
-      <CollectionBody {...props} />
-    </div>
-  );
-}
-
-// Compact, fixed-position panel showing the player's leveled hand types.
-// Only renders rows where the level is > 0 — keeps the panel out of the
-// way at the start of a run, then grows as galaxies are picked.
-const HAND_LEVEL_ROWS: { id: string; label: string }[] = [
-  { id: 'five_kind',   label: '5 Kind'    },
-  { id: 'four_kind',   label: '4 Kind'    },
-  { id: 'lg_straight', label: 'Lg Str'    },
-  { id: 'full_house',  label: 'Full Hse'  },
-  { id: 'sm_straight', label: 'Sm Str'    },
-  { id: 'three_kind',  label: '3 Kind'    },
-  { id: 'two_pair',    label: '2 Pair'    },
-  { id: 'one_pair',    label: 'Pair'      },
-  { id: 'chance',      label: 'Chance'    },
-];
-
-function HandLevelsPanel({ comboLevels }: { comboLevels: Record<string, number> }) {
-  const tight = useIsTightStage();
-  const rows = HAND_LEVEL_ROWS
-    .map((r) => ({ ...r, lvl: comboLevels[r.id] ?? 0, bonus: GALAXY_BONUS[r.id] }))
-    .filter((r) => r.lvl > 0);
-  if (rows.length === 0) return null;
-  // On tight portrait the right-aligned absolute panel collides with the
-  // stacked offers — hide it; players can still see hand levels on Round.
-  if (tight) return null;
-  return (
-    <div className="panel" style={{
-      position: 'absolute', right: 24,
-      top: 'calc(var(--hud-top-h, 134px) + 46px)',
-      width: 200,
-      padding: '10px 14px', zIndex: 4,
-    }}>
-      <div className="f-mono uc" style={{
-        fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff', marginBottom: 8,
-      }}>
-        ◇ hand levels ◇
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {rows.map((r) => (
-          <div
-            key={r.id}
-            className="f-mono"
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              fontSize: 10, color: '#f3f0ff',
-              padding: '3px 6px', borderRadius: 4,
-              background: 'rgba(15,9,37,0.5)',
-            }}
-          >
-            <span>{r.label}</span>
-            <span style={{ color: '#cc88ff' }}>
-              lvl {r.lvl}
-              {r.bonus && (
-                <span style={{ color: 'rgba(204,136,255,0.7)', marginLeft: 4 }}>
-                  +{r.lvl * r.bonus.chips}/+{r.lvl * r.bonus.mult}
-                </span>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
