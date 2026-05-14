@@ -158,20 +158,21 @@ exact pixel position less precious.
 
 | Component | Status | Notes |
 |---|---|---|
-| `ShardGainToast` | ✅ migrated | Coalesces rapid gains into a single `+N ◇`. |
-| `ShardDeductToast` | ✅ migrated | Coalesces `shard_sink` fires. |
-| `ArrivalToast` | ⏳ pending | Per-screen flavor banner. |
-| `AchievementToast` | ⏳ pending | High-priority unlock pop. Probably `priority: 'high'`. |
-| `ClearShardsToast` | ⏳ pending | Listens to `onBlindCleared`. |
-| `DailyLoginComet` | ⏳ pending | One-shot on first daily login. |
-| `ResonanceToast` | ⏳ pending | Named-pair fire. Should `key` on the pair id. |
-| `SellTriggerToast` | ⏳ pending | Listens to `onSellTrigger`. |
-| `WhisperToast` | ⏳ pending | Catalyst flavor whispers. |
-| `AuditEvent` | ⏳ pending | Toast-shaped audit-event banner. |
+| `ShardGainToast` | ✅ migrated | Coalesces rapid gains into a single `+N ◇`. `key='shard-gain'`, `priority='low'`. |
+| `ShardDeductToast` | ✅ migrated | Coalesces `shard_sink` fires. `key='shard-deduct'`, `priority='low'`. |
+| `SellTriggerToast` | ✅ migrated | One descriptor per on-sell fire. `priority='normal'`, no `key` (each fire is its own beat). |
+| `ArrivalToast` | ✅ migrated | Single one-shot on portal entry. `priority='low'`; click-to-dismiss preserved via `toastQueue.dismiss(id)`. |
+| `AchievementToast` | ✅ migrated | `priority='high'` so it preempts shard pills. Bespoke internal queue removed — central queue handles serialisation. SFX (chime + delayed swell) stays inline because it's per-event, not per-toast. |
+| `WhisperToast` | ✅ migrated | Per-session + per-save dedupe preserved. Sigil-flash + `whisper-toast-in` keyframes still applied via `style.animation`. `priority='normal'`. |
+| `ResonanceToast` | ✅ migrated | `key='resonance:{pair-id}'` so a re-fire refreshes the visible window. Discovery vs everyday-fire flavors distinguished by `data.isDiscovery`; merge OR-folds the flag so a discovery always wins permanently. `priority='high'` for discoveries, `'normal'` for fires. |
+| `ClearShardsToast` | 🔘 not in queue | True UI panel (mid-stage receipt of base/voucher/hands/interest/total breakdown), single-instance, fixed position. Not a stackable notification — keeps its own lifecycle. |
+| `DailyLoginComet` | 🔘 not in queue | Full-screen FX (CSS `daily-comet` keyframe), `inset: 0`, `pointerEvents: none`. Not a notification at all; keeps its own lifecycle. |
+| `AuditEvent` | 🔘 not in queue | Full event card (173 lines) with embedded action UI. Not a stackable pop; keeps its own lifecycle. |
 
-When migrating: do one at a time, manual-QA each before moving on.
-The shard pair landed first because they were the textbook
-"coalescing same-type" case.
+**7 of 10 toast-shaped components now flow through the queue.** The
+remaining 3 are intentional carve-outs: each is a fixed-position
+single-instance panel with a custom lifecycle, not a stackable
+notification competing for the same attention slot.
 
 ## Testing
 
