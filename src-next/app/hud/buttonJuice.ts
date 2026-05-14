@@ -2,10 +2,16 @@ import * as sfxModule from '../../audio/sfx';
 
 const SHOCKWAVE_DURATION_MS = 400;
 
-function isPrimaryButton(target: EventTarget | null): HTMLElement | null {
+function findJuicyButton(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
-  const btn = target.closest('.btn-primary');
-  return btn instanceof HTMLElement ? btn : null;
+  const btn = target.closest('.btn');
+  if (!(btn instanceof HTMLElement)) return null;
+  if ((btn as HTMLButtonElement).disabled) return null;
+  return btn;
+}
+
+function isPrimary(btn: HTMLElement): boolean {
+  return btn.classList.contains('btn-primary');
 }
 
 function reducedMotion(): boolean {
@@ -48,19 +54,29 @@ export function installButtonJuice(): () => void {
   // Switched from mouse* events to pointer* so touch users get the
   // same juice (shockwave + click sfx + 10ms haptic) as desktop. Mouse
   // mouseover stays — hover sound is mouse-only by design.
+  //
+  // Coverage: every .btn gets click sfx + 10ms touch-haptic on pointerdown
+  // for instant feedback. Only .btn-primary additionally gets the celebratory
+  // shockwave on pointerup and the hover cue. The Roll button suppresses the
+  // uiClick because castSwell already plays on its React onClick — layering
+  // them muddies the cue.
   const onPointerDown = (ev: PointerEvent): void => {
-    if (!isPrimaryButton(ev.target)) return;
-    sfxModule.sfxPlay('uiClick');
+    const btn = findJuicyButton(ev.target);
+    if (!btn) return;
+    if (btn.dataset.coach !== 'roll-btn') {
+      sfxModule.sfxPlay('uiClick');
+    }
     if (ev.pointerType === 'touch') tapHaptic();
   };
   const onPointerUp = (ev: PointerEvent): void => {
-    const btn = isPrimaryButton(ev.target);
-    if (!btn) return;
+    const btn = findJuicyButton(ev.target);
+    if (!btn || !isPrimary(btn)) return;
     if (reducedMotion()) return;
     spawnShockwave(btn);
   };
   const onMouseOver = (ev: MouseEvent): void => {
-    if (!isPrimaryButton(ev.target)) return;
+    const btn = findJuicyButton(ev.target);
+    if (!btn || !isPrimary(btn)) return;
     sfxModule.sfxPlay('uiHover');
   };
   document.addEventListener('pointerdown', onPointerDown);

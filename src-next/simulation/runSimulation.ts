@@ -7,16 +7,50 @@ import { runRapierSim, ensureRapier } from './rapierSim';
 import { begin as perfBegin } from '../devtools/perf';
 import type { SimulationRequest, SimulationResult } from '../events/types';
 
-const SETTLE_MS = 600;
+const SETTLE_MS = 450;
+// Upper bound on how long we'll wait for a single roll's simulation to
+// resolve before we synthesize a fallback ROLL_SETTLED ourselves. Rapier
+// settles well under 2.5s in worst case; 3.5s leaves comfortable headroom
+// while staying below the "is it broken?" threshold a player would feel.
+const WATCHDOG_MS = 3500;
+
+function buildFallbackResult(req: SimulationRequest): SimulationResult {
+  const faces = [...(req.predeterminedFaces ?? [])];
+  return {
+    finalFaces: faces,
+    restPositions: faces.map(() => ({ x: 0, y: 0, z: 0 })),
+    settleMs: faces.map(() => 0),
+    peakVelocity: 0,
+    collisionCount: 0,
+    collisionPairs: [],
+    bounceHeights: faces.map(() => 0),
+  };
+}
 
 export function startSimRunner(): () => void {
   void ensureRapier();
   return bus.on('onSimulationStart', ({ request }) => {
     const end = perfBegin('runSimulation');
-    runSim(request).then((result) => {
+    let settled = false;
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
+    const finish = (result: SimulationResult): void => {
+      if (settled) return;
+      settled = true;
+      if (watchdog != null) clearTimeout(watchdog);
       end();
       dispatch({ type: 'ROLL_SETTLED', result });
-    });
+    };
+    watchdog = window.setTimeout(() => {
+      if (settled) return;
+      console.warn('[simRunner] watchdog tripped — synthesizing fallback ROLL_SETTLED');
+      finish(buildFallbackResult(request));
+    }, WATCHDOG_MS);
+    runSim(request)
+      .then(finish)
+      .catch((err) => {
+        console.error('[simRunner] runSim threw', err);
+        finish(buildFallbackResult(request));
+      });
   });
 }
 

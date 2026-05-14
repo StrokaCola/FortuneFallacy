@@ -19,7 +19,7 @@ describe('buttonJuice', () => {
   let teardown: (() => void) | null = null;
 
   beforeEach(() => {
-    document.body.innerHTML = '<button class="btn-primary">Roll</button>';
+    document.body.innerHTML = '<button class="btn btn-primary">Play Hand</button>';
     vi.spyOn(sfxModule, 'sfxPlay').mockImplementation(() => {});
   });
 
@@ -35,6 +35,60 @@ describe('buttonJuice', () => {
     const btn = document.querySelector('.btn-primary')! as HTMLButtonElement;
     btn.dispatchEvent(pointerEvent('pointerdown'));
     expect(sfxModule.sfxPlay).toHaveBeenCalledWith('uiClick');
+  });
+
+  it('plays uiClick on .btn-ghost pointerdown (Reroll path)', () => {
+    document.body.innerHTML = '<button class="btn btn-ghost">Reroll</button>';
+    teardown = installButtonJuice();
+    const btn = document.querySelector('.btn-ghost')! as HTMLButtonElement;
+    btn.dispatchEvent(pointerEvent('pointerdown'));
+    expect(sfxModule.sfxPlay).toHaveBeenCalledWith('uiClick');
+  });
+
+  it('suppresses uiClick on data-coach="roll-btn" (castSwell already plays)', () => {
+    document.body.innerHTML = '<button class="btn btn-ghost" data-coach="roll-btn">Roll</button>';
+    teardown = installButtonJuice();
+    const btn = document.querySelector('[data-coach="roll-btn"]')! as HTMLButtonElement;
+    btn.dispatchEvent(pointerEvent('pointerdown'));
+    expect(sfxModule.sfxPlay).not.toHaveBeenCalledWith('uiClick');
+  });
+
+  it('still vibrates on roll-btn touch pointerdown (haptic not suppressed)', () => {
+    document.body.innerHTML = '<button class="btn btn-ghost" data-coach="roll-btn">Roll</button>';
+    const vibrateSpy = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, 'vibrate', {
+      value: vibrateSpy, configurable: true, writable: true,
+    });
+    teardown = installButtonJuice();
+    const btn = document.querySelector('[data-coach="roll-btn"]')! as HTMLButtonElement;
+    btn.dispatchEvent(pointerEvent('pointerdown', 'touch'));
+    expect(vibrateSpy).toHaveBeenCalledWith(10);
+  });
+
+  it('skips disabled buttons entirely', () => {
+    document.body.innerHTML = '<button class="btn btn-primary" disabled>Play</button>';
+    teardown = installButtonJuice();
+    const btn = document.querySelector('.btn-primary')! as HTMLButtonElement;
+    btn.dispatchEvent(pointerEvent('pointerdown'));
+    expect(sfxModule.sfxPlay).not.toHaveBeenCalled();
+  });
+
+  it('does NOT spawn shockwave on .btn-ghost pointerup', () => {
+    document.body.innerHTML = '<button class="btn btn-ghost">Reroll</button>';
+    teardown = installButtonJuice();
+    const btn = document.querySelector('.btn-ghost')! as HTMLButtonElement;
+    btn.dispatchEvent(pointerEvent('pointerdown'));
+    btn.dispatchEvent(pointerEvent('pointerup'));
+    const shockwave = document.querySelector('.btn-shockwave');
+    expect(shockwave).toBeNull();
+  });
+
+  it('does NOT play uiHover on .btn-ghost mouseover', () => {
+    document.body.innerHTML = '<button class="btn btn-ghost">Reroll</button>';
+    teardown = installButtonJuice();
+    const btn = document.querySelector('.btn-ghost')! as HTMLButtonElement;
+    btn.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    expect(sfxModule.sfxPlay).not.toHaveBeenCalledWith('uiHover');
   });
 
   it('plays uiHover on .btn-primary mouseover (delegated)', () => {

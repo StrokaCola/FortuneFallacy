@@ -181,7 +181,10 @@ export function ScoreMoment() {
           }
 
           // Counter catch + END_SCORING right as the number lands.
-          schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 150);
+          // Unlock the action bar 350ms before the fly visually finishes so
+          // the next-hand inputs feel responsive; the 220ms counter-catch
+          // pulse keeps animating over the unlocked HUD without blocking it.
+          schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 350);
           break;
         }
         case 'bail':
