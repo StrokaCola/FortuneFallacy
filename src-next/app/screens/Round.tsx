@@ -151,7 +151,7 @@ export function Round() {
 // cabinet language: the lever pulls, the chamber loads, then the spin.
 // Tuned so the dwell is felt but not annoying — short enough that a
 // determined speedrunner will barely notice on subsequent attempts.
-const PULL_DURATION_MS = 520;
+const PULL_DURATION_MS = 440;
 
 function ActionBar({
   hands, rerolls, accent, firstRollDone, ready, scoring, handInProgress,
@@ -170,15 +170,25 @@ function ActionBar({
   const ref = useRef<HTMLDivElement>(null);
   useReportHudHeight(ref, '--hud-bottom-h', 'bottom');
   const [pulling, setPulling] = useState(false);
+  const pullTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (pullTimerRef.current != null) {
+      clearTimeout(pullTimerRef.current);
+      pullTimerRef.current = null;
+    }
+  }, []);
 
   // Trigger The Pull on the first-roll path only. Reroll keeps the
   // immediate-dispatch behavior — players get the dwell once per blind,
   // not every reroll, so the rhythm of the loop stays brisk.
   const triggerFirstRoll = () => {
     if (pulling) return;
+    playHaptic('tap');
     setPulling(true);
     sfxPlay('castSwell', { gain: 0.85 });
-    window.setTimeout(() => {
+    pullTimerRef.current = window.setTimeout(() => {
+      pullTimerRef.current = null;
       dispatch({ type: 'ROLL_REQUESTED' });
       setPulling(false);
     }, PULL_DURATION_MS);
@@ -199,7 +209,7 @@ function ActionBar({
           // window used to fire REROLL_REQUESTED, silently consuming a
           // reroll because the dice couldn't rebound mid-animation.
           disabled={rerolls === 0 || hands === 0 || scoring || handInProgress || !ready}
-          onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}
+          onClick={() => { playHaptic('tap'); dispatch({ type: 'REROLL_REQUESTED' }); }}
           title={scoring ? 'Scoring…' : handInProgress ? 'Rolling…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: accent }}>↻</span> Reroll
@@ -222,7 +232,7 @@ function ActionBar({
       <button
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0 || !firstRollDone || !ready}
-        onClick={() => dispatch({ type: 'SCORE_HAND' })}>
+        onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}>
         ✦ Play Hand
       </button>
     </div>
