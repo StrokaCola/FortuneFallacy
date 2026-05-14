@@ -51,6 +51,11 @@ export function Hub() {
   const lifetimeDust = useStore(selectCosmicDustLifetime);
   const seed = useStore(selectSeed);
   const goalIdxRaw = useStore(selectGoalIdxRaw);
+  // Upcoming boss id — locked in by NEW_RUN / the previous clearBlind so
+  // the player can read the curse on the hub before clicking Begin.
+  // Falls back to null on legacy saves; TrialModifierChip degrades to
+  // the generic "boss rule applies" copy when the id isn't known.
+  const upcomingBossId = useStore((s: GameState) => s.run.upcomingBossId ?? null);
   const prestige = currentPrestigeTier(lifetimeDust);
   const next = nextPrestigeTier(lifetimeDust);
   const compact = useIsCompactStage();
@@ -316,6 +321,7 @@ export function Hub() {
                     <TrialModifierChip
                       voidstormId={b.voidstormId}
                       isBoss={isBoss}
+                      bossBlindId={isBoss ? upcomingBossId ?? undefined : undefined}
                       tight={tight}
                       compact={compact}
                     />

@@ -131,6 +131,15 @@ export type RunSlice = {
   // Set when endlessLap > 0; null during the normal run. Affliction
   // effects are applied in startBlind / pipeline phases as needed.
   cosmicAfflictionId?: string | null;
+  // Boss debuff id locked in for the CURRENT ante's boss blind. Picked
+  // ahead of time (NEW_RUN seeds ante 1's; clearBlind picks the next on
+  // boss-clear) so:
+  //   - the Hub can reveal the curse before the player clicks Begin,
+  //   - START_BLIND uses a stable id instead of re-rolling on every
+  //     refresh + boss entry.
+  // Null on legacy saves; startBlind falls back to a fresh roll and
+  // saves it so the next refresh stays consistent.
+  upcomingBossId?: string | null;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -201,4 +210,5 @@ export const initialRunSlice = (): RunSlice => ({
   mirroredHandActive: false,
   endlessLap: 0,
   cosmicAfflictionId: null,
+  upcomingBossId: null,
 });

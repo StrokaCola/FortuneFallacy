@@ -1,5 +1,5 @@
 import type { ActionHandler } from './types';
-import { startBlind, clearBlind, bustBlind, skipBlind, startCosmicLap } from '../../core/round/transitions';
+import { startBlind, clearBlind, bustBlind, skipBlind, startCosmicLap, pickRandomBossId } from '../../core/round/transitions';
 import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
@@ -57,9 +57,13 @@ export const roundHandler: ActionHandler = (a, s) => {
       // capacity, first-blind hands, boss reveal) resolve at compute time
       // from meta.astralPerks — they don't mutate the run slice here.
       // Daily runs skip perk application entirely for fair comparison.
-      const run = daily
+      const runWithPerks = daily
         ? withStake
         : applyAstralPerksToNewRun(withStake, s.meta.astralPerks);
+      // Lock in ante-1's boss id at run-start so the Hub can preview the
+      // upcoming curse before the player ever clicks Begin, and so a
+      // refresh on the hub doesn't shuffle the boss when startBlind fires.
+      const run = { ...runWithPerks, upcomingBossId: pickRandomBossId() };
       return {
         state: {
           ...s,

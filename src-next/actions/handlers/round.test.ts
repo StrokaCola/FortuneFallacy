@@ -56,6 +56,12 @@ describe('NEW_RUN', () => {
     expect(r.state.run.constellationId).toBe('lyra');
   });
 
+  it('seeds upcomingBossId so the Hub can preview ante-1\'s curse before Begin', () => {
+    const r = roundHandler({ type: 'NEW_RUN' }, baseState());
+    expect(r.state.run.upcomingBossId).toBeTruthy();
+    expect(typeof r.state.run.upcomingBossId).toBe('string');
+  });
+
   describe('daily flag', () => {
     it('sets dailyDate to today\'s UTC date string', () => {
       const r = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());
