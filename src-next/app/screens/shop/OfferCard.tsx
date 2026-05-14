@@ -12,6 +12,7 @@ import { sellRefund } from '../../../core/shop/sellRefund';
 import { editionLabel, editionColor } from '../../../core/upgrades/editions';
 import { pairsCompletedBy } from '../../../data/resonances';
 import { KindFrame, type UpgradeKind } from '../../visual/upgradeKindFrames';
+import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
 import type { CatalystEdition } from '../../../state/slices/run';
 import { offerMeta, editionBonusDescription } from './offerMeta';
@@ -132,11 +133,23 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
             >
               {/* Icon keeps the offer's own color (catalyst tint, mod
                   accent, etc.) so identity stays visible inside the
-                  rarity-tinted silhouette. */}
-              <span style={{
-                color: c,
-                filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
-              }}>{m.icon}</span>
+                  rarity-tinted silhouette. Catalyst offers route
+                  through CatalystIcon so a hand-authored SVG can
+                  replace the emoji char when registered. Other
+                  upgrade kinds keep the inline char. */}
+              {o.kind === 'catalyst' ? (
+                <CatalystIcon
+                  catalystId={o.id}
+                  fallbackChar={m.icon}
+                  color={c}
+                  size={isLegendary ? 56 : 52}
+                />
+              ) : (
+                <span style={{
+                  color: c,
+                  filter: `drop-shadow(0 0 ${isLegendary ? 14 : 10}px ${c}${isLegendary ? 'cc' : '80'})`,
+                }}>{m.icon}</span>
+              )}
             </KindFrame>
           </div>
           <div className="f-head" style={{

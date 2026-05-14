@@ -14,6 +14,7 @@ import { lookupVoucher } from '../../../data/vouchers';
 import { lookupMod } from '../../../core/mods';
 import type { CatalystEdition } from '../../../state/slices/run';
 import { KindFrame, type UpgradeKind } from '../../visual/upgradeKindFrames';
+import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
 import { SellButton } from '../../hud/SellButton';
 import { EditionBadge } from './EditionBadge';
@@ -66,7 +67,16 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
                     accentColor={it.rarity ? undefined : it.color}
                     size={28}
                   >
-                    <span style={{ color: it.color }}>{it.icon}</span>
+                    {kind === 'catalyst' ? (
+                      <CatalystIcon
+                        catalystId={it.id}
+                        fallbackChar={it.icon}
+                        color={it.color}
+                        size={18}
+                      />
+                    ) : (
+                      <span style={{ color: it.color }}>{it.icon}</span>
+                    )}
                   </KindFrame>
                 </span>
                 <span className="f-mono" style={{

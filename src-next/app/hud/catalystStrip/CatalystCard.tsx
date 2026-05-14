@@ -9,6 +9,7 @@ import type React from 'react';
 import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../../data/catalysts';
 import { editionColor } from '../../../core/upgrades/editions';
 import { KindFrame } from '../../visual/upgradeKindFrames';
+import { CatalystIcon } from '../../visual/CatalystIcon';
 import { SellButton } from '../SellButton';
 import { LunarPhaseBadge, TideBadge, CornerBadge } from './badges';
 import type { FloaterRecord, RingRecord, PulseKind } from './types';
@@ -148,11 +149,15 @@ export function CatalystCard(props: CatalystCardProps) {
             size={42}
           >
             {/* Icon stays in the catalyst's identity color so each
-                catalyst is recognizable independent of rarity. */}
-            <span style={{
-              color: c.color,
-              filter: `drop-shadow(0 0 6px ${c.color})`,
-            }}>{c.icon}</span>
+                catalyst is recognizable independent of rarity.
+                CatalystIcon picks a hand-authored SVG when registered
+                and falls back to the catalyst's emoji char otherwise. */}
+            <CatalystIcon
+              catalystId={id}
+              fallbackChar={c.icon}
+              color={c.color}
+              size={26}
+            />
           </KindFrame>
         </div>
         <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}>
