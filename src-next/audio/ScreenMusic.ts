@@ -19,6 +19,11 @@ class ScreenMusicImpl {
   private active: ScreenId | null = null;
   private paused = false;
   private audioSettingsUnsub: (() => void) | null = null;
+  // Per-screen pending pause-after-fade timeouts. Keyed so a rapid
+  // re-entry into the same screen can cancel its own pending pause
+  // before scheduling a fresh one — otherwise the previous timeout
+  // pauses the howl mid-fade-up.
+  private pendingPauses = new Map<ScreenId, number>();
 
   constructor() {
     this.audioSettingsUnsub = audioSettings.subscribe(() => this.applyVolume());
@@ -53,25 +58,45 @@ class ScreenMusicImpl {
     return h;
   }
 
+  private clearPendingPause(screen: ScreenId): void {
+    const id = this.pendingPauses.get(screen);
+    if (id != null) {
+      window.clearTimeout(id);
+      this.pendingPauses.delete(screen);
+    }
+  }
+
   start(screen: ScreenId): void {
     if (this.active === screen) return;
     const target = this.currentTarget();
 
     if (this.active) {
-      const oldRef = this.howls.get(this.active);
+      const oldScreen = this.active;
+      const oldRef = this.howls.get(oldScreen);
       if (oldRef) {
         oldRef.fade(oldRef.volume(), 0, CROSSFADE_MS);
-        // Pause after the fade completes so the loop stops consuming the audio
-        // graph. Pause (not unload) so re-entering this screen is fast.
-        window.setTimeout(() => {
+        // Cancel any prior pending pause for this screen first so they
+        // don't compound — rapid hub→shop→hub→shop transitions otherwise
+        // stack 4 setTimeouts that all fire and confuse each other.
+        this.clearPendingPause(oldScreen);
+        const pauseId = window.setTimeout(() => {
+          this.pendingPauses.delete(oldScreen);
           try { oldRef.pause(); } catch { /* ignore */ }
         }, CROSSFADE_MS + 50);
+        this.pendingPauses.set(oldScreen, pauseId);
       }
     }
 
     const next = this.getOrCreate(screen);
-    // Reset volume to 0 first so crossfade-from is deterministic regardless of
-    // any prior in-flight fade tween left over.
+    // Cancel any pending pause for THIS screen so we don't pause it
+    // mid-fade-up if the player just bounced through screens.
+    this.clearPendingPause(screen);
+    // Hard-stop any in-flight playback so the upcoming .play() doesn't
+    // layer a new sound instance on top of one that's still fading
+    // down from a prior start(). Howler's .play() on an already-playing
+    // Howl creates a SECOND simultaneous playback — without this stop()
+    // call, rapid screen transitions accumulated overlapping loops.
+    try { next.stop(); } catch { /* ignore */ }
     next.volume(0);
     next.play();
     next.fade(0, target, CROSSFADE_MS);
@@ -112,13 +137,21 @@ class ScreenMusicImpl {
     if (this.active) {
       const cur = this.howls.get(this.active);
       if (cur) {
-        try { cur.play(); } catch { /* ignore */ }
+        // Only call play() if the howl is actually paused/stopped; calling
+        // .play() on an already-playing howl creates a second simultaneous
+        // playback instance, which is the layering bug we hit on rapid
+        // visibility toggles.
+        if (!cur.playing()) {
+          try { cur.play(); } catch { /* ignore */ }
+        }
         cur.fade(cur.volume(), this.currentTarget(), 200);
       }
     }
   }
 
   reset(): void {
+    this.pendingPauses.forEach((id) => window.clearTimeout(id));
+    this.pendingPauses.clear();
     this.howls.forEach((h) => { try { h.unload(); } catch { /* ignore */ } });
     this.howls.clear();
     this.active = null;

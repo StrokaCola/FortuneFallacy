@@ -38,6 +38,7 @@ class AudioEngineImpl {
   private state: State;
   private actual: ActualLayers = { base: 0, combo: 0, peak: 0, fail: 0 };
   private audioSettingsUnsub: (() => void) | null = null;
+  private visibilityHandler: (() => void) | null = null;
   private rafHandle: number | null = null;
   private lastTick = 0;
   private started = false;
@@ -125,10 +126,14 @@ class AudioEngineImpl {
     this.tick();
     this.audioSettingsUnsub = audioSettings.subscribe(() => this.applyVolumes());
 
-    document.addEventListener('visibilitychange', () => {
+    // Track the visibility handler so dispose() can remove it on HMR.
+    // Otherwise each replaced module instance leaks a fresh listener and
+    // tab-toggles fire pause/resume on N stale engines.
+    this.visibilityHandler = () => {
       if (document.hidden) this.pause();
       else this.resume();
-    });
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   pause(): void {
@@ -250,8 +255,24 @@ class AudioEngineImpl {
   dispose(): void {
     this.audioSettingsUnsub?.();
     this.audioSettingsUnsub = null;
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
     if (this.rafHandle != null) cancelAnimationFrame(this.rafHandle);
     this.rafHandle = null;
+    // Unload every Howl so HMR (in dev) or repeated start() (in test)
+    // doesn't leave the old streaming loops alive in the audio context.
+    // Without this, a long dev session compounds 4 fresh howls per HMR
+    // until the music sounds like a tape collage.
+    if (this.layers) {
+      try { this.layers.base.unload(); } catch { /* ignore */ }
+      try { this.layers.combo.unload(); } catch { /* ignore */ }
+      try { this.layers.peak.unload(); } catch { /* ignore */ }
+      try { this.layers.fail.unload(); } catch { /* ignore */ }
+      this.layers = null;
+    }
+    this.started = false;
   }
 
   private scheduleSave(): void {
