@@ -30,6 +30,7 @@ import { COMBOS } from '../../core/scoring/combos';
 import { triggerShake } from '../visual/screenShake';
 import { PortalGate } from '../portal/PortalGate';
 import { computeOneMoreRunHook, HOOK_TONE_COLOR } from './postmortem/oneMoreRunHook';
+import { RunQuestLog } from './postmortem/RunQuestLog';
 
 const selectRun = (s: GameState) => s.run;
 const selectMeta = (s: GameState) => s.meta;
@@ -410,6 +411,11 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
             </div>
           );
         })()}
+
+        {/* "What's next?" quest-log nudges — surfaced ABOVE the action
+            row so the player sees the forward-looking goal before the
+            Try Again / Run Again button. See postmortem/RunQuestLog.tsx. */}
+        <RunQuestLog />
 
         {/* Action row — kept identical between modes so the button
             position is muscle-memory across runs. The Cosmic Lap
