@@ -19,6 +19,10 @@ import { firePulse } from './modFx/pulse';
 import { fireLoaded } from './modFx/loaded';
 import { firePipCharge } from './modFx/pipCharge';
 import { fireBackstop } from './modFx/backstop';
+import { fireCrown } from './modFx/crown';
+import { fireShatter } from './modFx/shatter';
+import { fireSwirl } from './modFx/swirl';
+import { fireFlashback } from './modFx/flashback';
 import { computeDropSlot } from './dragSlot';
 import { getDigitTexture } from './digitTexture';
 import { projectToScreen } from './projectToScreen';
@@ -296,7 +300,7 @@ export class Dice3D {
   // Each entry carries the trigger kind + accent + face value so the drain
   // site can dispatch to the right modFx factory.
   private pendingPulses: Map<number, Array<{
-    kind: 'pulse' | 'loaded' | 'pipCharge' | 'backstop';
+    kind: 'pulse' | 'loaded' | 'pipCharge' | 'backstop' | 'crown' | 'shatter' | 'swirl' | 'flashback';
     accent: string;
     faceValue: number;
   }>> = new Map();
@@ -545,6 +549,18 @@ export class Dice3D {
                   break;
                 case 'backstop':
                   fireBackstop(this.scene, pos, DIE_SIZE);
+                  break;
+                case 'crown':
+                  fireCrown(this.scene, pos, DIE_SIZE);
+                  break;
+                case 'shatter':
+                  fireShatter(this.scene, pos, DIE_SIZE);
+                  break;
+                case 'swirl':
+                  fireSwirl(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'flashback':
+                  fireFlashback(this.scene, pos, entry.accent, DIE_SIZE);
                   break;
               }
             }

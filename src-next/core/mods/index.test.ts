@@ -72,7 +72,11 @@ describe('D-2 mod entries', () => {
 });
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-const VALID_TRIGGERS = new Set(['loaded', 'pipCharge', 'backstop', 'pulse']);
+const VALID_TRIGGERS = new Set([
+  'loaded', 'pipCharge', 'backstop', 'pulse',
+  // 2026-05-14 fifth pass — bespoke FX for crown / brittle / wildcard / echo.
+  'crown', 'shatter', 'swirl', 'flashback',
+]);
 
 describe('MODS visual contract', () => {
   it('every mod has a visual block', () => {

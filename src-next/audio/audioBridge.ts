@@ -82,6 +82,17 @@ export function startAudioBridge(): () => void {
         case 'loaded':    sfxModule.sfxPlay('modLoaded'); break;
         case 'pipCharge': sfxModule.sfxPlay('modPipCharge'); break;
         case 'backstop':  sfxModule.sfxPlay('modBackstop'); break;
+        // 2026-05-14 fifth pass — bespoke visual FX, audio still
+        // routed through the closest existing voice until a dedicated
+        // pass authors new synths. Mapping by feel:
+        //   crown    → modBackstop (warm low ding = regal payoff)
+        //   shatter  → modLoaded  (rising-chord + whoosh ≈ fracture)
+        //   swirl    → modPulse   (bright chime fits the prismatic ring)
+        //   flashback→ modPulse   (lighter pulse for the doubled halo)
+        case 'crown':     sfxModule.sfxPlay('modBackstop'); break;
+        case 'shatter':   sfxModule.sfxPlay('modLoaded'); break;
+        case 'swirl':     sfxModule.sfxPlay('modPulse'); break;
+        case 'flashback': sfxModule.sfxPlay('modPulse'); break;
       }
     }),
     // Forge moments. Attach is a louder confirm; detach is the lighter

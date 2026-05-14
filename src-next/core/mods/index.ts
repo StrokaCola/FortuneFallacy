@@ -81,7 +81,18 @@ export type ModVisual = {
     | 'gilded'
     | 'pulsing'
     | 'pulsing-theatrical';
-  triggerFx: 'loaded' | 'pipCharge' | 'backstop' | 'pulse';  // pilot or generic; used by Phase 5/6
+  triggerFx:
+    | 'loaded'
+    | 'pipCharge'
+    | 'backstop'
+    | 'pulse'
+    // 2026-05-14 fifth pass — bespoke FX for the four mods whose
+    // mechanics most justified a custom animation. See
+    // `src-next/render/three/modFx/{crown,shatter,swirl,flashback}.ts`.
+    | 'crown'
+    | 'shatter'
+    | 'swirl'
+    | 'flashback';
 };
 
 export type ModRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -321,19 +332,19 @@ export const MODS: ModDef[] = [
     id: 'crown', name: 'Crown', icon: '♛',
     desc: 'If face is 6: ×1.5 mult on this die (multiplicative)',
     crownMult: 1.5, crownFace: 6, rarity: 'legendary',
-    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'haloed-theatrical' },
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'crown', geometricVariant: 'haloed-theatrical' },
   },
   {
     id: 'brittle', name: 'Brittle', icon: '☄',
     desc: '+5 mult per scoring die. Destroyed if the hand busts.',
     multBonus: 5, loseOnBust: true, rarity: 'rare',
-    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
+    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'shatter', geometricVariant: 'spiked' },
   },
   {
     id: 'wildcard', name: 'Wildcard', icon: '✱',
     desc: 'Counts as any face for combo detection (chooses best).',
     wildcard: true, rarity: 'legendary',
-    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'swirl', geometricVariant: 'etched' },
   },
   // ─── Phase 5b: combo / round / ante / galaxy aware mods ────────────────
   // Visuals reuse existing materialKeys so the renderer doesn't need new
@@ -408,7 +419,7 @@ export const MODS: ModDef[] = [
     id: 'echo', name: 'Echo', icon: '⤳',
     desc: 'Repeats the previous mod\'s effect on this die.',
     echo: true, rarity: 'legendary',
-    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
+    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'flashback', geometricVariant: 'pulsing-theatrical' },
   },
   // ─── Scaling die-mods (2026-05-11) ────────────────────────────────────
   // Each has a per-instance counter (run.diceModStacks[dieIdx][slotIdx]).
