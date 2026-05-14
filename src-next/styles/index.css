@@ -1133,6 +1133,61 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 .reduce-motion .cosmos-lightning { animation: none; opacity: 0; }
 
+/* Cosmic meteor shower — graceful shooting stars across the cosmos
+   backdrop. Each streak is an outer rotated wrapper (positioning +
+   angle) holding an inner `.cosmos-meteor` that translates along its
+   local X axis. Splitting rotate from translate lets the keyframe
+   animate transform without clobbering the inline rotation. The
+   trail extends BEHIND the head (gradient runs transparent → accent
+   → near-white) and the whole streak screen-blends against the
+   starfield so it reads as actual cosmic light, not an overlay. */
+.cosmos-meteor {
+  position: relative;
+  width: 1px;
+  height: 0;
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: blur(0.3px);
+  animation-name: cosmos-meteor-fly;
+  animation-timing-function: cubic-bezier(0.32, 0, 0.5, 0.6);
+  animation-fill-mode: forwards;
+}
+.cosmos-meteor-trail {
+  position: absolute;
+  right: 4px;
+  top: -1px;
+  width: 180px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--meteor-accent, #dcd4ff) 75%,
+    #fff7e0 100%
+  );
+  border-radius: 1px;
+  filter: drop-shadow(0 0 6px var(--meteor-accent, #dcd4ff));
+}
+.cosmos-meteor-head {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  background: #fff7e0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 4px var(--meteor-accent, #dcd4ff),
+    0 0 12px var(--meteor-accent, #dcd4ff),
+    0 0 22px var(--meteor-accent, #dcd4ff);
+}
+@keyframes cosmos-meteor-fly {
+  0%   { transform: translateX(0); opacity: 0; }
+  12%  { opacity: 0.95; }
+  72%  { opacity: 0.85; }
+  100% { transform: translateX(140vmax); opacity: 0; }
+}
+.reduce-motion .cosmos-meteor { animation: none; opacity: 0; }
+
 /* EventFlash — universal one-shot screen flash for achievement +
    blind-clear moments. Peak opacity comes from a CSS custom property
    so each event type can tune its own intensity (default 0.4). */
@@ -1753,6 +1808,7 @@ body.perf-degraded .btn-ghost   { backdrop-filter: none; }
 body.perf-degraded .cosmos-stardust-near,
 body.perf-degraded .cosmos-stardust-far,
 body.perf-degraded .cosmos-lightning,
+body.perf-degraded .cosmos-meteor,
 body.perf-degraded .forge-spark,
 body.perf-degraded .edition-foil::before,
 body.perf-degraded .edition-holo,

@@ -34,23 +34,75 @@ export function ScoreFloat() {
   const [goldUntil, setGoldUntil] = useState(0);
   const [explosion, setExplosion] = useState<{ key: number; gold: boolean; mega: boolean } | null>(null);
   const explosionKeyRef = useRef(0);
+  // Latest displayScore value — beats fire from a stable listener that
+  // captures state once, so we mirror through a ref to read the truly
+  // current value at boom time without re-binding the listener.
+  const displayScoreRef = useRef<number | null>(null);
+  // Pending boom data — set when a boom beat fires, consumed when the
+  // onScoreCounterFill event arrives at first-star-arrival. While this
+  // is non-null the counter is "pinned" at the pre-boom value and the
+  // explosion celebration is held off until the tween completes.
+  const pendingBoomRef = useRef<{ from: number; to: number; gold: boolean; mega: boolean } | null>(null);
+
+  useEffect(() => {
+    displayScoreRef.current = displayScore;
+  }, [displayScore]);
 
   useEffect(() => {
     const off = bus.on('onScoreBeat', ({ beat }) => {
       if (beat.kind === 'cross-target') {
         setGoldUntil(performance.now() + 4000);
       }
-      if ('runningTotal' in beat) {
+      if (beat.kind === 'boom') {
+        // Pin the counter at the pre-boom running total. The actual
+        // climb to beat.runningTotal (+ the explosion celebration)
+        // is deferred to onScoreCounterFill, which fires when the
+        // first star trail from the BoomNumber reaches the counter.
+        const mega = (beat.megaRatio ?? 0) >= 3;
+        const from = displayScoreRef.current ?? 0;
+        pendingBoomRef.current = {
+          from,
+          to: beat.runningTotal,
+          gold: beat.crossedTarget,
+          mega,
+        };
+        setDisplayScore(from);
+      } else if ('runningTotal' in beat) {
         setDisplayScore(beat.runningTotal);
       }
-      if (beat.kind === 'boom') {
-        const key = ++explosionKeyRef.current;
-        const mega = (beat.megaRatio ?? 0) >= 3;
-        setExplosion({ key, gold: beat.crossedTarget, mega });
-        window.setTimeout(() => {
-          setExplosion((cur) => (cur?.key === key ? null : cur));
-        }, EXPLOSION_DURATION_MS);
-      }
+    });
+    return () => off();
+  }, []);
+
+  useEffect(() => {
+    const off = bus.on('onScoreCounterFill', ({ durationMs }) => {
+      const pending = pendingBoomRef.current;
+      if (!pending) return;
+      pendingBoomRef.current = null;
+      const { from, to, gold, mega } = pending;
+      // ease-out cubic so the tween punches at the start and settles
+      // softly into the final value — matches the "stars carried it
+      // home" feel rather than a linear count-up.
+      const start = performance.now();
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - start) / durationMs);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const v = Math.round(from + (to - from) * eased);
+        setDisplayScore(v);
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // Tween end: pop the celebration on the counter itself.
+          // Keyed so a fresh re-mount kicks off the score-boom-pop
+          // CSS animation cleanly.
+          const key = ++explosionKeyRef.current;
+          setExplosion({ key, gold, mega });
+          window.setTimeout(() => {
+            setExplosion((cur) => (cur?.key === key ? null : cur));
+          }, EXPLOSION_DURATION_MS);
+        }
+      };
+      requestAnimationFrame(tick);
     });
     return () => off();
   }, []);

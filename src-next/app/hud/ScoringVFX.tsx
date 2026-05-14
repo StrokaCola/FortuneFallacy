@@ -52,12 +52,6 @@ type StarRippleEvent = {
   id: number;
   intensity: 'normal' | 'mega'; // mega adds an extra ring + larger radius
 };
-type MeteorShowerEvent = {
-  kind: 'meteorShower';
-  id: number;
-  count: number; // 3-7 streaks
-  accent: string;
-};
 type ConstellationSealEvent = {
   kind: 'constellationSeal';
   id: number;
@@ -73,7 +67,7 @@ type ConductiveArcsEvent = {
 };
 
 type Effect = SlamEvent | StampEvent | BoomEvent
-  | StarRippleEvent | MeteorShowerEvent | ConstellationSealEvent | ConductiveArcsEvent;
+  | StarRippleEvent | ConstellationSealEvent | ConductiveArcsEvent;
 
 // Default particle intensity (the demo's tweak slider goes 1–5; production
 // uses the tuned mid-high value).
@@ -515,47 +509,6 @@ function StarRipple({ intensity }: { intensity: 'normal' | 'mega' }) {
   );
 }
 
-// Meteor shower — N comet streaks travel diagonally across the
-// cosmos backdrop. Each comet has a head dot + a long luminous
-// trail tinted in the run's accent. Staggered start times read as
-// a SHOWER (random arrivals) rather than a synchronous burst.
-// Diagonal angles vary slightly per streak so they don't feel
-// rail-aligned.
-function MeteorShower({ accent, count }: { accent: string; count: number }) {
-  const streaks = Array.from({ length: count }).map((_, i) => {
-    // Pseudo-random but deterministic per index so re-renders stay
-    // stable. Each streak: starting Y position, angle deviation,
-    // delay, and travel duration.
-    const startY = 5 + ((i * 37) % 50);     // 5-55% from the top
-    const angleDeg = 40 + ((i * 13) % 25);  // 40-65 degrees, downward-right
-    const delay = (i * 130) % 700;
-    const duration = 900 + ((i * 47) % 400); // 900-1300ms
-    const trailLen = 220 + ((i * 19) % 120); // 220-340px trail
-    return { i, startY, angleDeg, delay, duration, trailLen };
-  });
-  return (
-    <div className="vfx-meteor-root" aria-hidden="true">
-      {streaks.map((s) => (
-        <div
-          key={s.i}
-          className="vfx-meteor"
-          style={{
-            top: `${s.startY}%`,
-            transform: `rotate(${s.angleDeg}deg)`,
-            animationDelay: `${s.delay}ms`,
-            animationDuration: `${s.duration}ms`,
-            ['--meteor-accent' as string]: accent,
-            ['--meteor-trail-len' as string]: `${s.trailLen}px`,
-          }}
-        >
-          <div className="vfx-meteor-trail" />
-          <div className="vfx-meteor-head" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // Constellation seal — stamps the active constellation's GLYPH (the
 // same point-array used in ConstellationSelect.Glyph) at the center
 // of the play area. Stars connect via dashed lines + each point
@@ -606,25 +559,44 @@ function ConstellationSeal({ glyph, color, name }: { glyph: { x: number; y: numb
   );
 }
 
-// Conductive arcs — the "constellation as conductor" visualisation.
-// Traced bezier paths fan from a virtual constellation anchor (above
-// the play area, top-center) DOWN to each scoring die in scoring
-// order. Each path uses stroke-dasharray to PAINT itself in over
-// 200ms, holds 100ms, then fades. Staggered by 80ms so they read as
-// a sequence — the constellation tapping each die in turn.
+// Conductive arcs — the "constellation traced by the dice" beat.
+// Single chain that walks die0 → die1 → … in scoring order. Each
+// segment is a quadratic bezier whose control point is offset
+// perpendicular to the segment so the chain wobbles like a
+// hand-traced constellation rather than a straight polyline. The
+// anchor pulse sits ON the first die instead of floating above the
+// play area, and each subsequent segment paints in 80ms after its
+// predecessor so the constellation reads as being drawn forward in
+// scoring sequence.
 //
 // Skips the effect entirely if fewer than 3 die positions are
 // supplied (the shorter sequences don't earn the visual; reserve
 // the moment for chains).
 function ConductiveArcs({ diePositions, accent }: { diePositions: Array<{ x: number; y: number }>; accent: string }) {
   if (diePositions.length < 3) return null;
-  // Anchor: top-center of the viewport at 18% down. The "above the
-  // play area" framing requires the anchor to sit clearly above the
-  // dice tray, not inside it.
-  const ax = typeof window !== 'undefined' ? window.innerWidth / 2 : 640;
-  const ay = typeof window !== 'undefined' ? window.innerHeight * 0.18 : 120;
   // Cap to the first 8 dice (largest scoring count is ~7 anyway).
   const dice = diePositions.slice(0, 8);
+  const first = dice[0]!;
+  // Per-segment jitter: perpendicular offset on the control point,
+  // alternating sign so the chain wobbles back-and-forth. Magnitude
+  // scales with segment length so short segments still curve, long
+  // segments don't overshoot. Deterministic — same dice produce the
+  // same chain.
+  const segments = dice.slice(1).map((b, segIdx) => {
+    const a = dice[segIdx]!;
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const sign = segIdx % 2 === 0 ? 1 : -1;
+    const jitterMag = Math.min(28, Math.max(10, len * 0.18));
+    const cx = mx + nx * jitterMag * sign;
+    const cy = my + ny * jitterMag * sign;
+    return { a, b, cx, cy };
+  });
   return (
     <svg
       className="vfx-conductive-root"
@@ -637,39 +609,32 @@ function ConductiveArcs({ diePositions, accent }: { diePositions: Array<{ x: num
         pointerEvents: 'none',
       }}
     >
-      {/* Anchor pulse — the constellation conductor "preparing." */}
+      {/* Anchor pulse — sits on the first scoring die so the chain
+          reads as starting from the dice themselves, not from a
+          floating point above the play area. */}
       <circle
-        cx={ax} cy={ay} r="6"
+        cx={first.x} cy={first.y} r="6"
         fill={accent}
         className="vfx-conductive-anchor"
         style={{ filter: `drop-shadow(0 0 10px ${accent})` }}
       />
-      {dice.map((d, i) => {
-        // Bezier path from anchor to die. Control point is between
-        // them but pulled inward so the curve arcs gracefully rather
-        // than a straight line. Single-curve cubic.
-        const cx1 = ax + (d.x - ax) * 0.35;
-        const cy1 = ay + (d.y - ay) * 0.7;
-        const cx2 = ax + (d.x - ax) * 0.7;
-        const cy2 = ay + (d.y - ay) * 0.85;
-        return (
-          <path
-            key={i}
-            d={`M ${ax} ${ay} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${d.x} ${d.y}`}
-            stroke={accent}
-            strokeWidth="1.4"
-            fill="none"
-            strokeDasharray="2 4"
-            strokeLinecap="round"
-            opacity={0}
-            className="vfx-conductive-arc"
-            style={{
-              animationDelay: `${i * 80}ms`,
-              filter: `drop-shadow(0 0 4px ${accent})`,
-            }}
-          />
-        );
-      })}
+      {segments.map((s, i) => (
+        <path
+          key={i}
+          d={`M ${s.a.x} ${s.a.y} Q ${s.cx} ${s.cy} ${s.b.x} ${s.b.y}`}
+          stroke={accent}
+          strokeWidth="1.4"
+          fill="none"
+          strokeDasharray="2 4"
+          strokeLinecap="round"
+          opacity={0}
+          className="vfx-conductive-arc"
+          style={{
+            animationDelay: `${i * 80}ms`,
+            filter: `drop-shadow(0 0 4px ${accent})`,
+          }}
+        />
+      ))}
     </svg>
   );
 }
@@ -751,7 +716,6 @@ type Callbacks = {
   boom: ((variant: BoomVariant, total: number, newBest: boolean) => void) | null;
   // Fancy-FX-pass additions:
   starRipple: ((intensity: 'normal' | 'mega') => void) | null;
-  meteorShower: ((accent: string, count: number) => void) | null;
   constellationSeal: ((glyph: { x: number; y: number }[], color: string, name: string) => void) | null;
   conductiveArcs: ((diePositions: Array<{ x: number; y: number }>, accent: string) => void) | null;
 };
@@ -763,7 +727,6 @@ export const scoringVFX = {
     bail: null,
     boom: null,
     starRipple: null,
-    meteorShower: null,
     constellationSeal: null,
     conductiveArcs: null,
   } as Callbacks,
@@ -793,15 +756,6 @@ export const scoringVFX = {
    */
   fireStarRipple(intensity: 'normal' | 'mega' = 'normal') {
     if (this.callbacks.starRipple) this.callbacks.starRipple(intensity);
-  },
-
-  /**
-   * Meteor shower across the cosmos backdrop — N comets streak
-   * diagonally with luminous trails in the run's accent. Fires on
-   * mega booms (ratio > 2). count = 3-7 streaks.
-   */
-  fireMeteorShower(accent: string, count: number = 5) {
-    if (this.callbacks.meteorShower) this.callbacks.meteorShower(accent, count);
   },
 
   /**
@@ -932,14 +886,6 @@ export function ScoringVFX() {
       window.setTimeout(() => removeEffect(id), 1100);
     };
 
-    scoringVFX.callbacks.meteorShower = (accent, count) => {
-      const id = ++nextId.current;
-      const event: MeteorShowerEvent = { kind: 'meteorShower', id, accent, count };
-      setEffects((prev) => [...prev, event]);
-      // Longest streak ~1400ms + 300ms fade tail.
-      window.setTimeout(() => removeEffect(id), 1700);
-    };
-
     scoringVFX.callbacks.constellationSeal = (glyph, color, name) => {
       const id = ++nextId.current;
       const event: ConstellationSealEvent = { kind: 'constellationSeal', id, glyph, color, name };
@@ -963,7 +909,6 @@ export function ScoringVFX() {
       scoringVFX.callbacks.bail = null;
       scoringVFX.callbacks.boom = null;
       scoringVFX.callbacks.starRipple = null;
-      scoringVFX.callbacks.meteorShower = null;
       scoringVFX.callbacks.constellationSeal = null;
       scoringVFX.callbacks.conductiveArcs = null;
     };
@@ -996,7 +941,6 @@ export function ScoringVFX() {
           meteor streaks, conductive arcs spanning to dice positions). */}
       {effects.map((eff) => {
         if (eff.kind === 'starRipple') return <StarRipple key={eff.id} intensity={eff.intensity} />;
-        if (eff.kind === 'meteorShower') return <MeteorShower key={eff.id} accent={eff.accent} count={eff.count} />;
         if (eff.kind === 'conductiveArcs') return <ConductiveArcs key={eff.id} diePositions={eff.diePositions} accent={eff.accent} />;
         return null;
       })}
