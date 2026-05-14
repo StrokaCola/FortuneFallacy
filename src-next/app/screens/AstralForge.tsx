@@ -45,7 +45,12 @@ export function AstralForge() {
         </div>
       </div>
 
-      <div data-coach="perk-grid" className="w-full max-w-2xl grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+      <div data-coach="perk-grid" className="w-full max-w-2xl grid gap-3" style={{
+        // 260→200 floor: at 260px, tight phones (≤480px wide) fell back
+        // to one perk per row. 200px lets two perks share a row on a
+        // 420px phone, halving the scroll height.
+        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+      }}>
         {ASTRAL_PERKS.map((perk) => (
           <PerkCard
             key={perk.id}

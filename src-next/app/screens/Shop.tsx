@@ -93,7 +93,10 @@ export function Shop() {
       // bottom padding clears the safe-area inset.
       ...(tight ? {
         paddingTop: 'calc(var(--hud-top-h, 134px) + 12px)',
-        paddingBottom: 'calc(var(--hud-bottom-h, 0px) + 24px)',
+        // Extra bottom padding clears the pinned action bar (~64px tall
+        // with its 8px outer margin) so the last offer card scrolls
+        // above it instead of being permanently obscured.
+        paddingBottom: 'calc(var(--hud-bottom-h, 0px) + 88px)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
       } : null),
     }}>
@@ -177,13 +180,18 @@ export function Shop() {
       )}
 
       <div style={tight ? {
-        // In-flow at the bottom of the scroll on tight portrait. Sits below
-        // every offer; user scrolls to find it. A Collection button opens
-        // a bottom sheet with owned upgrades — see CollectionSheet.
-        display: 'flex', flexDirection: 'column-reverse', gap: 8,
-        zIndex: 5, alignItems: 'stretch',
-        width: 'min(360px, calc(100vw - 24px))',
-        marginTop: 8,
+        // Tight: pin the action bar to the bottom of the viewport so
+        // Reroll / Collection / Next are always one tap away, instead
+        // of forcing the player to scroll past 3 tall offer cards to
+        // find them. Background fades into the cosmos so the row reads
+        // as anchored chrome, not an offer card.
+        position: 'fixed', left: 12, right: 12, bottom: 12,
+        display: 'flex', flexDirection: 'row', gap: 8,
+        zIndex: 8, alignItems: 'stretch', justifyContent: 'center',
+        padding: '8px 10px',
+        background: 'linear-gradient(180deg, rgba(7,5,26,0.6), rgba(7,5,26,0.92))',
+        borderRadius: 12,
+        backdropFilter: 'blur(6px)',
       } : {
         position: 'absolute', left: '50%', bottom: 28,
         transform: 'translateX(-50%)',

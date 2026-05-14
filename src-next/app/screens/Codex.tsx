@@ -67,7 +67,22 @@ export function Codex() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
+        {/* Tab row: with 10 tabs the wrap into 2-3 rows on narrow
+            phones eats vertical space. Switch to a horizontal scroll
+            container with a fade-mask on the right edge so off-screen
+            tabs are obviously reachable instead of silently wrapped. */}
+        <div style={{
+          display: 'flex', gap: 6,
+          justifyContent: 'flex-start',
+          marginBottom: 18,
+          overflowX: 'auto',
+          overflowY: 'visible',
+          paddingBottom: 4,
+          paddingRight: 16,
+          WebkitMaskImage: 'linear-gradient(90deg, #000 0%, #000 90%, transparent 100%)',
+          maskImage: 'linear-gradient(90deg, #000 0%, #000 90%, transparent 100%)',
+          scrollbarWidth: 'none',
+        }}>
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -80,6 +95,8 @@ export function Codex() {
                 color: tab === t.id ? '#7be3ff' : '#dcd4ff',
                 fontSize: 10, letterSpacing: '0.28em',
                 cursor: 'pointer',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}>
               {t.label}
             </button>

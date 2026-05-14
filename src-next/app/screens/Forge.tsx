@@ -292,7 +292,12 @@ export function Forge() {
               - Centerpiece DieView levitates with a slow vertical bob. */}
           <div ref={dieAnchorRef} data-forge-die-panel className="panel" style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
-            height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+            // On landscape phones (360px-tall) the bare width-as-height
+            // orbit can swallow the whole viewport vertically, pushing
+            // the mod inventory off-screen. Clamp the height to half
+            // the viewport (minus a 40px buffer for the header strip)
+            // so the inventory always stays reachable below.
+            height: tight ? 'min(320px, calc(100vw - 32px), calc(50vh - 40px))' : 360,
             position: 'relative', display: 'grid', placeItems: 'center',
             overflow: 'hidden',
           }}>

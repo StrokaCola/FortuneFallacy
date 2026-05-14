@@ -91,9 +91,11 @@ export function TopBar({
   // because it gives the panel typographic weight.
   const renderBigBlind = !tight;
 
-  // Astrolabe collapses to a small dial (or hides) on tight stages so
-  // the score panel doesn't eat half the visible viewport on a phone.
-  const astrolabeSize = tight ? 0 : 92;
+  // Astrolabe scales down on tight stages — was previously hidden
+  // entirely at size 0. A 56px dial still reads as the constellation's
+  // identity anchor on a 360-wide phone without crowding the score
+  // panel. Wider viewports get the full 92px.
+  const astrolabeSize = tight ? 56 : 92;
   const scoreFontSize = tight ? 26 : 38;
   const panelPad = tight ? '8px 12px' : '14px 18px';
   const centerPad = tight ? '6px 12px' : '12px 22px';

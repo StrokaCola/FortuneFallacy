@@ -141,6 +141,25 @@ export function CatalystStrip() {
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
+        // Narrow viewports: cap the row width to the visible play area
+        // and allow horizontal scrolling for 5+ catalysts. The mask
+        // gradient on the right edge signals "more off-screen" so the
+        // player knows to swipe — without it the trailing cards just
+        // silently disappear.
+        ...(wide ? {} : {
+          maxWidth: 'calc(100vw - 36px)',
+          overflowX: 'auto',
+          overflowY: 'visible',
+          paddingBottom: 4,
+          paddingRight: catalysts.length >= 5 ? 18 : 0,
+          WebkitMaskImage: catalysts.length >= 5
+            ? 'linear-gradient(90deg, #000 0%, #000 85%, transparent 100%)'
+            : undefined,
+          maskImage: catalysts.length >= 5
+            ? 'linear-gradient(90deg, #000 0%, #000 85%, transparent 100%)'
+            : undefined,
+          scrollbarWidth: 'none',
+        }),
       }}
     >
       {catalysts.map((id, i) => (

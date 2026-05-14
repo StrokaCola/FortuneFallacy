@@ -7,6 +7,9 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { getDailyChallenge } from '../../online/dailyChallenge';
 import { lookupStake } from '../../data/stakes';
 import { getTipOfTheDay } from '../../data/tips';
+import { currentPrestigeTier } from '../../data/prestigeTiers';
+
+const selectCosmicDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime ?? 0;
 
 // Match PauseMenu's notion of "run in progress" — also count an active
 // round (mid-hand) so a fresh-launch with `score === 0 && goalIdx === 0`
@@ -32,6 +35,8 @@ export function Title() {
   const constellationId = useStore(selectConstellationId);
   const highScores = useStore(selectHighScores);
   const dailyHistory = useStore(selectDailyHistory);
+  const lifetimeDust = useStore(selectCosmicDustLifetime);
+  const prestige = currentPrestigeTier(lifetimeDust);
   const tight = useIsTightStage();
 
   // Today's daily challenge config. Computed render-side off the system
@@ -282,7 +287,33 @@ export function Title() {
           ◇ {getTipOfTheDay()}
         </div>
 
-        <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#9577ff', marginTop: versionMarginTop, opacity: 0.7 }}>
+        {/* Prestige chip — only renders for players who have earned
+            past Wanderer. Sits between the Tip of the Day and the
+            version stamp so returning players see their tier without
+            having to open the Hub. The footer's empty zone was unused
+            real estate; this anchors the player's identity at a glance. */}
+        {prestige.id !== 'wanderer' && (
+          <div className="f-mono uc" style={{
+            marginTop: tight ? 12 : 28,
+            fontSize: 10, letterSpacing: '0.28em',
+            color: prestige.color, opacity: 0.85,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '4px 12px', borderRadius: 999,
+            border: `1px solid ${prestige.color}55`,
+            background: `${prestige.color}10`,
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 700,
+              textShadow: `0 0 8px ${prestige.color}88` }}>{prestige.glyph}</span>
+            <span>stargazer · {prestige.name}</span>
+            <span style={{ color: '#9577ff' }}>·</span>
+            <span style={{ color: '#bba8ff' }}>{lifetimeDust.toLocaleString()} dust</span>
+          </div>
+        )}
+        <div className="f-mono uc" style={{
+          fontSize: 9, letterSpacing: '0.3em', color: '#9577ff',
+          marginTop: prestige.id !== 'wanderer' ? 8 : versionMarginTop,
+          opacity: 0.7,
+        }}>
           v 0.42 · seed ⟨LYRA-VII⟩
         </div>
       </div>

@@ -185,6 +185,36 @@ export function Hub() {
             </span>
           </div>
         )}
+        {/* Tight viewports: prestige badge becomes a tiny absolutely-
+            positioned corner chip in the bottom-left so the player
+            doesn't lose tier visibility on landscape phones. Hides for
+            Wanderer tier to keep the corner clean for new players. */}
+        {tight && prestige.id !== 'wanderer' && (
+          <div className="f-mono uc has-tip" style={{
+            position: 'fixed', bottom: 8, left: 8,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 8px', borderRadius: 999,
+            border: `1px solid ${prestige.color}66`,
+            background: 'rgba(7,5,26,0.7)',
+            fontSize: 8.5, letterSpacing: '0.22em',
+            color: prestige.color,
+            cursor: 'help',
+            zIndex: 6,
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700,
+              textShadow: `0 0 6px ${prestige.color}88` }}>{prestige.glyph}</span>
+            <span>{prestige.name}</span>
+            <span className="tip tip-above">
+              <span className="tip-title">Stargazer · {prestige.name}</span>
+              Lifetime Cosmic Dust: {lifetimeDust.toLocaleString()}.
+              {next && (
+                <span style={{ display: 'block', marginTop: 4, color: next.tier.color }}>
+                  ▸ {next.gap.toLocaleString()} more dust to {next.tier.name}.
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* The constellation thread is 3×240+2×26=772px wide and never
             fits on a 640px landscape phone — drop it on tight. */}
@@ -234,6 +264,14 @@ export function Hub() {
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
                 opacity: cleared ? 0.55 : locked ? 0.78 : 1,
                 filter: locked ? 'saturate(0.5)' : undefined,
+                // Current event slot gets a subtle violet wash so the
+                // "a choice waits" trial visually separates from the
+                // regular tier-sigil cards next to it. The frame still
+                // uses eventAccent; the background gives the card a
+                // distinct presence without screaming.
+                background: cur && hasEvent
+                  ? `linear-gradient(180deg, ${eventAccent}14, transparent 70%)`
+                  : undefined,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 transition: 'opacity 200ms ease, filter 200ms ease',
               }}>
@@ -414,11 +452,17 @@ export function Hub() {
           // the action row off-screen.
           marginTop: tight ? 12 : 4,
         }}>
+          {/* Tight viewports: buttons grow to share the row evenly with
+              a 80px floor each. Without this, three buttons on a
+              360px-wide landscape phone wrap into a 3-row stack that
+              eats vertical space. The flex grow + min-width packs
+              them into a 2-row stack (or 1-row on slightly wider) and
+              reclaims ~40% of the action-row height. */}
           {!forgeDisabled && (
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}
-              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
               ⚒ Forge
               <span className="tip tip-above">
                 <span className="tip-title">Star Forge</span>
@@ -431,7 +475,7 @@ export function Hub() {
               className="btn btn-ghost mat-interactive has-tip tap"
               data-coach="skip-button"
               onClick={() => dispatch({ type: 'SKIP_BLIND' })}
-              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
               ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
               <span className="tip tip-above">
                 <span className="tip-title">Skip Trial</span>
@@ -442,7 +486,7 @@ export function Hub() {
           <button
             className="btn btn-ghost mat-interactive has-tip tap"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-            style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
+            style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
             ← Title
             <span className="tip tip-above">
               <span className="tip-title">Return to Title</span>
