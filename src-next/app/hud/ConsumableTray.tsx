@@ -117,9 +117,16 @@ export function ConsumableTray() {
                     filter: `drop-shadow(0 0 6px ${color}80)`,
                   }}>{def.icon}</span>
                 </KindFrame>
+                {/* 9px is the floor for HUD chip text — the tray
+                    label used to drop to 7px which fell below readable
+                    on tight viewports. Letter-spacing trimmed slightly
+                    so the label still fits the 64px slot at the higher
+                    font size. */}
                 <div className="f-mono uc" style={{
-                  fontSize: 7, letterSpacing: '0.14em', color: '#dcd4ff',
+                  fontSize: 9, letterSpacing: '0.10em', color: '#dcd4ff',
                   textAlign: 'center', lineHeight: 1.1,
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  width: '100%',
                 }}>
                   {def.name}
                 </div>

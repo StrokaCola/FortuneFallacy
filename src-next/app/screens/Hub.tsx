@@ -19,6 +19,7 @@ import { describeDiceSpec } from '../../data/dice';
 import { isForgeDisabled } from '../../core/run/diceContext';
 import { stakeContext } from '../../core/run/stakeContext';
 import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
+import { ActionBar } from '../hud/ActionBar';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
@@ -185,6 +186,36 @@ export function Hub() {
             </span>
           </div>
         )}
+        {/* Tight viewports: prestige badge becomes a tiny absolutely-
+            positioned corner chip in the bottom-left so the player
+            doesn't lose tier visibility on landscape phones. Hides for
+            Wanderer tier to keep the corner clean for new players. */}
+        {tight && prestige.id !== 'wanderer' && (
+          <div className="f-mono uc has-tip" style={{
+            position: 'fixed', bottom: 8, left: 8,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 8px', borderRadius: 999,
+            border: `1px solid ${prestige.color}66`,
+            background: 'rgba(7,5,26,0.7)',
+            fontSize: 8.5, letterSpacing: '0.22em',
+            color: prestige.color,
+            cursor: 'help',
+            zIndex: 6,
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700,
+              textShadow: `0 0 6px ${prestige.color}88` }}>{prestige.glyph}</span>
+            <span>{prestige.name}</span>
+            <span className="tip tip-above">
+              <span className="tip-title">Stargazer · {prestige.name}</span>
+              Lifetime Cosmic Dust: {lifetimeDust.toLocaleString()}.
+              {next && (
+                <span style={{ display: 'block', marginTop: 4, color: next.tier.color }}>
+                  ▸ {next.gap.toLocaleString()} more dust to {next.tier.name}.
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* The constellation thread is 3×240+2×26=772px wide and never
             fits on a 640px landscape phone — drop it on tight. */}
@@ -217,9 +248,12 @@ export function Hub() {
               className="panel-strong has-tip"
               style={{
                 // Tight: shrink width so 3 cards fit a 640px landscape
-                // phone (3*180 + 2*8 = 556 < 640). Wider viewports keep
-                // the original 240px design size.
-                width: tight ? 'clamp(140px, 28vw, 180px)' : CARD_W,
+                // phone (3*180 + 2*8 = 556 < 640). Wider viewports cap
+                // at 240px design size but ALSO never reach past the
+                // viewport-minus-padding on portrait phones — on a
+                // 320px phone the bare 240px card used to overflow the
+                // 296px content column.
+                width: tight ? 'clamp(140px, 28vw, 180px)' : `min(${CARD_W}px, calc(100vw - 40px))`,
                 // Card height clamps with viewport so on short landscape
                 // phones the three trial cards plus action bar all fit
                 // *and* the inline Begin button stays inside the card.
@@ -231,6 +265,14 @@ export function Hub() {
                 boxShadow: cur ? `0 0 30px ${accent}55` : (isBoss ? '0 0 24px rgba(226,51,74,0.3)' : '0 8px 24px rgba(0,0,0,0.4)'),
                 opacity: cleared ? 0.55 : locked ? 0.78 : 1,
                 filter: locked ? 'saturate(0.5)' : undefined,
+                // Current event slot gets a subtle violet wash so the
+                // "a choice waits" trial visually separates from the
+                // regular tier-sigil cards next to it. The frame still
+                // uses eventAccent; the background gives the card a
+                // distinct presence without screaming.
+                background: cur && hasEvent
+                  ? `linear-gradient(180deg, ${eventAccent}14, transparent 70%)`
+                  : undefined,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 transition: 'opacity 200ms ease, filter 200ms ease',
               }}>
@@ -398,17 +440,13 @@ export function Hub() {
             which floated this row into the middle of the screen on
             short landscape phones. Inline placement keeps it under the
             cards at every viewport size. */}
-        <div style={{
-          display: 'flex',
-          gap: tight ? 4 : 12,
-          flexWrap: 'wrap', justifyContent: 'center',
+        <ActionBar tight={tight} style={{
           maxWidth: 'calc(100% - 40px)',
-          // Tight: add a clear 12px gutter between trial cards and the
-          // action row. With `clamp(140px, 45vh, 180px)` card heights on
-          // a 360px-tall landscape phone, the previous 0 margin let the
-          // cards' "Begin" button overhang touch the action row's
-          // pill buttons. 12px is the breathing room without pushing
-          // the action row off-screen.
+          // Tight: clear 12px gutter between trial cards and the action
+          // row. With `clamp(140px, 45vh, 180px)` card heights on a
+          // 360px-tall landscape phone, the previous 0 margin let the
+          // cards' "Begin" button overhang touch the action row's pill
+          // buttons.
           marginTop: tight ? 12 : 4,
         }}>
           {!forgeDisabled && (
@@ -446,7 +484,7 @@ export function Hub() {
               Abandon this run and go back to the title screen. Progress this run is lost.
             </span>
           </button>
-        </div>
+        </ActionBar>
 
         {/* Travel portals are decorative and don't fit on landscape
             phones (~360px tall) alongside trial cards + action row. They

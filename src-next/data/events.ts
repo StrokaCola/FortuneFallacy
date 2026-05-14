@@ -227,9 +227,16 @@ export function lookupEvent(id: string | null | undefined): EventDef | undefined
 // Generation rule:
 //   - boss blinds: never an event (null)
 //   - ante 1, ante 4: never an event (null) — onboarding + climax
-//   - antes 2, 3 non-boss: ~25% chance to roll an event
+//   - antes 2, 3 non-boss: ~1-in-6 chance to roll an event
+//
+// 2026-05-14: dropped from 25% to 1/6. Old rate produced ~26% of runs
+// with two or more encounters which over-saturated the experience;
+// 1-in-6 keeps an encounter as a noteworthy detour rather than a
+// regular feature of every other run.
 //
 // Pure function over (seed, goalIdx, ante, isBoss).
+const EVENT_CHANCE_PER_SLOT = 1 / 6;
+
 export function getEventForBlind(
   seed: number,
   goalIdx: number,
@@ -241,7 +248,7 @@ export function getEventForBlind(
   // Distinct rng namespace from voidstorms (different XOR constant) so
   // the two systems don't correlate.
   const rng = mulberry32((seed ^ (goalIdx * 0x85ebca6b)) >>> 0);
-  if (rng.next() >= 0.25) return null;
+  if (rng.next() >= EVENT_CHANCE_PER_SLOT) return null;
   // Weighted pick within the event pool.
   const total = EVENTS.reduce((sum, e) => sum + (e.weight ?? 1), 0);
   let roll = rng.next() * total;

@@ -32,38 +32,67 @@ export function buildOrbitalSatellite(opts: OrbitalSatelliteOpts): OrbitalSatell
   const chipRadius = (dieSize * CHIP_DIAMETER_FACTOR) / 2;
   const orbitRadius = dieSize * ORBIT_RADIUS_FACTOR;
 
-  // Chip — small emissive sphere in the accent color.
+  // Chip — small emissive sphere in the accent color. Starts at
+  // emissiveIntensity 0 + transparent opacity 0 so the entry animation
+  // can fade it in; cleaner than a hard pop when a mod attaches.
   const chipGeo = new THREE.SphereGeometry(chipRadius, 16, 12);
   const chipMat = new THREE.MeshStandardMaterial({
     color: accentColor,
     emissive: accentColor,
-    emissiveIntensity: 1.4,
+    emissiveIntensity: 0,
     metalness: 0.0,
     roughness: 0.4,
+    transparent: true,
+    opacity: 0,
     toneMapped: false,
   });
   const chip = new THREE.Mesh(chipGeo, chipMat);
   chip.name = 'Chip';
   group.add(chip);
 
-  // Halo sprite — soft glow behind the chip for visual punch.
+  // Halo sprite — soft glow behind the chip for visual punch. The
+  // entry animation expands it from 2× scale → 1×, so initial scale
+  // is 2× and opacity stays elevated during the inflate.
   const haloMat = new THREE.SpriteMaterial({
     map: getHaloTexture(),
     color: accentColor,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     toneMapped: false,
   });
   const halo = new THREE.Sprite(haloMat);
   const haloSize = chipRadius * 5.0;
-  halo.scale.set(haloSize, haloSize, 1);
+  halo.scale.set(haloSize * 2, haloSize * 2, 1);
   halo.name = 'Halo';
   group.add(halo);
 
   // Initialize at angle 0.
   setAngle(0);
+
+  // Entry animation — 400ms RAF-driven fade-in + halo collapse so a
+  // freshly-attached mod doesn't pop into existence. Cancels itself on
+  // dispose() to avoid stale callbacks rebuilding the disposed mats.
+  const ENTRY_MS = 400;
+  const t0 = performance.now();
+  let entryRaf = 0;
+  let entryDisposed = false;
+  function tickEntry(): void {
+    if (entryDisposed) return;
+    const dt = performance.now() - t0;
+    const t = Math.min(1, dt / ENTRY_MS);
+    const eased = 1 - Math.pow(1 - t, 3);
+    chipMat.opacity = eased;
+    chipMat.emissiveIntensity = eased * 1.4;
+    // Halo: scale 2 → 1, opacity 0 → 0.9 (bell curve so the halo peaks
+    // mid-entry at ~0.85 then settles at the steady-state 0.9).
+    const haloScale = (2 - eased) * haloSize;
+    halo.scale.set(haloScale, haloScale, 1);
+    haloMat.opacity = t < 0.5 ? (t / 0.5) * 0.85 : 0.85 + (t - 0.5) * 0.1;
+    if (t < 1) entryRaf = requestAnimationFrame(tickEntry);
+  }
+  entryRaf = requestAnimationFrame(tickEntry);
 
   function setAngle(radians: number): void {
     const x = orbitRadius * Math.cos(radians);
@@ -73,6 +102,8 @@ export function buildOrbitalSatellite(opts: OrbitalSatelliteOpts): OrbitalSatell
   }
 
   function dispose(): void {
+    entryDisposed = true;
+    if (entryRaf) cancelAnimationFrame(entryRaf);
     chipGeo.dispose();
     chipMat.dispose();
     haloMat.dispose();

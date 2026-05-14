@@ -19,6 +19,7 @@ import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
 import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
+import { formatModStackLabel } from '../hud/modStackLabel';
 import { invalidateRects } from '../../render/three/sharedRenderer';
 import '../hud/ForgeVFX.css';
 
@@ -155,7 +156,14 @@ export function Forge() {
   return (
     <div data-forge-scroll style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <ForgeVFX anchorRef={dieAnchorRef} />
-      <ForgeDebugOverlay dieAnchorRef={dieAnchorRef} />
+      {/* Debug overlay only mounts when the ?dbg=forge query flag is
+          set. Previously it always rendered a fixed-position DBG ON/OFF
+          toggle in the bottom-right at z-index 99999 — fine for
+          development, but a real player can accidentally hit it on
+          touch screens and lose the corner of the UI. */}
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dbg') === 'forge' && (
+        <ForgeDebugOverlay dieAnchorRef={dieAnchorRef} />
+      )}
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
@@ -284,10 +292,52 @@ export function Forge() {
               - Centerpiece DieView levitates with a slow vertical bob. */}
           <div ref={dieAnchorRef} data-forge-die-panel className="panel" style={{
             width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
-            height: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+            // On landscape phones (360px-tall) the bare width-as-height
+            // orbit can swallow the whole viewport vertically, pushing
+            // the mod inventory off-screen. Clamp the height to half
+            // the viewport (minus a 40px buffer for the header strip)
+            // so the inventory always stays reachable below.
+            height: tight ? 'min(320px, calc(100vw - 32px), calc(50vh - 40px))' : 360,
             position: 'relative', display: 'grid', placeItems: 'center',
             overflow: 'hidden',
           }}>
+            {/* Oracle-table rim — a faint circular outline + four
+                cardinal glyphs (N/S/E/W as ◇/◆/▲/▼) that frame the
+                die as if it sat on a divination table. Reinforces
+                the alchemy / oracle theming without competing with
+                the constellation sigil ring inside. The rim color
+                inherits the run's constellation accent so it carries
+                the same identity thread. */}
+            <svg aria-hidden="true" style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              width: '92%', height: '92%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              opacity: 0.42,
+            }} viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="92" fill="none"
+                stroke={constellation.color}
+                strokeWidth="0.8"
+                strokeDasharray="2 4" />
+              <circle cx="100" cy="100" r="88" fill="none"
+                stroke={constellation.color}
+                strokeWidth="0.4"
+                opacity="0.5" />
+              {/* Cardinal alchemy glyphs — top/right/bottom/left. */}
+              <text x="100" y="14" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">◇</text>
+              <text x="186" y="103" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">▲</text>
+              <text x="100" y="194" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">◆</text>
+              <text x="14" y="103" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">▼</text>
+            </svg>
             {/* Light shaft — column of soft warm/cool gradient descending
                 onto the die. Breathes very slowly so the panel never
                 feels static. */}
@@ -1238,22 +1288,6 @@ function ForgeDebugOverlay({ dieAnchorRef }: { dieAnchorRef: React.RefObject<HTM
   );
 }
 
-// 2026-05-11 polish — per-mod-instance stack chip label.
-// Returns null for non-scaling mods so the detach button doesn't render
-// an empty badge. The math mirrors what applyDieModStep credits the
-// die for at score time, so what the player sees here is what they'll
-// see on the next hand.
-import type { ModDef } from '../../core/mods';
-function formatModStackLabel(def: ModDef, stack: number): string | null {
-  if (stack <= 0) return null;
-  if (def.tallyChipPerStack) return `+${stack * def.tallyChipPerStack}c`;
-  if (def.cadenceMultPerStack) return `+${stack * def.cadenceMultPerStack}m (blind)`;
-  if (def.veteranMultPerStack) return `+${(stack * def.veteranMultPerStack).toFixed(1)}m`;
-  if (def.gluttonChipPerStack) return `+${stack * def.gluttonChipPerStack}c`;
-  if (def.dormantAwakenAt != null) {
-    return stack >= def.dormantAwakenAt ? '★ awake' : `${stack}/${def.dormantAwakenAt}`;
-  }
-  if (def.ballastChipPerStack) return `+${stack * def.ballastChipPerStack}c`;
-  if (def.pyreChipPerStack) return `+${stack * def.pyreChipPerStack}c`;
-  return null;
-}
+// formatModStackLabel — per-mod-instance stack chip label. Lives in
+// ../hud/modStackLabel and is shared with DieTip so the in-round
+// long-press tip and the Forge detach row stay aligned. Imported above.

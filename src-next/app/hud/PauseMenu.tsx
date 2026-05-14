@@ -202,6 +202,10 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       style={{
         background: active ? 'rgba(123,227,255,0.18)' : 'rgba(28,18,69,0.6)',
         border: `1px solid ${active ? '#7be3ffaa' : 'rgba(149,119,255,0.3)'}`,
+        // Underline the active tab so the section indicator survives even
+        // when the cyan tint is hard to pick up (e.g. in heavy ambient
+        // brightness / colorblind palettes).
+        borderBottom: active ? '2px solid #7be3ff' : '1px solid rgba(149,119,255,0.3)',
         color: active ? '#7be3ff' : '#dcd4ff',
         fontSize: 10, letterSpacing: '0.28em',
         padding: '6px 14px', borderRadius: 6,

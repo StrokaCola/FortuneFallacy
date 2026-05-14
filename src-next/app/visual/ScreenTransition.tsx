@@ -52,6 +52,12 @@ export function ScreenTransition({
   const opacity = phase === 'exiting' ? 0 : 1;
   const scale = phase === 'exiting' ? 1.04 : phase === 'entering' ? 0.98 : 1;
 
+  // Entering a Round is the player's commitment moment — fold in a
+  // "stellar dive" overlay (inward star streaks) on top of the standard
+  // constellation wipe so the descent into play has a distinct visual
+  // signature vs. routine screen-to-screen swaps.
+  const enteringRound = phase === 'entering' && screenKey === 'round';
+
   return (
     <div
       data-screen={renderedKey}
@@ -66,8 +72,52 @@ export function ScreenTransition({
       }}
     >
       <ConstellationWipe phase={phase} />
+      {enteringRound && <StellarDive />}
       {renderedChildren}
     </div>
+  );
+}
+
+// "Stellar dive" — inward streaking-stars overlay fired when the
+// player commits to a Round. 12 lines radiate from off-screen edges
+// toward the center over ~500ms, signalling "the cosmos has narrowed
+// onto the play table." Skipped under reduce-motion via class hook.
+function StellarDive() {
+  return (
+    <svg
+      className="stellar-dive"
+      aria-hidden="true"
+      style={{
+        position: 'absolute', inset: 0,
+        pointerEvents: 'none',
+        zIndex: 1,
+      }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      {Array.from({ length: 14 }).map((_, i) => {
+        const angle = (i / 14) * Math.PI * 2;
+        // Each streak runs from an outer ring (radius 70) inward to a
+        // center ring (radius 8). The actual collapse is done via the
+        // stroke-dasharray animation in CSS so the GPU can offload it.
+        const xOuter = 50 + Math.cos(angle) * 70;
+        const yOuter = 50 + Math.sin(angle) * 70;
+        const xInner = 50 + Math.cos(angle) * 8;
+        const yInner = 50 + Math.sin(angle) * 8;
+        return (
+          <line
+            key={i}
+            className="stellar-dive-streak"
+            x1={xOuter} y1={yOuter}
+            x2={xInner} y2={yInner}
+            stroke="#fff7e0"
+            strokeWidth={0.2}
+            strokeLinecap="round"
+            style={{ animationDelay: `${(i * 20)}ms` }}
+          />
+        );
+      })}
+    </svg>
   );
 }
 

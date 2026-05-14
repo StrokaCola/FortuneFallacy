@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export type ThemeKey = 'midnight' | 'voidlit' | 'sandstorm' | 'abyssal';
@@ -155,7 +155,75 @@ export function CosmosBackground({
         transition: 'opacity 800ms ease',
         willChange: 'opacity',
       }} />
+      {/* Drifting stardust — slow diagonal motion gives the cosmos a
+          continuous "the world is alive" beat between actions. Two
+          layered SVG bands at different opacities + speeds parallax-
+          drift toward the bottom-left. Suppressed under reduce-motion
+          via the class hook in styles/index.css. */}
+      {drift && (
+        <>
+          <div className="cosmos-stardust cosmos-stardust-near" aria-hidden="true" style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            backgroundImage: `radial-gradient(circle at 18% 22%, ${t.star}44 0.6px, transparent 0.8px),
+                              radial-gradient(circle at 62% 78%, ${t.star}33 0.7px, transparent 0.9px),
+                              radial-gradient(circle at 86% 14%, ${t.star}3a 0.6px, transparent 0.8px),
+                              radial-gradient(circle at 38% 56%, ${t.star}30 0.5px, transparent 0.7px)`,
+            backgroundSize: '320px 320px, 280px 280px, 360px 360px, 240px 240px',
+            mixBlendMode: 'screen',
+            opacity: 0.55,
+          }} />
+          <div className="cosmos-stardust cosmos-stardust-far" aria-hidden="true" style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            backgroundImage: `radial-gradient(circle at 50% 50%, ${t.star}50 0.4px, transparent 0.6px),
+                              radial-gradient(circle at 12% 88%, ${t.star}40 0.4px, transparent 0.6px)`,
+            backgroundSize: '180px 180px, 220px 220px',
+            mixBlendMode: 'screen',
+            opacity: 0.45,
+          }} />
+        </>
+      )}
+      {/* Distant-lightning vignette — fires randomly when tension is
+          high (>0.65), simulating storm clouds rolling across the
+          backdrop. Each flash is a brief warm-white pulse across the
+          top of the screen, ~180ms. Adds atmospheric depth on late-
+          blind / boss tension without competing with the crimson
+          tint or the score-celebration halos. */}
+      <LightningFlash tension={tensionClamped} />
     </div>
   );
   return host ? createPortal(tree, host) : tree;
+}
+
+// Tension-driven random lightning flashes. Schedules itself between
+// 6 and 14 seconds apart once tension crosses 0.65, and re-evaluates
+// on tension change so a falling tension quiets the storm.
+function LightningFlash({ tension }: { tension: number }) {
+  const [pulseKey, setPulseKey] = useState(0);
+  useEffect(() => {
+    if (tension < 0.65) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      const delay = 6000 + Math.random() * 8000;
+      timer = setTimeout(() => {
+        setPulseKey((k) => k + 1);
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [tension < 0.65]); // re-arm only on threshold cross
+  if (tension < 0.65 || pulseKey === 0) return null;
+  return (
+    <div
+      key={pulseKey}
+      aria-hidden="true"
+      className="cosmos-lightning"
+      style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,240,210,0.55) 0%, transparent 45%)',
+        mixBlendMode: 'screen',
+        opacity: 0,
+      }}
+    />
+  );
 }

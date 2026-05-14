@@ -115,6 +115,27 @@ describe('REROLL_REQUESTED determinism', () => {
     expect(result.state).toBe(exhausted);
     expect(result.state.run.rollCounter).toBe(0);
   });
+
+  it('no-ops while a hand is mid-scoring', () => {
+    // Regression for the inter-hand reroll-eating bug: a fast click on
+    // the reroll button during the score-pop animation used to consume
+    // a reroll even though the dice couldn't actually rebound.
+    const base = makeState();
+    const scoring: GameState = { ...base, round: { ...base.round, scoring: true } };
+    const result = rollHandler({ type: 'REROLL_REQUESTED' }, scoring);
+    expect(result.state).toBe(scoring);
+    expect(result.state.run.rollCounter).toBe(0);
+    expect(result.state.round.rerollsLeft).toBe(2);
+  });
+
+  it('no-ops while the dice physics is mid-tumble', () => {
+    const base = makeState();
+    const tumbling: GameState = { ...base, round: { ...base.round, handInProgress: true } };
+    const result = rollHandler({ type: 'REROLL_REQUESTED' }, tumbling);
+    expect(result.state).toBe(tumbling);
+    expect(result.state.run.rollCounter).toBe(0);
+    expect(result.state.round.rerollsLeft).toBe(2);
+  });
 });
 
 describe('SCORE_HAND', () => {

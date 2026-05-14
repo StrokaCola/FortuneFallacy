@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { triggerShake } from '../visual/screenShake';
+import { Z } from './zLayers';
 
 /**
  * ScoringVFX — SCORING_VFX_HANDOFF.md handoff
@@ -674,7 +675,12 @@ export function ScoringVFX() {
         position: 'fixed',
         inset: 0,
         pointerEvents: 'none',
-        zIndex: 9998,
+        // Was a raw 9998 — bumped down to Z.fx (10) so modals (50+),
+        // arrival banners (40), and the boss banner (30) cover the
+        // score particles cleanly. Toasts (12) and the DieTip (11)
+        // also win, which is correct: those are explicit feedback for
+        // the player's action and shouldn't disappear under a boom.
+        zIndex: Z.fx,
         overflow: 'hidden',
       }}
     >

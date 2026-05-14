@@ -147,6 +147,43 @@ html, body {
 .panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius:16px; }
 .panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius:16px; box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
 
+/* Compact row-card baseline. Same gradient/border tokens as .panel but
+   with a smaller radius (6) tuned for list rows — RunInfoPanel catalyst
+   roster, Forge mod inventory rows, etc. Callers typically override
+   `border-color` inline with an accent tint per row, which is why this
+   class kept a generic border instead of forcing the violet default. */
+.panel-row {
+  background: rgba(15, 9, 37, 0.6);
+  border: 1px solid rgba(149, 119, 255, 0.22);
+  border-radius: 6px;
+}
+
+/* Horizontal scroll row with right-edge fade.
+   Use when a flex/inline row can overflow horizontally and you want
+   the player to KNOW more items are off-screen instead of silently
+   hiding them past the viewport. Pair with `flex-shrink: 0` on the
+   children so they don't compress instead of overflowing.
+   Examples: CatalystStrip on tight (5+ catalysts), Codex tabs (10 tabs). */
+.scroll-x-fade {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;            /* Firefox */
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+  padding-bottom: 4px;              /* room for any focus ring on the children */
+  padding-right: 14px;              /* breathing room so the fade isn't on a child edge */
+}
+.scroll-x-fade::-webkit-scrollbar { display: none; }
+
+/* Action-button row from app/hud/ActionBar.tsx. The component sets
+   `data-action-bar-grow="true"` on tight viewports and the children
+   pick up the flex-grow rule via this selector — no call site has to
+   remember to set `flex: 1; min-width: X` on each button. */
+[data-action-bar-grow="true"] > * {
+  flex: 1 1 auto;
+  min-width: var(--action-bar-min-w, 80px);
+}
+
 /* Buttons */
 .btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms; user-select: none; }
 @media (hover: hover) { .btn:hover { filter: brightness(1.1); } }
@@ -432,8 +469,17 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
 }
 
 /* Hover lift for any material element marked as interactive */
+/* Material-feeling interactive surface. Hover lifts the element a few
+   pixels and adds a soft cyan shadow so the "this is responsive" beat
+   actually registers — 1px was perceptually null on a 120ms tween.
+   Active state inverts the lift and adds an inset shadow so a
+   pointer-down feels caught. Touch users get the inset shadow via the
+   .tap:active rule above; this hover/active pair is purely pointer. */
 .mat-interactive { transition: transform var(--snap) var(--ease-snap), box-shadow var(--snap) var(--ease-snap); }
-@media (hover: hover) { .mat-interactive:hover { transform: translateY(-1px); } }
+@media (hover: hover) {
+  .mat-interactive:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(123,227,255,0.18); }
+  .mat-interactive:active { transform: translateY(0); box-shadow: inset 0 0 12px rgba(123,227,255,0.22); }
+}
 
 /* Forge orbit ring — gated on motion preference like the rest of the app. */
 html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
@@ -899,6 +945,13 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 .boss-dread-overlay {
   animation: boss-dread-overlay-in 220ms ease-out;
 }
+.boss-sting-flash {
+  /* Single bright hit that fires the moment the boss sting SFX lands.
+     Pairs the audio thunderclap with a visual one so the punch reads
+     across both senses. Fades to 0 by 220ms — the dread vignette
+     takes over from there. */
+  animation: boss-sting-flash 240ms ease-out forwards;
+}
 .boss-dread-vignette {
   animation: boss-dread-vignette-close 1100ms cubic-bezier(0.4, 0, 0.6, 1) both;
 }
@@ -911,6 +964,11 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 @keyframes boss-dread-overlay-in {
   0%   { opacity: 0; }
   100% { opacity: 1; }
+}
+@keyframes boss-sting-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; }
 }
 @keyframes boss-dread-vignette-close {
   0%   { opacity: 0; transform: scale(1.4); }
@@ -933,6 +991,185 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   animation: none;
   opacity: 1;
 }
+.reduce-motion .boss-sting-flash { animation: none; opacity: 0; }
+
+/* Postmortem fail-screen vignette — the bright center collapses
+   inward over 1.4s, framing the loss as a descent rather than a flat
+   layout. Skipped under reduce-motion (the gradient stays at its
+   final state for the no-animation flavour). */
+.postmortem-fail-vignette {
+  animation: postmortem-fail-vignette 1400ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+@keyframes postmortem-fail-vignette {
+  0%   { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.reduce-motion .postmortem-fail-vignette { animation: none; opacity: 1; }
+
+/* Win-screen flourish: a constellation-color halo bloom that
+   expands then fades, and per-particle upward drift sparks.
+   Together they wash the win panel with the run's identity color. */
+.win-flourish-halo {
+  animation: win-flourish-halo 2000ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes win-flourish-halo {
+  0%   { opacity: 0; transform: scale(0.6); }
+  35%  { opacity: 0.95; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes win-flourish-spark {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.4); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-60px) scale(1); }
+}
+.reduce-motion .win-flourish-halo { animation: none; opacity: 0.3; }
+.reduce-motion [class*="win-flourish-"] circle { animation: none; opacity: 0.5; }
+
+/* Edition material animations (EditionBadge.tsx).
+   Each rarity tier gets a distinct treatment so the badges read at a
+   glance from across a shop offer card. */
+
+/* Foil — left-to-right shimmer sweep every 3.2s. Pseudo-element
+   creates a diagonal highlight band that travels across the badge. */
+.edition-foil { position: relative; }
+.edition-foil::before {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: -60%;
+  width: 60%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+  animation: edition-foil-sweep 3200ms ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes edition-foil-sweep {
+  0%, 30%   { left: -60%; }
+  70%, 100% { left: 120%; }
+}
+
+/* Holographic — cyan↔violet hue cycle on the background tint.
+   The badge breathes through the iridescent palette as if a card
+   were being tilted under a light. */
+.edition-holo {
+  animation: edition-holo-shift 4800ms ease-in-out infinite;
+}
+@keyframes edition-holo-shift {
+  0%, 100% { background: rgba(123,227,255,0.22); border-color: rgba(123,227,255,0.55); }
+  33%      { background: rgba(204,136,255,0.28); border-color: rgba(204,136,255,0.65); }
+  66%      { background: rgba(91,232,164,0.24);  border-color: rgba(91,232,164,0.6); }
+}
+
+/* Polychrome — full-rainbow background cycle. The rarest non-void
+   tier should feel "wired to the cosmos." */
+.edition-poly {
+  background: linear-gradient(90deg,
+    rgba(255,120,71,0.30),
+    rgba(245,196,81,0.30),
+    rgba(91,232,164,0.30),
+    rgba(123,227,255,0.30),
+    rgba(204,136,255,0.30),
+    rgba(255,120,71,0.30)
+  ) !important;
+  background-size: 300% 100% !important;
+  animation: edition-poly-cycle 6400ms linear infinite;
+}
+@keyframes edition-poly-cycle {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* Void — slow dark-aura pulse. Reinforces the "slot bypass" tier as
+   distinct from the other editions; black halo grows + fades. */
+.edition-void {
+  animation: edition-void-pulse 2800ms ease-in-out infinite;
+}
+@keyframes edition-void-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(7,5,26,0.85), 0 0 16px rgba(20,12,40,0.4); }
+  50%      { box-shadow: 0 0 14px rgba(7,5,26,0.95), 0 0 28px rgba(20,12,40,0.7); }
+}
+
+.reduce-motion .edition-foil::before,
+.reduce-motion .edition-holo,
+.reduce-motion .edition-poly,
+.reduce-motion .edition-void {
+  animation: none;
+}
+
+/* Cosmos stardust parallax. Two layers drift diagonally at different
+   speeds; together they read as "stuff is moving in the background"
+   without being legible as individual particles. */
+.cosmos-stardust-near {
+  animation: cosmos-stardust-drift 90s linear infinite;
+}
+.cosmos-stardust-far {
+  animation: cosmos-stardust-drift 140s linear infinite reverse;
+}
+@keyframes cosmos-stardust-drift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: -320px 320px, -280px 280px, -360px 360px, -240px 240px; }
+}
+.reduce-motion .cosmos-stardust-near,
+.reduce-motion .cosmos-stardust-far { animation: none; }
+
+/* Lightning flash — tension-driven storm flash. The container fades
+   the radial-gradient in for 30ms then out over 160ms, total 190ms
+   per pulse. Single-shot per mount of the LightningFlash component
+   (re-mounted by pulseKey for each new strike). */
+.cosmos-lightning {
+  animation: cosmos-lightning-flash 190ms ease-out forwards;
+}
+@keyframes cosmos-lightning-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+.reduce-motion .cosmos-lightning { animation: none; opacity: 0; }
+
+/* EventFlash — universal one-shot screen flash for achievement +
+   blind-clear moments. Peak opacity comes from a CSS custom property
+   so each event type can tune its own intensity (default 0.4). */
+.event-flash-pulse {
+  animation-name: event-flash-pulse;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes event-flash-pulse {
+  0%   { opacity: 0; }
+  20%  { opacity: var(--event-flash-peak, 0.4); }
+  100% { opacity: 0; }
+}
+.event-flash-ring {
+  animation-name: event-flash-ring;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes event-flash-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4); }
+}
+.reduce-motion .event-flash-pulse,
+.reduce-motion .event-flash-ring { animation: none; opacity: 0; }
+
+/* Stellar dive — entry overlay when committing to a Round. Each of
+   14 streak lines fades in + collapses opacity over 500ms, staggered
+   so the cosmos "narrows" onto the play table as one continuous
+   sweep rather than 14 simultaneous flashes. */
+.stellar-dive { opacity: 0; animation: stellar-dive-fade 500ms ease-out forwards; }
+@keyframes stellar-dive-fade {
+  0%   { opacity: 0; }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.stellar-dive-streak {
+  opacity: 0;
+  animation: stellar-dive-streak 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes stellar-dive-streak {
+  0%   { opacity: 0; stroke-width: 0.05; }
+  40%  { opacity: 1; stroke-width: 0.35; }
+  100% { opacity: 0; stroke-width: 0.1; }
+}
+.reduce-motion .stellar-dive,
+.reduce-motion .stellar-dive-streak { animation: none; opacity: 0; }
 
 /* New-best stamp on the boom moment — drops down with overshoot,
    holds, then floats up + fades. Tied to the same lifecycle as the

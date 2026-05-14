@@ -49,6 +49,13 @@ export function Round() {
   const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
   const roundActive = useStore((s) => s.round.active);
+  // Inter-hand activity flags — used to lock the reroll button while
+  // the score-pop animation is playing OR the dice physics is still
+  // tumbling. Without this, a fast-clicker can fire REROLL_REQUESTED
+  // during the scoring window, which silently eats a reroll because
+  // the dice can't actually rebound until the prior hand settles.
+  const scoring = useStore((s) => s.round.scoring);
+  const handInProgress = useStore((s) => s.round.handInProgress);
 
   // Last-throw warning: when only 1 hand remains and the player is short
   // of the target, the score readout pulses red and a one-shot haptic
@@ -114,7 +121,15 @@ export function Round() {
       <AstralHint />
       <ScoreExplain />
 
-      <ActionBar hands={hands} rerolls={rerolls} accent={accent} firstRollDone={firstRollDone} ready={ready} />
+      <ActionBar
+        hands={hands}
+        rerolls={rerolls}
+        accent={accent}
+        firstRollDone={firstRollDone}
+        ready={ready}
+        scoring={scoring}
+        handInProgress={handInProgress}
+      />
       {/* Invisible anchor for the post-first-roll "tap to lock" coachmark.
           Sits roughly where the dice settle so the bubble points at them
           rather than at the entire stage canvas. See app/onboarding/. */}
@@ -138,7 +153,17 @@ export function Round() {
 // determined speedrunner will barely notice on subsequent attempts.
 const PULL_DURATION_MS = 520;
 
-function ActionBar({ hands, rerolls, accent, firstRollDone, ready }: { hands: number; rerolls: number; accent: string; firstRollDone: boolean; ready: boolean }) {
+function ActionBar({
+  hands, rerolls, accent, firstRollDone, ready, scoring, handInProgress,
+}: {
+  hands: number;
+  rerolls: number;
+  accent: string;
+  firstRollDone: boolean;
+  ready: boolean;
+  scoring: boolean;
+  handInProgress: boolean;
+}) {
   // Self-measure so the dice canvas can shrink to the play area above
   // this bar (#three-next reads --hud-bottom-h) and pinned overlays can
   // align upward from the bar's top edge.
@@ -169,8 +194,13 @@ function ActionBar({ hands, rerolls, accent, firstRollDone, ready }: { hands: nu
       {firstRollDone ? (
         <button
           className="btn btn-ghost mat-interactive tap"
-          disabled={rerolls === 0 || hands === 0}
-          onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}>
+          // Lock the reroll during scoring AND while the dice physics
+          // is mid-tumble (handInProgress). A fast click during either
+          // window used to fire REROLL_REQUESTED, silently consuming a
+          // reroll because the dice couldn't rebound mid-animation.
+          disabled={rerolls === 0 || hands === 0 || scoring || handInProgress || !ready}
+          onClick={() => dispatch({ type: 'REROLL_REQUESTED' })}
+          title={scoring ? 'Scoring…' : handInProgress ? 'Rolling…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: accent }}>↻</span> Reroll
             <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>

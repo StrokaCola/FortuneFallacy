@@ -87,6 +87,12 @@ export const rollHandler: ActionHandler = (a, s) => {
     case 'REROLL_REQUESTED': {
       if (s.round.rerollsLeft <= 0) return { state: s, events: [] };
       if (hasDebuff(s, 'no_rerolls')) return { state: s, events: [] };
+      // Defensive: refuse the reroll if a prior hand is still scoring
+      // or if the dice physics is mid-tumble. The UI also disables the
+      // button in these windows, but a hotkey, double-click race, or
+      // future code path could still dispatch — bailing here makes the
+      // invariant local to the handler instead of just visual.
+      if (s.round.scoring || s.round.handInProgress) return { state: s, events: [] };
       const advanced = { ...s, run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 } };
       const ctx = runRollPipelineUpToSim(advanced);
       const banish = readBanishFromSim(ctx.simRequest, advanced.round.banishTriggersByDie ?? []);

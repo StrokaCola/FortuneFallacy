@@ -67,7 +67,14 @@ export function Codex() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
+        {/* Tab row: with 10 tabs the wrap into 2-3 rows on narrow
+            phones eats vertical space. Use the shared .scroll-x-fade
+            utility so the right-edge fade telegraphs off-screen tabs. */}
+        <div className="scroll-x-fade" style={{
+          display: 'flex', gap: 6,
+          justifyContent: 'flex-start',
+          marginBottom: 18,
+        }}>
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -80,6 +87,8 @@ export function Codex() {
                 color: tab === t.id ? '#7be3ff' : '#dcd4ff',
                 fontSize: 10, letterSpacing: '0.28em',
                 cursor: 'pointer',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}>
               {t.label}
             </button>

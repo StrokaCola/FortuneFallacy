@@ -124,10 +124,16 @@ export function CatalystStrip() {
     linkedIds.add(r.b);
   }
 
+  // Apply the scroll-fade utility only when the row actually overflows
+  // (5+ catalysts on a non-wide viewport). Pinning the class always
+  // would render the fade even on a single-card strip, which reads as
+  // visual debris when there's nothing offscreen to discover.
+  const useScrollFade = !wide && catalysts.length >= 5;
   return (
     <div
       ref={inspectRef}
       data-coach="catalyst-strip"
+      className={useScrollFade ? 'scroll-x-fade' : undefined}
       style={{
         position: 'absolute',
         // Stack from the bottom edge of TopBar (with breathing room) so
@@ -141,6 +147,11 @@ export function CatalystStrip() {
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
+        ...(wide ? {} : {
+          // Cap to visible play area so the absolute-positioned row
+          // never extends past the viewport edge.
+          maxWidth: 'calc(100vw - 36px)',
+        }),
       }}
     >
       {catalysts.map((id, i) => (

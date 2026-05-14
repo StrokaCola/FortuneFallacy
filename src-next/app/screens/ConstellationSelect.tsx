@@ -43,8 +43,39 @@ export function ConstellationSelect() {
         </div>
         {/* Subtitle drops on tight. */}
         {!tight && (
-          <div className="f-mono" style={{ fontSize: compact ? 13 : 12, color: '#bba8ff', marginBottom: compact ? 16 : 28, opacity: 0.8 }}>
+          <div className="f-mono" style={{ fontSize: compact ? 13 : 12, color: '#bba8ff', marginBottom: compact ? 8 : 14, opacity: 0.8 }}>
             Each constellation rolls a different set of dice for the entire run.
+          </div>
+        )}
+        {/* Unlock progress chip — surfaces "5 / 8 constellations
+            unlocked" as a single line so returning players see their
+            progress at a glance. Hidden when the player has unlocked
+            everything (no work left to do = no point showing). */}
+        {unlocks.length < CONSTELLATIONS.length && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 10,
+            padding: '4px 12px', borderRadius: 999,
+            border: '1px solid rgba(123,227,255,0.35)',
+            background: 'rgba(15,9,37,0.6)',
+            marginBottom: tight ? 8 : compact ? 16 : 24,
+          }}>
+            <span className="f-mono uc" style={{
+              fontSize: 9, letterSpacing: '0.28em', color: '#7be3ff',
+            }}>
+              {unlocks.length} / {CONSTELLATIONS.length} unlocked
+            </span>
+            <div style={{
+              width: 64, height: 4, borderRadius: 2,
+              background: 'rgba(255,255,255,0.08)', overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${(unlocks.length / CONSTELLATIONS.length) * 100}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #7be3ff, #cc88ff)',
+                boxShadow: '0 0 8px rgba(123,227,255,0.55)',
+                transition: 'width 400ms ease-out',
+              }} />
+            </div>
           </div>
         )}
 
@@ -141,7 +172,12 @@ function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; c
         </ul>
       )}
 
-      {/* Stake row */}
+      {/* Stake row — order: label → active details (name + rules) →
+          picker buttons. Putting the details ABOVE the buttons makes
+          the card read "this is what you've picked → tap a square to
+          change it" instead of the prior side-by-side controls/output
+          ambiguity. Rules stack vertically on tight so the cramped
+          name·rules flexbox doesn't wrap awkwardly. */}
       <div style={{
         marginTop: 'auto', paddingTop: 8,
         borderTop: '1px dashed rgba(149,119,255,0.22)',
@@ -154,7 +190,19 @@ function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; c
         <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', marginBottom: 6 }}>
           stake
         </div>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: tight ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: tight ? 'flex-start' : 'baseline',
+          marginBottom: 8, gap: 2,
+        }}>
+          <span className="f-head" style={{ fontSize: 12, color: stake.color }}>{stake.name}</span>
+          <span className="f-mono" style={{ fontSize: 9, color: '#9577ff' }}>
+            {stake.rules.join(' · ')}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
           {STAKES.map((s, i) => {
             const unlocked = i <= maxPlayable;
             const active = i === picked;
@@ -176,12 +224,6 @@ function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; c
               />
             );
           })}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span className="f-head" style={{ fontSize: 12, color: stake.color }}>{stake.name}</span>
-          <span className="f-mono" style={{ fontSize: 9, color: '#9577ff' }}>
-            {stake.rules.join(' · ')}
-          </span>
         </div>
       </div>
 
