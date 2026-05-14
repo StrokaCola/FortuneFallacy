@@ -33,16 +33,26 @@ describe('buildOrbitalSatellite', () => {
     expect(types).toContain('Sprite');
   });
 
-  it('chip diameter is ~12% of die size', () => {
-    const sat = buildOrbitalSatellite({ accentColor: '#7be3ff', dieSize: 0.85 });
-    const mesh = sat.group.children.find((c) => c.type === 'Mesh') as THREE.Mesh;
-    const sphere = mesh.geometry as THREE.SphereGeometry;
-    // SphereGeometry stores its radius parameter on .parameters
-    expect(sphere.parameters.radius).toBeCloseTo(0.85 * 0.06, 3);
+  it('chip diameter scales with die size — 12% at preview scale (size ≥ 1.0), 16% at gameplay scale (size < 1.0)', () => {
+    // The chip factor tier was added for the dice-readability pass:
+    // at gameplay-scale dieSize (~0.85 in world units) the prior 12%
+    // factor rendered the chip at ~0.7px on a 56-72px screen render —
+    // visually a sparkle, not a "mod #2 is present" cue. The 16%
+    // factor at small scale gives ~1.1px which actually reads.
+    const small = buildOrbitalSatellite({ accentColor: '#7be3ff', dieSize: 0.85 });
+    const smallSphere = (small.group.children.find((c) => c.type === 'Mesh') as THREE.Mesh).geometry as THREE.SphereGeometry;
+    // Radius = (size * factor) / 2; small uses factor 0.16.
+    expect(smallSphere.parameters.radius).toBeCloseTo(0.85 * 0.16 / 2, 3);
+
+    const preview = buildOrbitalSatellite({ accentColor: '#7be3ff', dieSize: 1.2 });
+    const previewSphere = (preview.group.children.find((c) => c.type === 'Mesh') as THREE.Mesh).geometry as THREE.SphereGeometry;
+    // Preview uses the original 0.12 factor — slimmer chip on the
+    // Forge centerpiece so it doesn't read as a bolted-on ornament.
+    expect(previewSphere.parameters.radius).toBeCloseTo(1.2 * 0.12 / 2, 3);
   });
 
-  it('setAngle moves the chip in a circular orbit at radius ~die size * 0.7', () => {
-    const sat = buildOrbitalSatellite({ accentColor: '#7be3ff', dieSize: 1.0 });
+  it('setAngle moves the chip in a circular orbit at radius ~die size * 0.65–0.7', () => {
+    const sat = buildOrbitalSatellite({ accentColor: '#7be3ff', dieSize: 1.2 });
     sat.setAngle(0);
     const p0 = sat.group.children[0]!.position.clone();
     sat.setAngle(Math.PI / 2);
@@ -51,7 +61,7 @@ describe('buildOrbitalSatellite', () => {
     // the two points on a circle of radius r is r * sqrt(2).
     const dist = p0.distanceTo(p1);
     expect(dist).toBeGreaterThan(0.5);
-    expect(dist).toBeLessThan(2.0);
+    expect(dist).toBeLessThan(2.4);
   });
 
   it('dispose releases mesh geometry and material', () => {

@@ -22,8 +22,14 @@ export type RimOverlay = {
 
 // Hair-line outset to avoid z-fighting against the die body.
 const RIM_OUTSET = 0.012;
-// Tube thickness as fraction of die size.
+// Tube thickness as fraction of die size. At Forge preview scale
+// (dieSize ≥ 1.0), the 0.022 factor resolves to ~7px of band on a
+// 360px render — readable. At gameplay scale (dieSize < 1.0) the
+// same factor lands at ~1-2px, which reads as noise instead of a
+// "this die has 3 mods" cue. Double the tube on small dice so the
+// rim survives the downscale.
 const RIM_TUBE_FACTOR = 0.022;
+const RIM_TUBE_FACTOR_SMALL = 0.044;
 // Cycle period for the multi-color sweep — slow enough to read as ambient.
 const CYCLE_MS = 6000;
 
@@ -36,7 +42,7 @@ export function buildRimOverlay(opts: RimOverlayOpts): RimOverlay {
   group.name = 'RimOverlay';
 
   const major = dieSize / 2 + RIM_OUTSET;
-  const tube = dieSize * RIM_TUBE_FACTOR;
+  const tube = dieSize * (dieSize < 1.0 ? RIM_TUBE_FACTOR_SMALL : RIM_TUBE_FACTOR);
   const geom = new THREE.TorusGeometry(major, tube, 12, 64);
   const startColor = new THREE.Color(accents[0]!);
   const mat = new THREE.MeshStandardMaterial({

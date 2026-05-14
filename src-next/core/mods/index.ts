@@ -258,7 +258,7 @@ export const MODS: ModDef[] = [
   {
     id: 'amplify', name: 'Amplify', icon: '⬆',
     desc: '+2 chips per scoring die', scoreBonus: 2, rarity: 'common',
-    visual: { materialKey: 'amplify', accentColor: '#f5c451', triggerFx: 'pulse' },
+    visual: { materialKey: 'amplify', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
     id: 'sharpened', name: 'Sharpened', icon: '▲',
@@ -298,7 +298,7 @@ export const MODS: ModDef[] = [
   {
     id: 'even_keel', name: 'Even Keel', icon: '⚖',
     desc: '+2 mult if face is even (2/4/6)', evenFaceMult: 2, rarity: 'common',
-    visual: { materialKey: 'even_keel', accentColor: '#c0c8d8', triggerFx: 'pulse' },
+    visual: { materialKey: 'even_keel', accentColor: '#c0c8d8', triggerFx: 'pulse', geometricVariant: 'crystalline' },
   },
   {
     id: 'mirror_pair', name: 'Mirror Pair', icon: '⚉',
@@ -309,13 +309,13 @@ export const MODS: ModDef[] = [
     id: 'vanguard', name: 'Vanguard', icon: '◀',
     desc: '+5 chips if scored first',
     firstBonus: 5, rarity: 'common',
-    visual: { materialKey: 'vanguard', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'vanguard', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'haloed' },
   },
   {
     id: 'capstone', name: 'Capstone', icon: '▶',
     desc: '+10 chips if scored last',
     lastBonus: 10, rarity: 'common',
-    visual: { materialKey: 'capstone', accentColor: '#5be8a4', triggerFx: 'pulse' },
+    visual: { materialKey: 'capstone', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
   {
     id: 'conduit', name: 'Conduit', icon: '⫸',
@@ -367,7 +367,7 @@ export const MODS: ModDef[] = [
     id: 'anchor', name: 'Anchor', icon: '⚓',
     desc: '+15 chips when this die is part of a combo set.',
     pairedFaceChips: 15, rarity: 'uncommon',
-    visual: { materialKey: 'anchor', accentColor: '#88ddff', triggerFx: 'pulse' },
+    visual: { materialKey: 'anchor', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
   {
     id: 'keystone', name: 'Keystone', icon: '◆',
@@ -385,7 +385,7 @@ export const MODS: ModDef[] = [
     id: 'pressure', name: 'Pressure', icon: '⏲',
     desc: '+5 chips per remaining hand this round.',
     chipsPerHandLeft: 5, rarity: 'common',
-    visual: { materialKey: 'pressure', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'pressure', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
   {
     id: 'risk', name: 'Risk', icon: '⚡',
@@ -397,7 +397,7 @@ export const MODS: ModDef[] = [
     id: 'singularity', name: 'Singularity', icon: '●',
     desc: '×2 mult — but only on Ante 4 or higher.',
     singularityAnte: 4, singularityMult: 2, rarity: 'legendary',
-    visual: { materialKey: 'singularity', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'haloed-dark' },
+    visual: { materialKey: 'singularity', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'haloed' },
   },
   {
     id: 'refinery', name: 'Refinery', icon: '◇',
@@ -410,7 +410,7 @@ export const MODS: ModDef[] = [
     id: 'polarize', name: 'Polarize', icon: '◐',
     desc: '×1.4 mult when 3 mods are attached to this die.',
     polarizeMult: 1.4, polarizeMinSlots: 3, rarity: 'rare',
-    visual: { materialKey: 'polarize', accentColor: '#bba8ff', triggerFx: 'pulse' },
+    visual: { materialKey: 'polarize', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'haloed' },
   },
   {
     id: 'telescope', name: 'Telescope', icon: '⌖',

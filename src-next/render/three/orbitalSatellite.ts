@@ -18,8 +18,18 @@ export type OrbitalSatellite = {
 // Orbit radius is ~70% of die-size away from the die center, putting the
 // satellite just outside the die's silhouette.
 const ORBIT_RADIUS_FACTOR = 0.7;
-// Chip diameter is ~12% of the die size per spec.
+// Chip diameter is ~12% of the die size at Forge preview scale. At
+// gameplay scale (dieSize < 1.0 in world units, ~56-72px on screen)
+// the 12% chip resolves to under 1px and reads as a sparkle rather
+// than "this is a second mod." Bump to 16% on small dice so the
+// orbital actually communicates "mod #2 is present" at gameplay
+// distance. Forge previews keep the slimmer 12% so the centerpiece
+// die doesn't get a oversized orbital ornament.
 const CHIP_DIAMETER_FACTOR = 0.12;
+const CHIP_DIAMETER_FACTOR_SMALL = 0.16;
+// Clamp orbit radius too — at the larger chip scale, 0.7 radius
+// would push the chip too far from the body silhouette.
+const ORBIT_RADIUS_FACTOR_SMALL = 0.65;
 
 export function buildOrbitalSatellite(opts: OrbitalSatelliteOpts): OrbitalSatellite {
   const { accentColor, dieSize, tilt = (15 * Math.PI) / 180 } = opts;
@@ -29,8 +39,11 @@ export function buildOrbitalSatellite(opts: OrbitalSatelliteOpts): OrbitalSatell
   // the die equator rather than orbiting flat.
   group.rotation.x = tilt;
 
-  const chipRadius = (dieSize * CHIP_DIAMETER_FACTOR) / 2;
-  const orbitRadius = dieSize * ORBIT_RADIUS_FACTOR;
+  const isSmall = dieSize < 1.0;
+  const chipFactor = isSmall ? CHIP_DIAMETER_FACTOR_SMALL : CHIP_DIAMETER_FACTOR;
+  const orbitFactor = isSmall ? ORBIT_RADIUS_FACTOR_SMALL : ORBIT_RADIUS_FACTOR;
+  const chipRadius = (dieSize * chipFactor) / 2;
+  const orbitRadius = dieSize * orbitFactor;
 
   // Chip — small emissive sphere in the accent color. Starts at
   // emissiveIntensity 0 + transparent opacity 0 so the entry animation

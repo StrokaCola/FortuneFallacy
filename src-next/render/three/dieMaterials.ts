@@ -61,9 +61,13 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
   },
   // 6. High Roller — Plasma corona; higher emissive, faint outer halo.
   high_roller: {
+    // eIntensity 2.4→2.8 — plasma corona pushed brighter so the
+    // "high roller" identity reads as visibly hotter than baseline
+    // mods even at gameplay distance. Brightness is the fastest
+    // visual cue when 12 mods otherwise share the same colour skeleton.
     bodyTint: 0xff6a3a, bodyDeep: 0x5a1408,
     edge: 0xff7847, halo: 0xff7847,
-    transmission: 0.40, eIntensity: 2.4,
+    transmission: 0.40, eIntensity: 2.8,
   },
   // 7. Backstop — Ceramic safety plate; matte ceramic, milky transmission.
   backstop: {
@@ -136,9 +140,13 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
   },
   // 18. Brittle — Cracked obsidian; high-contrast crimson fissures.
   brittle: {
+    // eIntensity 2.0→2.5 — fracture energy crackling louder. The
+    // "destroyed on bust" lore deserves a die that visibly hums with
+    // tension; pair with the new spiked geometric variant for the
+    // dramatic destroy-able feel.
     bodyTint: 0x4a0e10, bodyDeep: 0x1a0405,
     edge: 0xff7847, halo: 0xff7847,
-    transmission: 0.05, rough: 0.55, eIntensity: 2.0,
+    transmission: 0.05, rough: 0.55, eIntensity: 2.5,
   },
   // 19. Wildcard — Prismatic; high IOR, near-mirror, color shifts on view.
   wildcard: {
@@ -244,9 +252,14 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
   },
   // 35. Dormant — Cold lavender, low emissive — awakens to bright bloom.
   dormant: {
+    // eIntensity 0.5→0.3 — push lower so a sleeping Dormant die reads
+    // as visibly dim against the brighter mods around it. The
+    // awakening visual (haloed-theatrical bloom on threshold cross)
+    // does the heavy lifting once the player earns it; pre-awaken
+    // should feel asleep, not "slightly less bright."
     bodyTint: 0x3a2a4a, bodyDeep: 0x10081a,
     edge: 0xa080c0, halo: 0xa080c0,
-    transmission: 0.12, rough: 0.50, eIntensity: 0.5,
+    transmission: 0.12, rough: 0.50, eIntensity: 0.3,
   },
   // 36. Ballast — Deep cyan stone, heavy and grounded.
   ballast: {
