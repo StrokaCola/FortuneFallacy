@@ -8,6 +8,7 @@ import { Z } from './zLayers';
 import { useIsWideMode, useIsTightStage } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { bus } from '../../events/bus';
+import { EmptySlot } from './EmptySlot';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -64,7 +65,7 @@ export function ConsumableTray() {
 
   return (
     <>
-      <div style={{
+      <div data-coach="consumable-tray" style={{
         position: 'absolute',
         // Mirrors the CatalystStrip on the opposite side; stack from
         // TopBar's bottom edge so the row never collides with a wrapped TopBar.
@@ -78,6 +79,7 @@ export function ConsumableTray() {
         opacity: scoring ? 0.35 : 1,
         transition: 'opacity 220ms ease',
       }}>
+        {items.length === 0 && <EmptySlot kind="consumable" />}
         {items.map((id, i) => {
           const def = lookupConsumable(id);
           if (!def) return null;
@@ -122,7 +124,11 @@ export function ConsumableTray() {
                   {def.name}
                 </div>
               </button>
-              <div className={tight ? 'tip tip-above' : 'tip'}>
+              {/* Tight portrait: tip-above to clear the top of the play
+                  area. Wide-mode landscape: tip-left so the popover
+                  lands in the play area instead of running off the
+                  right edge or covering the card below in the rail. */}
+              <div className={tight ? 'tip tip-above' : wide ? 'tip tip-left' : 'tip'}>
                 <span className="tip-title">{def.name}</span>
                 {def.description}
                 {def.requiresTarget && <span style={{ display: 'block', marginTop: 4, color: '#7be3ff' }}>Click, then pick a die.</span>}

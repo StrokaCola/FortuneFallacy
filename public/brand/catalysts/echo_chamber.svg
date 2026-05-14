@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Echo Chamber — catalyst sigil">
+  <title>Echo Chamber — catalyst sigil</title>
+  <rect width="100%" height="100%" fill="#07051a"/>
+  <g fill="none" stroke="#bba8ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 6 5 L 3 12 L 6 19"></path><path d="M 10 7 L 8 12 L 10 17" opacity="0.7"></path><path d="M 14 9 L 13 12 L 14 15" opacity="0.55"></path><circle cx="18" cy="12" r="1.4" fill="#bba8ff" stroke="none"></circle></g>
+</svg>

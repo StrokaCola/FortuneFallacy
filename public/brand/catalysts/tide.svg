@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Tide — catalyst sigil">
+  <title>Tide — catalyst sigil</title>
+  <rect width="100%" height="100%" fill="#07051a"/>
+  <g fill="none" stroke="#5be8a4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><path d="M 3 9 Q 7 5, 12 9 Q 17 13, 21 9"></path><path d="M 3 15 Q 7 19, 12 15 Q 17 11, 21 15" opacity="0.7"></path></g>
+</svg>

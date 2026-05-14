@@ -426,6 +426,7 @@ export function Hub() {
           {!blinds[blindIdx]?.def.isBoss && (
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
+              data-coach="skip-button"
               onClick={() => dispatch({ type: 'SKIP_BLIND' })}
               style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
               ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)

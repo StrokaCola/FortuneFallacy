@@ -81,7 +81,25 @@ export type ModVisual = {
     | 'gilded'
     | 'pulsing'
     | 'pulsing-theatrical';
-  triggerFx: 'loaded' | 'pipCharge' | 'backstop' | 'pulse';  // pilot or generic; used by Phase 5/6
+  triggerFx:
+    | 'loaded'
+    | 'pipCharge'
+    | 'backstop'
+    | 'pulse'
+    // 2026-05-14 fifth pass — bespoke FX for the four mods whose
+    // mechanics most justified a custom animation. See
+    // `src-next/render/three/modFx/{crown,shatter,swirl,flashback}.ts`.
+    | 'crown'
+    | 'shatter'
+    | 'swirl'
+    | 'flashback'
+    // 2026-05-14 sixth pass — chain / legendary / stack-accrual FX.
+    // See `src-next/render/three/modFx/{conduit,crescendo,resonance,pyreMark,tallyMark}.ts`.
+    | 'conduit'
+    | 'crescendo'
+    | 'resonance'
+    | 'pyreMark'
+    | 'tallyMark';
 };
 
 export type ModRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -297,7 +315,7 @@ export const MODS: ModDef[] = [
     id: 'conduit', name: 'Conduit', icon: '⫸',
     desc: '+1 mult per die scored before this one',
     chainMult: 1, rarity: 'uncommon',
-    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
+    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'conduit', geometricVariant: 'orbital' },
   },
   {
     id: 'tithe', name: 'Tithe', icon: '⛁',
@@ -309,31 +327,31 @@ export const MODS: ModDef[] = [
     id: 'resonance', name: 'Resonance', icon: '♺',
     desc: 'The other mod on this die fires a second time (chips/mult only).',
     resonate: true, rarity: 'legendary',
-    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
+    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'resonance', geometricVariant: 'pulsing-theatrical' },
   },
   {
     id: 'crescendo', name: 'Crescendo', icon: '⫷',
     desc: '+1 mult per die scored after this one',
     chainMultPost: 1, rarity: 'uncommon',
-    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'pulsing' },
+    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'crescendo', geometricVariant: 'pulsing' },
   },
   {
     id: 'crown', name: 'Crown', icon: '♛',
     desc: 'If face is 6: ×1.5 mult on this die (multiplicative)',
     crownMult: 1.5, crownFace: 6, rarity: 'legendary',
-    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'haloed-theatrical' },
+    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'crown', geometricVariant: 'haloed-theatrical' },
   },
   {
     id: 'brittle', name: 'Brittle', icon: '☄',
     desc: '+5 mult per scoring die. Destroyed if the hand busts.',
     multBonus: 5, loseOnBust: true, rarity: 'rare',
-    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
+    visual: { materialKey: 'brittle', accentColor: '#ff7847', triggerFx: 'shatter', geometricVariant: 'spiked' },
   },
   {
     id: 'wildcard', name: 'Wildcard', icon: '✱',
     desc: 'Counts as any face for combo detection (chooses best).',
     wildcard: true, rarity: 'legendary',
-    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'wildcard', accentColor: '#e0c8ff', triggerFx: 'swirl', geometricVariant: 'etched' },
   },
   // ─── Phase 5b: combo / round / ante / galaxy aware mods ────────────────
   // Visuals reuse existing materialKeys so the renderer doesn't need new
@@ -343,43 +361,43 @@ export const MODS: ModDef[] = [
     id: 'anchor', name: 'Anchor', icon: '⚓',
     desc: '+15 chips when this die is part of a combo set.',
     pairedFaceChips: 15, rarity: 'uncommon',
-    visual: { materialKey: 'backstop', accentColor: '#88ddff', triggerFx: 'pulse' },
+    visual: { materialKey: 'anchor', accentColor: '#88ddff', triggerFx: 'pulse' },
   },
   {
     id: 'keystone', name: 'Keystone', icon: '◆',
     desc: '×1.4 mult when this die has the highest face among scoring dice.',
     keystoneMult: 1.4, rarity: 'rare',
-    visual: { materialKey: 'crown', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'crystalline' },
+    visual: { materialKey: 'keystone', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'crystalline' },
   },
   {
     id: 'astrolabe', name: 'Astrolabe', icon: '✺',
     desc: '+3 chips per combo level on the played hand.',
     chipsPerComboLevel: 3, rarity: 'uncommon',
-    visual: { materialKey: 'sharpened', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'astrolabe', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'pressure', name: 'Pressure', icon: '⏲',
     desc: '+5 chips per remaining hand this round.',
     chipsPerHandLeft: 5, rarity: 'common',
-    visual: { materialKey: 'amplify', accentColor: '#ff7847', triggerFx: 'pulse' },
+    visual: { materialKey: 'pressure', accentColor: '#ff7847', triggerFx: 'pulse' },
   },
   {
     id: 'risk', name: 'Risk', icon: '⚡',
     desc: '+6 mult on face 6. -3 mult on face 1.',
     riskHighMult: 6, riskLowMult: 3, rarity: 'uncommon',
-    visual: { materialKey: 'high_roller', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'spiked' },
+    visual: { materialKey: 'risk', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
   {
     id: 'singularity', name: 'Singularity', icon: '●',
     desc: '×2 mult — but only on Ante 4 or higher.',
     singularityAnte: 4, singularityMult: 2, rarity: 'legendary',
-    visual: { materialKey: 'crown', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'haloed-dark' },
+    visual: { materialKey: 'singularity', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'haloed-dark' },
   },
   {
     id: 'refinery', name: 'Refinery', icon: '◇',
     desc: '+1 shard when scored as part of Two Pair or Full House.',
     refineryComboIds: ['two_pair', 'full_house'], refineryShards: 1, rarity: 'uncommon',
-    visual: { materialKey: 'gilded', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
+    visual: { materialKey: 'refinery', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   // Phase 5d — mod-density / first-die / utility mods.
   {
@@ -408,7 +426,7 @@ export const MODS: ModDef[] = [
     id: 'echo', name: 'Echo', icon: '⤳',
     desc: 'Repeats the previous mod\'s effect on this die.',
     echo: true, rarity: 'legendary',
-    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
+    visual: { materialKey: 'echo', accentColor: '#88ddff', triggerFx: 'flashback', geometricVariant: 'pulsing-theatrical' },
   },
   // ─── Scaling die-mods (2026-05-11) ────────────────────────────────────
   // Each has a per-instance counter (run.diceModStacks[dieIdx][slotIdx]).
@@ -421,7 +439,7 @@ export const MODS: ModDef[] = [
     id: 'tally_mark', name: 'Tally Mark', icon: '|',
     desc: '+1 chip per time this die has ever scored.',
     tallyChipPerStack: 1, rarity: 'common',
-    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'tallyMark', geometricVariant: 'etched' },
   },
   {
     id: 'cadence', name: 'Cadence', icon: '♪',
@@ -460,7 +478,7 @@ export const MODS: ModDef[] = [
     id: 'pyre_mark', name: 'Pyre Mark', icon: '🔥',
     desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
     pyreChipPerStack: 2, rarity: 'common',
-    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pyreMark', geometricVariant: 'etched' },
   },
   // ─── Banish-face family (2026-05-13) ────────────────────────────────────
   // A die wearing one of these mods literally pops up and re-tumbles when

@@ -82,6 +82,18 @@ export function startAudioBridge(): () => void {
         case 'loaded':    sfxModule.sfxPlay('modLoaded'); break;
         case 'pipCharge': sfxModule.sfxPlay('modPipCharge'); break;
         case 'backstop':  sfxModule.sfxPlay('modBackstop'); break;
+        // 2026-05-14 fifth + sixth pass — every bespoke trigger family
+        // routes to its dedicated synth voice (see audio/sfx/voices.ts
+        // and synthBank.ts for the per-voice definitions).
+        case 'crown':     sfxModule.sfxPlay('modCrown'); break;
+        case 'shatter':   sfxModule.sfxPlay('modShatter'); break;
+        case 'swirl':     sfxModule.sfxPlay('modSwirl'); break;
+        case 'flashback': sfxModule.sfxPlay('modFlashback'); break;
+        case 'conduit':   sfxModule.sfxPlay('modConduit'); break;
+        case 'crescendo': sfxModule.sfxPlay('modCrescendo'); break;
+        case 'resonance': sfxModule.sfxPlay('modResonance'); break;
+        case 'pyreMark':  sfxModule.sfxPlay('modPyreMark'); break;
+        case 'tallyMark': sfxModule.sfxPlay('modTallyMark'); break;
       }
     }),
     // Forge moments. Attach is a louder confirm; detach is the lighter

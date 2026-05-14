@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Gilding Press — catalyst sigil">
+  <title>Gilding Press — catalyst sigil</title>
+  <rect width="100%" height="100%" fill="#07051a"/>
+  <g fill="none" stroke="#f5c451" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4"></rect><line x1="12" y1="7" x2="12" y2="13" stroke-width="2.5"></line><rect x="5" y="13" width="14" height="3" rx="0.5" fill="#f5c451" fill-opacity="0.3"></rect><ellipse cx="12" cy="18" rx="6" ry="1"></ellipse><ellipse cx="12" cy="20" rx="7" ry="1" opacity="0.55"></ellipse></g>
+</svg>

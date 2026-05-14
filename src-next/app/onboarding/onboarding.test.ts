@@ -110,6 +110,136 @@ describe('pickActiveCoachmark', () => {
     (s.meta as { onboarding?: unknown }).onboarding = undefined;
     expect(pickActiveCoachmark(s)?.id).toBe('round_roll');
   });
+
+  // 2026-05-14 expansion — new coachmarks added by the studio review's
+  // Player Experience dept. Each predicate should be queryable in
+  // isolation; firing order is "most fundamental first" so each only
+  // wins when the earlier ones are seen.
+  describe('2026-05-14 expansion entries', () => {
+    const seenAll = (...ids: string[]) => ({ seen: ids, dismissed: false });
+
+    it('fires constellation_select on the picker screen', () => {
+      const s = baseState({ ui: { ...initialUiSlice(), screen: 'constellation_select' } });
+      expect(pickActiveCoachmark(s)?.id).toBe('constellation_select');
+    });
+
+    it('fires first_voidstorm when a voidstorm is active and round basics are seen', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true, voidstormId: 'gravity_well' },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_voidstorm');
+    });
+
+    it('fires first_chain when chainLen >= 2', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true, chainLen: 2 },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_chain');
+    });
+
+    it('does NOT fire first_chain when chainLen < 2', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true, chainLen: 1 },
+      });
+      const c = pickActiveCoachmark(s);
+      expect(c?.id).not.toBe('first_chain');
+    });
+
+    it('fires first_edition when at least one catalyst has an edition stamp', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true },
+        run: { ...initialRunSlice(), catalysts: ['stratifier'], catalystEditions: { stratifier: 'foil' } },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_edition');
+    });
+
+    it('fires first_voucher when the player owns at least one voucher', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true },
+        run: { ...initialRunSlice(), vouchers: ['bench'] },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_voucher');
+    });
+
+    it('fires first_consumable when the tray has at least one item', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true },
+        run: { ...initialRunSlice(), consumables: ['galaxy_pair'] },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_consumable');
+    });
+
+    it('fires first_resonance once a resonance has been discovered', () => {
+      const meta = initialMetaSlice();
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: {
+          ...meta,
+          onboarding: seenAll('round_roll', 'round_lock'),
+          discovered: { ...meta.discovered, resonances: ['stratifier+twin_sample'] },
+        },
+        round: { ...initialRoundSlice(), firstRollDone: true },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_resonance');
+    });
+
+    it('fires first_boss_debuff on a boss round', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'round' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('round_roll', 'round_lock') },
+        round: { ...initialRoundSlice(), firstRollDone: true, isBoss: true },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_boss_debuff');
+    });
+
+    it('fires first_skip_bounty on the hub once hub_blinds is seen', () => {
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'hub' },
+        meta: { ...initialMetaSlice(), onboarding: seenAll('hub_blinds') },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_skip_bounty');
+    });
+
+    it('fires astral_forge_first on the astral_forge screen', () => {
+      const s = baseState({ ui: { ...initialUiSlice(), screen: 'astral_forge' } });
+      expect(pickActiveCoachmark(s)?.id).toBe('astral_forge_first');
+    });
+
+    it('fires first_dust_earned on the FAIL screen when dust was earned', () => {
+      const run = initialRunSlice();
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'fail' },
+        run: { ...run, runStats: { ...run.runStats, dustEarned: 12 } },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_dust_earned');
+    });
+
+    it('fires first_dust_earned on the WIN screen when dust was earned (multi-screen)', () => {
+      const run = initialRunSlice();
+      const s = baseState({
+        ui: { ...initialUiSlice(), screen: 'win' },
+        run: { ...run, runStats: { ...run.runStats, dustEarned: 50 } },
+      });
+      expect(pickActiveCoachmark(s)?.id).toBe('first_dust_earned');
+    });
+
+    it('does NOT fire first_dust_earned when dustEarned === 0', () => {
+      const s = baseState({ ui: { ...initialUiSlice(), screen: 'fail' } });
+      expect(pickActiveCoachmark(s)).toBeNull();
+    });
+  });
 });
 
 describe('COACHMARKS catalog integrity', () => {

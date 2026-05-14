@@ -12,6 +12,7 @@ import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
+import { CatalystIcon } from '../visual/CatalystIcon';
 import { RARITY_COLORS } from '../visual/rarityStyles';
 
 type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets' | 'about';
@@ -253,7 +254,16 @@ function CatalystGrid({ discovered }: { discovered: string[] }) {
           <Cell key={c.id} locked={!seen} accent={accent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="catalyst" rarity={seen ? c.rarity : null} size={32}>
-                <span style={{ color: seen ? c.color : '#6a6080' }}>{seen ? c.icon : '◇'}</span>
+                {seen ? (
+                  <CatalystIcon
+                    catalystId={c.id}
+                    fallbackChar={c.icon}
+                    color={c.color}
+                    size={20}
+                  />
+                ) : (
+                  <span style={{ color: '#6a6080' }}>◇</span>
+                )}
               </KindFrame>
               {seen ? (
                 <div style={{ flex: 1 }}>

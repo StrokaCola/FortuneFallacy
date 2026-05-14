@@ -1,38 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Z } from './zLayers';
+// "Arrived from {portal}" pill that fires once on portal-entry.
+// Migrated to the central toast queue 2026-05-14.
 
-export function ArrivalToast() {
-  const [shown, setShown] = useState(false);
-  const [from, setFrom] = useState<string>('');
+import { useEffect } from 'react';
+import { pushToast, toastQueue } from './toastQueue';
 
-  useEffect(() => {
-    const params = window.Portal?.readPortalParams();
-    if (!params?.fromPortal) return;
-    const ref = params.ref;
-    setFrom(ref ? extractDomain(ref) : 'the void');
-    setShown(true);
-    const t = window.setTimeout(() => setShown(false), 5000);
-    return () => window.clearTimeout(t);
-  }, []);
+const HOLD_MS = 5000;
 
-  if (!shown) return null;
-
-  return (
-    <div
-      onClick={() => setShown(false)}
-      className="mat-crystal"
-      style={{
-        position: 'absolute', top: 18, right: '50%', transform: 'translate(50%, 0)',
-        padding: '8px 16px', borderRadius: 10, zIndex: Z.bannerArrival,
-        cursor: 'pointer', pointerEvents: 'auto',
-        animation: 'fadein 400ms ease-out',
-      }}>
-      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#7be3ff' }}>
-        ✦ arrived from <span style={{ color: '#f5c451' }}>{from}</span>
-      </span>
-    </div>
-  );
-}
+type ArrivalData = { from: string; toastId: string };
 
 function extractDomain(url: string): string {
   try {
@@ -41,4 +15,42 @@ function extractDomain(url: string): string {
   } catch {
     return url.slice(0, 24);
   }
+}
+
+function renderArrival({ from, toastId }: ArrivalData) {
+  return (
+    <div
+      // Click-to-dismiss preserved from the pre-migration toast.
+      onClick={() => toastQueue.dismiss(toastId)}
+      className="mat-crystal"
+      style={{
+        padding: '8px 16px', borderRadius: 10,
+        cursor: 'pointer',
+      }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#7be3ff' }}>
+        ✦ arrived from <span style={{ color: '#f5c451' }}>{from}</span>
+      </span>
+    </div>
+  );
+}
+
+export function ArrivalToast() {
+  useEffect(() => {
+    const params = window.Portal?.readPortalParams();
+    if (!params?.fromPortal) return;
+    const ref = params.ref;
+    const from = ref ? extractDomain(ref) : 'the void';
+    const toastId = `arrival-${Date.now()}`;
+    pushToast<ArrivalData>({
+      id: toastId,
+      // Single-fire, low priority — the player gets it as a "by the
+      // way" beat, not a celebration. Other toasts can preempt.
+      priority: 'low',
+      durationMs: HOLD_MS,
+      data: { from, toastId },
+      render: renderArrival,
+    });
+  }, []);
+
+  return null;
 }
