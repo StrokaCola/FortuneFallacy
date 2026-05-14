@@ -279,7 +279,16 @@ textarea:focus-visible,
 .has-tip .tip-flavor {
   display: block; margin-top: 6px; font-style: italic; color: #bba8ff; font-size: 10px;
 }
-@media (hover: hover) { .has-tip:hover .tip { opacity: 1; } }
+@media (hover: hover) {
+  .has-tip:hover .tip { opacity: 1; }
+  /* Nested .has-tip: when an inner has-tip is being hovered, suppress the
+     outer has-tip's own direct-child .tip so the two tooltips don't
+     overlap. The 2026-05-14 boss-debuff bug — hovering the boss chip
+     also surfaced the parent panel's "ante / blind" tooltip on top of
+     it — was this case (boss chip is a .has-tip nested inside the
+     TopBar's panel .has-tip). */
+  .has-tip:has(.has-tip:hover) > .tip { opacity: 0; }
+}
 /* Touch parity: long-press to "stick" a tooltip open, tap elsewhere to
    dismiss. The .tip-stuck class is applied by app/ui/longPressTip.ts on
    hold; pure :active was unreliable because the tooltip vanished as soon
