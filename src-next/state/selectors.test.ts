@@ -4,7 +4,7 @@ import {
   selectGoalIdx, selectDice, selectHandsLeft, selectRerollsLeft, selectPingCount,
   selectChainLen, selectChainTier, selectRoundActive, selectBlindId, selectIsBoss,
   selectShopOffers, selectShopRerollCost, selectCatalysts, selectVouchers,
-  selectPlayerName, selectTensionFromState, selectAccent,
+  selectPlayerName, selectTensionFromState, selectAccent, selectMaxSlots,
 } from './selectors';
 import { lookupConstellation } from '../data/constellations';
 import type { GameState } from './store';
@@ -122,5 +122,35 @@ describe('selectAccent', () => {
     expect(selectAccent(argo)).toBe(lookupConstellation('argo').color);
     expect(selectAccent(mensa)).toBe(lookupConstellation('mensa').color);
     expect(selectAccent(argo)).not.toBe(selectAccent(mensa));
+  });
+});
+
+describe('selectMaxSlots', () => {
+  it('returns a tuple of catalyst / consumable / mod caps', () => {
+    const s = makeState();
+    const tuple = selectMaxSlots(s);
+    expect(tuple).toHaveLength(3);
+    const [cat, con, mod] = tuple;
+    expect(typeof cat).toBe('number');
+    expect(typeof con).toBe('number');
+    expect(typeof mod).toBe('number');
+  });
+
+  it('returns the SAME tuple reference for the same state (WeakMap memo)', () => {
+    // Regression for the Shop over-render perf bug: each useStore call
+    // used to hand Zustand a fresh number. The memo keeps the tuple
+    // ref stable so Object.is bails out on subsequent renders.
+    const s = makeState();
+    const a = selectMaxSlots(s);
+    const b = selectMaxSlots(s);
+    expect(a).toBe(b);
+  });
+
+  it('returns a NEW tuple for a different state object', () => {
+    // Memo is by state identity, not by value — distinct GameState
+    // objects get distinct cached tuples.
+    const a = selectMaxSlots(makeState());
+    const b = selectMaxSlots(makeState());
+    expect(a).not.toBe(b);
   });
 });

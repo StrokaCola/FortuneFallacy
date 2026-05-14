@@ -1711,3 +1711,49 @@ html:not(.reduce-motion) .boss-sigil--reveal .boss-sigil__mark path {
   scale: var(--ff-inspect-scale, 1);
   rotate: var(--ff-inspect-rotate, 0deg);
 }
+
+/* ============================================================ */
+/* Performance Mode — degraded path                              */
+/* ============================================================ */
+/* `body.perf-degraded` is set by installPerfBodyClass() in
+   src-next/app/perf/perfMode.ts. The class flips live when the
+   frame-budget watcher detects sustained jank (p95 > 25ms for 4s)
+   or when the player manually selects Performance Mode = On.
+   Each rule below caps or suppresses an expensive GPU path the
+   audit identified.
+
+   Drop-shadow inside animated @keyframes is the single biggest
+   offender on Mac integrated GPUs — it forces per-frame
+   rasterisation. Backdrop-filter blur composites the entire
+   frame buffer behind every panel. Mix-blend-mode overlays cost
+   a framebuffer read+write per layer. Infinite decorative
+   animations keep the GPU pegged even between actions. We drop
+   all of those when degraded; players who want full quality flip
+   Performance Mode = Off in Settings. */
+
+/* Cap or remove backdrop-filter blur — the radius is what costs,
+   not the rule. 10px → 4px keeps the frosted look at 1/6 the
+   sample count on integrated GPUs. */
+body.perf-degraded .panel       { backdrop-filter: blur(4px); }
+body.perf-degraded .btn-ghost   { backdrop-filter: none; }
+
+/* Suppress infinite decorative animations. None of these affect
+   gameplay; they're ambient depth that costs more than it gives
+   when the GPU is already saturated. */
+body.perf-degraded .cosmos-stardust-near,
+body.perf-degraded .cosmos-stardust-far,
+body.perf-degraded .cosmos-lightning,
+body.perf-degraded .forge-spark,
+body.perf-degraded .edition-foil::before,
+body.perf-degraded .edition-holo,
+body.perf-degraded .edition-poly,
+body.perf-degraded .edition-void {
+  animation: none !important;
+}
+
+/* Edition badge backgrounds — the poly rainbow gradient is also
+   GPU-expensive (300% bg-size + animated background-position).
+   Flatten to the base accent on degraded. */
+body.perf-degraded .edition-poly {
+  background: rgba(149, 119, 255, 0.22) !important;
+}

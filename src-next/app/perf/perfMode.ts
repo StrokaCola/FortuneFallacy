@@ -138,6 +138,29 @@ export function stopFrameBudgetWatcher(): void {
   }
 }
 
+/**
+ * Mirror the `isPerfDegraded()` state onto `<body class="perf-degraded">`
+ * so CSS rules can react without per-component prop drilling. The
+ * cheapest hook for gating expensive GPU paths (backdrop-filter blur
+ * radius, mix-blend-mode overlays, animated drop-shadows, infinite
+ * decorative animations) lives in CSS, so a single body-class flip
+ * lets the whole stylesheet downshift at once.
+ *
+ * Idempotent — returns a teardown that removes the listener + class.
+ */
+export function installPerfBodyClass(): () => void {
+  if (typeof document === 'undefined') return () => undefined;
+  const sync = () => {
+    document.body.classList.toggle('perf-degraded', isPerfDegraded());
+  };
+  sync();
+  const off = subscribePerfMode(sync);
+  return () => {
+    off();
+    document.body.classList.remove('perf-degraded');
+  };
+}
+
 // Test-only helpers.
 export function _resetPerfMode(): void {
   _budgetExceeded = false;
@@ -145,4 +168,12 @@ export function _resetPerfMode(): void {
   _lastRestoreAt = 0;
   stopFrameBudgetWatcher();
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+}
+
+// Test-only: simulate sustained jank crossing the auto-degrade threshold
+// so unit tests can validate downstream effects (e.g. installPerfBodyClass
+// adding the body class). Notifies subscribers like the real watcher does.
+export function _setBudgetExceededForTest(v: boolean): void {
+  _budgetExceeded = v;
+  notify();
 }

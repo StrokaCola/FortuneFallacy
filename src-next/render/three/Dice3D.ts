@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
+import { isPerfDegraded } from '../../app/perf/perfMode';
 import { dispatch } from '../../actions/dispatch';
 import { lookupMod } from '../../core/mods';
 import { createCosmicEnv } from './MaterialEnv';
@@ -329,8 +330,15 @@ export class Dice3D {
     // fills its #stage-root parent. Initial size derives from window;
     // applyViewportSize() re-runs on every resize/orientationchange.
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Shadow tier scales with perf mode. PCFSoft (the high tier) costs
+    // ~1.5 FPS on integrated Mac GPUs because of the soft-filter kernel;
+    // PCFShadowMap is the basic non-filtered variant. Combined with the
+    // 1024→512 mapSize drop further below, this trades a barely-visible
+    // softness for ~1-2 FPS recovery on degraded devices.
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = isPerfDegraded()
+      ? THREE.PCFShadowMap
+      : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
     this.scene = new THREE.Scene();
@@ -361,7 +369,11 @@ export class Dice3D {
     const key = new THREE.DirectionalLight(0xffffff, 1.0);
     key.position.set(4, 8, 4);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    // 1024×1024 shadow map → 512×512 on degraded. Quarter the memory
+    // bandwidth + fragment shader load on each shadow pass. Visual
+    // diff is minor on a sub-100px die silhouette.
+    const shadowMapSize = isPerfDegraded() ? 512 : 1024;
+    key.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     this.scene.add(key);
     const rim = new THREE.PointLight(0x7be3ff, 1.4, 24);
     rim.position.set(-3, 2, -4);

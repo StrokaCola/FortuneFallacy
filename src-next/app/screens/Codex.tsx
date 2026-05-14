@@ -524,11 +524,14 @@ function BossGrid({ discovered }: { discovered: string[] }) {
 }
 
 function AchievementsView({ unlocked }: { unlocked: string[] }) {
-  // Full state read so progressive achievements can compute their
-  // current/target via the predicate authored in data/achievements.ts.
-  // useStore subscriber fires once per state change but the comparison
-  // is identity-based on the meta + run slices, so the view re-renders
-  // only when something achievement-relevant has actually moved.
+  // Full state read because progressive achievements compute their
+  // current/target via the predicate authored in data/achievements.ts —
+  // each predicate reads arbitrary slices (meta.cosmicDustLifetime,
+  // meta.discovered, run.runStats, etc.) so narrowing the selector
+  // statically isn't possible. The cost is bounded by mount lifetime:
+  // AchievementsView only renders when `screen === 'codex'`, which is
+  // a meta-review screen the player can't be on during a Round, so the
+  // per-tick re-render churn never lands during gameplay.
   const state = useStore((s) => s);
   const unlockedSet = new Set(unlocked);
   const totalUnlocked = unlocked.length;
