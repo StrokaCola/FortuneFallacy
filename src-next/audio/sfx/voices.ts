@@ -462,6 +462,62 @@ export function modTallyMark(bank: SynthBank): void {
   bank.modTallyMark.click.triggerAttackRelease('C2', '32n', t + 0.01);
 }
 
+// ---- modTwinGlow: bell + delayed detuned partner -------------------------
+// For Mirror Pair. The partner bell at +20 cents and 60ms creates a
+// shimmer rather than a clean second strike.
+export function modTwinGlow(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = pickPent(5) * centsToRatio(jitterCents());
+  bank.modTwinGlow.bell.volume.value = vol('modTwinGlowBell', -16);
+  bank.modTwinGlow.partner.volume.value = vol('modTwinGlowPartner', -20);
+  bank.modTwinGlow.bell.triggerAttackRelease(hz, '16n', t);
+  bank.modTwinGlow.partner.triggerAttackRelease(hz * centsToRatio(20), '16n', t + 0.06);
+}
+
+// ---- modShardClink: metallic clink + low thud ----------------------------
+// For Tithe. Coins falling onto stone.
+export function modShardClink(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modShardClink.clink.volume.value = vol('modShardClinkMetal', -20);
+  bank.modShardClink.thud.volume.value = vol('modShardClinkThud', -22);
+  bank.modShardClink.clink.triggerAttackRelease('16n', t);
+  bank.modShardClink.thud.triggerAttackRelease('A2', '32n', t + 0.02);
+}
+
+// ---- modRhythmStack: 3 sequential beats + bell --------------------------
+// For Cadence. Three percussive taps at 80ms intervals — the stack
+// climbing audibly.
+export function modRhythmStack(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modRhythmStack.beat.volume.value = vol('modRhythmStackBeat', -18);
+  bank.modRhythmStack.chime.volume.value = vol('modRhythmStackChime', -22);
+  const hz = pickPent(5) * centsToRatio(jitterCents());
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t);
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t + 0.08);
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t + 0.16);
+  bank.modRhythmStack.chime.triggerAttackRelease(hz, '16n', t + 0.20);
+}
+
+// ---- modAppetite: inward whoosh + low gulp -------------------------------
+// For Glutton. Whoosh in, gulp lands.
+export function modAppetite(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modAppetite.whoosh.volume.value = vol('modAppetiteWhoosh', -22);
+  bank.modAppetite.gulp.volume.value = vol('modAppetiteGulp', -18);
+  bank.modAppetite.whoosh.triggerAttackRelease('4n', t);
+  bank.modAppetite.gulp.triggerAttackRelease('G2', '16n', t + 0.18);
+}
+
+// ---- modAwaken: held drone + bright flash --------------------------------
+// For Dormant. Longest mod voice — the once-per-run awakening earns it.
+export function modAwaken(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modAwaken.drone.volume.value = vol('modAwakenDrone', -14);
+  bank.modAwaken.flash.volume.value = vol('modAwakenFlash', -16);
+  bank.modAwaken.drone.triggerAttackRelease(['D3', 'A3', 'D4'], '2n', t);
+  bank.modAwaken.flash.triggerAttackRelease('D5', '4n', t + 0.40);
+}
+
 // ---- uiClick: short white noise burst ------------------------------------
 export function uiClick(bank: SynthBank): void {
   const t = jitteredTime();

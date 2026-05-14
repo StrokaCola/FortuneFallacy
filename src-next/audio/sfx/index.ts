@@ -15,6 +15,9 @@ export type SfxId =
   | 'modCrown' | 'modShatter' | 'modSwirl' | 'modFlashback'
   | 'modConduit' | 'modCrescendo' | 'modResonance'
   | 'modPyreMark' | 'modTallyMark'
+  // 2026-05-14 seventh pass — twin/cost/rhythm/appetite/awaken voices.
+  | 'modTwinGlow' | 'modShardClink' | 'modRhythmStack'
+  | 'modAppetite' | 'modAwaken'
   | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover'
   // 2026-05-11 polish pass — scaling pack stings. scalingTick fires on every
   // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
@@ -152,6 +155,11 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'modResonance':    (v as typeof voices).modResonance(bank as never); break;
       case 'modPyreMark':     (v as typeof voices).modPyreMark(bank as never); break;
       case 'modTallyMark':    (v as typeof voices).modTallyMark(bank as never); break;
+      case 'modTwinGlow':     (v as typeof voices).modTwinGlow(bank as never); break;
+      case 'modShardClink':   (v as typeof voices).modShardClink(bank as never); break;
+      case 'modRhythmStack':  (v as typeof voices).modRhythmStack(bank as never); break;
+      case 'modAppetite':     (v as typeof voices).modAppetite(bank as never); break;
+      case 'modAwaken':       (v as typeof voices).modAwaken(bank as never); break;
       case 'modAttach':       (v as typeof voices).modAttach(bank as never); break;
       case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
       case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;
