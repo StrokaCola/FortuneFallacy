@@ -49,6 +49,7 @@ export function TopBar({
   voucherCount = 0,
   vouchers = [],
   accent = '#7be3ff',
+  constellationAccent,
   tense = false,
 }: {
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
@@ -57,6 +58,11 @@ export function TopBar({
   voucherCount?: number;
   vouchers?: string[];
   accent?: string;
+  // Persistent constellation tint that survives boss blinds. The
+  // Astrolabe orbital dial uses this so the run's chosen
+  // constellation identity stays visible even when `accent` flips to
+  // crimson during the boss debuff. Optional; falls back to `accent`.
+  constellationAccent?: string;
   // Last-throw warning. When true, the score readout pulses red so the
   // player can't miss that the next hand needs to clear or they bust.
   // Driven from Round.tsx based on (hands === 1 && score < target).
@@ -110,7 +116,7 @@ export function TopBar({
     }}>
       <div className="panel has-tip" style={{ padding: panelPad, minWidth: tight ? 0 : 280, maxWidth: tight ? 220 : 360, pointerEvents: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: tight ? 8 : 14 }}>
-          {astrolabeSize > 0 && <Astrolabe size={astrolabeSize} score={score} target={target} accent={accent} />}
+          {astrolabeSize > 0 && <Astrolabe size={astrolabeSize} score={score} target={target} accent={constellationAccent ?? accent} />}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div

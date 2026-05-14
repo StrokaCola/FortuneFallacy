@@ -6,6 +6,7 @@ import { lookupConstellation } from '../../data/constellations';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { getDailyChallenge } from '../../online/dailyChallenge';
 import { lookupStake } from '../../data/stakes';
+import { getTipOfTheDay } from '../../data/tips';
 
 // Match PauseMenu's notion of "run in progress" — also count an active
 // round (mid-hand) so a fresh-launch with `score === 0 && goalIdx === 0`
@@ -266,6 +267,19 @@ export function Title() {
               <PortalGate size={portalSize} label="Travel" />
             </div>
           )}
+        </div>
+
+        {/* Tip of the Day — deterministic per UTC date so the same tip
+            shows for every player on a given day. Nudges new players
+            toward systems they may not have discovered yet (mods,
+            voidstorms, resonances, easter eggs); experienced players
+            get a low-stakes inspirational sentence. See data/tips.ts. */}
+        <div className="f-mono" style={{
+          fontSize: 10, color: '#bba8ff', opacity: 0.55,
+          marginTop: 14, maxWidth: 'min(420px, 88vw)',
+          textAlign: 'center', lineHeight: 1.6, fontStyle: 'italic',
+        }}>
+          ◇ {getTipOfTheDay()}
         </div>
 
         <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#9577ff', marginTop: versionMarginTop, opacity: 0.7 }}>

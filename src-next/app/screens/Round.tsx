@@ -31,7 +31,7 @@ import {
   selectHandsLeft, selectRerollsLeft,
   selectTarget, selectShards, selectAnte,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
-  selectAccent, selectEffectiveCatalystSlotsUsed,
+  selectAccent, selectConstellationAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
 
@@ -66,6 +66,10 @@ export function Round() {
   }, [tense]);
   // Constellation accent (red on boss). See selectAccent in state/selectors.ts.
   const accent = useStore(selectAccent);
+  // Persistent constellation tint — passed to TopBar so the Astrolabe
+  // keeps the run's chosen identity color even when `accent` flips to
+  // crimson on boss blinds.
+  const constellationAccent = useStore(selectConstellationAccent);
   // Round-time bundle readiness — gates the Roll button while the lazy
   // Three.js + Rapier chunks are still streaming in (see app/perf/roundBundle).
   const ready = useRoundBundleReady();
@@ -87,6 +91,7 @@ export function Round() {
         voucherCount={vouchers.length}
         vouchers={vouchers}
         accent={accent}
+        constellationAccent={constellationAccent}
         tense={tense}
       />
       <PauseButton />

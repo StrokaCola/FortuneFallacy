@@ -7,6 +7,8 @@ import { RunInfoPanel } from './RunInfoPanel';
 import { Z } from './zLayers';
 import { useFocusTrap } from './useFocusTrap';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { CATALYST_META } from '../../data/catalysts';
+import { lookupConstellation } from '../../data/constellations';
 
 const selectPaused = (s: GameState) => s.ui.paused;
 const selectRunActive = (s: GameState) =>
@@ -23,6 +25,16 @@ function readSliders(): Sliders {
   };
 }
 
+// Retention nudge selectors — small compact "what you have to lose"
+// summary surfaced on the Menu tab. Picks the catalyst with the
+// highest chip contribution from `runStats.catalystChips`, falls back
+// to the first owned catalyst when the run is fresh.
+const selectAnteForPause = (s: GameState) => s.run.ante;
+const selectConstellationIdForPause = (s: GameState) => s.run.constellationId;
+const selectCatalystsForPause = (s: GameState) => s.run.catalysts;
+const selectPeakHandForPause = (s: GameState) => s.run.runStats?.peakHand ?? 0;
+const selectCatalystChipsForPause = (s: GameState) => s.run.runStats?.catalystChips ?? {};
+
 export function PauseMenu() {
   const paused = useStore(selectPaused);
   const runActive = useStore(selectRunActive);
@@ -30,6 +42,12 @@ export function PauseMenu() {
   const [sliders, setSliders] = useState<Sliders>(readSliders);
   const [tab, setTab] = useState<Tab>('menu');
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Run summary (used by the retention panel on the Menu tab).
+  const runAnte = useStore(selectAnteForPause);
+  const runConstellationId = useStore(selectConstellationIdForPause);
+  const runCatalysts = useStore(selectCatalystsForPause);
+  const runPeakHand = useStore(selectPeakHandForPause);
+  const runCatalystChips = useStore(selectCatalystChipsForPause);
 
   useFocusTrap(dialogRef, paused);
 
@@ -99,6 +117,17 @@ export function PauseMenu() {
 
         {tab === 'menu' && (
           <>
+            {runActive && (
+              <RunRetentionPanel
+                ante={runAnte}
+                constellationId={runConstellationId}
+                catalysts={runCatalysts}
+                peakHand={runPeakHand}
+                catalystChips={runCatalystChips}
+                tight={tight}
+              />
+            )}
+
             <button
               className="btn btn-primary mat-interactive tap"
               style={{ width: tight ? 180 : 220 }}
@@ -207,6 +236,79 @@ function SliderRow({ label, value, onChange }: {
       }}>
         {Math.round(value * 100)}%
       </span>
+    </div>
+  );
+}
+
+// Compact "what you have to lose" retention panel for the Menu tab.
+// Shown only when a run is active. Surfaces constellation + ante +
+// top catalyst (by chip contribution, falling back to first-owned) +
+// peak hand. The intent is to pre-empt the close-the-tab decision a
+// player might make at the pause moment by reminding them of the run
+// they'd be giving up.
+function pickTopCatalyst(catalystIds: string[], chips: Record<string, number>): string | null {
+  if (catalystIds.length === 0) return null;
+  let bestId: string | null = null;
+  let bestChips = -1;
+  for (const id of catalystIds) {
+    const c = chips[id] ?? 0;
+    if (c > bestChips) { bestChips = c; bestId = id; }
+  }
+  // If no contributions recorded yet, fall back to the first owned.
+  return bestId ?? catalystIds[0] ?? null;
+}
+
+function formatPeak(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function RunRetentionPanel({
+  ante, constellationId, catalysts, peakHand, catalystChips, tight,
+}: {
+  ante: number;
+  constellationId: string;
+  catalysts: string[];
+  peakHand: number;
+  catalystChips: Record<string, number>;
+  tight: boolean;
+}) {
+  const cons = lookupConstellation(constellationId);
+  const topCatId = pickTopCatalyst(catalysts, catalystChips);
+  const topCat = topCatId ? CATALYST_META.find((c) => c.id === topCatId) : null;
+
+  return (
+    <div style={{
+      width: tight ? 220 : 260,
+      display: 'flex', flexDirection: 'column',
+      gap: 6,
+      padding: tight ? '10px 12px' : '12px 14px',
+      background: 'rgba(28,18,69,0.55)',
+      border: `1px solid ${cons.color}55`,
+      borderRadius: 8,
+      boxShadow: `0 0 18px ${cons.color}22`,
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff',
+      }}>
+        your run
+      </div>
+      <div className="f-mono" style={{ fontSize: 12, color: '#f3f0ff', lineHeight: 1.6 }}>
+        <span style={{ color: cons.color }}>{cons.name.split(',')[0]}</span>
+        {' · '}
+        <span>ante {ante}</span>
+      </div>
+      {topCat && (
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', lineHeight: 1.5, opacity: 0.85 }}>
+          carried by <span style={{ color: topCat.color }}>{topCat.name}</span>
+        </div>
+      )}
+      {peakHand > 0 && (
+        <div className="f-mono" style={{ fontSize: 11, color: '#dcd4ff', lineHeight: 1.5, opacity: 0.85 }}>
+          peak hand <span className="num" style={{ color: '#f5c451' }}>{formatPeak(peakHand)}</span>
+        </div>
+      )}
     </div>
   );
 }

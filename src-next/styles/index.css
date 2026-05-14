@@ -10,6 +10,26 @@
   --cosmos-600:#432896; --cosmos-700:#2e1d6b; --cosmos-800:#1c1245;
   --cosmos-900:#0f0925; --cosmos-950:#07051a;
   --ember:#ff7847; --crimson:#e2334a; --gold:#f5c451; --vector:#7be3ff;
+
+  /* Constellation tints — mirror of CONSTELLATION_TINT in
+     `src-next/styles/constellationTokens.ts`. Available to any CSS
+     component that wants to accent against the active run's
+     constellation without re-importing JS data. */
+  --constellation-lyra:        #7be3ff;
+  --constellation-mensa:       #c084fc;
+  --constellation-triumvirate: #fbbf24;
+  --constellation-argo:        #34d399;
+  --constellation-fibonacci:   #fb7185;
+  --constellation-eclipse:     #e5e7eb;
+  --constellation-polyhedra:   #60a5fa;
+  --constellation-ophiuchus:   #a78bfa;
+
+  /* Touch-target minimum. Apple HIG: 44pt. Material Design: 48dp.
+     Used by the `.tap` utility class and reachable via `var()` for any
+     custom interactive surface that wants WCAG 2.5.5 compliance
+     without scattering 44px magic numbers across components. */
+  --touch-target-min: 44px;
+
   --snap-fast: 80ms;
   --snap: 120ms;
   --savored-short: 450ms;
@@ -155,7 +175,7 @@ textarea:focus-visible,
     0 0 0 2px rgba(7,5,26,0.85),
     0 0 0 4px rgba(123,227,255,0.85);
 }
-.tap { min-height: 44px; min-width: 44px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(123,227,255,0.18); }
+.tap { min-height: var(--touch-target-min); min-width: var(--touch-target-min); touch-action: manipulation; -webkit-tap-highlight-color: rgba(123,227,255,0.18); }
 .tap:active { transform: scale(0.96); transition: transform 60ms ease-out; }
 .reduce-motion .tap:active { transform: none; }
 .btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a; padding: 14px 28px; border-radius: 10px; font-size: 18px; box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }

@@ -27,6 +27,17 @@ export function selectAccent(s: GameState): string {
   if (s.round.isBoss) return '#e2334a';
   return lookupConstellation(s.run.constellationId).color;
 }
+
+// The constellation accent, *always* — never flips to crimson on boss
+// blinds. Used by surfaces that should preserve run-identity even
+// during boss reveals (e.g. the Astrolabe orbital dial). `selectAccent`
+// stays the right call for surfaces that *should* signal "boss mode"
+// (the action-bar arrows). See `docs/company-review-2026-05-13.md`
+// Dept 5 — Boss reveal rec.
+export function selectConstellationAccent(s: GameState): string {
+  return lookupConstellation(s.run.constellationId).color;
+}
+
 export const selectShopOffers = (s: GameState) => s.shop.offers;
 export const selectShopRerollCost = (s: GameState) => s.shop.rerollCost;
 export const selectPendingPack = (s: GameState) => s.shop.pendingPack;
