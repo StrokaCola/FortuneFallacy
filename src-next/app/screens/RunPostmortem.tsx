@@ -20,7 +20,7 @@
 // flips the hero color and label; everything below is identical so the
 // player always sees their stats — wins celebrate, busts learn from.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
@@ -28,6 +28,7 @@ import { lookupCatalyst, CATALYST_META, SCALING_CATALYST_IDS, RETRIGGER_CATALYST
 import { lookupEasterEgg } from '../../data/easterEggs';
 import { COMBOS } from '../../core/scoring/combos';
 import { triggerShake } from '../visual/screenShake';
+import { encodeSeed } from '../../core/seed/rng';
 import { PortalGate } from '../portal/PortalGate';
 import { computeOneMoreRunHook, HOOK_TONE_COLOR } from './postmortem/oneMoreRunHook';
 import { RunQuestLog } from './postmortem/RunQuestLog';
@@ -430,6 +431,12 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
             Try Again / Run Again button. See postmortem/RunQuestLog.tsx. */}
         <RunQuestLog />
 
+        {/* Seed reveal — always shown in postmortem regardless of
+            seedSource, since the player can now share or retry this
+            specific run. For random runs this is the FIRST time the
+            seed becomes visible. */}
+        <SeedReveal seed={run.seed} />
+
         {/* Action row — kept identical between modes so the button
             position is muscle-memory across runs. The Cosmic Lap
             "Continue" CTA appears only on the Win path — busts and the
@@ -463,6 +470,19 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           </button>
           <button
             type="button"
+            onClick={() => dispatch({
+              type: 'NEW_RUN',
+              constellationId: run.constellationId,
+              stakeId: run.stakeId,
+              seed: run.seed,
+            })}
+            className="btn btn-ghost mat-interactive tap"
+            title="Replay this run with the same seed, constellation, and stake."
+          >
+            ↺ Retry Seed
+          </button>
+          <button
+            type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
             className="btn btn-ghost mat-interactive tap"
           >
@@ -482,6 +502,65 @@ function Stat({ color, label, value, coachId }: { color: string; label: string; 
       <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff' }}>
         {label}
       </div>
+    </div>
+  );
+}
+
+// Seed reveal — shown only after the run ends (here in the postmortem)
+// so random-seed runs keep their "fresh discovery" feel during play.
+// Click-to-copy + a short "copied" confirmation; the button feeds the
+// raw XXXX-XXX text back to the clipboard so players can paste into a
+// share link or back into the seed input on ConstellationSelect.
+function SeedReveal({ seed }: { seed: number }) {
+  const encoded = encodeSeed(seed);
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try {
+      void navigator.clipboard?.writeText(encoded);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // Clipboard API unavailable — the seed text is still on screen,
+      // the player can long-press to copy manually.
+    }
+  };
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        display: 'inline-flex', alignItems: 'center', gap: 10,
+        padding: '6px 12px', borderRadius: 8,
+        border: '1px solid rgba(123,227,255,0.35)',
+        background: 'rgba(15,9,37,0.65)',
+        animation: 'fadein 700ms ease-out 1100ms both',
+      }}
+    >
+      <span className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.28em', color: '#7be3ff', opacity: 0.85,
+      }}>
+        seed
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="f-mono"
+        title="Copy seed to clipboard"
+        style={{
+          fontSize: 13, letterSpacing: '0.14em',
+          color: '#f3f0ff', background: 'transparent',
+          border: 'none', padding: 0, cursor: 'pointer',
+          textShadow: '0 0 8px rgba(123,227,255,0.35)',
+        }}
+      >
+        {encoded}
+      </button>
+      <span className="f-mono" style={{
+        fontSize: 10, color: copied ? '#7be3ff' : '#bba8ff',
+        opacity: copied ? 1 : 0.6,
+        transition: 'opacity 200ms',
+      }}>
+        {copied ? '✓ copied' : 'click to copy'}
+      </span>
     </div>
   );
 }

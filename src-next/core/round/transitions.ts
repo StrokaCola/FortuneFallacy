@@ -2,6 +2,7 @@ import type { GameState } from '../../state/store';
 import type { GameEventEmission, DieSnapshot } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
+import { makeSeedRng, seededPick } from '../seed/rng';
 import { blindClearShardBonus, extraHandsPerRound, maxConsumableSlots } from '../vouchers';
 import { lookupMod } from '../mods';
 import { getDiceSpec } from '../run/diceContext';
@@ -74,12 +75,15 @@ function dropBrittleMods(
   return { diceMods: nextMods, diceModEditions: nextEditions };
 }
 
-/** Pick a random boss-blind id uniformly. Exposed so NEW_RUN and
- * clearBlind can lock the upcoming-ante boss BEFORE the player clicks
- * Begin — the Hub reveals the chosen curse, and startBlind reuses the
- * locked id so a refresh on the hub doesn't shuffle the boss. */
-export function pickRandomBossId(): string {
-  return BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id;
+/** Pick a boss-blind id deterministically from the run seed + ante.
+ * Two players entering the same seed see the same boss on the same
+ * ante; a refresh on the hub doesn't shuffle the boss because the
+ * scope ('boss:ante2') is stable. NEW_RUN and clearBlind call this
+ * to lock the upcoming-ante boss in run.upcomingBossId; the Hub then
+ * reveals the chosen curse before the player clicks Begin. */
+export function pickBossId(seed: number, ante: number): string {
+  const rng = makeSeedRng(seed, `boss:ante${ante}`);
+  return seededPick(rng, BOSS_BLINDS).id;
 }
 
 export function startBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
@@ -116,7 +120,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // stable.
   const lockedBossId = s.run.upcomingBossId ?? null;
   const blindId = isBoss
-    ? (lockedBossId ?? pickRandomBossId())
+    ? (lockedBossId ?? pickBossId(s.run.seed, ante))
     : def.name.toLowerCase().replace(/\s+/g, '_');
   // Voidstorm derivation — deterministic so the Hub preview chip and the
   // in-blind storm match exactly. Boss blinds always pass through as null.
@@ -363,7 +367,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   const anteAdvanced = nextAnte > s.run.ante;
   const nextUpcomingBossId = won
     ? null
-    : (anteAdvanced ? pickRandomBossId() : s.run.upcomingBossId ?? null);
+    : (anteAdvanced ? pickBossId(s.run.seed, nextAnte) : s.run.upcomingBossId ?? null);
   return {
     state: {
       ...s,

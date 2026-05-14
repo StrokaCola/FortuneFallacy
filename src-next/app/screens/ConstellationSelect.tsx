@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
 import { lookupConstellationUnlock } from '../../data/constellationUnlocks';
@@ -6,6 +6,7 @@ import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
 import { useStore, type GameState } from '../../state/store';
 import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
+import { decodeSeed } from '../../core/seed/rng';
 
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
 const selectUnlocks = (s: GameState) => s.meta.unlocks;
@@ -15,6 +16,18 @@ export function ConstellationSelect() {
   const tight = useIsTightStage();
   const stakeProgress = useStore(selectStakeProgress);
   const unlocks = useStore(selectUnlocks);
+  // Optional seed entry. Empty → fresh random seed (default UX). A valid
+  // XXXX-XXX code decodes to a 32-bit int that NEW_RUN consumes via the
+  // Card → dispatch path, so every random decision in the run flows
+  // from the entered value. Invalid input disables the Begin buttons
+  // until cleared or fixed; the player sees inline feedback below.
+  const [seedInput, setSeedInput] = useState('');
+  const trimmed = seedInput.trim();
+  const decodedSeed = useMemo(
+    () => (trimmed === '' ? null : decodeSeed(trimmed)),
+    [trimmed],
+  );
+  const seedInvalid = trimmed !== '' && decodedSeed === null;
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
@@ -79,6 +92,52 @@ export function ConstellationSelect() {
           </div>
         )}
 
+        {/* Optional seed entry — empty means a fresh random run (the
+            seed stays hidden in-game until postmortem). A valid
+            XXXX-XXX code makes this a seeded run: every random call
+            inside the run flows from it, the chip stays visible in
+            the Hub, and the player can share it. */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          marginBottom: tight ? 8 : compact ? 14 : 18,
+          flexWrap: 'wrap',
+        }}>
+          <label className="f-mono uc" style={{
+            fontSize: 9, letterSpacing: '0.28em', color: '#bba8ff', opacity: 0.85,
+          }} htmlFor="seed-input">
+            seed (optional)
+          </label>
+          <input
+            id="seed-input"
+            type="text"
+            inputMode="text"
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="XXXX-XXX"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            className="f-mono"
+            style={{
+              width: 132, padding: '5px 10px',
+              fontSize: 12, letterSpacing: '0.12em',
+              textTransform: 'uppercase', textAlign: 'center',
+              color: '#f3f0ff',
+              background: 'rgba(15,9,37,0.7)',
+              border: `1px solid ${seedInvalid ? 'rgba(255,77,109,0.6)' : 'rgba(149,119,255,0.25)'}`,
+              borderRadius: 6, outline: 'none',
+            }}
+          />
+          {seedInvalid && (
+            <span className="f-mono" style={{ fontSize: 10, color: '#ff4d6d' }}>
+              not a valid seed
+            </span>
+          )}
+        </div>
+
         <div
           data-coach="constellation-grid"
           style={{
@@ -97,6 +156,8 @@ export function ConstellationSelect() {
               tight={tight}
               progressId={stakeProgress[c.id] ?? null}
               unlocked={unlocks.includes(c.id)}
+              enteredSeed={decodedSeed}
+              seedBlocked={seedInvalid}
             />
           ))}
         </div>
@@ -112,7 +173,7 @@ export function ConstellationSelect() {
   );
 }
 
-function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; compact: boolean; tight: boolean; progressId: string | null; unlocked: boolean }) {
+function Card({ c, compact, tight, progressId, unlocked, enteredSeed, seedBlocked }: { c: Constellation; compact: boolean; tight: boolean; progressId: string | null; unlocked: boolean; enteredSeed: number | null; seedBlocked: boolean }) {
   const accent = '#7be3ff';
   // Highest stake the player has cleared for this constellation. Stakes up to
   // and including (cleared + 1) are playable. Spark is always playable.
@@ -230,12 +291,23 @@ function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; c
       {unlocked ? (
         <button
           className="btn btn-primary mat-interactive"
-          disabled={!playable}
-          onClick={() => playable && dispatch({ type: 'NEW_RUN', constellationId: c.id, stakeId: stake.id })}
+          disabled={!playable || seedBlocked}
+          onClick={() => {
+            if (!playable || seedBlocked) return;
+            // Pass the entered seed only when one was supplied; otherwise
+            // NEW_RUN generates a fresh random seed (and marks the run
+            // as `seedSource: 'random'` so the chip stays hidden in-game).
+            dispatch({
+              type: 'NEW_RUN',
+              constellationId: c.id,
+              stakeId: stake.id,
+              ...(enteredSeed != null ? { seed: enteredSeed } : {}),
+            });
+          }}
           style={{
             marginTop: 8, width: '100%', padding: '8px 14px', fontSize: 12,
-            opacity: playable ? 1 : 0.4,
-            cursor: playable ? 'pointer' : 'not-allowed',
+            opacity: (playable && !seedBlocked) ? 1 : 0.4,
+            cursor: (playable && !seedBlocked) ? 'pointer' : 'not-allowed',
           }}
         >
           Begin · {stake.name}

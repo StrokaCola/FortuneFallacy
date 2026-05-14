@@ -176,6 +176,12 @@ export function applySavedToInitial(s: GameState): GameState {
   // default null so startBlind falls back to a fresh roll and saves
   // it for subsequent refreshes.
   mergedRun.upcomingBossId = mergedRun.upcomingBossId ?? null;
+  // seedSource + shopSeq (added 2026-05) — legacy saves predate these;
+  // treat as a regular random run with no prior shop rolls, so the
+  // seed stays hidden until postmortem and the next OPEN_SHOP roll
+  // uses scope 'shop:seq=0'.
+  mergedRun.seedSource = mergedRun.seedSource ?? 'random';
+  mergedRun.shopSeq = mergedRun.shopSeq ?? 0;
   // Shop (newly persisted 2026-05). Legacy saves predate the field
   // entirely → fall back to the fresh slice so Shop's useEffect rolls
   // offers on next mount.

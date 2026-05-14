@@ -140,6 +140,20 @@ export type RunSlice = {
   // Null on legacy saves; startBlind falls back to a fresh roll and
   // saves it so the next refresh stays consistent.
   upcomingBossId?: string | null;
+  // How this run's seed got chosen — drives whether the seed is visible
+  // during play. 'random' = auto-generated (hidden until postmortem),
+  // 'player' = explicit Enter-Seed entry (visible throughout),
+  // 'daily' = daily-challenge seed (visible throughout, the player
+  // already knows they're on a daily). Postmortem reveals the seed
+  // for ALL three so a great run can be shared back. Legacy saves
+  // default to 'random'.
+  seedSource?: 'random' | 'player' | 'daily';
+  // Monotonic counter of shop rolls (OPEN_SHOP + REROLL_SHOP). Used as
+  // the scope discriminator for the seeded shop RNG so a refresh
+  // mid-shop produces the same offers and a deterministic reroll
+  // sequence falls out of the seed alone. Increments by 1 on each
+  // shop roll; resets to 0 on NEW_RUN.
+  shopSeq?: number;
 };
 
 // Visual + mechanical variant for catalysts. Mirrors Balatro's foil/holo/poly
@@ -211,4 +225,6 @@ export const initialRunSlice = (): RunSlice => ({
   endlessLap: 0,
   cosmicAfflictionId: null,
   upcomingBossId: null,
+  seedSource: 'random',
+  shopSeq: 0,
 });
