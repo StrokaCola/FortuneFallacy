@@ -273,28 +273,26 @@ function MeteorShowerLayer({ enabled }: { enabled: boolean }) {
           const angleDeg = 22 + ((i * 17) % 14);          // 22-36° below horizontal
           const delay = (i * 220) % 1400;                 // 0-1400ms stagger
           const duration = 1900 + ((i * 71) % 600);       // 1900-2500ms travel
+          // Single-element streak with composed rotate+translate in
+          // the keyframe so the rotation doesn't get clobbered when
+          // the animation transform runs (the wrapper-rotate / inner-
+          // translate pattern earlier had a layering bug that left
+          // the streaks invisible).
           return (
             <div
               key={`${shower.id}-${i}`}
+              className="cosmos-meteor"
               style={{
-                position: 'absolute',
                 top: `${-12 - ((i * 9) % 10)}vmax`,
                 left: `${startXPct}%`,
-                transform: `rotate(${angleDeg}deg)`,
-                transformOrigin: '0 0',
+                animationDelay: `${delay}ms`,
+                animationDuration: `${duration}ms`,
+                ['--meteor-angle' as string]: `${angleDeg}deg`,
+                ['--meteor-accent' as string]: shower.accent,
               }}
             >
-              <div
-                className="cosmos-meteor"
-                style={{
-                  animationDelay: `${delay}ms`,
-                  animationDuration: `${duration}ms`,
-                  ['--meteor-accent' as string]: shower.accent,
-                }}
-              >
-                <div className="cosmos-meteor-trail" />
-                <div className="cosmos-meteor-head" />
-              </div>
+              <div className="cosmos-meteor-trail" />
+              <div className="cosmos-meteor-head" />
             </div>
           );
         })

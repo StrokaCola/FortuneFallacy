@@ -380,45 +380,6 @@ function BoomSparks({ count = 24, intensity = INTENSITY }: { count?: number; int
   );
 }
 
-function ConfettiRain({ count = 28 }: { count?: number }) {
-  const pieces = useMemo(() => {
-    const colors = ['#ffd97a', '#f5c451', '#b18bff', '#7be3ff'];
-    return Array.from({ length: count }, (_, i) => ({
-      left: Math.random() * 100,
-      delay: Math.random() * 600,
-      dur: 1800 + Math.random() * 900,
-      drift: (Math.random() - 0.5) * 200,
-      rot: (Math.random() > 0.5 ? 1 : -1) * (540 + Math.random() * 720),
-      color: colors[i % colors.length],
-      size: 10 + Math.random() * 8,
-      variant: i % 3,
-    }));
-  }, [count]);
-  return (
-    <div className="vfx-boom-confetti">
-      {pieces.map((p, i) => (
-        <div
-          key={i}
-          className="vfx-confetti-piece"
-          style={{
-            left: `${p.left}%`,
-            ['--delay' as never]: `${p.delay}ms`,
-            ['--dur' as never]: `${p.dur}ms`,
-            ['--drift' as never]: `${p.drift}px`,
-            ['--rot' as never]: `${p.rot}deg`,
-            animationDelay: `${p.delay}ms`,
-            animationDuration: `${p.dur}ms`,
-          } as React.CSSProperties}
-        >
-          {p.variant === 0 && <Sparkle4 size={p.size} color={p.color} />}
-          {p.variant === 1 && <Shard size={p.size * 1.5} color={p.color} />}
-          {p.variant === 2 && <Burst6 size={p.size} color={p.color} />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function StarTrails({ count = 10, targetX, targetY }: { count?: number; targetX: number; targetY: number }) {
   const stars = useMemo(
     () =>
@@ -694,10 +655,6 @@ function BoomNumber({
       >
         {total.toLocaleString()}
       </div>
-
-      {(variant === 'gold' || variant === 'mega') && (
-        <ConfettiRain count={variant === 'mega' ? 36 : 24} />
-      )}
 
       {phase === 'fly' && <StarTrails count={variant === 'mega' ? 14 : 10} targetX={counterFx} targetY={counterFy} />}
 
