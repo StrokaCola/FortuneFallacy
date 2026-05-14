@@ -64,7 +64,7 @@ export function ConsumableTray() {
 
   return (
     <>
-      <div style={{
+      <div data-coach="consumable-tray" style={{
         position: 'absolute',
         // Mirrors the CatalystStrip on the opposite side; stack from
         // TopBar's bottom edge so the row never collides with a wrapped TopBar.

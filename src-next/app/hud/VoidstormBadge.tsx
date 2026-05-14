@@ -28,7 +28,7 @@ export function VoidstormBadge() {
   const accent = isBoon ? '#7be3ff' : '#ff4d6d';
   const glyph = isBoon ? '✦' : '✺';
   return (
-    <div className="has-tip" style={{
+    <div className="has-tip" data-coach="voidstorm-badge" style={{
       position: 'absolute',
       top: 'calc(var(--hud-top-h, 134px) + 8px)',
       right: tight ? 10 : 18,

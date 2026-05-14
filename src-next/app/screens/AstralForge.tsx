@@ -45,7 +45,7 @@ export function AstralForge() {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+      <div data-coach="perk-grid" className="w-full max-w-2xl grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
         {ASTRAL_PERKS.map((perk) => (
           <PerkCard
             key={perk.id}

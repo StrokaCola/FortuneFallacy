@@ -169,7 +169,7 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
             <Stat color="#7be3ff" label="target" value={target.toLocaleString()} />
           )}
           <Stat color="#f5c451" label="shards" value={`◆ ${run.shards}`} />
-          <Stat color="#cc88ff" label="dust earned" value={`+${stats.dustEarned}`} />
+          <Stat color="#cc88ff" label="dust earned" value={`+${stats.dustEarned}`} coachId="dust-stat" />
         </div>
 
         {/* Panel 2 — peak hand callout. Shown when stats actually have a
@@ -462,9 +462,9 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
   );
 }
 
-function Stat({ color, label, value }: { color: string; label: string; value: string }) {
+function Stat({ color, label, value, coachId }: { color: string; label: string; value: string; coachId?: string }) {
   return (
-    <div style={{ textAlign: 'center', minWidth: 76 }}>
+    <div data-coach={coachId} style={{ textAlign: 'center', minWidth: 76 }}>
       <div className="f-mono num" style={{ fontSize: 22, color }}>{value}</div>
       <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff' }}>
         {label}

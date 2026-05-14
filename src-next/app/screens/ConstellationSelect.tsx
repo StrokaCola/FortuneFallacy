@@ -48,14 +48,16 @@ export function ConstellationSelect() {
           </div>
         )}
 
-        <div style={{
-          display: 'grid',
-          // Use min(target, 100%) so a single card on a 320px viewport
-          // collapses to viewport width instead of overflowing.
-          gridTemplateColumns: `repeat(auto-fit, minmax(min(${tight ? 180 : compact ? 220 : 260}px, 100%), 1fr))`,
-          gap: tight ? 6 : compact ? 10 : 14,
-          marginBottom: tight ? 8 : compact ? 16 : 28,
-        }}>
+        <div
+          data-coach="constellation-grid"
+          style={{
+            display: 'grid',
+            // Use min(target, 100%) so a single card on a 320px viewport
+            // collapses to viewport width instead of overflowing.
+            gridTemplateColumns: `repeat(auto-fit, minmax(min(${tight ? 180 : compact ? 220 : 260}px, 100%), 1fr))`,
+            gap: tight ? 6 : compact ? 10 : 14,
+            marginBottom: tight ? 8 : compact ? 16 : 28,
+          }}>
           {CONSTELLATIONS.map((c) => (
             <Card
               key={c.id}

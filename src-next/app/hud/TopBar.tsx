@@ -162,6 +162,7 @@ export function TopBar({
         {bossDef && (
           <div
             className="has-tip"
+            data-coach="boss-badge"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               marginTop: 6, padding: '2px 8px', borderRadius: 4,
@@ -241,7 +242,7 @@ export function TopBar({
             </span>
           )}
           {voucherCount > 0 && (
-            <span className="f-mono has-tip" style={{ fontSize: 10, color: '#bba8ff', padding: '2px 6px',
+            <span className="f-mono has-tip" data-coach="voucher-strip" style={{ fontSize: 10, color: '#bba8ff', padding: '2px 6px',
               border: '1px solid rgba(149,119,255,0.3)', borderRadius: 4, position: 'relative', cursor: 'help' }}>
               vouchers {voucherCount}
               <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
