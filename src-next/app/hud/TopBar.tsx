@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
@@ -10,6 +10,7 @@ import { BossIcon } from '../visual/BossIcon';
 import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useReportHudHeight } from './useReportHudHeight';
+import { bus } from '../../events/bus';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
 // switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
@@ -81,7 +82,62 @@ export function TopBar({
   // Hide the badge on Spark when no challenge is active — that's the
   // canonical run and the badge would just be noise.
   const showStakeBadge = stake.id !== 'spark' || !!challenge;
-  const scoreFmt = formatScore(score);
+
+  // Deferred score-counter fill. On a boom beat, capture the
+  // current displayed score and pin it (don't mirror the next
+  // round.score commit) until the onScoreCounterFill event fires —
+  // timed by ScoreMoment to land when the first star trail reaches
+  // the counter. Then tween from the pinned value up to the
+  // committed score over the event's durationMs. Bail and non-boom
+  // commits bypass the pin and the displayed value updates with
+  // state as usual.
+  const [displayedScore, setDisplayedScore] = useState(score);
+  const displayedScoreRef = useRef(displayedScore);
+  const scoreRef = useRef(score);
+  const pinnedFromRef = useRef<number | null>(null);
+  useEffect(() => { displayedScoreRef.current = displayedScore; }, [displayedScore]);
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  // Mirror state.score changes onto displayedScore unless a boom
+  // pin is active. Pin clears when the fill tween completes (or
+  // on round reset via the boom listener below).
+  useEffect(() => {
+    if (pinnedFromRef.current === null) setDisplayedScore(score);
+  }, [score]);
+  useEffect(() => {
+    const offBeat = bus.on('onScoreBeat', ({ beat }) => {
+      if (beat.kind === 'boom') {
+        pinnedFromRef.current = displayedScoreRef.current;
+      }
+    });
+    const offFill = bus.on('onScoreCounterFill', ({ durationMs }) => {
+      const from = pinnedFromRef.current;
+      if (from === null) return;
+      const to = scoreRef.current;
+      const start = performance.now();
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - start) / durationMs);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setDisplayedScore(Math.round(from + (to - from) * eased));
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          pinnedFromRef.current = null;
+          // Catch pulse on the visible counter once the trails have
+          // landed and the climb finished — the spring bounce CSS
+          // animation already exists from the old ScoreFloat path.
+          const counter = document.querySelector<HTMLElement>('[data-score-counter]');
+          if (counter) {
+            counter.style.animation = 'scoreCounterCatch 220ms cubic-bezier(0.2, 1.6, 0.4, 1)';
+            window.setTimeout(() => { if (counter) counter.style.animation = ''; }, 240);
+          }
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+    return () => { offBeat(); offFill(); };
+  }, []);
+
+  const scoreFmt = formatScore(displayedScore);
   const targetFmt = target ? formatScore(target) : null;
   const isCompactScore = scoreFmt.display !== scoreFmt.full;
   const tight = useIsTightStage();
@@ -118,10 +174,11 @@ export function TopBar({
     }}>
       <div className="panel has-tip" style={{ padding: panelPad, minWidth: tight ? 0 : 280, maxWidth: tight ? 220 : 360, pointerEvents: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: tight ? 8 : 14 }}>
-          {astrolabeSize > 0 && <Astrolabe size={astrolabeSize} score={score} target={target} accent={constellationAccent ?? accent} />}
+          {astrolabeSize > 0 && <Astrolabe size={astrolabeSize} score={displayedScore} target={target} accent={constellationAccent ?? accent} />}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
+              data-score-counter
               className={`f-display num${tense ? ' last-throw-warn' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,

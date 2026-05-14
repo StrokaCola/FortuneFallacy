@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { triggerShake } from '../visual/screenShake';
 import { Z } from './zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 /**
  * ScoringVFX — SCORING_VFX_HANDOFF.md handoff
@@ -371,9 +372,13 @@ function BoomSparks({ count = 24, intensity = INTENSITY }: { count?: number; int
             color: s.color,
           } as React.CSSProperties}
         >
-          {s.variant === 0 && <Sparkle4 size={s.size} color={s.color} />}
-          {s.variant === 1 && <Star5 size={s.size + 2} color={s.color} />}
-          {s.variant === 2 && <Burst6 size={s.size} color={s.color} />}
+          {/* glow=false — the parent .vfx-boom-sparks wrapper carries
+              a single drop-shadow filter so we don't pay N×
+              filter-rasterization passes per frame for 18-36
+              particles. */}
+          {s.variant === 0 && <Sparkle4 size={s.size} color={s.color} glow={false} />}
+          {s.variant === 1 && <Star5 size={s.size + 2} color={s.color} glow={false} />}
+          {s.variant === 2 && <Burst6 size={s.size} color={s.color} glow={false} />}
         </div>
       ))}
     </div>
@@ -614,6 +619,12 @@ function BoomNumber({
   newBest: boolean;
 }) {
   const [phase, setPhase] = useState<'pop' | 'fly'>('pop');
+  // Tight stage = phones / split-landscape. Cut the spark count
+  // roughly in half so 36 mega particles → 18, etc. — the boom's
+  // GPU load on integrated mobile GPUs was dominated by these
+  // per-particle SVGs even after the per-particle drop-shadow
+  // collapse onto the wrapper.
+  const tight = useIsTightStage();
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setPhase('fly'), 1700);
@@ -642,7 +653,11 @@ function BoomNumber({
       <PolyRing sides={variant === 'mega' ? 16 : 12} radius={130} color={polyColor} />
 
       {phase === 'pop' && (
-        <BoomSparks count={variant === 'mega' ? 36 : variant === 'gold' ? 28 : 18} />
+        <BoomSparks count={
+          tight
+            ? (variant === 'mega' ? 18 : variant === 'gold' ? 14 : 10)
+            : (variant === 'mega' ? 36 : variant === 'gold' ? 28 : 18)
+        } />
       )}
 
       <div
