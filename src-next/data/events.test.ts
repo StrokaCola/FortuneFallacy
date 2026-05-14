@@ -58,6 +58,30 @@ describe('getEventForBlind', () => {
     const b = getEventForBlind(1234, 4, 2, false);
     expect(a).toBe(b);
   });
+
+  it('fires at roughly 1-in-6 across a large sample of eligible slots', () => {
+    // Sample across many seeds + the two eligible non-boss slot indices
+    // per ante (slots 0 and 1; slot 2 is boss). Expected rate is 1/6
+    // ~= 16.7%; assert within a generous band so the test isn't flaky.
+    let hits = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 600; seed++) {
+      for (const ante of [2, 3] as const) {
+        for (const slotInAnte of [0, 1] as const) {
+          const goalIdx = (ante - 1) * 3 + slotInAnte;
+          const id = getEventForBlind(seed, goalIdx, ante, false);
+          total++;
+          if (id) hits++;
+        }
+      }
+    }
+    const rate = hits / total;
+    // Target 1/6 ~= 0.167. Band: 0.13 .. 0.20 keeps the test stable
+    // while catching a regression to the old 0.25 rate or a major
+    // over-correction.
+    expect(rate).toBeGreaterThan(0.13);
+    expect(rate).toBeLessThan(0.20);
+  });
 });
 
 describe('lookupEvent', () => {
