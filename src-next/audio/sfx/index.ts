@@ -15,6 +15,9 @@ export type SfxId =
   | 'modCrown' | 'modShatter' | 'modSwirl' | 'modFlashback'
   | 'modConduit' | 'modCrescendo' | 'modResonance'
   | 'modPyreMark' | 'modTallyMark'
+  // 2026-05-14 seventh pass — twin/cost/rhythm/appetite/awaken voices.
+  | 'modTwinGlow' | 'modShardClink' | 'modRhythmStack'
+  | 'modAppetite' | 'modAwaken'
   | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover'
   // 2026-05-11 polish pass — scaling pack stings. scalingTick fires on every
   // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
@@ -81,6 +84,30 @@ const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
   // 6 scaling catalysts could otherwise queue dozens of bells. 60ms gap
   // lets a chain READ as a chain without auditioning as a stutter.
   scalingTick: 60,
+  // 2026-05-14 audio polish — bound every mod voice so a 5-mod hand
+  // doesn't pile 5 simultaneous tails on top of each other. The
+  // long-sustain voices (Crescendo / Resonance / Awaken / Appetite)
+  // get aggressive gaps; the short percussive ones a lighter touch.
+  // Numbers picked to match each voice's natural decay time so the
+  // throttle is inaudible on isolated fires but bounds the worst case.
+  modPulse:       40,
+  modLoaded:      90,
+  modPipCharge:   40,
+  modBackstop:   100,
+  modCrown:      120,
+  modShatter:     90,
+  modSwirl:       80,
+  modFlashback:   90,
+  modConduit:     60,
+  modCrescendo:  220,
+  modResonance:  260,
+  modPyreMark:    40,
+  modTallyMark:   40,
+  modTwinGlow:   100,
+  modShardClink:  90,
+  modRhythmStack:240,
+  modAppetite:   200,
+  modAwaken:     500,
 };
 const lastPlayedAt: Partial<Record<SfxId, number>> = {};
 
@@ -152,6 +179,11 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'modResonance':    (v as typeof voices).modResonance(bank as never); break;
       case 'modPyreMark':     (v as typeof voices).modPyreMark(bank as never); break;
       case 'modTallyMark':    (v as typeof voices).modTallyMark(bank as never); break;
+      case 'modTwinGlow':     (v as typeof voices).modTwinGlow(bank as never); break;
+      case 'modShardClink':   (v as typeof voices).modShardClink(bank as never); break;
+      case 'modRhythmStack':  (v as typeof voices).modRhythmStack(bank as never); break;
+      case 'modAppetite':     (v as typeof voices).modAppetite(bank as never); break;
+      case 'modAwaken':       (v as typeof voices).modAwaken(bank as never); break;
       case 'modAttach':       (v as typeof voices).modAttach(bank as never); break;
       case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
       case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;

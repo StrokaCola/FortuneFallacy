@@ -39,6 +39,12 @@ export type SynthBank = {
   modResonance: { chord: Tone.PolySynth; harmonic: Tone.MetalSynth };
   modPyreMark: { ember: Tone.NoiseSynth; ping: Tone.FMSynth };
   modTallyMark: { scratch: Tone.NoiseSynth; click: Tone.MembraneSynth };
+  // 2026-05-14 seventh pass — twin/cost/rhythm/appetite/awaken voices.
+  modTwinGlow: { bell: Tone.FMSynth; partner: Tone.FMSynth };
+  modShardClink: { clink: Tone.MetalSynth; thud: Tone.MembraneSynth };
+  modRhythmStack: { beat: Tone.MembraneSynth; chime: Tone.FMSynth };
+  modAppetite: { whoosh: Tone.NoiseSynth; gulp: Tone.MembraneSynth };
+  modAwaken: { drone: Tone.PolySynth; flash: Tone.FMSynth };
   uiClick: { click: Tone.NoiseSynth };
   uiHover: { shimmer: Tone.MetalSynth };
   modAttach: { chime: Tone.FMSynth; thud: Tone.MembraneSynth };
@@ -263,8 +269,11 @@ export async function buildBank(): Promise<SynthBank> {
   modPulse.chime.connect(buses.mag.input);
 
   // ---- modLoaded: rising chord + whoosh ----
+  // maxPolyphony bounds the stack when several Loaded mods fire in one
+  // hand — without it, every chord trigger adds 3 fresh voices.
   const modLoaded = {
     chord: new Tone.PolySynth(Tone.FMSynth, {
+      maxPolyphony: 6,
       envelope: { attack: 0.04, decay: 0.4, sustain: 0.0, release: 0.3 },
     }),
     whoosh: new Tone.NoiseSynth({
@@ -336,9 +345,11 @@ export async function buildBank(): Promise<SynthBank> {
 
   // ---- modSwirl: 3-note chord arpeggiated tightly --------------
   // The Wildcard's "face cycling" resolved sonically as three quick
-  // notes flicking by.
+  // notes flicking by. maxPolyphony caps the trio at 4 even if a
+  // Wildcard chains into another Wildcard.
   const modSwirl = {
     trio: new Tone.PolySynth(Tone.FMSynth, {
+      maxPolyphony: 4,
       envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
     }),
   };
@@ -377,13 +388,15 @@ export async function buildBank(): Promise<SynthBank> {
 
   // ---- modCrescendo: pink swell + soft chord ---------------------
   // Wave swelling forward — long attack on the noise, chord arrives
-  // 60ms later as the wave peaks.
+  // 60ms later as the wave peaks. Polyphony cap prevents the chord
+  // stacking when Crescendo fires on 4+ dice in a single hand.
   const modCrescendo = {
     swell: new Tone.NoiseSynth({
       noise: { type: 'pink' },
       envelope: { attack: 0.12, decay: 0.18, sustain: 0, release: 0.12 },
     }),
     chord: new Tone.PolySynth(Tone.FMSynth, {
+      maxPolyphony: 4,
       envelope: { attack: 0.02, decay: 0.24, sustain: 0, release: 0.16 },
     }),
   };
@@ -392,8 +405,11 @@ export async function buildBank(): Promise<SynthBank> {
 
   // ---- modResonance: held chord + harmonic shimmer ---------------
   // For Resonance (legendary double-fire). Beat-frequency feel.
+  // maxPolyphony caps the chord stack even if multiple Resonance dice
+  // score in a single hand.
   const modResonance = {
     chord: new Tone.PolySynth(Tone.FMSynth, {
+      maxPolyphony: 4,
       modulationIndex: 6,
       envelope: { attack: 0.005, decay: 0.32, sustain: 0.10, release: 0.40 },
     }),
@@ -434,6 +450,86 @@ export async function buildBank(): Promise<SynthBank> {
   };
   modTallyMark.scratch.connect(buses.ui.input);
   modTallyMark.click.connect(buses.perc.input);
+
+  // ---- modTwinGlow: bell + offset partner bell ------------------
+  // Two FMSynth bells, second slightly detuned + delayed: the pair
+  // ringing in sympathy.
+  const modTwinGlow = {
+    bell: new Tone.FMSynth({
+      modulationIndex: 4,
+      envelope: { attack: 0.002, decay: 0.20, sustain: 0, release: 0.14 },
+    }),
+    partner: new Tone.FMSynth({
+      modulationIndex: 5,
+      envelope: { attack: 0.003, decay: 0.22, sustain: 0, release: 0.16 },
+    }),
+  };
+  modTwinGlow.bell.connect(buses.mag.input);
+  modTwinGlow.partner.connect(buses.mag.input);
+
+  // ---- modShardClink: metallic clink + small low thud -----------
+  // Coins hitting stone. MetalSynth carries the gold-clink, membrane
+  // gives the floor.
+  const modShardClink = {
+    clink: new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
+      harmonicity: 4.2, modulationIndex: 22, resonance: 3200, octaves: 1.0,
+    }),
+    thud: new Tone.MembraneSynth({
+      pitchDecay: 0.02, octaves: 3,
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.04 },
+    }),
+  };
+  modShardClink.clink.connect(buses.ui.input);
+  modShardClink.thud.connect(buses.perc.input);
+
+  // ---- modRhythmStack: three percussive beats + chime -----------
+  // Plays three triggered taps in sequence — visible cadence.
+  const modRhythmStack = {
+    beat: new Tone.MembraneSynth({
+      pitchDecay: 0.015, octaves: 4,
+      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.03 },
+    }),
+    chime: new Tone.FMSynth({
+      modulationIndex: 6,
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.04 },
+    }),
+  };
+  modRhythmStack.beat.connect(buses.perc.input);
+  modRhythmStack.chime.connect(buses.mag.input);
+
+  // ---- modAppetite: inward whoosh + low gulp --------------------
+  // The "consumption" sound. Whoosh narrows, gulp lands at the centre.
+  const modAppetite = {
+    whoosh: new Tone.NoiseSynth({
+      noise: { type: 'brown' },
+      envelope: { attack: 0.08, decay: 0.12, sustain: 0, release: 0.08 },
+    }),
+    gulp: new Tone.MembraneSynth({
+      pitchDecay: 0.06, octaves: 5,
+      envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
+    }),
+  };
+  modAppetite.whoosh.connect(buses.perc.input);
+  modAppetite.gulp.connect(buses.mag.input);
+
+  // ---- modAwaken: slow drone + bright flash ---------------------
+  // The longest, fullest voice in the bank — Dormant's once-per-run
+  // awakening earns the screen-time. maxPolyphony caps it at 3 since
+  // multiple Dormants could conceivably awaken on the same hand.
+  const modAwaken = {
+    drone: new Tone.PolySynth(Tone.FMSynth, {
+      maxPolyphony: 3,
+      modulationIndex: 8,
+      envelope: { attack: 0.20, decay: 0.40, sustain: 0.05, release: 0.45 },
+    }),
+    flash: new Tone.FMSynth({
+      modulationIndex: 10,
+      envelope: { attack: 0.005, decay: 0.35, sustain: 0, release: 0.25 },
+    }),
+  };
+  modAwaken.drone.connect(buses.mag.input);
+  modAwaken.flash.connect(buses.mag.input);
 
   // ---- uiClick: very short white noise burst ----
   const uiClick = {
@@ -496,6 +592,11 @@ export async function buildBank(): Promise<SynthBank> {
     modResonance,
     modPyreMark,
     modTallyMark,
+    modTwinGlow,
+    modShardClink,
+    modRhythmStack,
+    modAppetite,
+    modAwaken,
     uiClick,
     uiHover,
     modAttach,

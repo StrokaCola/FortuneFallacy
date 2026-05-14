@@ -99,7 +99,13 @@ export type ModVisual = {
     | 'crescendo'
     | 'resonance'
     | 'pyreMark'
-    | 'tallyMark';
+    | 'tallyMark'
+    // 2026-05-14 seventh pass — twin/cost/rhythm/appetite/awaken FX.
+    | 'twinGlow'
+    | 'shardClink'
+    | 'rhythmStack'
+    | 'appetite'
+    | 'awaken';
 };
 
 export type ModRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -297,7 +303,7 @@ export const MODS: ModDef[] = [
   {
     id: 'mirror_pair', name: 'Mirror Pair', icon: '⚉',
     desc: '+3 mult per other die in hand sharing this face', pairBonus: 3, rarity: 'rare',
-    visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
+    visual: { materialKey: 'mirror_pair', accentColor: '#e0c8ff', triggerFx: 'twinGlow', geometricVariant: 'orbital' },
   },
   {
     id: 'vanguard', name: 'Vanguard', icon: '◀',
@@ -321,7 +327,7 @@ export const MODS: ModDef[] = [
     id: 'tithe', name: 'Tithe', icon: '⛁',
     desc: '+5 chips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
     titheChips: 5, titheMult: 2, rarity: 'rare',
-    visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
+    visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'shardClink', geometricVariant: 'gilded' },
   },
   {
     id: 'resonance', name: 'Resonance', icon: '♺',
@@ -445,7 +451,7 @@ export const MODS: ModDef[] = [
     id: 'cadence', name: 'Cadence', icon: '♪',
     desc: '+1 mult per time this die has scored in the current blind. Resets between blinds.',
     cadenceMultPerStack: 1, cadencePerBlind: true, rarity: 'uncommon',
-    visual: { materialKey: 'cadence', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'pulsing' },
+    visual: { materialKey: 'cadence', accentColor: '#5be8a4', triggerFx: 'rhythmStack', geometricVariant: 'pulsing' },
   },
   {
     id: 'veteran', name: 'Veteran', icon: '⚔',
@@ -457,7 +463,7 @@ export const MODS: ModDef[] = [
     id: 'glutton', name: 'Glutton', icon: '◉',
     desc: 'When this die rolls a 6: +1 stack. +3 chips per stack.',
     gluttonChipPerStack: 3, rarity: 'uncommon',
-    visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
+    visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'appetite', geometricVariant: 'spiked' },
   },
   {
     id: 'dormant', name: 'Dormant', icon: '◌',
@@ -466,7 +472,7 @@ export const MODS: ModDef[] = [
     // Dormant ships with NO variant by default; once the die has accrued
     // 10 stacks (awakening complete) the DieView upgrades it to 'haloed-
     // theatrical' so the awakening reads as a visual unlock. See DieView.
-    visual: { materialKey: 'dormant', accentColor: '#a080c0', triggerFx: 'pulse' },
+    visual: { materialKey: 'dormant', accentColor: '#a080c0', triggerFx: 'awaken' },
   },
   {
     id: 'ballast', name: 'Ballast', icon: '⚓',

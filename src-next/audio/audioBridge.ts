@@ -94,6 +94,11 @@ export function startAudioBridge(): () => void {
         case 'resonance': sfxModule.sfxPlay('modResonance'); break;
         case 'pyreMark':  sfxModule.sfxPlay('modPyreMark'); break;
         case 'tallyMark': sfxModule.sfxPlay('modTallyMark'); break;
+        case 'twinGlow':    sfxModule.sfxPlay('modTwinGlow'); break;
+        case 'shardClink':  sfxModule.sfxPlay('modShardClink'); break;
+        case 'rhythmStack': sfxModule.sfxPlay('modRhythmStack'); break;
+        case 'appetite':    sfxModule.sfxPlay('modAppetite'); break;
+        case 'awaken':      sfxModule.sfxPlay('modAwaken'); break;
       }
     }),
     // Forge moments. Attach is a louder confirm; detach is the lighter

@@ -28,6 +28,11 @@ import { fireCrescendo } from './modFx/crescendo';
 import { fireResonance } from './modFx/resonance';
 import { firePyreMark } from './modFx/pyreMark';
 import { fireTallyMark } from './modFx/tallyMark';
+import { fireTwinGlow } from './modFx/twinGlow';
+import { fireShardClink } from './modFx/shardClink';
+import { fireRhythmStack } from './modFx/rhythmStack';
+import { fireAppetite } from './modFx/appetite';
+import { fireAwaken } from './modFx/awaken';
 import { computeDropSlot } from './dragSlot';
 import { getDigitTexture } from './digitTexture';
 import { projectToScreen } from './projectToScreen';
@@ -308,7 +313,8 @@ export class Dice3D {
     kind:
       | 'pulse' | 'loaded' | 'pipCharge' | 'backstop'
       | 'crown' | 'shatter' | 'swirl' | 'flashback'
-      | 'conduit' | 'crescendo' | 'resonance' | 'pyreMark' | 'tallyMark';
+      | 'conduit' | 'crescendo' | 'resonance' | 'pyreMark' | 'tallyMark'
+      | 'twinGlow' | 'shardClink' | 'rhythmStack' | 'appetite' | 'awaken';
     accent: string;
     faceValue: number;
   }>> = new Map();
@@ -584,6 +590,21 @@ export class Dice3D {
                   break;
                 case 'tallyMark':
                   fireTallyMark(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'twinGlow':
+                  fireTwinGlow(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'shardClink':
+                  fireShardClink(this.scene, pos, DIE_SIZE);
+                  break;
+                case 'rhythmStack':
+                  fireRhythmStack(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'appetite':
+                  fireAppetite(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'awaken':
+                  fireAwaken(this.scene, pos, entry.accent, DIE_SIZE);
                   break;
               }
             }

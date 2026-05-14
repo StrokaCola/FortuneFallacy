@@ -78,6 +78,8 @@ const VALID_TRIGGERS = new Set([
   'crown', 'shatter', 'swirl', 'flashback',
   // 2026-05-14 sixth pass — chain / legendary / stack-accrual FX.
   'conduit', 'crescendo', 'resonance', 'pyreMark', 'tallyMark',
+  // 2026-05-14 seventh pass — twin/cost/rhythm/appetite/awaken FX.
+  'twinGlow', 'shardClink', 'rhythmStack', 'appetite', 'awaken',
 ]);
 
 describe('MODS visual contract', () => {

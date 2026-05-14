@@ -4,6 +4,8 @@ type FakeHowl = {
   src: string;
   played: boolean;
   paused: boolean;
+  stopped: boolean;
+  isPlaying: boolean;
   unloaded: boolean;
   vol: number;
   fadeCalls: Array<[number, number, number]>;
@@ -19,14 +21,18 @@ vi.mock('howler', () => {
         src: opts.src[0]!,
         played: false,
         paused: false,
+        stopped: false,
+        isPlaying: false,
         unloaded: false,
         vol: opts.volume ?? 0,
         fadeCalls: [],
       };
       howlInstances.push(this.inst);
     }
-    play() { this.inst.played = true; return 1; }
-    pause() { this.inst.paused = true; return this; }
+    play() { this.inst.played = true; this.inst.isPlaying = true; return 1; }
+    pause() { this.inst.paused = true; this.inst.isPlaying = false; return this; }
+    stop() { this.inst.stopped = true; this.inst.isPlaying = false; return this; }
+    playing() { return this.inst.isPlaying; }
     fade(from: number, to: number, durationMs: number) {
       this.inst.fadeCalls.push([from, to, durationMs]);
       this.inst.vol = to;

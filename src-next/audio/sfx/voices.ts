@@ -335,6 +335,7 @@ export function modPulse(bank: SynthBank): void {
 // ---- modLoaded: rising bronze chord + whoosh -----------------------------
 export function modLoaded(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 60, 220);
   bank.modLoaded.chord.volume.value = vol('modLoadedChord', -16);
   bank.modLoaded.whoosh.volume.value = vol('modLoadedWhoosh', -22);
   bank.modLoaded.chord.triggerAttackRelease(['C4', 'E4', 'G4'], '4n', t);
@@ -352,6 +353,7 @@ export function modPipCharge(bank: SynthBank): void {
 // ---- modBackstop: warm low ding + soft rumble ----------------------------
 export function modBackstop(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 60, 200);
   bank.modBackstop.ding.volume.value = vol('modBackstop', -16);
   bank.modBackstop.rumble.volume.value = vol('modBackstopRumble', -22);
   bank.modBackstop.ding.triggerAttackRelease('A3', '4n', t);
@@ -363,6 +365,7 @@ export function modBackstop(bank: SynthBank): void {
 // sparkle is the gold-leaf glint.
 export function modCrown(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 3, 60, 250);
   bank.modCrown.bell.volume.value = vol('modCrownBell', -14);
   bank.modCrown.warmth.volume.value = vol('modCrownWarmth', -20);
   bank.modCrown.sparkle.volume.value = vol('modCrownSparkle', -28);
@@ -376,6 +379,7 @@ export function modCrown(bank: SynthBank): void {
 // "fracture, energy dropping" rather than "neutral mod fire."
 export function modShatter(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 50, 180);
   bank.modShatter.crack.volume.value = vol('modShatterCrack', -18);
   bank.modShatter.tone.volume.value = vol('modShatterTone', -22);
   bank.modShatter.crack.triggerAttackRelease('32n', t);
@@ -389,6 +393,7 @@ export function modShatter(bank: SynthBank): void {
 // apart, ascending, lightly detuned.
 export function modSwirl(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 60, 200);
   bank.modSwirl.trio.volume.value = vol('modSwirl', -16);
   const root = pickPent(5) * centsToRatio(jitterCents());
   bank.modSwirl.trio.triggerAttackRelease(root, '16n', t);
@@ -400,6 +405,7 @@ export function modSwirl(bank: SynthBank): void {
 // For Echo. Audio twin of the visual's primary-pulse + ghost-pulse.
 export function modFlashback(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 60, 220);
   const hz = pickPent(6) * centsToRatio(jitterCents());
   bank.modFlashback.primary.volume.value = vol('modFlashbackPrimary', -16);
   bank.modFlashback.ghost.volume.value = vol('modFlashbackGhost', -22);
@@ -412,6 +418,7 @@ export function modFlashback(bank: SynthBank): void {
 // For Conduit. Quick electric flick that suggests current arriving.
 export function modConduit(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 50, 180);
   const hz = pickPent(4) * centsToRatio(jitterCents());
   bank.modConduit.spark.volume.value = vol('modConduitSpark', -22);
   bank.modConduit.tone.volume.value = vol('modConduitTone', -18);
@@ -422,22 +429,28 @@ export function modConduit(bank: SynthBank): void {
 
 // ---- modCrescendo: pink swell + arriving chord ---------------------------
 // For Crescendo. Wave builds, chord lands as it peaks.
+// Shortened from '4n' swell + '8n' chord to '8n' + '16n' so a 5-die
+// Crescendo wave doesn't trail across the whole next die-tick.
 export function modCrescendo(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 3, 80, 280);
   bank.modCrescendo.swell.volume.value = vol('modCrescendoSwell', -22);
   bank.modCrescendo.chord.volume.value = vol('modCrescendoChord', -16);
-  bank.modCrescendo.swell.triggerAttackRelease('4n', t);
-  bank.modCrescendo.chord.triggerAttackRelease(['E4', 'G4', 'B4'], '8n', t + 0.10);
+  bank.modCrescendo.swell.triggerAttackRelease('8n', t);
+  bank.modCrescendo.chord.triggerAttackRelease(['E4', 'G4', 'B4'], '16n', t + 0.10);
 }
 
 // ---- modResonance: held chord + harmonic ring ----------------------------
 // For Resonance — the legendary double-fire deserves a sustained shimmer.
+// Shortened from '2n' to '4n' so multiple Resonance fires in one hand
+// don't compound into a 2+ second wash of chord.
 export function modResonance(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 3, 80, 320);
   bank.modResonance.chord.volume.value = vol('modResonanceChord', -14);
   bank.modResonance.harmonic.volume.value = vol('modResonanceHarmonic', -24);
-  bank.modResonance.chord.triggerAttackRelease(['D4', 'A4', 'D5'], '2n', t);
-  bank.modResonance.harmonic.triggerAttackRelease('4n', t + 0.05);
+  bank.modResonance.chord.triggerAttackRelease(['D4', 'A4', 'D5'], '4n', t);
+  bank.modResonance.harmonic.triggerAttackRelease('8n', t + 0.05);
 }
 
 // ---- modPyreMark: ember crackle + tiny ping ------------------------------
@@ -445,6 +458,7 @@ export function modResonance(bank: SynthBank): void {
 // small — pings are at -22 dB so multiples don't pile up.
 export function modPyreMark(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 1, 30, 100);
   const hz = 660 * centsToRatio(jitterCents());
   bank.modPyreMark.ember.volume.value = vol('modPyreMarkEmber', -24);
   bank.modPyreMark.ping.volume.value = vol('modPyreMarkPing', -22);
@@ -456,10 +470,76 @@ export function modPyreMark(bank: SynthBank): void {
 // For Tally Mark. Reads as ink-on-paper — a tick being scribed.
 export function modTallyMark(bank: SynthBank): void {
   const t = jitteredTime();
+  triggerDuck(bank.buses, 1, 30, 100);
   bank.modTallyMark.scratch.volume.value = vol('modTallyMarkScratch', -22);
   bank.modTallyMark.click.volume.value = vol('modTallyMarkClick', -20);
   bank.modTallyMark.scratch.triggerAttackRelease('32n', t);
   bank.modTallyMark.click.triggerAttackRelease('C2', '32n', t + 0.01);
+}
+
+// ---- modTwinGlow: bell + delayed detuned partner -------------------------
+// For Mirror Pair. The partner bell at +20 cents and 60ms creates a
+// shimmer rather than a clean second strike.
+export function modTwinGlow(bank: SynthBank): void {
+  const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 60, 220);
+  const hz = pickPent(5) * centsToRatio(jitterCents());
+  bank.modTwinGlow.bell.volume.value = vol('modTwinGlowBell', -16);
+  bank.modTwinGlow.partner.volume.value = vol('modTwinGlowPartner', -20);
+  bank.modTwinGlow.bell.triggerAttackRelease(hz, '16n', t);
+  bank.modTwinGlow.partner.triggerAttackRelease(hz * centsToRatio(20), '16n', t + 0.06);
+}
+
+// ---- modShardClink: metallic clink + low thud ----------------------------
+// For Tithe. Coins falling onto stone.
+export function modShardClink(bank: SynthBank): void {
+  const t = jitteredTime();
+  triggerDuck(bank.buses, 2, 50, 180);
+  bank.modShardClink.clink.volume.value = vol('modShardClinkMetal', -20);
+  bank.modShardClink.thud.volume.value = vol('modShardClinkThud', -22);
+  bank.modShardClink.clink.triggerAttackRelease('16n', t);
+  bank.modShardClink.thud.triggerAttackRelease('A2', '32n', t + 0.02);
+}
+
+// ---- modRhythmStack: 3 sequential beats + bell --------------------------
+// For Cadence. Three percussive taps at 80ms intervals — the stack
+// climbing audibly.
+export function modRhythmStack(bank: SynthBank): void {
+  const t = jitteredTime();
+  triggerDuck(bank.buses, 3, 80, 280);
+  bank.modRhythmStack.beat.volume.value = vol('modRhythmStackBeat', -18);
+  bank.modRhythmStack.chime.volume.value = vol('modRhythmStackChime', -22);
+  const hz = pickPent(5) * centsToRatio(jitterCents());
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t);
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t + 0.08);
+  bank.modRhythmStack.beat.triggerAttackRelease('C3', '32n', t + 0.16);
+  bank.modRhythmStack.chime.triggerAttackRelease(hz, '16n', t + 0.20);
+}
+
+// ---- modAppetite: inward whoosh + low gulp -------------------------------
+// For Glutton. Whoosh in, gulp lands.
+// Whoosh shortened from '4n' → '8n' so back-to-back glutton fires
+// don't pile a continuous low-frequency drone.
+export function modAppetite(bank: SynthBank): void {
+  const t = jitteredTime();
+  triggerDuck(bank.buses, 3, 80, 280);
+  bank.modAppetite.whoosh.volume.value = vol('modAppetiteWhoosh', -22);
+  bank.modAppetite.gulp.volume.value = vol('modAppetiteGulp', -18);
+  bank.modAppetite.whoosh.triggerAttackRelease('8n', t);
+  bank.modAppetite.gulp.triggerAttackRelease('G2', '16n', t + 0.12);
+}
+
+// ---- modAwaken: held drone + bright flash --------------------------------
+// For Dormant. Longest mod voice — the once-per-run awakening earns it.
+// Drone bounded to '4n' so concurrent awakenings cap at ~0.6s of overlap
+// instead of 2+ seconds.
+export function modAwaken(bank: SynthBank): void {
+  const t = jitteredTime();
+  triggerDuck(bank.buses, 4, 100, 450);
+  bank.modAwaken.drone.volume.value = vol('modAwakenDrone', -14);
+  bank.modAwaken.flash.volume.value = vol('modAwakenFlash', -16);
+  bank.modAwaken.drone.triggerAttackRelease(['D3', 'A3', 'D4'], '4n', t);
+  bank.modAwaken.flash.triggerAttackRelease('D5', '8n', t + 0.25);
 }
 
 // ---- uiClick: short white noise burst ------------------------------------
