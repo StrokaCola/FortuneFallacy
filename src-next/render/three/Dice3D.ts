@@ -23,6 +23,11 @@ import { fireCrown } from './modFx/crown';
 import { fireShatter } from './modFx/shatter';
 import { fireSwirl } from './modFx/swirl';
 import { fireFlashback } from './modFx/flashback';
+import { fireConduit } from './modFx/conduit';
+import { fireCrescendo } from './modFx/crescendo';
+import { fireResonance } from './modFx/resonance';
+import { firePyreMark } from './modFx/pyreMark';
+import { fireTallyMark } from './modFx/tallyMark';
 import { computeDropSlot } from './dragSlot';
 import { getDigitTexture } from './digitTexture';
 import { projectToScreen } from './projectToScreen';
@@ -300,7 +305,10 @@ export class Dice3D {
   // Each entry carries the trigger kind + accent + face value so the drain
   // site can dispatch to the right modFx factory.
   private pendingPulses: Map<number, Array<{
-    kind: 'pulse' | 'loaded' | 'pipCharge' | 'backstop' | 'crown' | 'shatter' | 'swirl' | 'flashback';
+    kind:
+      | 'pulse' | 'loaded' | 'pipCharge' | 'backstop'
+      | 'crown' | 'shatter' | 'swirl' | 'flashback'
+      | 'conduit' | 'crescendo' | 'resonance' | 'pyreMark' | 'tallyMark';
     accent: string;
     faceValue: number;
   }>> = new Map();
@@ -561,6 +569,21 @@ export class Dice3D {
                   break;
                 case 'flashback':
                   fireFlashback(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'conduit':
+                  fireConduit(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'crescendo':
+                  fireCrescendo(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'resonance':
+                  fireResonance(this.scene, pos, entry.accent, DIE_SIZE);
+                  break;
+                case 'pyreMark':
+                  firePyreMark(this.scene, pos, DIE_SIZE);
+                  break;
+                case 'tallyMark':
+                  fireTallyMark(this.scene, pos, entry.accent, DIE_SIZE);
                   break;
               }
             }

@@ -76,6 +76,8 @@ const VALID_TRIGGERS = new Set([
   'loaded', 'pipCharge', 'backstop', 'pulse',
   // 2026-05-14 fifth pass — bespoke FX for crown / brittle / wildcard / echo.
   'crown', 'shatter', 'swirl', 'flashback',
+  // 2026-05-14 sixth pass — chain / legendary / stack-accrual FX.
+  'conduit', 'crescendo', 'resonance', 'pyreMark', 'tallyMark',
 ]);
 
 describe('MODS visual contract', () => {
@@ -128,13 +130,16 @@ describe('order-aware mods', () => {
     expect(m?.chainMult).toBe(1);
   });
 
-  it('all 3 new mods have visual blocks with valid materialKey + accent + pulse trigger', () => {
+  it('all 3 new mods have visual blocks with valid materialKey + accent + trigger', () => {
+    // Conduit graduated to a bespoke 'conduit' trigger in the 2026-05-14
+    // sixth pass; the test now asserts a valid trigger family rather
+    // than the previous pulse-only baseline.
     const ids = ['vanguard', 'capstone', 'conduit'] as const;
     for (const id of ids) {
       const m = MODS.find((x) => x.id === id);
       expect(m?.visual?.materialKey).toBe(id);
       expect(m?.visual?.accentColor).toMatch(/^#[0-9a-fA-F]{6}$/);
-      expect(m?.visual?.triggerFx).toBe('pulse');
+      expect(VALID_TRIGGERS.has(m!.visual!.triggerFx)).toBe(true);
     }
   });
 

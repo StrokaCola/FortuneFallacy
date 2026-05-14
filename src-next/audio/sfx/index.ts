@@ -10,6 +10,11 @@ export type SfxId =
   | 'chipTick' | 'castSwell' | 'castBoom' | 'sigilDraw' | 'cardFlip' | 'nodePulse' | 'transitionWipe'
   | 'multSlam' | 'comboChime' | 'targetCross' | 'notEnough'
   | 'modPulse' | 'modLoaded' | 'modPipCharge' | 'modBackstop'
+  // 2026-05-14 fifth + sixth pass — bespoke voices for the 9 mods
+  // whose mechanics warrant a custom audio moment.
+  | 'modCrown' | 'modShatter' | 'modSwirl' | 'modFlashback'
+  | 'modConduit' | 'modCrescendo' | 'modResonance'
+  | 'modPyreMark' | 'modTallyMark'
   | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover'
   // 2026-05-11 polish pass — scaling pack stings. scalingTick fires on every
   // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
@@ -138,6 +143,15 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'modLoaded':       (v as typeof voices).modLoaded(bank as never); break;
       case 'modPipCharge':    (v as typeof voices).modPipCharge(bank as never); break;
       case 'modBackstop':     (v as typeof voices).modBackstop(bank as never); break;
+      case 'modCrown':        (v as typeof voices).modCrown(bank as never); break;
+      case 'modShatter':      (v as typeof voices).modShatter(bank as never); break;
+      case 'modSwirl':        (v as typeof voices).modSwirl(bank as never); break;
+      case 'modFlashback':    (v as typeof voices).modFlashback(bank as never); break;
+      case 'modConduit':      (v as typeof voices).modConduit(bank as never); break;
+      case 'modCrescendo':    (v as typeof voices).modCrescendo(bank as never); break;
+      case 'modResonance':    (v as typeof voices).modResonance(bank as never); break;
+      case 'modPyreMark':     (v as typeof voices).modPyreMark(bank as never); break;
+      case 'modTallyMark':    (v as typeof voices).modTallyMark(bank as never); break;
       case 'modAttach':       (v as typeof voices).modAttach(bank as never); break;
       case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
       case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;

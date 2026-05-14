@@ -358,6 +358,110 @@ export function modBackstop(bank: SynthBank): void {
   bank.modBackstop.rumble.triggerAttackRelease('8n', t + 0.02);
 }
 
+// ---- modCrown: regal bell + warm thud + tiny sparkle ---------------------
+// Fires when Crown lands a 6. Bell carries the melody, warmth grounds it,
+// sparkle is the gold-leaf glint.
+export function modCrown(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modCrown.bell.volume.value = vol('modCrownBell', -14);
+  bank.modCrown.warmth.volume.value = vol('modCrownWarmth', -20);
+  bank.modCrown.sparkle.volume.value = vol('modCrownSparkle', -28);
+  bank.modCrown.bell.triggerAttackRelease('A5', '4n', t);
+  bank.modCrown.warmth.triggerAttackRelease('A2', '16n', t);
+  bank.modCrown.sparkle.triggerAttackRelease('32n', t + 0.03);
+}
+
+// ---- modShatter: pink-noise crack + downward fifth glide -----------------
+// For Brittle. The tone glides A5→D5 over 200ms so the mod reads as
+// "fracture, energy dropping" rather than "neutral mod fire."
+export function modShatter(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modShatter.crack.volume.value = vol('modShatterCrack', -18);
+  bank.modShatter.tone.volume.value = vol('modShatterTone', -22);
+  bank.modShatter.crack.triggerAttackRelease('32n', t);
+  bank.modShatter.tone.setNote('A5', t);
+  bank.modShatter.tone.triggerAttackRelease('A5', '8n', t);
+  bank.modShatter.tone.frequency.exponentialRampTo('D5', 0.18, t + 0.01);
+}
+
+// ---- modSwirl: three pentatonic notes ascending tightly ------------------
+// For Wildcard. Plays as a quick prismatic flick — three notes 40ms
+// apart, ascending, lightly detuned.
+export function modSwirl(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modSwirl.trio.volume.value = vol('modSwirl', -16);
+  const root = pickPent(5) * centsToRatio(jitterCents());
+  bank.modSwirl.trio.triggerAttackRelease(root, '16n', t);
+  bank.modSwirl.trio.triggerAttackRelease(root * 1.25, '16n', t + 0.04);
+  bank.modSwirl.trio.triggerAttackRelease(root * 1.5,  '16n', t + 0.08);
+}
+
+// ---- modFlashback: primary chime + delayed detuned ghost -----------------
+// For Echo. Audio twin of the visual's primary-pulse + ghost-pulse.
+export function modFlashback(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = pickPent(6) * centsToRatio(jitterCents());
+  bank.modFlashback.primary.volume.value = vol('modFlashbackPrimary', -16);
+  bank.modFlashback.ghost.volume.value = vol('modFlashbackGhost', -22);
+  bank.modFlashback.primary.triggerAttackRelease(hz, '16n', t);
+  // Ghost: 120ms delay, +5 cents detune so it beats lightly against the primary.
+  bank.modFlashback.ghost.triggerAttackRelease(hz * centsToRatio(5), '16n', t + 0.12);
+}
+
+// ---- modConduit: spark + ascending tone ----------------------------------
+// For Conduit. Quick electric flick that suggests current arriving.
+export function modConduit(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = pickPent(4) * centsToRatio(jitterCents());
+  bank.modConduit.spark.volume.value = vol('modConduitSpark', -22);
+  bank.modConduit.tone.volume.value = vol('modConduitTone', -18);
+  bank.modConduit.spark.triggerAttackRelease('64n', t);
+  bank.modConduit.tone.triggerAttackRelease(hz, '16n', t + 0.005);
+  bank.modConduit.tone.frequency.exponentialRampTo(hz * 1.5, 0.10, t + 0.01);
+}
+
+// ---- modCrescendo: pink swell + arriving chord ---------------------------
+// For Crescendo. Wave builds, chord lands as it peaks.
+export function modCrescendo(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modCrescendo.swell.volume.value = vol('modCrescendoSwell', -22);
+  bank.modCrescendo.chord.volume.value = vol('modCrescendoChord', -16);
+  bank.modCrescendo.swell.triggerAttackRelease('4n', t);
+  bank.modCrescendo.chord.triggerAttackRelease(['E4', 'G4', 'B4'], '8n', t + 0.10);
+}
+
+// ---- modResonance: held chord + harmonic ring ----------------------------
+// For Resonance — the legendary double-fire deserves a sustained shimmer.
+export function modResonance(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modResonance.chord.volume.value = vol('modResonanceChord', -14);
+  bank.modResonance.harmonic.volume.value = vol('modResonanceHarmonic', -24);
+  bank.modResonance.chord.triggerAttackRelease(['D4', 'A4', 'D5'], '2n', t);
+  bank.modResonance.harmonic.triggerAttackRelease('4n', t + 0.05);
+}
+
+// ---- modPyreMark: ember crackle + tiny ping ------------------------------
+// For Pyre Mark. Fires every time the die rolls a 1, so it must stay
+// small — pings are at -22 dB so multiples don't pile up.
+export function modPyreMark(bank: SynthBank): void {
+  const t = jitteredTime();
+  const hz = 660 * centsToRatio(jitterCents());
+  bank.modPyreMark.ember.volume.value = vol('modPyreMarkEmber', -24);
+  bank.modPyreMark.ping.volume.value = vol('modPyreMarkPing', -22);
+  bank.modPyreMark.ember.triggerAttackRelease('64n', t);
+  bank.modPyreMark.ping.triggerAttackRelease(hz, '32n', t + 0.015);
+}
+
+// ---- modTallyMark: pencil scratch + low click ----------------------------
+// For Tally Mark. Reads as ink-on-paper — a tick being scribed.
+export function modTallyMark(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.modTallyMark.scratch.volume.value = vol('modTallyMarkScratch', -22);
+  bank.modTallyMark.click.volume.value = vol('modTallyMarkClick', -20);
+  bank.modTallyMark.scratch.triggerAttackRelease('32n', t);
+  bank.modTallyMark.click.triggerAttackRelease('C2', '32n', t + 0.01);
+}
+
 // ---- uiClick: short white noise burst ------------------------------------
 export function uiClick(bank: SynthBank): void {
   const t = jitteredTime();

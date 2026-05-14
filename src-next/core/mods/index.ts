@@ -92,7 +92,14 @@ export type ModVisual = {
     | 'crown'
     | 'shatter'
     | 'swirl'
-    | 'flashback';
+    | 'flashback'
+    // 2026-05-14 sixth pass — chain / legendary / stack-accrual FX.
+    // See `src-next/render/three/modFx/{conduit,crescendo,resonance,pyreMark,tallyMark}.ts`.
+    | 'conduit'
+    | 'crescendo'
+    | 'resonance'
+    | 'pyreMark'
+    | 'tallyMark';
 };
 
 export type ModRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -308,7 +315,7 @@ export const MODS: ModDef[] = [
     id: 'conduit', name: 'Conduit', icon: '⫸',
     desc: '+1 mult per die scored before this one',
     chainMult: 1, rarity: 'uncommon',
-    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'orbital' },
+    visual: { materialKey: 'conduit', accentColor: '#bba8ff', triggerFx: 'conduit', geometricVariant: 'orbital' },
   },
   {
     id: 'tithe', name: 'Tithe', icon: '⛁',
@@ -320,13 +327,13 @@ export const MODS: ModDef[] = [
     id: 'resonance', name: 'Resonance', icon: '♺',
     desc: 'The other mod on this die fires a second time (chips/mult only).',
     resonate: true, rarity: 'legendary',
-    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'pulsing-theatrical' },
+    visual: { materialKey: 'resonance', accentColor: '#bba8ff', triggerFx: 'resonance', geometricVariant: 'pulsing-theatrical' },
   },
   {
     id: 'crescendo', name: 'Crescendo', icon: '⫷',
     desc: '+1 mult per die scored after this one',
     chainMultPost: 1, rarity: 'uncommon',
-    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'pulsing' },
+    visual: { materialKey: 'crescendo', accentColor: '#5be8a4', triggerFx: 'crescendo', geometricVariant: 'pulsing' },
   },
   {
     id: 'crown', name: 'Crown', icon: '♛',
@@ -432,7 +439,7 @@ export const MODS: ModDef[] = [
     id: 'tally_mark', name: 'Tally Mark', icon: '|',
     desc: '+1 chip per time this die has ever scored.',
     tallyChipPerStack: 1, rarity: 'common',
-    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'tally_mark', accentColor: '#88ddff', triggerFx: 'tallyMark', geometricVariant: 'etched' },
   },
   {
     id: 'cadence', name: 'Cadence', icon: '♪',
@@ -471,7 +478,7 @@ export const MODS: ModDef[] = [
     id: 'pyre_mark', name: 'Pyre Mark', icon: '🔥',
     desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
     pyreChipPerStack: 2, rarity: 'common',
-    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'etched' },
+    visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pyreMark', geometricVariant: 'etched' },
   },
   // ─── Banish-face family (2026-05-13) ────────────────────────────────────
   // A die wearing one of these mods literally pops up and re-tumbles when

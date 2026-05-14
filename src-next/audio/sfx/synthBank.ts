@@ -28,6 +28,17 @@ export type SynthBank = {
   modLoaded: { chord: Tone.PolySynth; whoosh: Tone.NoiseSynth };
   modPipCharge: { tick: Tone.FMSynth };
   modBackstop: { ding: Tone.FMSynth; rumble: Tone.NoiseSynth };
+  // 2026-05-14 fifth pass — bespoke voices for crown/shatter/swirl/flashback.
+  modCrown: { bell: Tone.FMSynth; warmth: Tone.MembraneSynth; sparkle: Tone.MetalSynth };
+  modShatter: { crack: Tone.NoiseSynth; tone: Tone.MonoSynth };
+  modSwirl: { trio: Tone.PolySynth };
+  modFlashback: { primary: Tone.FMSynth; ghost: Tone.FMSynth };
+  // 2026-05-14 sixth pass — bespoke voices for conduit/crescendo/resonance/pyreMark/tallyMark.
+  modConduit: { spark: Tone.NoiseSynth; tone: Tone.FMSynth };
+  modCrescendo: { swell: Tone.NoiseSynth; chord: Tone.PolySynth };
+  modResonance: { chord: Tone.PolySynth; harmonic: Tone.MetalSynth };
+  modPyreMark: { ember: Tone.NoiseSynth; ping: Tone.FMSynth };
+  modTallyMark: { scratch: Tone.NoiseSynth; click: Tone.MembraneSynth };
   uiClick: { click: Tone.NoiseSynth };
   uiHover: { shimmer: Tone.MetalSynth };
   modAttach: { chime: Tone.FMSynth; thud: Tone.MembraneSynth };
@@ -286,6 +297,144 @@ export async function buildBank(): Promise<SynthBank> {
   modBackstop.ding.connect(buses.mag.input);
   modBackstop.rumble.connect(buses.perc.input);
 
+  // ---- modCrown: regal bell + soft warmth + a small sparkle ----
+  // Plays when Crown fires on a 6. Brighter and longer than modBackstop;
+  // sparkle layered for the "legendary moment" flavour.
+  const modCrown = {
+    bell: new Tone.FMSynth({
+      modulationIndex: 4,
+      envelope: { attack: 0.002, decay: 0.32, sustain: 0.06, release: 0.45 },
+    }),
+    warmth: new Tone.MembraneSynth({
+      pitchDecay: 0.04, octaves: 4,
+      envelope: { attack: 0.002, decay: 0.18, sustain: 0, release: 0.12 },
+    }),
+    sparkle: new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.04 },
+      harmonicity: 5.1, modulationIndex: 32, resonance: 4200, octaves: 1.5,
+    }),
+  };
+  modCrown.bell.connect(buses.mag.input);
+  modCrown.warmth.connect(buses.perc.input);
+  modCrown.sparkle.connect(buses.ui.input);
+
+  // ---- modShatter: short pink-noise crack + descending tone -----
+  // The tone glides down a fifth quickly — sounds like fracture energy
+  // dissipating. Used by Brittle.
+  const modShatter = {
+    crack: new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.07, sustain: 0, release: 0.04 },
+    }),
+    tone: new Tone.MonoSynth({
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.12 },
+      filterEnvelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.12, baseFrequency: 200, octaves: 3 },
+    }),
+  };
+  modShatter.crack.connect(buses.perc.input);
+  modShatter.tone.connect(buses.mag.input);
+
+  // ---- modSwirl: 3-note chord arpeggiated tightly --------------
+  // The Wildcard's "face cycling" resolved sonically as three quick
+  // notes flicking by.
+  const modSwirl = {
+    trio: new Tone.PolySynth(Tone.FMSynth, {
+      envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
+    }),
+  };
+  modSwirl.trio.connect(buses.mag.input);
+
+  // ---- modFlashback: primary chime + delayed ghost chime --------
+  // Echo's double-pulse visual gets its audio twin — same note, 120ms
+  // later, slightly detuned.
+  const modFlashback = {
+    primary: new Tone.FMSynth({
+      modulationIndex: 5,
+      envelope: { attack: 0.001, decay: 0.16, sustain: 0, release: 0.10 },
+    }),
+    ghost: new Tone.FMSynth({
+      modulationIndex: 8,
+      envelope: { attack: 0.003, decay: 0.22, sustain: 0, release: 0.16 },
+    }),
+  };
+  modFlashback.primary.connect(buses.mag.input);
+  modFlashback.ghost.connect(buses.mag.input);
+
+  // ---- modConduit: brief electric spark + ascending tone --------
+  // Sparkle-up that fits the "chain triggering forward" visual.
+  const modConduit = {
+    spark: new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+    }),
+    tone: new Tone.FMSynth({
+      modulationIndex: 8,
+      envelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.08 },
+    }),
+  };
+  modConduit.spark.connect(buses.perc.input);
+  modConduit.tone.connect(buses.mag.input);
+
+  // ---- modCrescendo: pink swell + soft chord ---------------------
+  // Wave swelling forward — long attack on the noise, chord arrives
+  // 60ms later as the wave peaks.
+  const modCrescendo = {
+    swell: new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.12, decay: 0.18, sustain: 0, release: 0.12 },
+    }),
+    chord: new Tone.PolySynth(Tone.FMSynth, {
+      envelope: { attack: 0.02, decay: 0.24, sustain: 0, release: 0.16 },
+    }),
+  };
+  modCrescendo.swell.connect(buses.perc.input);
+  modCrescendo.chord.connect(buses.mag.input);
+
+  // ---- modResonance: held chord + harmonic shimmer ---------------
+  // For Resonance (legendary double-fire). Beat-frequency feel.
+  const modResonance = {
+    chord: new Tone.PolySynth(Tone.FMSynth, {
+      modulationIndex: 6,
+      envelope: { attack: 0.005, decay: 0.32, sustain: 0.10, release: 0.40 },
+    }),
+    harmonic: new Tone.MetalSynth({
+      envelope: { attack: 0.005, decay: 0.20, sustain: 0, release: 0.12 },
+      harmonicity: 3.1, modulationIndex: 18, resonance: 3500, octaves: 1.2,
+    }),
+  };
+  modResonance.chord.connect(buses.mag.input);
+  modResonance.harmonic.connect(buses.ui.input);
+
+  // ---- modPyreMark: short ember crackle + tiny ping --------------
+  // One-stack accrual — small, frequent, doesn't hog the mix.
+  const modPyreMark = {
+    ember: new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 },
+    }),
+    ping: new Tone.FMSynth({
+      modulationIndex: 10,
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.04 },
+    }),
+  };
+  modPyreMark.ember.connect(buses.perc.input);
+  modPyreMark.ping.connect(buses.mag.input);
+
+  // ---- modTallyMark: pencil scratch + low click ------------------
+  // Tally Mark scribes a new tick. Reads like ink-on-paper.
+  const modTallyMark = {
+    scratch: new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
+    }),
+    click: new Tone.MembraneSynth({
+      pitchDecay: 0.01, octaves: 2,
+      envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.02 },
+    }),
+  };
+  modTallyMark.scratch.connect(buses.ui.input);
+  modTallyMark.click.connect(buses.perc.input);
+
   // ---- uiClick: very short white noise burst ----
   const uiClick = {
     click: new Tone.NoiseSynth({
@@ -338,6 +487,15 @@ export async function buildBank(): Promise<SynthBank> {
     modLoaded,
     modPipCharge,
     modBackstop,
+    modCrown,
+    modShatter,
+    modSwirl,
+    modFlashback,
+    modConduit,
+    modCrescendo,
+    modResonance,
+    modPyreMark,
+    modTallyMark,
     uiClick,
     uiHover,
     modAttach,
