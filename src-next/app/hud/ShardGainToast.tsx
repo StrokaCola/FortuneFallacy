@@ -1,29 +1,48 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { store, type GameState } from '../../state/store';
-import { Z } from './zLayers';
 import { sfxPlay } from '../../audio/sfx';
+import { pushToast } from './toastQueue';
 
-// Floating "+N ◇" toast triggered by any shard-gain during a round (mod
-// shardsBonus, refinery, stipend, etc.). Watches the store so we don't have
-// to thread events through every gain site. Only fires on `round`/`hub`
-// screens; shop/forge purchases are silent here because those screens
-// already give explicit feedback.
+// Listens for shard gains during `round` / `hub` screens and pushes a
+// "+N ◇" notification into the central toast queue. Same-key merging
+// means a chain of small gains (mod shardsBonus, refinery, stipend)
+// shows as a single coalesced "+8 ◇" rather than four overlapping
+// "+2" pops at the same Y. The chipTick clink ladder is preserved —
+// it never coalesces; each shard gets a per-coin click.
+//
+// Migrated to the toast queue 2026-05-14 — see `app/hud/toastQueue/`
+// for the queue architecture and `docs/design/toast-queue.md` for the
+// migration pattern.
 
-type Toast = { id: number; amount: number };
-let toastId = 1;
+type ShardGainData = { amount: number };
 
-const HOLD_MS = 900;
+const HOLD_MS = 1100;
+const SHARD_GAIN_KEY = 'shard-gain';
 
 const selectShards = (s: GameState) => s.run.shards;
 const selectScreen = (s: GameState) => s.ui.screen;
 
-export function ShardGainToast() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const lastShardsRef = useRef<number>(store.getState().run.shards);
-  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+function renderShardGain({ amount }: ShardGainData) {
+  return (
+    <div style={{
+      fontFamily: '"JetBrains Mono", monospace',
+      fontSize: 16, fontWeight: 700,
+      color: '#f5c451',
+      textShadow: '0 0 14px #f5c451, 0 0 28px rgba(245,196,81,0.5)',
+      padding: '4px 12px',
+      borderRadius: 6,
+      background: 'rgba(15,9,37,0.7)',
+      border: '1px solid rgba(245,196,81,0.5)',
+    }}>
+      +{amount} ◇
+    </div>
+  );
+}
 
-  // Track shards via the raw store subscription so we see every delta
-  // (selector subscriptions debounce identical values but not transient ones).
+export function ShardGainToast() {
+  const lastShardsRef = useRef<number>(store.getState().run.shards);
+  const clinkTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
   useEffect(() => {
     const unsub = store.subscribe((s) => {
       const cur = selectShards(s);
@@ -33,56 +52,43 @@ export function ShardGainToast() {
       const delta = cur - prev;
       if (delta <= 0) return;
       if (screen !== 'round' && screen !== 'hub') return;
-      const id = toastId++;
-      setToasts((t) => [...t, { id, amount: delta }]);
-      // Per-coin clinks — discrete chipTick per shard with rising pitch,
-      // capped at MAX_CLINKS so a +20 blind-clear bonus doesn't burst
-      // the voice pool. Light pitch jitter + spacing variance so the
-      // sequence sounds organic instead of a clean arpeggio.
+
+      // Per-coin clinks — discrete chipTick per shard with rising
+      // pitch, capped at MAX_CLINKS so a +20 blind-clear bonus doesn't
+      // burst the voice pool. Light pitch jitter + spacing variance
+      // so the sequence sounds organic instead of a clean arpeggio.
       const MAX_CLINKS = 8;
       const clinkCount = Math.min(MAX_CLINKS, delta);
+      const timers = clinkTimersRef.current;
       for (let i = 0; i < clinkCount; i++) {
         const baseHz = 540 + i * 28;
         const jitter = (Math.random() - 0.5) * 18;
         const t = setTimeout(() => {
           sfxPlay('chipTick', { freq: baseHz + jitter, gain: 0.55 });
-          timersRef.current.delete(t);
+          timers.delete(t);
         }, i * (32 + Math.random() * 14));
-        timersRef.current.add(t);
+        timers.add(t);
       }
-      const timer = setTimeout(() => {
-        setToasts((t) => t.filter((x) => x.id !== id));
-        timersRef.current.delete(timer);
-      }, HOLD_MS);
-      timersRef.current.add(timer);
+
+      // Push to the queue. Same-key merge means rapid back-to-back
+      // gains coalesce into a single visible toast whose amount sums.
+      pushToast<ShardGainData>({
+        id: `shard-gain-${Date.now()}-${delta}`,
+        key: SHARD_GAIN_KEY,
+        priority: 'low',
+        durationMs: HOLD_MS,
+        data: { amount: delta },
+        render: renderShardGain,
+        merge: (incoming, current) => ({ amount: current.amount + incoming.amount }),
+      });
     });
     return () => {
       unsub();
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current.clear();
+      clinkTimersRef.current.forEach((t) => clearTimeout(t));
+      clinkTimersRef.current.clear();
     };
   }, []);
 
-  return (
-    <>
-      {toasts.map((t, i) => (
-        <div key={t.id} style={{
-          position: 'absolute',
-          // Anchor to the LEFT of the TopBar treasury panel (right:18,
-          // minWidth:200 → panel reaches right ~218). 232 puts the toast
-          // just outside that panel so it never covers the shard count
-          // it's celebrating. Stack vertically with a small step.
-          top: 32 + i * 20, right: 240,
-          zIndex: Z.toast, pointerEvents: 'none',
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 16, fontWeight: 700,
-          color: '#f5c451',
-          textShadow: '0 0 14px #f5c451, 0 0 28px rgba(245,196,81,0.5)',
-          animation: 'shard-gain-toast 900ms cubic-bezier(0.2, 1.2, 0.4, 1) forwards',
-        }}>
-          +{t.amount} ◇
-        </div>
-      ))}
-    </>
-  );
+  // No JSX — the central ToastHost renders the queue.
+  return null;
 }

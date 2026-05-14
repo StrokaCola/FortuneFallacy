@@ -1,49 +1,49 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { bus } from '../../events/bus';
-import { Z } from './zLayers';
+import { pushToast } from './toastQueue';
 
-type Toast = { id: number; ts: number };
-let toastId = 1;
+// Listens for `shard_sink` upgrade fires and pushes a "−1 ◇"
+// notification into the central toast queue. Migrated alongside
+// ShardGainToast on 2026-05-14 — see `docs/design/toast-queue.md`.
+
+type ShardDeductData = { amount: number };
+
+const HOLD_MS = 700;
+const SHARD_DEDUCT_KEY = 'shard-deduct';
+
+function renderShardDeduct({ amount }: ShardDeductData) {
+  return (
+    <div style={{
+      fontFamily: '"JetBrains Mono", monospace',
+      fontSize: 14, fontWeight: 700,
+      color: '#f5c451',
+      textShadow: '0 0 10px #f5c451',
+      padding: '3px 10px',
+      borderRadius: 6,
+      background: 'rgba(15,9,37,0.7)',
+      border: '1px solid rgba(245,196,81,0.4)',
+    }}>
+      −{amount} ◇
+    </div>
+  );
+}
 
 export function ShardDeductToast() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-
   useEffect(() => {
     const off = bus.on('onUpgradeTriggered', (payload: { id: string }) => {
       if (payload.id !== 'shard_sink') return;
-      const id = toastId++;
-      setToasts((t) => [...t, { id, ts: Date.now() }]);
-      const timer = setTimeout(() => {
-        setToasts((t) => t.filter((x) => x.id !== id));
-        timersRef.current.delete(timer);
-      }, 600);
-      timersRef.current.add(timer);
+      pushToast<ShardDeductData>({
+        id: `shard-deduct-${Date.now()}`,
+        key: SHARD_DEDUCT_KEY,
+        priority: 'low',
+        durationMs: HOLD_MS,
+        data: { amount: 1 },
+        render: renderShardDeduct,
+        merge: (incoming, current) => ({ amount: current.amount + incoming.amount }),
+      });
     });
-    return () => {
-      off();
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current.clear();
-    };
+    return () => off();
   }, []);
 
-  return (
-    <>
-      {toasts.map((t) => (
-        <div key={t.id} style={{
-          position: 'absolute',
-          // Anchored left of the treasury panel (see ShardGainToast).
-          top: 32, right: 240,
-          zIndex: Z.toast, pointerEvents: 'none',
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 14, fontWeight: 700,
-          color: '#f5c451',
-          textShadow: '0 0 10px #f5c451',
-          animation: 'shard-deduct-toast 600ms ease-out forwards',
-        }}>
-          −1 ◇
-        </div>
-      ))}
-    </>
-  );
+  return null;
 }

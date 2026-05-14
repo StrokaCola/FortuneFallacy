@@ -8,6 +8,7 @@ import { BossPhaseBanner } from './hud/BossPhaseBanner';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
 import { WhisperToast } from './hud/WhisperToast';
+import { ToastHost } from './hud/toastQueue';
 import { ResonanceToast } from './hud/ResonanceToast';
 import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
 import { DailyLoginComet } from './hud/DailyLoginComet';
@@ -172,6 +173,12 @@ export function App() {
           <ArrivalToast />
           <AchievementToast />
           <WhisperToast />
+          {/* Centralised toast queue (see app/hud/toastQueue/). Migrated
+              toasts push via `pushToast(...)`; this host renders the
+              visible slots with priority + throttle + same-key
+              merging. The other *Toast components above still own
+              their own rendering; migrate them one at a time. */}
+          <ToastHost />
           <ResonanceToast />
           <ForgeAttachRitual />
           <DailyLoginComet />
