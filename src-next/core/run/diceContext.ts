@@ -25,13 +25,34 @@ function bonusDiceCount(state: GameState): number {
   return state.run.vouchers?.includes('extra_die') ? 1 : 0;
 }
 
+// WeakMap memo on state identity. Zustand state is immutable, so the
+// same state reference always produces the same diceSpec — caching
+// here means selectors (`(s) => getDiceSpec(s)`) return a stable array
+// reference across renders. Without this memo, the `extra_die` voucher
+// path (bonus > 0) allocated a fresh `[...base, ...]` array on every
+// call, which made Zustand's Object.is comparison see "the value
+// changed" on every render and triggered React error #185 ("Maximum
+// update depth exceeded") inside the Forge screen.
+const DICE_SPEC_CACHE = new WeakMap<GameState, DiceSpec>();
+
 export function getDiceSpec(state: GameState): DiceSpec {
+  const cached = DICE_SPEC_CACHE.get(state);
+  if (cached) return cached;
   const base = lookupConstellation(state.run.constellationId).dice;
   const bonus = bonusDiceCount(state);
-  if (bonus === 0) return base;
-  const last = base[base.length - 1];
-  if (!last) return base;
-  return [...base, ...Array.from({ length: bonus }, () => last)];
+  let spec: DiceSpec;
+  if (bonus === 0) {
+    spec = base;
+  } else {
+    const last = base[base.length - 1];
+    if (!last) {
+      spec = base;
+    } else {
+      spec = [...base, ...Array.from({ length: bonus }, () => last)];
+    }
+  }
+  DICE_SPEC_CACHE.set(state, spec);
+  return spec;
 }
 
 export function getDiceCount(state: GameState): number {
