@@ -45,6 +45,9 @@ export type CatalystCardProps = {
   // Tight viewport flips the tooltip to anchor above the card so it
   // doesn't get clipped at the top of the play area.
   tight: boolean;
+  // Wide-mode (catalyst strip is a vertical left rail). Tooltips flip
+  // to `tip-right` so they don't cover the next card in the rail.
+  wide: boolean;
 };
 
 export function CatalystCard(props: CatalystCardProps) {
@@ -53,7 +56,7 @@ export function CatalystCard(props: CatalystCardProps) {
     stack, bumpKey, compoundingStacks,
     lunarPhase, lunarBaked, handsPlayed, mirroredHandActive,
     cardFloaters, cardRings,
-    catalystChips, catalystFires, tight,
+    catalystChips, catalystFires, tight, wide,
   } = props;
 
   const c = lookupCatalyst(id);
@@ -310,7 +313,11 @@ export function CatalystCard(props: CatalystCardProps) {
           {f.text}
         </div>
       ))}
-      <div className={tight ? 'tip tip-above' : 'tip'}>
+      {/* Tight portrait: tip-above so the popover doesn't get clipped at
+          the top of the play area. Wide-mode landscape: tip-right so
+          the popover lands in the play area instead of covering the
+          next card in the vertical rail. */}
+      <div className={tight ? 'tip tip-above' : wide ? 'tip tip-right' : 'tip'}>
         <span className="tip-title">{c.name}</span>
         {c.desc}
         {c.flavor && <span className="tip-flavor">{c.flavor}</span>}

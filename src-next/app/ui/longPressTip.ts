@@ -85,6 +85,12 @@ function clearStuck(): void {
     if (tip) tip.style.removeProperty('--tip-shift');
     stuckEl = null;
   }
+  // Mirror the "is anything stuck?" boolean onto <body> so the
+  // suppression CSS can hide hover tooltips while a long-pressed one
+  // is open. Avoids any tooltip-on-tooltip overlap.
+  if (typeof document !== 'undefined') {
+    delete document.body.dataset.tipStuck;
+  }
 }
 
 function setStuck(el: HTMLElement): void {
@@ -93,6 +99,11 @@ function setStuck(el: HTMLElement): void {
   el.classList.add(STUCK_CLASS);
   stuckEl = el;
   fitTipInViewport(el);
+  // See clearStuck — body-level flag drives the CSS suppression rule
+  // in styles/index.css that hides hover tips on other elements.
+  if (typeof document !== 'undefined') {
+    document.body.dataset.tipStuck = 'true';
+  }
 }
 
 export function installLongPressTooltips(): { dispose: () => void } {

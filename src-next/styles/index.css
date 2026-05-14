@@ -222,6 +222,19 @@ textarea:focus-visible,
   font-family: 'Exo 2', sans-serif;
 }
 .has-tip .tip.tip-above { top: auto; bottom: calc(100% + 6px); }
+/* Side-anchored tooltips. Used by the CatalystStrip (left rail in
+   wide mode) and ConsumableTray (right rail) so the tooltip lands in
+   the play area instead of covering the neighbouring card in the
+   same vertical rail. The transform centres the tip against the
+   card's vertical midpoint. */
+.has-tip .tip.tip-right {
+  top: 50%; bottom: auto; left: calc(100% + 8px); right: auto;
+  transform: translateY(calc(-50% + var(--tip-shift, 0px)));
+}
+.has-tip .tip.tip-left {
+  top: 50%; bottom: auto; right: calc(100% + 8px); left: auto;
+  transform: translateY(calc(-50% + var(--tip-shift, 0px)));
+}
 .has-tip .tip-title {
   display: block; font-family: 'Cinzel', serif; color: #f3f0ff;
   font-size: 12px; margin-bottom: 4px; letter-spacing: 0.05em;
@@ -239,6 +252,22 @@ textarea:focus-visible,
 @media (hover: none) {
   .has-tip:focus-within .tip { opacity: 1; }
 }
+
+/* Single-tooltip-at-a-time: hide hover tips on every other element while
+   one is pinned via long-press. The body[data-tip-stuck] flag is set by
+   app/ui/longPressTip.ts in setStuck/clearStuck. Without this rule the
+   stuck tip + a hover tip on a neighbouring element would visibly
+   overlap on desktop with a touchscreen. */
+@media (hover: hover) {
+  body[data-tip-stuck] .has-tip:not(.tip-stuck):hover .tip { opacity: 0; }
+}
+
+/* Coachmark wins: while an onboarding coachmark is showing, suppress
+   ALL tooltips so the higher-priority guidance is the only popover on
+   screen. The body[data-coach-active] flag is set by
+   app/onboarding/CoachmarkController.tsx. Uses !important so it
+   overrides the .tip-stuck and :focus-within rules above. */
+body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
 
 /* Sell button: hover-revealed badge on HUD upgrade tiles. The parent must
    carry .has-sell so we don't reveal sell affordances on every has-tip node. */

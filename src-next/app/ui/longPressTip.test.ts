@@ -160,4 +160,47 @@ describe('longPressTip controller', () => {
 
     expect(a.classList.contains(STUCK)).toBe(false);
   });
+
+  // 2026-05-14 — body-level state mirror so the suppression CSS in
+  // styles/index.css can hide hover tooltips on other elements while
+  // one is pinned. Belt-and-suspenders against the
+  // "stuck-tip + hover-tip" overlap on desktops with a touchscreen.
+  describe('body[data-tip-stuck] mirror', () => {
+    it('sets data-tip-stuck on body when a tip becomes stuck', () => {
+      installLongPressTooltips();
+      const a = makeTip('a');
+
+      expect(document.body.dataset.tipStuck).toBeUndefined();
+      fireTouchStart(a, 10, 10);
+      vi.advanceTimersByTime(HOLD + 1);
+      expect(document.body.dataset.tipStuck).toBe('true');
+    });
+
+    it('keeps data-tip-stuck set when long-press transfers stickiness', () => {
+      installLongPressTooltips();
+      const a = makeTip('a');
+      const b = makeTip('b');
+
+      fireTouchStart(a, 10, 10);
+      vi.advanceTimersByTime(HOLD + 1);
+      expect(document.body.dataset.tipStuck).toBe('true');
+      // Tap-elsewhere would clear the stuck (covered by other tests);
+      // but a fresh long-press on b should TRANSFER the stuckness, so
+      // the body flag stays set throughout.
+      fireTouchStart(b, 10, 10);
+      vi.advanceTimersByTime(HOLD + 1);
+      expect(document.body.dataset.tipStuck).toBe('true');
+      expect(__test__.getStuck()).toBe(b);
+    });
+
+    it('removes data-tip-stuck on body via __test__.reset()', () => {
+      installLongPressTooltips();
+      const a = makeTip('a');
+      fireTouchStart(a, 10, 10);
+      vi.advanceTimersByTime(HOLD + 1);
+      expect(document.body.dataset.tipStuck).toBe('true');
+      __test__.reset();
+      expect(document.body.dataset.tipStuck).toBeUndefined();
+    });
+  });
 });

@@ -138,6 +138,7 @@ export function CatalystStrip() {
           catalystChips={catalystChips[id] ?? 0}
           catalystFires={catalystFires[id] ?? 0}
           tight={tight}
+          wide={wide}
         />
       ))}
     </div>
