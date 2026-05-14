@@ -159,17 +159,20 @@ export function ScoreMoment() {
           // as "the cosmos noticed" rather than a centered burst.
           scoringVFX.fireStarRipple(variant === 'mega' ? 'mega' : 'normal');
 
-          // Meteor shower — only on mega booms. Constellation accent
-          // for the streaks; count scales with megaRatio so a 6×
-          // crush gets more streaks than a 3×. Rendered in the cosmos
+          // Meteor shower — fires on every boom that crossed target
+          // (gold) and harder on mega. Rendered in the cosmos
           // background via CosmosBackground.MeteorShowerLayer so the
-          // streaks read as actual shooting stars in the game's sky
-          // (not a foreground overlay across the play area).
-          if (variant === 'mega') {
+          // streaks read as actual shooting stars in the game's sky.
+          // Constellation accent tints the streaks; count scales by
+          // tier so a gold-only boom gets a brief shower while a 6×
+          // mega gets the full sky-full.
+          if (variant === 'gold' || variant === 'mega') {
             const constellation = lookupConstellation(
               store.getState().run.constellationId,
             );
-            const streakCount = Math.max(3, Math.min(7, Math.round(2 + ratio)));
+            const streakCount = variant === 'mega'
+              ? Math.max(5, Math.min(8, Math.round(3 + ratio)))
+              : 3;
             bus.emit('onMeteorShowerTriggered', {
               accent: constellation.color,
               count: streakCount,
