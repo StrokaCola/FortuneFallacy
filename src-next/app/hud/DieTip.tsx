@@ -5,6 +5,7 @@ import { lookupMod } from '../../core/mods';
 import { ModIcon } from '../visual/ModIcon';
 import { editionColor, editionLabel } from '../../core/upgrades/editions';
 import { describeFace, WILD_SENTINEL } from '../../core/run/faceReadable';
+import { formatModStackLabel } from './modStackLabel';
 import { Z } from './zLayers';
 
 // Long-press info tooltip for in-round 3D dice.
@@ -19,6 +20,8 @@ const selectDieTip = (s: GameState) => s.ui.dieTip;
 const selectDice = (s: GameState) => s.round.dice;
 const selectDiceMods = (s: GameState) => s.run.diceMods;
 const selectDiceModEditions = (s: GameState) => s.run.diceModEditions;
+const EMPTY_STACKS: number[][] = [];
+const selectDiceModStacks = (s: GameState) => s.run.diceModStacks ?? EMPTY_STACKS;
 
 // Vertical pixel offset from the die center to the tooltip's anchor edge.
 // Picks up the die radius + a small gap so the tip floats clear of the
@@ -30,6 +33,7 @@ export function DieTip() {
   const dice = useStore(selectDice);
   const diceMods = useStore(selectDiceMods);
   const diceModEditions = useStore(selectDiceModEditions);
+  const diceModStacks = useStore(selectDiceModStacks);
 
   // Re-render on viewport resize so the flip-above check uses the current
   // window height. Resize fires on orientation change too.
@@ -48,6 +52,7 @@ export function DieTip() {
 
   const mods = diceMods[tip.dieIdx] ?? [];
   const eds = diceModEditions[tip.dieIdx] ?? [];
+  const stacks = diceModStacks[tip.dieIdx] ?? [];
 
   // Flip above the die when the anchor would push the tip off-screen below.
   // Rough estimate: the chip block is ~140-180px tall depending on mod count;
@@ -77,8 +82,8 @@ export function DieTip() {
         transform: `translate(-50%, ${translateY})`,
         zIndex: Z.dieTip,
         pointerEvents: 'auto',
-        minWidth: 160,
-        maxWidth: 260,
+        minWidth: 180,
+        maxWidth: 280,
         padding: '8px 10px',
         background: 'rgba(7,5,26,0.95)',
         border: '1px solid rgba(149,119,255,0.4)',
@@ -117,26 +122,56 @@ export function DieTip() {
           no mods
         </div>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 6,
+          paddingTop: 4, borderTop: '1px solid rgba(149,119,255,0.18)',
+        }}>
           {mods.map((mid, j) => {
             const m = lookupMod(mid);
             const ed = eds[j];
             const eC = ed ? editionColor(ed) : null;
             const accent = m?.visual?.accentColor ?? '#bba8ff';
+            const stackLabel = m ? formatModStackLabel(m, stacks[j] ?? 0) : null;
             return (
-              <span key={j} className="f-mono uc" style={{
-                fontSize: 9, padding: '2px 6px', borderRadius: 3,
-                color: accent, border: `1px solid ${accent}66`, background: `${accent}14`,
-                display: 'inline-flex', alignItems: 'center', gap: 4,
+              <div key={j} style={{
+                display: 'flex', flexDirection: 'column', gap: 2,
+                padding: '4px 6px', borderRadius: 4,
+                background: `${accent}10`, border: `1px solid ${accent}33`,
               }}>
-                <ModIcon modId={mid} fallbackChar={m?.icon ?? '⫶'} color={accent} size={11} />
-                {m?.name ?? mid}
-                {eC && (
-                  <span style={{ marginLeft: 2, color: eC }}>
-                    ·{editionLabel(ed!).slice(0, 2).toLowerCase()}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <ModIcon modId={mid} fallbackChar={m?.icon ?? '⫶'} color={accent} size={13} />
+                    <span className="f-mono uc" style={{
+                      fontSize: 9.5, letterSpacing: '0.18em', color: accent,
+                    }}>
+                      {m?.name ?? mid}
+                    </span>
+                    {eC && (
+                      <span className="f-mono uc" style={{
+                        fontSize: 8, letterSpacing: '0.18em', color: eC,
+                        padding: '1px 4px', border: `1px solid ${eC}55`, borderRadius: 2,
+                      }}>
+                        {editionLabel(ed!)}
+                      </span>
+                    )}
+                  </div>
+                  {stackLabel && (
+                    <span className="f-mono num" style={{
+                      fontSize: 9, color: '#f5c451',
+                    }}>
+                      {stackLabel}
+                    </span>
+                  )}
+                </div>
+                {m?.desc && (
+                  <div style={{
+                    fontSize: 10, lineHeight: 1.35, color: '#cbc4e6',
+                    fontFamily: '"Exo 2", sans-serif',
+                  }}>
+                    {m.desc}
+                  </div>
                 )}
-              </span>
+              </div>
             );
           })}
         </div>

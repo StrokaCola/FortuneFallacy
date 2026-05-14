@@ -19,6 +19,7 @@ import { ForgeBackdrop } from '../../render/bg/forgeBackdrop';
 import { lookupConstellation } from '../../data/constellations';
 import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffinities';
 import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
+import { formatModStackLabel } from '../hud/modStackLabel';
 import { invalidateRects } from '../../render/three/sharedRenderer';
 import '../hud/ForgeVFX.css';
 
@@ -1238,22 +1239,6 @@ function ForgeDebugOverlay({ dieAnchorRef }: { dieAnchorRef: React.RefObject<HTM
   );
 }
 
-// 2026-05-11 polish — per-mod-instance stack chip label.
-// Returns null for non-scaling mods so the detach button doesn't render
-// an empty badge. The math mirrors what applyDieModStep credits the
-// die for at score time, so what the player sees here is what they'll
-// see on the next hand.
-import type { ModDef } from '../../core/mods';
-function formatModStackLabel(def: ModDef, stack: number): string | null {
-  if (stack <= 0) return null;
-  if (def.tallyChipPerStack) return `+${stack * def.tallyChipPerStack}c`;
-  if (def.cadenceMultPerStack) return `+${stack * def.cadenceMultPerStack}m (blind)`;
-  if (def.veteranMultPerStack) return `+${(stack * def.veteranMultPerStack).toFixed(1)}m`;
-  if (def.gluttonChipPerStack) return `+${stack * def.gluttonChipPerStack}c`;
-  if (def.dormantAwakenAt != null) {
-    return stack >= def.dormantAwakenAt ? '★ awake' : `${stack}/${def.dormantAwakenAt}`;
-  }
-  if (def.ballastChipPerStack) return `+${stack * def.ballastChipPerStack}c`;
-  if (def.pyreChipPerStack) return `+${stack * def.pyreChipPerStack}c`;
-  return null;
-}
+// formatModStackLabel — per-mod-instance stack chip label. Lives in
+// ../hud/modStackLabel and is shared with DieTip so the in-round
+// long-press tip and the Forge detach row stay aligned. Imported above.
