@@ -18,6 +18,12 @@ import { BOSS_BLINDS } from '../../data/blinds';
 import { triggerShake } from '../visual/screenShake';
 
 const SHOW_MS = 3600;
+// Brief input-shield window. The banner itself stays on-screen for
+// SHOW_MS, but pointer input is absorbed for the first INPUT_GATE_MS
+// so the player gets a beat to absorb the rule change instead of
+// getting their pending roll/score dispatched mid-banner-entry. Tuned
+// to the `--savored` design token in styles/index.css.
+const INPUT_GATE_MS = 600;
 
 type Banner = {
   blindId: string;
@@ -28,15 +34,18 @@ type Banner = {
 
 export function BossPhaseBanner() {
   const [banner, setBanner] = useState<Banner | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
   const tight = useIsTightStage();
 
   useEffect(() => {
     const off = bus.on('onBossSecondWind', (payload) => {
       setBanner(payload);
+      setGateOpen(true);
       sfxPlay('multSlam', { freq: 380, gain: 1.15 });
       window.setTimeout(() => sfxPlay('bossSting', { gain: 0.6 }), 140);
       triggerShake('big');
       playHaptic('clear');
+      window.setTimeout(() => setGateOpen(false), INPUT_GATE_MS);
       window.setTimeout(() => setBanner(null), SHOW_MS);
     });
     return () => off();
@@ -48,6 +57,23 @@ export function BossPhaseBanner() {
   const isSoftened = banner.removedDebuffs.length > 0 && banner.addedDebuffs.length === 0;
 
   return (
+    <>
+      {/* Input-absorbing shield. Transparent, sits over the play surface
+          for INPUT_GATE_MS so the player can't dispatch a roll/score
+          while the banner is sliding in and the new rule is being
+          read. Removed when gateOpen flips false. */}
+      {gateOpen && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', inset: 0,
+            zIndex: Z.bannerBoss - 1,
+            pointerEvents: 'auto',
+            background: 'transparent',
+            cursor: 'wait',
+          }}
+        />
+      )}
     <div
       aria-hidden
       className="boss-phase-banner"
@@ -93,5 +119,6 @@ export function BossPhaseBanner() {
         "{banner.flavor}"
       </div>
     </div>
+    </>
   );
 }
