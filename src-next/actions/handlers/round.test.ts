@@ -56,6 +56,41 @@ describe('NEW_RUN', () => {
     expect(r.state.run.constellationId).toBe('lyra');
   });
 
+  it('seeds upcomingBossId so the Hub can preview ante-1\'s curse before Begin', () => {
+    const r = roundHandler({ type: 'NEW_RUN' }, baseState());
+    expect(r.state.run.upcomingBossId).toBeTruthy();
+    expect(typeof r.state.run.upcomingBossId).toBe('string');
+  });
+
+  describe('seeded runs', () => {
+    it('marks unseeded runs as seedSource=random (hidden in-game)', () => {
+      const r = roundHandler({ type: 'NEW_RUN' }, baseState());
+      expect(r.state.run.seedSource).toBe('random');
+    });
+
+    it('marks explicit-seed runs as seedSource=player and uses the entered seed', () => {
+      const r = roundHandler({ type: 'NEW_RUN', seed: 0xCAFEBABE }, baseState());
+      expect(r.state.run.seedSource).toBe('player');
+      expect(r.state.run.seed).toBe(0xCAFEBABE);
+    });
+
+    it('marks daily runs as seedSource=daily', () => {
+      const r = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());
+      expect(r.state.run.seedSource).toBe('daily');
+    });
+
+    it('produces the same upcomingBossId for two runs with the same seed', () => {
+      const a = roundHandler({ type: 'NEW_RUN', seed: 12345 }, baseState());
+      const b = roundHandler({ type: 'NEW_RUN', seed: 12345 }, baseState());
+      expect(a.state.run.upcomingBossId).toBe(b.state.run.upcomingBossId);
+    });
+
+    it('initializes shopSeq to 0 so the first OPEN_SHOP rolls from scope shop:seq=0', () => {
+      const r = roundHandler({ type: 'NEW_RUN', seed: 12345 }, baseState());
+      expect(r.state.run.shopSeq).toBe(0);
+    });
+  });
+
   describe('daily flag', () => {
     it('sets dailyDate to today\'s UTC date string', () => {
       const r = roundHandler({ type: 'NEW_RUN', daily: true }, baseState());

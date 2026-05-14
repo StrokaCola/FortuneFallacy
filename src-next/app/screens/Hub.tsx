@@ -3,6 +3,7 @@ import { useStore, type GameState } from '../../state/store';
 import { PortalGate } from '../portal/PortalGate';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
+import { encodeSeed } from '../../core/seed/rng';
 import { TrialModifierChip } from '../hud/TrialModifierChip';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { TierSigil } from '../visual/TierSigil';
@@ -51,6 +52,17 @@ export function Hub() {
   const lifetimeDust = useStore(selectCosmicDustLifetime);
   const seed = useStore(selectSeed);
   const goalIdxRaw = useStore(selectGoalIdxRaw);
+  // Upcoming boss id — locked in by NEW_RUN / the previous clearBlind so
+  // the player can read the curse on the hub before clicking Begin.
+  // Falls back to null on legacy saves; TrialModifierChip degrades to
+  // the generic "boss rule applies" copy when the id isn't known.
+  const upcomingBossId = useStore((s: GameState) => s.run.upcomingBossId ?? null);
+  // Seed visibility — hidden during play for `random` runs (revealed
+  // in postmortem), shown for `player` (explicitly entered) and
+  // `daily` (player knows they're on a daily challenge).
+  const seedSource = useStore((s: GameState) => s.run.seedSource ?? 'random');
+  const runSeed = useStore(selectSeed);
+  const showSeedChip = seedSource !== 'random';
   const prestige = currentPrestigeTier(lifetimeDust);
   const next = nextPrestigeTier(lifetimeDust);
   const compact = useIsCompactStage();
@@ -146,6 +158,38 @@ export function Hub() {
         }}>
           ✦ {constellation.name} · {describeDiceSpec(constellation.dice)}
         </div>
+
+        {/* Seeded-run chip — visible only when the player explicitly
+            entered a seed or is on a daily challenge. Random runs
+            keep the seed hidden until postmortem so each fresh run
+            still has the "what'll show up?" beat intact. */}
+        {showSeedChip && (
+          <div className="f-mono has-tip" style={{
+            marginTop: 4,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '2px 10px', borderRadius: 999,
+            border: `1px solid ${seedSource === 'daily' ? 'rgba(245,196,81,0.45)' : 'rgba(123,227,255,0.4)'}`,
+            background: 'rgba(15,9,37,0.6)',
+            fontSize: 10, letterSpacing: '0.14em',
+            color: seedSource === 'daily' ? '#f5c451' : '#7be3ff',
+            position: 'relative',
+          }}>
+            <span style={{ opacity: 0.7 }}>
+              {seedSource === 'daily' ? '★ daily' : '◆ seed'}
+            </span>
+            <span style={{ color: '#f3f0ff', letterSpacing: '0.18em' }}>
+              {encodeSeed(runSeed)}
+            </span>
+            <span className="tip">
+              <span className="tip-title">
+                {seedSource === 'daily' ? 'Daily Challenge Seed' : 'Seeded Run'}
+              </span>
+              {seedSource === 'daily'
+                ? 'Today\'s daily uses this seed for all players. Score is partitioned to the daily leaderboard.'
+                : 'You started this run from an explicit seed. Every boss, shop offer, and edition flows from it — share the code to let someone replay the exact run.'}
+            </span>
+          </div>
+        )}
 
         {/* Prestige badge — derived from meta.cosmicDustLifetime. Surfaces
             the player's lifetime ascension tier and the gap to the next.
@@ -316,6 +360,7 @@ export function Hub() {
                     <TrialModifierChip
                       voidstormId={b.voidstormId}
                       isBoss={isBoss}
+                      bossBlindId={isBoss ? upcomingBossId ?? undefined : undefined}
                       tight={tight}
                       compact={compact}
                     />

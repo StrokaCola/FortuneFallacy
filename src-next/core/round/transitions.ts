@@ -2,6 +2,7 @@ import type { GameState } from '../../state/store';
 import type { GameEventEmission, DieSnapshot } from '../../events/types';
 import { BLIND_DEFS, BOSS_BLINDS, targetForBlind } from '../../data/blinds';
 import { initialRoundSlice } from '../../state/slices/round';
+import { makeSeedRng, seededPick } from '../seed/rng';
 import { blindClearShardBonus, extraHandsPerRound, maxConsumableSlots } from '../vouchers';
 import { lookupMod } from '../mods';
 import { getDiceSpec } from '../run/diceContext';
@@ -74,6 +75,17 @@ function dropBrittleMods(
   return { diceMods: nextMods, diceModEditions: nextEditions };
 }
 
+/** Pick a boss-blind id deterministically from the run seed + ante.
+ * Two players entering the same seed see the same boss on the same
+ * ante; a refresh on the hub doesn't shuffle the boss because the
+ * scope ('boss:ante2') is stable. NEW_RUN and clearBlind call this
+ * to lock the upcoming-ante boss in run.upcomingBossId; the Hub then
+ * reveals the chosen curse before the player clicks Begin. */
+export function pickBossId(seed: number, ante: number): string {
+  const rng = makeSeedRng(seed, `boss:ante${ante}`);
+  return seededPick(rng, BOSS_BLINDS).id;
+}
+
 export function startBlind(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const ante = s.run.ante;
   const blindIndex = s.run.goalIdx % 3;
@@ -99,8 +111,16 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     targetForBlind(ante, blindIndex, lap) * ctx.targetMult * afflictionTargetMul,
   );
   const isBoss = def.isBoss;
+  // Boss id: prefer the value locked in by NEW_RUN / the previous
+  // clearBlind (so the Hub's preview and the actual blind match, and
+  // a refresh on the hub doesn't shuffle the boss between page loads).
+  // Falls back to a fresh roll for legacy saves that don't have
+  // upcomingBossId set; the rolled id is mirrored into run state
+  // further down so subsequent refreshes inside the boss blind stay
+  // stable.
+  const lockedBossId = s.run.upcomingBossId ?? null;
   const blindId = isBoss
-    ? BOSS_BLINDS[Math.floor(Math.random() * BOSS_BLINDS.length)]!.id
+    ? (lockedBossId ?? pickBossId(s.run.seed, ante))
     : def.name.toLowerCase().replace(/\s+/g, '_');
   // Voidstorm derivation — deterministic so the Hub preview chip and the
   // in-blind storm match exactly. Boss blinds always pass through as null.
@@ -156,7 +176,15 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     state: {
       ...s,
       ui: { ...s.ui, screen: 'round' },
-      run: { ...s.run, shards: runShards, mirroredHandActive },
+      // Clear upcomingBossId once a boss blind starts — the chosen id
+      // now lives on round.blindId for the duration of the round.
+      // clearBlind re-picks for the next ante on boss-clear.
+      run: {
+        ...s.run,
+        shards: runShards,
+        mirroredHandActive,
+        upcomingBossId: isBoss ? null : s.run.upcomingBossId,
+      },
       round: {
         ...initialRoundSlice(),
         active: true,
@@ -331,6 +359,15 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     }
     return stackRow;
   });
+  // Roll the upcoming ante's boss as soon as the current ante is
+  // cleared (ante just advanced because we cleared the boss). The
+  // Hub previews this id; startBlind consumes it. Untouched on
+  // non-boss clears so a small/big-blind clear doesn't shuffle the
+  // boss the player saw on the hub.
+  const anteAdvanced = nextAnte > s.run.ante;
+  const nextUpcomingBossId = won
+    ? null
+    : (anteAdvanced ? pickBossId(s.run.seed, nextAnte) : s.run.upcomingBossId ?? null);
   return {
     state: {
       ...s,
@@ -345,6 +382,7 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         // Track dust gained THIS run for the postmortem celebration line.
         // Mirrors the meta.cosmicDust grant above so the two stay in sync.
         runStats: addDustToRunStats(s.run.runStats, dustGained),
+        upcomingBossId: nextUpcomingBossId,
       },
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.

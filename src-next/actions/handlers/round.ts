@@ -1,5 +1,5 @@
 import type { ActionHandler } from './types';
-import { startBlind, clearBlind, bustBlind, skipBlind, startCosmicLap } from '../../core/round/transitions';
+import { startBlind, clearBlind, bustBlind, skipBlind, startCosmicLap, pickBossId } from '../../core/round/transitions';
 import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
@@ -45,9 +45,20 @@ export const roundHandler: ActionHandler = (a, s) => {
       const constellationId = daily?.constellationId ?? a.constellationId;
       const constellation = lookupConstellation(constellationId);
       const baseRun = applyConstellation(initialRunSlice(), constellation);
+      // Seed precedence: daily-challenge UTC seed > player-entered seed >
+      // auto-generated. seedSource flags which path was taken so the UI
+      // knows whether to show the seed during play (player/daily) or
+      // hide it until postmortem (random).
+      const seed =
+        daily?.seed ??
+        (typeof a.seed === 'number' ? (a.seed >>> 0) : baseRun.seed);
+      const seedSource: 'random' | 'player' | 'daily' = daily
+        ? 'daily'
+        : (typeof a.seed === 'number' ? 'player' : 'random');
       const withStake = {
         ...baseRun,
-        seed: daily?.seed ?? baseRun.seed,
+        seed,
+        seedSource,
         stakeId: daily?.stakeId ?? a.stakeId ?? 'spark',
         challengeId: a.challengeId ?? '',
         dailyDate: daily?.date ?? null,
@@ -57,9 +68,15 @@ export const roundHandler: ActionHandler = (a, s) => {
       // capacity, first-blind hands, boss reveal) resolve at compute time
       // from meta.astralPerks — they don't mutate the run slice here.
       // Daily runs skip perk application entirely for fair comparison.
-      const run = daily
+      const runWithPerks = daily
         ? withStake
         : applyAstralPerksToNewRun(withStake, s.meta.astralPerks);
+      // Lock in ante-1's boss id at run-start so the Hub can preview the
+      // upcoming curse before the player ever clicks Begin, and so a
+      // refresh on the hub doesn't shuffle the boss when startBlind fires.
+      // Boss is now seeded — same seed always yields the same boss for
+      // the same ante.
+      const run = { ...runWithPerks, upcomingBossId: pickBossId(seed, 1) };
       return {
         state: {
           ...s,

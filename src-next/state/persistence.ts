@@ -6,7 +6,7 @@ import { begin as perfBegin } from '../devtools/perf';
 
 const KEY = 'ff_next_save';
 
-type SavedState = Pick<GameState, 'run' | 'meta' | 'round' | 'ui'>;
+type SavedState = Pick<GameState, 'run' | 'meta' | 'round' | 'ui' | 'shop'>;
 
 export function loadSaved(): SavedState | null {
   const parsed = safeReadJSON(KEY);
@@ -16,13 +16,16 @@ export function loadSaved(): SavedState | null {
 
 export function startPersistence(): () => void {
   let timer: number | null = null;
-  // The `shop` slice is intentionally excluded from the snapshot — the shop
-  // re-rolls on every Hub re-entry by design (see core/shop/catalystDraw.ts),
-  // so persisting it would only cause a stale-offer flash on reload.
+  // The `shop` slice IS persisted now (offers + rerollCost + pendingPack +
+  // pendingSkipBounty). The "fresh shop on every hub re-entry" intent is
+  // preserved by clearBlind, which explicitly empties shop.offers so the
+  // Shop screen's `if (offers.length === 0) OPEN_SHOP` effect re-rolls.
+  // Persisting lets a mid-shop browser refresh restore the same offers
+  // instead of shuffling out from under the player.
   const flush = (s: ReturnType<typeof store.getState>): void => {
     timer = null;
     const end = perfBegin('persistence');
-    const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui };
+    const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui, shop: s.shop };
     safeWriteJSON(KEY, snapshot);
     end();
   };
@@ -169,11 +172,26 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedRun.diceModStacks = mergedRun.diceModStacks ?? mergedRun.diceMods.map((m: string[]) => m.map(() => 0));
   mergedRun.theAnswerArmed = mergedRun.theAnswerArmed ?? false;
   mergedRun.mirroredHandActive = mergedRun.mirroredHandActive ?? false;
+  // upcomingBossId (added 2026-05) — legacy saves predate this field;
+  // default null so startBlind falls back to a fresh roll and saves
+  // it for subsequent refreshes.
+  mergedRun.upcomingBossId = mergedRun.upcomingBossId ?? null;
+  // seedSource + shopSeq (added 2026-05) — legacy saves predate these;
+  // treat as a regular random run with no prior shop rolls, so the
+  // seed stays hidden until postmortem and the next OPEN_SHOP roll
+  // uses scope 'shop:seq=0'.
+  mergedRun.seedSource = mergedRun.seedSource ?? 'random';
+  mergedRun.shopSeq = mergedRun.shopSeq ?? 0;
+  // Shop (newly persisted 2026-05). Legacy saves predate the field
+  // entirely → fall back to the fresh slice so Shop's useEffect rolls
+  // offers on next mount.
+  const mergedShop = saved.shop ? { ...s.shop, ...saved.shop } : s.shop;
   return {
     ...s,
     run:   mergedRun,
     meta:  mergedMeta,
     round: saved.round?.active ? { ...s.round, ...saved.round, handInProgress: false } : s.round,
     ui:    { ...s.ui, screen: saved.ui?.screen ?? s.ui.screen },
+    shop:  mergedShop,
   };
 }

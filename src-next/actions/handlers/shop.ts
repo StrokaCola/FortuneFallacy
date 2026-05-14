@@ -11,6 +11,7 @@ import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '.
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
+import { makeSeedRng } from '../../core/seed/rng';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
 // Mods whose effects key on specific face values that some constellations
 // can never roll. When the active face universe lacks ALL the required
@@ -116,10 +117,10 @@ const maybeUnlockAllBand = maybeUnlockLegendaries;
 const BASE_REROLL_COST = 3;
 const MOD_OFFER_PRICE = 4;
 
-function shuffle<T>(arr: T[]): T[] {
+function shuffle<T>(arr: T[], rng: () => number): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
@@ -130,18 +131,22 @@ function applyShopPriceMult(offers: ShopOffer[], mult: number): ShopOffer[] {
   return offers.map((o) => ({ ...o, price: Math.max(1, Math.round(o.price * mult)) }));
 }
 
-function rollOffers(s: GameState): ShopOffer[] {
+// rng is built per shop roll from `(run.seed, 'shop:goal=N:seq=K')` so
+// the same seed + same shopSeq always produces the same offers, and
+// each successive REROLL_SHOP advances shopSeq → fresh deterministic
+// offers. See OPEN_SHOP / REROLL_SHOP for the scope construction.
+function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
   const offers: ShopOffer[] = [];
   const ownedVouchers = s.run.vouchers;
   const modsOff = areModsDisabled(s);
 
   if (!modsOff) {
     const eligible = gateModsByFaceUniverse([...MOD_IDS], s);
-    const modIds = shuffle(eligible).slice(0, 2);
+    const modIds = shuffle(eligible, rng).slice(0, 2);
     for (const id of modIds) {
       // Mod editions roll independently, same drop weights as catalysts:
       // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.
-      const edition = rollCatalystEdition(Math.random);
+      const edition = rollCatalystEdition(rng);
       offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE, ...(edition ? { edition } : {}) });
     }
   }
@@ -149,9 +154,9 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse));
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse));
   for (const id of catalystIds) {
-    const edition = rollCatalystEdition(Math.random);
+    const edition = rollCatalystEdition(rng);
     offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
   }
 
@@ -166,11 +171,11 @@ function rollOffers(s: GameState): ShopOffer[] {
   // Two-way roll for the final slot: pack | voucher.
   // ~25% pack, then voucher when one is unowned; otherwise an extra
   // catalyst keeps the offer count stable when no voucher is available.
-  const r = Math.random();
+  const r = rng();
   if (r < 0.25) {
     // Pack tier weighted: 45% Celestial, 22% Stellar, 8% Galactic, 25% Maneuver.
     // Pulled by index from PACK_DEFS to avoid drift if the table is reordered.
-    const tierRoll = Math.random();
+    const tierRoll = rng();
     const pack =
       tierRoll < 0.45 ? PACK_DEFS[0]! :
       tierRoll < 0.67 ? PACK_DEFS[1]! :
@@ -178,15 +183,15 @@ function rollOffers(s: GameState): ShopOffer[] {
       PACK_DEFS[3]!;
     offers.push({ kind: 'pack', id: pack.kind, price: pack.price });
   } else if (availableVouchers.length > 0) {
-    const v = shuffle(availableVouchers)[0]!;
+    const v = shuffle(availableVouchers, rng)[0]!;
     offers.push({ kind: 'voucher', id: v.id, price: v.price });
   } else {
     // No vouchers left to offer — fill the slot with one extra catalyst
     // so the shop doesn't shrink late-run. Mirrors the modsOff branch's
     // approach of using catalyst breadth as the fallback currency.
-    const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, Math.random, s.run.catalysts, s.run.constellationId);
+    const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId);
     if (extra[0]) {
-      const edition = rollCatalystEdition(Math.random);
+      const edition = rollCatalystEdition(rng);
       offers.push({ kind: 'catalyst', id: extra[0], price: 5, ...(edition ? { edition } : {}) });
     }
   }
@@ -250,9 +255,20 @@ export const shopHandler: ActionHandler = (a, s) => {
     case 'OPEN_SHOP': {
       // Challenge overlay can lock the shop entirely. Stay in hub.
       if (stakeContext(s).shopDisabled) return { state: s, events: [] };
-      const offers = rollOffers(s);
+      // Seeded RNG keyed by run.seed + the monotonic shopSeq counter.
+      // Two players entering the same seed see the same offers on each
+      // hub re-entry, and a refresh mid-roll can't shuffle the wares
+      // (the saved shopSeq replays the same scope).
+      const seq = s.run.shopSeq ?? 0;
+      const rng = makeSeedRng(s.run.seed, `shop:seq=${seq}`);
+      const offers = rollOffers(s, rng);
       return {
-        state: { ...s, shop: { ...s.shop, open: true, offers, rerollCost: initialRerollCost(s) }, ui: { ...s.ui, screen: 'shop' } },
+        state: {
+          ...s,
+          run: { ...s.run, shopSeq: seq + 1 },
+          shop: { ...s.shop, open: true, offers, rerollCost: initialRerollCost(s) },
+          ui: { ...s.ui, screen: 'shop' },
+        },
         events: [{ type: 'onShopOpened', payload: { offers } }],
       };
     }
@@ -267,12 +283,14 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (s.shop.pendingPack) return { state: s, events: [] };
       const cost = s.shop.rerollCost;
       if (s.run.shards < cost) return { state: s, events: [] };
-      const offers = rollOffers(s);
+      const seq = s.run.shopSeq ?? 0;
+      const rng = makeSeedRng(s.run.seed, `shop:seq=${seq}`);
+      const offers = rollOffers(s, rng);
       const nextCost = freeShopReroll(s) ? 0 : cost + 1;
       return {
         state: {
           ...s,
-          run: { ...s.run, shards: s.run.shards - cost },
+          run: { ...s.run, shards: s.run.shards - cost, shopSeq: seq + 1 },
           shop: { ...s.shop, offers, rerollCost: nextCost },
         },
         events: [{ type: 'onShopOpened', payload: { offers } }],

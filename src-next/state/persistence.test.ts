@@ -143,4 +143,55 @@ describe('applySavedToInitial', () => {
     const result = applySavedToInitial(initial);
     expect(result.ui.screen).toBe('hub');
   });
+
+  it('restores shop.offers + rerollCost so a refresh keeps the same shop', () => {
+    const savedOffers = [
+      { kind: 'catalyst' as const, id: 'tempo', price: 5 },
+      { kind: 'mod' as const, id: 'tally_mark', price: 3 },
+    ];
+    const snapshot = {
+      run: initialRunSlice(),
+      meta: initialMetaSlice(),
+      round: initialRoundSlice(),
+      ui: { screen: 'shop', paused: false, tooltip: null, transition: 'idle' },
+      shop: { ...initialShopSlice(), open: true, offers: savedOffers, rerollCost: 11 },
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.shop.offers).toEqual(savedOffers);
+    expect(result.shop.rerollCost).toBe(11);
+    expect(result.shop.open).toBe(true);
+  });
+
+  it('falls back to a fresh shop slice when the save predates persistence', () => {
+    const snapshot = {
+      run: initialRunSlice(),
+      meta: initialMetaSlice(),
+      round: initialRoundSlice(),
+      ui: initialUiSlice(),
+      // No `shop` field — mirrors legacy saves written before the
+      // shop was added to the persistence schema.
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.shop).toEqual(initialShopSlice());
+  });
+
+  it('defaults upcomingBossId to null when missing on legacy saves', () => {
+    const snapshot = {
+      run: { ...initialRunSlice(), upcomingBossId: undefined },
+      meta: initialMetaSlice(),
+      round: initialRoundSlice(),
+      ui: initialUiSlice(),
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const initial = makeInitialState();
+    const result = applySavedToInitial(initial);
+    expect(result.run.upcomingBossId).toBeNull();
+  });
 });
