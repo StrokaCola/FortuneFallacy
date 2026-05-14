@@ -33,7 +33,13 @@ const selectAnteForPause = (s: GameState) => s.run.ante;
 const selectConstellationIdForPause = (s: GameState) => s.run.constellationId;
 const selectCatalystsForPause = (s: GameState) => s.run.catalysts;
 const selectPeakHandForPause = (s: GameState) => s.run.runStats?.peakHand ?? 0;
-const selectCatalystChipsForPause = (s: GameState) => s.run.runStats?.catalystChips ?? {};
+// Stable empty fallback — every render returning a fresh `{}` here
+// makes Zustand see "the value changed" on every render (since
+// Object.is({}, {}) === false), which spirals into React error #185
+// (Maximum update depth exceeded). Pin a single shared reference so
+// the selector is stable whenever catalystChips is undefined.
+const EMPTY_CATALYST_CHIPS: Readonly<Record<string, number>> = Object.freeze({});
+const selectCatalystChipsForPause = (s: GameState) => s.run.runStats?.catalystChips ?? EMPTY_CATALYST_CHIPS;
 
 export function PauseMenu() {
   const paused = useStore(selectPaused);

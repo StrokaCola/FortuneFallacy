@@ -2,9 +2,15 @@
 // renders it via <Coachmark>. Mounted once at the App root. Returns null
 // when nothing is eligible (most of the time, after the first few runs).
 //
-// Re-renders on every store update — `pickActiveCoachmark` is a 5-line for
-// loop, cheaper than maintaining a memoized derivation across screen + onb
-// + round flag changes.
+// The selector returns the active CoachmarkDef directly. Because every
+// CoachmarkDef is a reference into the module-constant COACHMARKS array,
+// the SAME def for the SAME active coachmark returns the SAME reference
+// across selector calls — Zustand's default Object.is equality bails out
+// and CoachmarkController only re-renders when the active def actually
+// flips. The prior `selectAll` selector returned the whole state, which
+// re-rendered the controller on every store mutation and contributed to
+// React error #185 cascades when paired with Coachmark's measurement
+// effect.
 
 import { useEffect } from 'react';
 import { useStore } from '../../state/store';
@@ -12,11 +18,10 @@ import type { GameState } from '../../state/store';
 import { Coachmark } from './Coachmark';
 import { pickActiveCoachmark } from './coachmarks';
 
-const selectAll = (s: GameState) => s;
+const selectActiveCoachmark = (s: GameState) => pickActiveCoachmark(s);
 
 export function CoachmarkController() {
-  const state = useStore(selectAll);
-  const def = pickActiveCoachmark(state);
+  const def = useStore(selectActiveCoachmark);
 
   // Mirror "is a coachmark showing?" onto <body> so the tooltip
   // suppression CSS can hide hover/stuck tips while a coachmark is
