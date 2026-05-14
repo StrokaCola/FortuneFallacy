@@ -23,6 +23,7 @@ import { Z } from './zLayers';
 import { useInspectable } from '../../devtools/inspector/elementRegistry';
 import { CatalystCard } from './catalystStrip/CatalystCard';
 import { useCatalystEvents } from './catalystStrip/useCatalystEvents';
+import { EmptySlot } from './EmptySlot';
 
 // Stable fallback so the selector doesn't return a fresh object on every
 // snapshot read (which tear-loops useSyncExternalStore).
@@ -87,7 +88,32 @@ export function CatalystStrip() {
 
   const inspectRef = useInspectable<HTMLDivElement>('hud.catalystStrip', { label: 'CatalystStrip', zLayer: 'hud' });
 
-  if (catalysts.length === 0) return null;
+  // Empty state: render a single ghost slot so a brand-new player
+  // sees *where* catalysts will live + an inviting tooltip explaining
+  // how to fill it. Only renders while the round is active — outside
+  // of round (Hub, Shop, Forge) the strip is hidden entirely since
+  // those screens are about acquiring catalysts, not playing with them.
+  if (catalysts.length === 0) {
+    if (!roundActive) return null;
+    return (
+      <div
+        ref={inspectRef}
+        data-coach="catalyst-strip"
+        style={{
+          position: 'absolute',
+          top: 'calc(var(--hud-top-h, 134px) + 8px)',
+          left: 18,
+          display: 'flex',
+          flexDirection: wide ? 'column' : 'row',
+          gap: 8,
+          zIndex: Z.hud,
+          pointerEvents: 'auto',
+        }}
+      >
+        <EmptySlot kind="catalyst" />
+      </div>
+    );
+  }
 
   // Set of catalyst ids that are currently half of an active resonance
   // pair. Used to draw a "linked" gold accent on the card so players

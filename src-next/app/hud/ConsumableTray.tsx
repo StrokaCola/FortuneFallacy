@@ -8,6 +8,7 @@ import { Z } from './zLayers';
 import { useIsWideMode, useIsTightStage } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { bus } from '../../events/bus';
+import { EmptySlot } from './EmptySlot';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -78,6 +79,7 @@ export function ConsumableTray() {
         opacity: scoring ? 0.35 : 1,
         transition: 'opacity 220ms ease',
       }}>
+        {items.length === 0 && <EmptySlot kind="consumable" />}
         {items.map((id, i) => {
           const def = lookupConsumable(id);
           if (!def) return null;
