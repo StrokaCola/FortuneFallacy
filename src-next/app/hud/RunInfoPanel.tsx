@@ -142,11 +142,12 @@ export function RunInfoPanel() {
               const ed = catalystEditions[id];
               const eC = ed ? editionColor(ed) : null;
               return (
-                <div key={`${id}-${i}`} style={{
+                <div key={`${id}-${i}`} className="panel-row" style={{
                   display: 'flex', flexDirection: 'column', gap: 2,
-                  padding: '6px 8px', borderRadius: 6,
-                  background: 'rgba(15,9,37,0.7)',
-                  border: `1px solid ${c.color}55`,
+                  padding: '6px 8px',
+                  // Override the panel-row default border with the
+                  // catalyst's accent so each row colour-codes by id.
+                  borderColor: `${c.color}55`,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16, color: c.color, width: 22, textAlign: 'center' }}>{c.icon}</span>
@@ -239,11 +240,14 @@ export function RunInfoPanel() {
           {diceMods.map((mods, i) => {
             const eds = diceModEditions[i] ?? [];
             return (
-              <div key={i} style={{
+              <div key={i} className="panel-row" style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '4px 8px', borderRadius: 6,
+                padding: '4px 8px',
+                // Slightly dimmer than panel-row's default — dice mod
+                // rows are dense and shouldn't compete with the
+                // catalyst roster above.
                 background: 'rgba(15,9,37,0.5)',
-                border: '1px solid rgba(149,119,255,0.18)',
+                borderColor: 'rgba(149,119,255,0.18)',
               }}>
                 <span className="f-mono uc" style={{ fontSize: 9, color: '#9577ff', width: 32 }}>
                   d{i + 1}

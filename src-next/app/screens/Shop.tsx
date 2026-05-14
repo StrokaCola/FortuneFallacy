@@ -18,6 +18,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { TopBar } from '../hud/TopBar';
 import { PauseButton } from '../hud/PauseButton';
+import { ActionBar } from '../hud/ActionBar';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
@@ -179,15 +180,14 @@ export function Shop() {
         />
       )}
 
-      <div style={tight ? {
+      <ActionBar tight={tight} gap={tight ? 8 : 12} minChildWidth={100} style={tight ? {
         // Tight: pin the action bar to the bottom of the viewport so
         // Reroll / Collection / Next are always one tap away, instead
         // of forcing the player to scroll past 3 tall offer cards to
         // find them. Background fades into the cosmos so the row reads
         // as anchored chrome, not an offer card.
         position: 'fixed', left: 12, right: 12, bottom: 12,
-        display: 'flex', flexDirection: 'row', gap: 8,
-        zIndex: 8, alignItems: 'stretch', justifyContent: 'center',
+        zIndex: 8, alignItems: 'stretch',
         padding: '8px 10px',
         background: 'linear-gradient(180deg, rgba(7,5,26,0.6), rgba(7,5,26,0.92))',
         borderRadius: 12,
@@ -195,7 +195,7 @@ export function Shop() {
       } : {
         position: 'absolute', left: '50%', bottom: 28,
         transform: 'translateX(-50%)',
-        display: 'flex', gap: 12, zIndex: 5, alignItems: 'center',
+        zIndex: 5,
       }}>
         <button
           className="btn mat-interactive has-tip"
@@ -235,7 +235,7 @@ export function Shop() {
           Next Trial →
           <span className="tip tip-above">Leave the Bazaar and return to the Tribunal of Stars.</span>
         </button>
-      </div>
+      </ActionBar>
 
       {tight && collectionOpen && (
         <CollectionSheet

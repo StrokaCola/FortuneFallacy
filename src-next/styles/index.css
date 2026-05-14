@@ -147,6 +147,17 @@ html, body {
 .panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius:16px; }
 .panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius:16px; box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
 
+/* Compact row-card baseline. Same gradient/border tokens as .panel but
+   with a smaller radius (6) tuned for list rows — RunInfoPanel catalyst
+   roster, Forge mod inventory rows, etc. Callers typically override
+   `border-color` inline with an accent tint per row, which is why this
+   class kept a generic border instead of forcing the violet default. */
+.panel-row {
+  background: rgba(15, 9, 37, 0.6);
+  border: 1px solid rgba(149, 119, 255, 0.22);
+  border-radius: 6px;
+}
+
 /* Horizontal scroll row with right-edge fade.
    Use when a flex/inline row can overflow horizontally and you want
    the player to KNOW more items are off-screen instead of silently
