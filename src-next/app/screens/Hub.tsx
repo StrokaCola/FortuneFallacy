@@ -217,9 +217,12 @@ export function Hub() {
               className="panel-strong has-tip"
               style={{
                 // Tight: shrink width so 3 cards fit a 640px landscape
-                // phone (3*180 + 2*8 = 556 < 640). Wider viewports keep
-                // the original 240px design size.
-                width: tight ? 'clamp(140px, 28vw, 180px)' : CARD_W,
+                // phone (3*180 + 2*8 = 556 < 640). Wider viewports cap
+                // at 240px design size but ALSO never reach past the
+                // viewport-minus-padding on portrait phones — on a
+                // 320px phone the bare 240px card used to overflow the
+                // 296px content column.
+                width: tight ? 'clamp(140px, 28vw, 180px)' : `min(${CARD_W}px, calc(100vw - 40px))`,
                 // Card height clamps with viewport so on short landscape
                 // phones the three trial cards plus action bar all fit
                 // *and* the inline Begin button stays inside the card.

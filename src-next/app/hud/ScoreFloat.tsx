@@ -3,6 +3,7 @@ import { bus } from '../../events/bus';
 import { useStore } from '../../state/store';
 import { selectScore, selectTarget } from '../../state/selectors';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { Z } from './zLayers';
 
 // "Score Explosion on Boom" — when the boom beat fires, the counter
 // itself erupts: scale-punch + chromatic split + an outward ring. The
@@ -10,6 +11,17 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 // the climax; this is the dedicated celebration.
 
 const EXPLOSION_DURATION_MS = 720;
+
+// Compact score formatter — once a player blows past 10M the
+// comma-separated form overflows the counter container on tight
+// (~360px-wide) landscape phones. Above 1M we switch to "1.23M",
+// above 1B to "1.23B". The exact-score tooltip elsewhere still has
+// the comma form for verification.
+function formatScore(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 10_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  return n.toLocaleString();
+}
 
 export function ScoreFloat() {
   // Tight: shrink the counter font + bar width, and cap the boom rings
@@ -58,7 +70,7 @@ export function ScoreFloat() {
     <div style={{
       position: 'absolute', top: 28, left: '50%', transform: 'translateX(-50%)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      pointerEvents: 'none', zIndex: 5,
+      pointerEvents: 'none', zIndex: Z.hudTop,
     }}>
       <div style={{ position: 'relative' }}>
         {/* Tight viewports: suppress the ring explosion entirely. The
@@ -117,13 +129,13 @@ export function ScoreFloat() {
             transition: 'color 200ms ease',
           }}
         >
-          {shownScore.toLocaleString()}
+          {formatScore(shownScore)}
         </div>
       </div>
       <div className="f-mono num" style={{
         fontSize: 13, color: '#ff7847', marginTop: 4, letterSpacing: '0.1em',
       }}>
-        / {target ? target.toLocaleString() : '—'}
+        / {target ? formatScore(target) : '—'}
       </div>
       <div style={{
         marginTop: 6, width: tight ? 110 : 160, height: 2, borderRadius: 2,

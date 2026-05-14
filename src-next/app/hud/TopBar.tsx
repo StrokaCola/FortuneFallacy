@@ -180,6 +180,8 @@ export function TopBar({
             </span>
             <span className="f-mono uc" style={{
               fontSize: 9, letterSpacing: '0.22em', color: bossDef.color,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              maxWidth: tight ? 110 : 180,
             }}>
               boss · {bossDef.name.toLowerCase()}
             </span>

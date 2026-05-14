@@ -36,17 +36,24 @@ export function DieTip() {
   const diceModStacks = useStore(selectDiceModStacks);
 
   // Re-render on viewport resize so the flip-above check uses the current
-  // window height. Resize fires on orientation change too.
-  const [vh, setVh] = useState<number>(() =>
-    typeof window === 'undefined' ? 800 : window.innerHeight,
-  );
+  // window height + the horizontal-clamp uses the current width. Resize
+  // fires on orientation change too.
+  const [vp, setVp] = useState<{ vw: number; vh: number }>(() => ({
+    vw: typeof window === 'undefined' ? 800 : window.innerWidth,
+    vh: typeof window === 'undefined' ? 800 : window.innerHeight,
+  }));
   useEffect(() => {
-    const onResize = () => setVh(window.innerHeight);
+    const onResize = () => setVp({ vw: window.innerWidth, vh: window.innerHeight });
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
   if (!tip) return null;
+  // Suppress while a coachmark bubble is showing — coachmarks are
+  // higher-priority onboarding guidance and shouldn't share screen
+  // real estate with the die info chip. Mirrors the CSS suppression
+  // rule used for `.has-tip .tip` tooltips.
+  if (typeof document !== 'undefined' && document.body.dataset.coachActive === 'true') return null;
   const die = dice[tip.dieIdx];
   if (!die) return null;
 
@@ -63,6 +70,14 @@ export function DieTip() {
     : tip.screenY - ANCHOR_GAP_PX;
   const translateY = flipBelow ? '0%' : '-100%';
 
+  // Clamp the horizontal anchor so the tip never reaches past the
+  // viewport edges. Tooltip is left + transform translateX(-50%); with
+  // maxWidth 280px we need half (140px) of padding on each side, plus a
+  // 6px safety margin. On a 320px phone a die near the right edge used
+  // to render the right half of the tip off-screen.
+  const TIP_HALF = 140;
+  const leftPx = Math.max(TIP_HALF + 6, Math.min(vp.vw - TIP_HALF - 6, tip.screenX));
+
   const isWild = die.face === WILD_SENTINEL;
 
   return (
@@ -77,7 +92,7 @@ export function DieTip() {
       }}
       style={{
         position: 'fixed',
-        left: tip.screenX,
+        left: leftPx,
         top: topPx,
         transform: `translate(-50%, ${translateY})`,
         zIndex: Z.dieTip,

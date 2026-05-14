@@ -13,6 +13,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dispatch } from '../../actions/dispatch';
+import { Z } from '../hud/zLayers';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 import type { CoachmarkDef } from './coachmarks';
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -31,6 +33,7 @@ function rectsEqual(a: Rect | null, b: Rect | null): boolean {
 }
 
 export function Coachmark({ def }: { def: CoachmarkDef }) {
+  const tight = useIsTightStage();
   const [rect, setRect] = useState<Rect | null>(() => readAnchorRect(def.anchor));
 
   useEffect(() => {
@@ -103,15 +106,22 @@ export function Coachmark({ def }: { def: CoachmarkDef }) {
         borderRadius: 12,
         padding: 14,
         color: '#f3f0ff',
-        zIndex: 200,
+        // Z.orientation (200) is the canonical "above everything except
+        // crash overlays" tier — coachmarks sit at the same level so a
+        // future Z-map change doesn't strand them under a new modal.
+        zIndex: Z.orientation,
         pointerEvents: 'auto',
         animation: 'fadein 200ms ease-out',
+        // Bound vertical growth so a long hint can't push the bubble
+        // off-screen on a 320-tall landscape phone.
+        maxHeight: '60vh',
+        overflow: 'hidden',
       }}
     >
       <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.32em', color: '#7be3ff', marginBottom: 6 }}>
         ⟡ a hint
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.45, marginBottom: 12 }}>
+      <div style={{ fontSize: tight ? 12 : 13, lineHeight: 1.4, marginBottom: 12 }}>
         {def.text}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>

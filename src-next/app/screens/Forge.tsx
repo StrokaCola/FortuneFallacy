@@ -156,7 +156,14 @@ export function Forge() {
   return (
     <div data-forge-scroll style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
       <ForgeVFX anchorRef={dieAnchorRef} />
-      <ForgeDebugOverlay dieAnchorRef={dieAnchorRef} />
+      {/* Debug overlay only mounts when the ?dbg=forge query flag is
+          set. Previously it always rendered a fixed-position DBG ON/OFF
+          toggle in the bottom-right at z-index 99999 — fine for
+          development, but a real player can accidentally hit it on
+          touch screens and lose the corner of the UI. */}
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dbg') === 'forge' && (
+        <ForgeDebugOverlay dieAnchorRef={dieAnchorRef} />
+      )}
       {/* Phase 1.1 cosmic anvil backdrop — slow rotating anvil silhouette,
           rising sparks, ambient ember pulse. Sits behind everything. */}
       <ForgeBackdrop />
