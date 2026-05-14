@@ -66,6 +66,12 @@ export function App() {
   const score = useStore(selectScore);
   const target = useStore(selectTarget);
   const progress = target > 0 ? score / target : 0;
+  // Hub anticipation: when the player's current trial slot is the
+  // boss, the cosmos creeps toward tension so the Hub doesn't feel
+  // completely calm right before a boss fight.
+  const hubBossPending = useStore((s) =>
+    (s.run.goalIdx % 3) === 2 && screen === 'hub'
+  );
 
   useEffect(() => {
     ensureAudioAfterGesture();
@@ -133,10 +139,32 @@ export function App() {
     isBoss && screen === 'round' ? 'voidlit' :
     'voidlit';
 
+  // Per-screen cosmos reactivity. Without these overrides the
+  // tension + progress signals would read stale Round state on every
+  // other screen (a player who crossed target mid-Round then exits
+  // to Hub would see the same gold halo there, which dilutes the
+  // moment). Each non-Round screen picks values that match the
+  // emotional beat:
+  //   Round     — live signals (default)
+  //   Hub       — 0.4 tension if the boss trial is current (anticipation);
+  //               otherwise calm
+  //   Win       — progress 1.5 (gold halo blazes, celebration)
+  //   Fail      — tension 1.0 (full crimson dominates)
+  //   everything else — 0 / 0 (calm)
+  const cosmosTension =
+    screen === 'round' ? tension :
+    screen === 'fail'  ? 1.0 :
+    hubBossPending     ? 0.4 :
+    0;
+  const cosmosProgress =
+    screen === 'round' ? progress :
+    screen === 'win'   ? 1.5 :
+    0;
+
   return (
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
-        <CosmosBackground theme={theme} density={1} nebula drift tension={tension} progress={progress} />
+        <CosmosBackground theme={theme} density={1} nebula drift tension={cosmosTension} progress={cosmosProgress} />
 
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>
