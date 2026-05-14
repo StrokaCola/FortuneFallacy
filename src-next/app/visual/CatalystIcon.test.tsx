@@ -68,7 +68,17 @@ describe('CatalystIcon', () => {
     }
   });
 
-  it('total registered sigils is at least 20 after the second pass', () => {
-    expect(Object.keys(CATALYST_ICON_SVGS).length).toBeGreaterThanOrEqual(20);
+  it('has the third-pass combo-tribal + economy + cosmic catalysts registered (2026-05-14)', () => {
+    const required = [
+      'pair_dynamo', 'triplet_engine', 'iron_six', 'captains_wage', 'prime_pact',
+      'even_keeled', 'apex', 'silver_tongue', 'comet_trail', 'ouroboros',
+    ];
+    for (const id of required) {
+      expect(CATALYST_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('total registered sigils is at least 30 after the third pass', () => {
+    expect(Object.keys(CATALYST_ICON_SVGS).length).toBeGreaterThanOrEqual(30);
   });
 });

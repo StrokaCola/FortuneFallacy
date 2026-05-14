@@ -2,9 +2,10 @@
 // kit. The visual identity for FortuneFallacy is procedural and lives
 // inside the React/TS source (boss sigils as `SigilGroup[]` in
 // `data/blinds.ts`, constellation glyphs as `{x,y}[]` in
-// `data/constellations.ts`). Without standalone files, none of those
-// assets can be shared as PNGs, dropped into a press kit, embedded as
-// an og:image, or printed on a tee-shirt.
+// `data/constellations.ts`, catalyst + mod sigils as JSX renderers in
+// `data/catalystIcons.tsx` and `data/modIcons.tsx`). Without standalone
+// files, none of those assets can be shared as PNGs, dropped into a
+// press kit, embedded as an og:image, or printed on a tee-shirt.
 //
 // This script reads the canonical data + renders SVGs to
 // `public/brand/`. Re-run any time the underlying data changes:
@@ -12,8 +13,10 @@
 //   npx tsx scripts/extract-brand.ts
 //
 // Output:
-//   public/brand/boss-<id>.svg          (8 files, dotted from BOSS_BLINDS)
+//   public/brand/boss-<id>.svg          (8 files, from BOSS_BLINDS)
 //   public/brand/constellation-<id>.svg (8 files, from CONSTELLATIONS)
+//   public/brand/catalysts/<id>.svg     (N files, one per CATALYST_ICON_SVGS entry)
+//   public/brand/mods/<id>.svg          (N files, one per MOD_ICON_SVGS entry)
 //   public/brand/wordmark.svg           (the FortuneFallacy logotype)
 //   public/brand/mark.svg               (the dice-on-cosmos icon mark)
 
@@ -21,8 +24,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { renderToStaticMarkup } from 'react-dom/server';
+
 import { BOSS_BLINDS, type BossBlind, type SigilGroup } from '../src-next/data/blinds';
 import { CONSTELLATIONS } from '../src-next/data/constellations';
+import { CATALYST_META } from '../src-next/data/catalysts';
+import { CATALYST_ICON_SVGS } from '../src-next/data/catalystIcons';
+import { MODS } from '../src-next/core/mods/index';
+import { MOD_ICON_SVGS } from '../src-next/data/modIcons';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const OUT_DIR = resolve(__dirname, '..', 'public', 'brand');
@@ -123,11 +132,48 @@ function renderMarkSvg(): string {
   ].join('\n');
 }
 
+// Render a registered JSX sigil-renderer to a standalone SVG file body.
+// The renderer returns a `<svg viewBox="0 0 24 24" …>` React element
+// whose inner shapes are already drawn in the 0–24 coordinate space.
+// We serialize it, strip the inner <svg> wrapper, and re-wrap in the
+// cosmos-backed XML envelope the boss sigils use so the kit reads as
+// one family.
+function renderRegistrySvg(
+  kind: 'catalyst' | 'mod',
+  id: string,
+  name: string,
+  color: string,
+  renderer: (color: string, size: number) => unknown,
+): string {
+  const inner = renderToStaticMarkup(renderer(color, 24) as never)
+    .replace(/^<svg[^>]*>/, '')
+    .replace(/<\/svg>\s*$/, '');
+  const label = `${name} — ${kind} sigil`;
+  // Wrap with the same stroke defaults the runtime <svg> carried, since
+  // we stripped that outer tag. Inner shapes that override fill/stroke
+  // (e.g. filled pips) still win because attribute inheritance only
+  // applies where the child doesn't set the property.
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="${label}">`,
+    `  <title>${label}</title>`,
+    `  <rect width="100%" height="100%" fill="#07051a"/>`,
+    `  <g fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`,
+    `</svg>`,
+    ``,
+  ].join('\n');
+}
+
 function writeAndReport(path: string, body: string): void {
   writeFileSync(path, body);
   // eslint-disable-next-line no-console
   console.log(`  wrote ${path}  (${body.length}b)`);
 }
+
+const CATALYSTS_DIR = join(OUT_DIR, 'catalysts');
+const MODS_DIR = join(OUT_DIR, 'mods');
+mkdirSync(CATALYSTS_DIR, { recursive: true });
+mkdirSync(MODS_DIR, { recursive: true });
 
 console.log(`extracting brand kit → ${OUT_DIR}`);
 for (const boss of BOSS_BLINDS) {
@@ -136,6 +182,35 @@ for (const boss of BOSS_BLINDS) {
 for (const c of CONSTELLATIONS) {
   writeAndReport(join(OUT_DIR, `constellation-${c.id}.svg`), renderConstellationSvg(c));
 }
+let catalystCount = 0;
+for (const [id, renderer] of Object.entries(CATALYST_ICON_SVGS)) {
+  const meta = CATALYST_META.find((m) => m.id === id);
+  if (!meta) {
+    console.warn(`  skip catalyst sigil ${id} — no CATALYST_META entry`);
+    continue;
+  }
+  writeAndReport(
+    join(CATALYSTS_DIR, `${id}.svg`),
+    renderRegistrySvg('catalyst', id, meta.name, meta.color, renderer),
+  );
+  catalystCount++;
+}
+let modCount = 0;
+for (const [id, renderer] of Object.entries(MOD_ICON_SVGS)) {
+  const mod = MODS.find((m) => m.id === id);
+  if (!mod) {
+    console.warn(`  skip mod sigil ${id} — no MOD entry`);
+    continue;
+  }
+  const color = mod.visual?.accentColor ?? '#f3f0ff';
+  writeAndReport(
+    join(MODS_DIR, `${id}.svg`),
+    renderRegistrySvg('mod', id, mod.name, color, renderer),
+  );
+  modCount++;
+}
 writeAndReport(join(OUT_DIR, `wordmark.svg`), renderWordmarkSvg());
 writeAndReport(join(OUT_DIR, `mark.svg`), renderMarkSvg());
-console.log(`done. ${BOSS_BLINDS.length} bosses + ${CONSTELLATIONS.length} constellations + wordmark + mark`);
+console.log(
+  `done. ${BOSS_BLINDS.length} bosses + ${CONSTELLATIONS.length} constellations + ${catalystCount} catalyst sigils + ${modCount} mod sigils + wordmark + mark`,
+);

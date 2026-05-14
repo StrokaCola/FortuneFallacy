@@ -286,6 +286,128 @@ export const CATALYST_ICON_SVGS: Record<string, CatalystIconRenderer> = {
       <line x1="18" y1="18" x2="15" y2="15" opacity="0.6" />
     </svg>
   ),
+
+  // ── 2026-05-14 third pass: combo-tribal + economy + cosmic ──
+
+  // Pair Dynamo — "Pair → +5 mult, Two Pair → +12." Two horizontal
+  // bars linked by a central spark: the pair generating current.
+  pair_dynamo: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="4" y1="8" x2="20" y2="8" strokeWidth="2.5" />
+      <line x1="4" y1="16" x2="20" y2="16" strokeWidth="2.5" />
+      <path d="M 11 9 L 9.5 12 L 12 12 L 10.5 15" strokeWidth="1.8" />
+      <circle cx="13.5" cy="12" r="0.8" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Triplet Engine — "Three of a Kind → ×2 mult." Three-lobed cog
+  // wheel — rotational 3-fold symmetry replacing the generic ⚙.
+  triplet_engine: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 3 L 13.5 6 L 10.5 6 Z" />
+      <path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z" />
+      <path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z" />
+      <circle cx="12" cy="12" r="1" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Iron Six — "Each retained 6: +6 chips next hand." Hexagonal die
+  // frame with the six-pip arrangement inside, evoking the iron face
+  // of a forged d6.
+  iron_six: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M12 3 L 20 7.5 L 20 16.5 L 12 21 L 4 16.5 L 4 7.5 Z" />
+      <circle cx="9" cy="9" r="1" fill={color} stroke="none" />
+      <circle cx="15" cy="9" r="1" fill={color} stroke="none" />
+      <circle cx="9" cy="12" r="1" fill={color} stroke="none" />
+      <circle cx="15" cy="12" r="1" fill={color} stroke="none" />
+      <circle cx="9" cy="15" r="1" fill={color} stroke="none" />
+      <circle cx="15" cy="15" r="1" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Captain's Wage — "+$3 per cleared blind." A ship's anchor —
+  // crossbar, shank, flukes. Reads as steady, weighty income.
+  captains_wage: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="5.5" r="1.8" />
+      <line x1="12" y1="7.3" x2="12" y2="20" />
+      <line x1="8" y1="9" x2="16" y2="9" />
+      <path d="M 5 15 C 5 18, 8.5 20.5, 12 20.5 C 15.5 20.5, 19 18, 19 15" />
+      <path d="M 5 15 L 3 13.5 M 19 15 L 21 13.5" />
+    </svg>
+  ),
+
+  // Prime Pact — "Prime faces (2, 3, 5) → +2 chips each." Triangle
+  // with a dot at each vertex — the three primes anchored.
+  prime_pact: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M12 4 L 20 19 L 4 19 Z" />
+      <circle cx="12" cy="4" r="1.8" fill={color} stroke="none" />
+      <circle cx="20" cy="19" r="1.8" fill={color} stroke="none" />
+      <circle cx="4" cy="19" r="1.8" fill={color} stroke="none" />
+      <circle cx="12" cy="14" r="0.7" fill={color} stroke="none" opacity="0.6" />
+    </svg>
+  ),
+
+  // Even Keeled — "Even-only hand → +25 chips." Balanced scale plate:
+  // a horizontal beam with two equal-weight discs hanging.
+  even_keeled: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="12" y1="5" x2="12" y2="9" />
+      <circle cx="12" cy="4" r="1.2" fill={color} stroke="none" />
+      <circle cx="6.5" cy="14" r="3.5" />
+      <circle cx="17.5" cy="14" r="3.5" />
+      <line x1="6.5" y1="9" x2="6.5" y2="10.5" />
+      <line x1="17.5" y1="9" x2="17.5" y2="10.5" />
+    </svg>
+  ),
+
+  // Apex — "Highest die in scoring set: ×1.5 mult." Mountain peak
+  // with a crowning pip — the high die rising above its bench.
+  apex: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M3 20 L 9 11 L 12 15 L 16 7 L 21 20 Z" />
+      <circle cx="16" cy="4" r="1.5" fill={color} stroke="none" />
+      <path d="M 16 4 L 14.5 6.5 L 17.5 6.5 Z" fill={color} fillOpacity="0.4" stroke="none" />
+    </svg>
+  ),
+
+  // Silver Tongue — "Reroll cost halved." Quill nib with a curving
+  // ink-stroke trailing from it.
+  silver_tongue: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 17 5 L 20 8 L 9 19 L 5 20 L 6 16 Z" />
+      <line x1="9" y1="19" x2="6" y2="16" />
+      <line x1="13" y1="9" x2="16" y2="12" opacity="0.7" />
+      <path d="M 5 20 Q 9 22, 14 20" strokeDasharray="1.5 1.5" opacity="0.7" />
+    </svg>
+  ),
+
+  // Comet Trail — "Each consecutive scoring hand: +1 mult."
+  // Comet head with a swept tail — the streak made visible.
+  comet_trail: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="17.5" cy="6.5" r="2.5" fill={color} stroke="none" />
+      <path d="M 16 8 L 4 20" strokeWidth="2" />
+      <path d="M 18.5 9 L 8 19.5" opacity="0.7" />
+      <path d="M 14 7 L 5 16" opacity="0.5" />
+      <circle cx="17.5" cy="6.5" r="4.5" opacity="0.4" />
+    </svg>
+  ),
+
+  // Ouroboros — "Run-streak: each cleared ante adds +0.05× mult."
+  // Serpent-ring biting its own tail, the loop made glyph.
+  ouroboros: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 4 C 17 4, 20 8, 20 12 C 20 16, 17 20, 12 20 C 8 20, 5 17, 5 13" />
+      <path d="M 5 13 L 7.5 14.5 L 8 11" />
+      <circle cx="14" cy="6" r="0.9" fill={color} stroke="none" />
+      <path d="M 16 5.5 L 17 6.5 L 16 7.5" opacity="0.6" />
+    </svg>
+  ),
 };
 
 /** True iff a hand-authored SVG renderer exists for this catalyst id. */
