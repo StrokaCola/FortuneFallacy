@@ -248,7 +248,7 @@ function PerfModeToggle() {
   const opts: { id: PerfMode; label: string; hint: string }[] = [
     { id: 'off',  label: 'Full',    hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.' },
     { id: 'auto', label: 'Auto',    hint: 'Adapts to device + live frame budget. Default. (Recommended)' },
-    { id: 'on',   label: 'Performance', hint: 'Force lower DPR + no AA + 20fps backdrop. Reload to fully apply.' },
+    { id: 'on',   label: 'Performance', hint: 'Lower DPR + no AA + softer shadows + drops cosmos halos, stardust drift, edition animations. Reload to fully apply DPR/AA.' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

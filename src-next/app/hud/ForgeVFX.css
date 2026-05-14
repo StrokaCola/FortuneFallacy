@@ -331,3 +331,15 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Performance Mode degraded path — drop-shadow filter inside animated
+   keyframes forces per-frame rasterisation on integrated GPUs. When
+   the body class is set (manual or auto-detected), strip the glow
+   filters from the glow utilities + suppress the infinite ambient
+   loops (light shaft, die halo). The animations the player triggers
+   (mod attach, sparkle, stellar collapse) still fire but without the
+   filter cost — they read as flatter glows but don't drop frames. */
+body.perf-degraded .vfx-glow,
+body.perf-degraded .vfx-glow-intense {
+  filter: none;
+}

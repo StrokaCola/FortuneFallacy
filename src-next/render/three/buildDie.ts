@@ -261,6 +261,14 @@ export function buildDie(
   body.name = 'Body';
   group.add(body);
 
+  // Two-pass edge highlight. Base pass is the soft 0.45-opacity outline
+  // that's been there from day one — gives the die its overall edge
+  // tint. The accent pass is a brighter (0.75) overlay at a hair-larger
+  // outset so it reads as a crisp highlight on top of the base. At
+  // 360px (Forge) the two passes blur together as a single subtle edge;
+  // at 56px (Round play tray) the accent pass survives the downscale
+  // and keeps the silhouette readable instead of dissolving into the
+  // tray's ambient violet.
   const edgeGeo = new THREE.EdgesGeometry(bodyGeo, 25);
   const edgeMat = new THREE.LineBasicMaterial({
     color: S.edge,
@@ -271,6 +279,15 @@ export function buildDie(
   const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
   edgeLines.scale.setScalar(1.002); // hair-line outset to avoid z-fighting
   group.add(edgeLines);
+  const edgeAccentMat = new THREE.LineBasicMaterial({
+    color: S.edge,
+    transparent: true,
+    opacity: 0.75,
+    toneMapped: false,
+  });
+  const edgeAccent = new THREE.LineSegments(edgeGeo, edgeAccentMat);
+  edgeAccent.scale.setScalar(1.004); // slightly larger outset for the brighter accent
+  group.add(edgeAccent);
 
   // Pips — three layers per pip:
   //   1. emissive orb sunk into the body (refracts through transmission)
@@ -390,20 +407,28 @@ function attachVariantDecorations(
   variant: GeometricVariant | undefined,
 ): { pulseAmplitude?: number; pulsePeriodMs?: number; bodyMesh?: THREE.Mesh } {
   if (!variant) return {};
-  // Haloed family — a thin torus ring around the die's equator. Color +
-  // size vary by sub-variant. The ring rotates slowly via a userData
-  // marker that DieView's idle tick reads.
+  // Haloed family — a thin torus ring around the die's equator. The
+  // ring rotates slowly via a userData marker that DieView's idle tick
+  // reads.
+  //
+  // 2026-05-14 readability pass — collapsed three haloed sub-variants
+  // (haloed, haloed-dark, haloed-theatrical) down to two. The dark
+  // variant's hardcoded violet/55% opacity ignored each mod's actual
+  // material halo colour (Singularity wanted #cc88ff, Polarize wanted
+  // #e0c8ff — both rendered as the same flat 0x6a4a8a). Now `haloed`
+  // reads from S.halo so per-mod halo colour finally lands; `haloed-
+  // theatrical` keeps the bigger tube + gold accent + faster spin as
+  // a distinctly bigger moment (Crown, Voidlock).
   if (variant === 'haloed' || variant === 'haloed-dark' || variant === 'haloed-theatrical') {
-    const isDark = variant === 'haloed-dark';
     const isTheatrical = variant === 'haloed-theatrical';
     const radius = size * (isTheatrical ? 0.78 : 0.65);
     const tube = size * (isTheatrical ? 0.020 : 0.013);
     const torusGeo = new THREE.TorusGeometry(radius, tube, 6, 64);
-    const torusColor = isDark ? 0x6a4a8a : (isTheatrical ? 0xffd84a : S.halo ?? 0x7be3ff);
+    const torusColor = isTheatrical ? 0xffd84a : (S.halo ?? 0x7be3ff);
     const torusMat = new THREE.MeshBasicMaterial({
       color: torusColor,
       transparent: true,
-      opacity: isTheatrical ? 0.85 : (isDark ? 0.55 : 0.65),
+      opacity: isTheatrical ? 0.85 : 0.65,
       toneMapped: false,
     });
     const torus = new THREE.Mesh(torusGeo, torusMat);

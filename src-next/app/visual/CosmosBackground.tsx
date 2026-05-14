@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { isPerfDegraded, subscribePerfMode } from '../perf/perfMode';
 
 export type ThemeKey = 'midnight' | 'voidlit' | 'sandstorm' | 'abyssal';
+
+// Live perf-mode hook for components that want to skip rendering
+// expensive overlays. Subscribes to the perf-mode bus so the gate
+// flips when the auto-degrade watcher or the manual Settings toggle
+// changes state — without a re-mount or prop drilling.
+function useIsPerfDegraded(): boolean {
+  const [degraded, setDegraded] = useState(isPerfDegraded);
+  useEffect(() => subscribePerfMode(() => setDegraded(isPerfDegraded())), []);
+  return degraded;
+}
 
 const THEMES: Record<ThemeKey, {
   bgFar: string; bgMid: string; bgNear: string;
@@ -89,6 +100,15 @@ export function CosmosBackground({
   progress = 0,
 }: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number; progress?: number }) {
   const t = THEMES[theme];
+  // Perf-mode gate. When degraded we skip rendering the celebratory
+  // gold + halo overlays AND the two stardust drift layers — those
+  // three full-screen mix-blend-mode reads cost a framebuffer round-
+  // trip per layer per frame on integrated Mac GPUs (~3-5 FPS in
+  // testing). The crimson tint + vignette stay; both are cheap and
+  // they're the only signals that carry actual gameplay meaning
+  // (tension during boss hands). Stardust + halos are pure mood and
+  // worth shedding when the frame budget is tight.
+  const degraded = useIsPerfDegraded();
   const tensionClamped = Math.max(0, Math.min(1, tension));
   // Crimson tint fades in from 0 starting at tension=0.3, reaching opacity 0.25 at tension=1.
   const crimsonOpacity = tensionClamped < 0.3 ? 0 : (tensionClamped - 0.3) * (0.25 / 0.7);
@@ -136,31 +156,43 @@ export function CosmosBackground({
       }} />
       {/* Gold "you're crushing it" overlay — fades in as score crosses
           60% of target, peaks at 200% (over-clear). screen blend so it
-          brightens stars + nebula without flattening the contrast. */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 30%, rgba(245,196,81,1) 0%, transparent 70%)',
-        opacity: goldOpacity,
-        mixBlendMode: 'screen',
-        transition: 'opacity 600ms ease',
-        willChange: 'opacity',
-      }} />
+          brightens stars + nebula without flattening the contrast.
+          Skipped in degraded mode (full-screen mix-blend-mode reads
+          cost a framebuffer round-trip per layer per frame). */}
+      {!degraded && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 50% 30%, rgba(245,196,81,1) 0%, transparent 70%)',
+          opacity: goldOpacity,
+          mixBlendMode: 'screen',
+          transition: 'opacity 600ms ease',
+          willChange: 'opacity',
+        }} />
+      )}
       {/* Halo aura on cross-target — top half brightens further when
-          score is above 1× target, capping at progress=1.75. */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,232,180,0.85) 0%, transparent 55%)',
-        opacity: haloOpacity,
-        mixBlendMode: 'screen',
-        transition: 'opacity 800ms ease',
-        willChange: 'opacity',
-      }} />
+          score is above 1× target, capping at progress=1.75. Same
+          perf-degraded gate as the gold overlay above. */}
+      {!degraded && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,232,180,0.85) 0%, transparent 55%)',
+          opacity: haloOpacity,
+          mixBlendMode: 'screen',
+          transition: 'opacity 800ms ease',
+          willChange: 'opacity',
+        }} />
+      )}
       {/* Drifting stardust — slow diagonal motion gives the cosmos a
           continuous "the world is alive" beat between actions. Two
           layered SVG bands at different opacities + speeds parallax-
           drift toward the bottom-left. Suppressed under reduce-motion
           via the class hook in styles/index.css. */}
-      {drift && (
+      {/* Stardust layers — gated on perf-mode too. The CSS suppression
+          in styles/index.css stops the infinite drift animation under
+          .perf-degraded, but the divs themselves still cost a paint
+          pass and a mix-blend-mode read per frame. Skipping the JSX
+          entirely is a clean win on integrated GPUs. */}
+      {drift && !degraded && (
         <>
           <div className="cosmos-stardust cosmos-stardust-near" aria-hidden="true" style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',

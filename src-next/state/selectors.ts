@@ -1,6 +1,6 @@
 import type { GameState } from './store';
 import { selectTension, type TensionInputs } from '../audio/heat';
-import { maxCatalystSlots, effectiveCatalystSlotsUsed } from '../core/vouchers';
+import { maxCatalystSlots, effectiveCatalystSlotsUsed, maxConsumableSlots, maxModSlots } from '../core/vouchers';
 import { lookupConstellation } from '../data/constellations';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
@@ -65,4 +65,32 @@ export const selectTensionFromState = (s: GameState): number => {
     scoring: s.round.scoring,
   };
   return selectTension(inputs);
+};
+
+// Per-Shop "fake-state" tuple used by the preview chips that render
+// "if you didn't have this voucher, your cap would be N-1". The Shop
+// used to call maxCatalystSlots / maxConsumableSlots / maxModSlots
+// inline three times (each with a separate useStore subscription), so
+// every shop interaction triggered three full-tree re-evaluations
+// AND each returned a fresh number primitive that Zustand had to
+// compare. Memoised here by state-identity (WeakMap, same pattern as
+// getDiceSpec in core/run/diceContext.ts) so the tuple reference is
+// stable until state actually changes — useStore bails out on
+// Object.is, no re-render unless one of the three caps moved.
+const MAX_SLOTS_CACHE = new WeakMap<GameState, readonly [number, number, number]>();
+export type MaxSlotsTuple = readonly [
+  catalystMax: number,
+  consumableMax: number,
+  modMax: number,
+];
+export const selectMaxSlots = (s: GameState): MaxSlotsTuple => {
+  const cached = MAX_SLOTS_CACHE.get(s);
+  if (cached) return cached;
+  const tuple: MaxSlotsTuple = [
+    maxCatalystSlots(s),
+    maxConsumableSlots(s),
+    maxModSlots(s),
+  ];
+  MAX_SLOTS_CACHE.set(s, tuple);
+  return tuple;
 };

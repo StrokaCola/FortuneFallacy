@@ -21,11 +21,10 @@ import { PauseButton } from '../hud/PauseButton';
 import { ActionBar } from '../hud/ActionBar';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
-  selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectVouchers,
+  selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectMaxSlots, selectVouchers,
   selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
   selectComboLevels, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
-import { maxCatalystSlots, maxConsumableSlots, maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
 import type { CatalystEdition } from '../../state/slices/run';
 import { OfferCard } from './shop/OfferCard';
@@ -64,10 +63,14 @@ export function Shop() {
   const comboLevels = useStore(selectComboLevels);
 
   // Voucher invariants used to disable selling cap-granting vouchers when
-  // doing so would strand items above the post-sell cap.
-  const fakeStateNoBench = useStore((s) => maxCatalystSlots(s) - 1);
-  const fakeStateNoCapacity = useStore((s) => maxConsumableSlots(s) - 1);
-  const fakeStateNoForgedLinks = useStore((s) => maxModSlots(s) - 1);
+  // doing so would strand items above the post-sell cap. The fake-state
+  // values are "if you didn't have this voucher, your cap would be N-1";
+  // computed from a single memoised tuple so each Shop interaction
+  // doesn't trigger 3× full-tree re-evaluation across separate stores.
+  const [maxCatalystCap, maxConsumableCap, maxModCap] = useStore(selectMaxSlots);
+  const fakeStateNoBench = maxCatalystCap - 1;
+  const fakeStateNoCapacity = maxConsumableCap - 1;
+  const fakeStateNoForgedLinks = maxModCap - 1;
 
   useEffect(() => {
     if (offers.length === 0) dispatch({ type: 'OPEN_SHOP' });

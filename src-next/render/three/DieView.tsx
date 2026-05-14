@@ -144,19 +144,28 @@ export function DieView(props: Props) {
       // accents (primary, secondary, tertiary) over ~6s so a player's
       // 3-mod build reads as a layered identity, not just the topmost
       // mod. Single-color rims (legacy path) still work via accentColor.
+      //
+      // 2026-05-14 readability pass — when the die renders below the
+      // satellite threshold (gameplay tray, <80px), the rim tube
+      // resolves to ~1-2px and reads as noise. Skip the rim in that
+      // size class and show the orbital instead so the "3-mod die"
+      // identity at least gets the chip signal. Force-show the
+      // orbital here (bypass showSatellite) because at this branch
+      // it's the ONLY 3-mod cue — losing it AND the rim would leave
+      // the die visually indistinguishable from a 1-mod die.
       const accents = [
         matchedMod?.visual?.accentColor,
         secondary?.visual?.accentColor,
         tertiary?.visual?.accentColor,
       ].filter((c): c is string => !!c);
-      if (accents.length >= 2) {
+      if (accents.length >= 2 && showSatellite) {
         rim = rimMod.buildRimOverlay({
           accentColors: accents,
           dieSize: 0.85,
         });
         scene.add(rim.group);
       }
-      if (tertiary?.visual?.accentColor && showSatellite) {
+      if (tertiary?.visual?.accentColor) {
         orbital = orbitalMod.buildOrbitalSatellite({
           accentColor: tertiary.visual.accentColor,
           dieSize: 0.85,
