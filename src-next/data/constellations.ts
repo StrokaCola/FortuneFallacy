@@ -10,6 +10,7 @@ import type { DieFace, DiceSpec } from './dice';
 import {
   d4Plain, d6Plain, d8Plain, d10Plain, d12Plain, d20Plain, dN,
 } from './dice';
+import { CONSTELLATION_TINT } from '../styles/constellationTokens';
 
 // 'captain_crew' (Argo): score = max(faces) × (1 + perCat × catalysts) + sum(others).
 // The highest die ("captain") rides the catalyst multiplier; the rest ("crew")
@@ -66,7 +67,7 @@ export const CONSTELLATIONS: Constellation[] = [
     name: 'Lyra, the Lyre',
     flavor: 'The classic five-string sky.',
     rules: ['Five standard d6 dice', 'No rule changes'],
-    color: '#7be3ff',
+    color: CONSTELLATION_TINT.lyra,
     dice: Array.from({ length: 5 }, () => d6Plain()),
     glyph: [{ x: 15, y: 50 }, { x: 35, y: 30 }, { x: 50, y: 60 }, { x: 70, y: 35 }, { x: 88, y: 55 }],
   },
@@ -79,7 +80,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Match thresholds raised: Five-of-a-Kind needs 6 matching, Four needs 5',
       'Straight thresholds raised by 1',
     ],
-    color: '#c084fc',
+    color: CONSTELLATION_TINT.mensa,
     dice: Array.from({ length: 7 }, () => d6Plain()),
     modifiers: { comboCountBonus: 1, straightLenBonus: 1 },
     glyph: [
@@ -96,7 +97,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Four/Five-of-a-Kind impossible',
       'Straight thresholds drop by 2 (Small=2, Large=3)',
     ],
-    color: '#fbbf24',
+    color: CONSTELLATION_TINT.triumvirate,
     dice: [d12Plain(), d12Plain(), d12Plain()],
     // 2026-05-12 QA pass: baseChipsMult 1.3 added. Sim flagged Triumvirate
     // at 24% A4 (vs Lyra 82%); the "three colossal d12, big numbers"
@@ -115,7 +116,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Forge & mods disabled, +2 catalyst slots',
       'Start with Captain’s Wage (face ≥ 10 → +5 chips)',
     ],
-    color: '#34d399',
+    color: CONSTELLATION_TINT.argo,
     dice: [d20Plain(), d20Plain(), d20Plain()],
     startingCatalysts: ['captains_wage'],
     modifiers: {
@@ -141,7 +142,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Two 1s on every die — pairs trivialise',
       'Face 8 carries most of the chips',
     ],
-    color: '#fb7185',
+    color: CONSTELLATION_TINT.fibonacci,
     dice: Array.from({ length: 5 }, () => dN([...FIBONACCI_FACES], { label: 'fib' })),
     glyph: [
       { x: 20, y: 60 }, { x: 30, y: 40 }, { x: 45, y: 30 },
@@ -157,7 +158,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Combos easy to land but base chips & mult ×0.5',
       'Still leans on mods to clear later antes.',
     ],
-    color: '#e5e7eb',
+    color: CONSTELLATION_TINT.eclipse,
     dice: Array.from({ length: 5 }, () => dN([...ECLIPSE_FACES], { label: '0/1' })),
     modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5 },
     glyph: [
@@ -174,7 +175,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'Some dice cannot reach high faces — plan accordingly',
       'Match logic unchanged; straight detection adapts',
     ],
-    color: '#60a5fa',
+    color: CONSTELLATION_TINT.polyhedra,
     dice: [d4Plain(), d6Plain(), d8Plain(), d10Plain(), d12Plain()],
     // 2026-05-12 QA pass: baseChipsMult 1.25 + straightLenBonus -1
     // added. Sim originally flagged Polyhedra at 22% A4. Pure chip
@@ -199,7 +200,7 @@ export const CONSTELLATIONS: Constellation[] = [
       'WILD becomes whatever value maximises your combo at score time',
       'Base chips & mult ×0.5 (WILD-driven combos hit hard already)',
     ],
-    color: '#a78bfa',
+    color: CONSTELLATION_TINT.ophiuchus,
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
     // 2026-05-12 QA pass: chainStep dropped 0.25 → 0.15 to replace the
     // identity penalty Ophiuchus lost when the chain cap was unified to 4

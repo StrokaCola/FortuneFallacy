@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Charon sigil">
+  <title>Charon — boss sigil</title>
+  <rect width="100%" height="100%" fill="#07051a"/>
+  <path d="M 14 60 a 36 14 0 1 0 72 0 a 36 14 0 1 0 -72 0" fill="none" stroke="#8a8aaa" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.45" stroke-dasharray="2 4" />
+  <path d="M 30 60 L 70 60 L 64 66 L 36 66 Z" fill="none" stroke="#8a8aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+  <path d="M 50 60 L 50 32" fill="none" stroke="#8a8aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+  <path d="M 50 32 L 64 38 L 50 44 Z" fill="none" stroke="#8a8aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+  <path d="M 36 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0" fill="#8a8aaa" stroke="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+  <path d="M 58 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0" fill="#8a8aaa" stroke="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="1" />
+</svg>
