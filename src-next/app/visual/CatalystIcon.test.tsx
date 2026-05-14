@@ -57,4 +57,18 @@ describe('CatalystIcon', () => {
       expect(CATALYST_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
     }
   });
+
+  it('has the second-pass next-tier catalysts registered (2026-05-14)', () => {
+    const required = [
+      'chaos_theory', 'entropy_index', 'compounding_bias', 'solar_flare',
+      'catalyst_bench', 'encore', 'phase_shift', 'conductor', 'quorum', 'magnitude',
+    ];
+    for (const id of required) {
+      expect(CATALYST_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('total registered sigils is at least 20 after the second pass', () => {
+    expect(Object.keys(CATALYST_ICON_SVGS).length).toBeGreaterThanOrEqual(20);
+  });
 });

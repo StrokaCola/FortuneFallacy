@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
 import { lookupMod } from '../../core/mods';
+import { ModIcon } from '../visual/ModIcon';
 import { editionColor, editionLabel } from '../../core/upgrades/editions';
 import { describeFace, WILD_SENTINEL } from '../../core/run/faceReadable';
 import { Z } from './zLayers';
@@ -126,10 +127,12 @@ export function DieTip() {
               <span key={j} className="f-mono uc" style={{
                 fontSize: 9, padding: '2px 6px', borderRadius: 3,
                 color: accent, border: `1px solid ${accent}66`, background: `${accent}14`,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
               }}>
-                {m?.icon ?? '⫶'} {m?.name ?? mid}
+                <ModIcon modId={mid} fallbackChar={m?.icon ?? '⫶'} color={accent} size={11} />
+                {m?.name ?? mid}
                 {eC && (
-                  <span style={{ marginLeft: 4, color: eC }}>
+                  <span style={{ marginLeft: 2, color: eC }}>
                     ·{editionLabel(ed!).slice(0, 2).toLowerCase()}
                   </span>
                 )}

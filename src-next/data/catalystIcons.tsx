@@ -163,6 +163,129 @@ export const CATALYST_ICON_SVGS: Record<string, CatalystIconRenderer> = {
       <path d="M16 19 Q 19 16, 16 13" />
     </svg>
   ),
+
+  // ── 2026-05-14 second pass: next tier of recognizability ──
+
+  // Chaos Theory — "Straights → +5 mult". Infinity loop, the
+  // shorthand for unbroken order. Reads as the catalyst's flavor
+  // "Order from disorder."
+  chaos_theory: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 8 12 C 8 8, 4 8, 4 12 C 4 16, 8 16, 12 12 C 16 8, 20 8, 20 12 C 20 16, 16 16, 12 12 Z" />
+    </svg>
+  ),
+
+  // Entropy Index — "Each unique face → ×1.25 mult". Four small
+  // distinct shapes in a 2×2 grid — variety as visual structure.
+  entropy_index: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="8" cy="8" r="2.5" />
+      <rect x="13.5" y="5.5" width="5" height="5" />
+      <path d="M5.5 16 L 8 13.5 L 10.5 16 L 8 18.5 Z" />
+      <path d="M13.5 13.5 L 18.5 13.5 L 16 18.5 Z" />
+    </svg>
+  ),
+
+  // Compounding Bias — "Each cleared trial: +0.10× mult permanently."
+  // Four ascending steps — the cleared blinds stacking the bonus.
+  compounding_bias: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M3 21 L 7 21 L 7 16 L 11 16 L 11 11 L 15 11 L 15 6 L 19 6 L 19 21" />
+      <line x1="3" y1="21" x2="21" y2="21" />
+    </svg>
+  ),
+
+  // Solar Flare — "3+ scoring dice show 5 or 6 → ×1.5 mult". Sun
+  // with extended flare tendrils. The catalyst fires when the dice
+  // skew bright.
+  solar_flare: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="12" r="4" fill={color} fillOpacity="0.3" />
+      <line x1="12" y1="2" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+      <path d="M5 5 L 7.5 7.5" />
+      <path d="M19 5 L 16.5 7.5" />
+      <path d="M5 19 L 7.5 16.5" />
+      <path d="M19 19 L 16.5 16.5" />
+    </svg>
+  ),
+
+  // Catalyst Bench — "+1 mult per other catalyst owned". A central
+  // pip surrounded by 4 satellite pips — the bench radiating to its
+  // neighbours.
+  catalyst_bench: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="12" r="2.5" fill={color} stroke="none" />
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+      <circle cx="12" cy="5" r="1.5" />
+      <circle cx="12" cy="19" r="1.5" />
+      <line x1="7" y1="12" x2="9.5" y2="12" strokeDasharray="1 1.5" />
+      <line x1="14.5" y1="12" x2="17" y2="12" strokeDasharray="1 1.5" />
+      <line x1="12" y1="7" x2="12" y2="9.5" strokeDasharray="1 1.5" />
+      <line x1="12" y1="14.5" x2="12" y2="17" strokeDasharray="1 1.5" />
+    </svg>
+  ),
+
+  // Encore — "The last scoring die's mods fire one extra time."
+  // Looped retrigger arrow.
+  encore: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 6 9 A 6 6 0 1 1 6 15" />
+      <path d="M 6 5 L 6 9 L 10 9" />
+      <circle cx="14" cy="12" r="1.5" fill={color} stroke="none" />
+      <circle cx="18" cy="12" r="0.9" fill={color} stroke="none" opacity="0.5" />
+    </svg>
+  ),
+
+  // Phase-Shift — "Mirror Pair, Conduit, Crescendo, Pip Charge gain
+  // +1 per instance." Two overlapping circles — the lattice tilting,
+  // threads interfering.
+  phase_shift: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="9" cy="12" r="5.5" />
+      <circle cx="15" cy="12" r="5.5" />
+      <path d="M 12 7 L 12 17" strokeDasharray="1 2" opacity="0.6" />
+    </svg>
+  ),
+
+  // Conductor — "Full hand scores: +20 chips × distinct mods."
+  // Conductor's baton with three sound waves rolling off it.
+  conductor: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="6" y1="18" x2="16" y2="6" />
+      <circle cx="16" cy="6" r="1.3" fill={color} stroke="none" />
+      <path d="M 10 18 Q 12 16, 10 14" />
+      <path d="M 13 19 Q 16 16, 13 13" />
+      <path d="M 16 20 Q 20 16, 16 12" />
+    </svg>
+  ),
+
+  // Quorum — "Same combo as last hand: chips ×1.5. 3rd in a row:
+  // also mult ×1.5." Three repeated vertical bars — the verdict
+  // holding.
+  quorum: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="7" y1="5" x2="7" y2="19" strokeWidth="2.5" />
+      <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
+      <line x1="17" y1="5" x2="17" y2="19" strokeWidth="2.5" />
+      <line x1="4" y1="21" x2="20" y2="21" />
+    </svg>
+  ),
+
+  // Magnitude — "Large Straight → Chips ×2 and Mult ×1.5." Expanding
+  // 8-point star burst suggesting scale.
+  magnitude: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M12 3 L 13 11 L 21 12 L 13 13 L 12 21 L 11 13 L 3 12 L 11 11 Z" fill={color} fillOpacity="0.25" />
+      <line x1="6" y1="6" x2="9" y2="9" opacity="0.6" />
+      <line x1="18" y1="6" x2="15" y2="9" opacity="0.6" />
+      <line x1="6" y1="18" x2="9" y2="15" opacity="0.6" />
+      <line x1="18" y1="18" x2="15" y2="15" opacity="0.6" />
+    </svg>
+  ),
 };
 
 /** True iff a hand-authored SVG renderer exists for this catalyst id. */

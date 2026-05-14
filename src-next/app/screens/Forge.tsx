@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupMod } from '../../core/mods';
+import { ModIcon } from '../visual/ModIcon';
 import { maxModSlots } from '../../core/vouchers';
 import { sfxPlay } from '../../audio/sfx';
 import { DieView } from '../../render/three/DieView';
@@ -878,11 +879,14 @@ export function Forge() {
                           background: `radial-gradient(circle at center, ${c}50 0%, ${c}18 60%, transparent 100%)`,
                           border: `1px solid ${c}80`,
                           display: 'grid', placeItems: 'center',
-                          color: c, fontSize: 18,
+                          color: c,
+                          // fontSize only applies when the fallback char
+                          // is rendered; SVGs ignore it via inline-flex.
+                          fontSize: 18,
                           filter: `drop-shadow(0 0 6px ${c})`,
                           position: 'relative', zIndex: 2,
                           flexShrink: 0,
-                        }}>{r.icon}</div>
+                        }}><ModIcon modId={r.id} fallbackChar={r.icon} color={c} size={24} /></div>
                         <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
                           <div className="f-head" style={{
                             fontSize: 12, color: '#f3f0ff',
