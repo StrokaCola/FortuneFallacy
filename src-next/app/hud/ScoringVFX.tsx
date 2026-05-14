@@ -43,7 +43,37 @@ type BoomEvent = {
   newBest: boolean;
 };
 
-type Effect = SlamEvent | StampEvent | BoomEvent;
+// 2026-05-14 fancy-FX pass — four scene-affecting moves that move
+// scoring juice away from "more circles at the boom point" toward
+// "the world reacts." Each event carries the inputs it needs to
+// render without re-querying the store.
+type StarRippleEvent = {
+  kind: 'starRipple';
+  id: number;
+  intensity: 'normal' | 'mega'; // mega adds an extra ring + larger radius
+};
+type MeteorShowerEvent = {
+  kind: 'meteorShower';
+  id: number;
+  count: number; // 3-7 streaks
+  accent: string;
+};
+type ConstellationSealEvent = {
+  kind: 'constellationSeal';
+  id: number;
+  glyph: { x: number; y: number }[];
+  color: string;
+  name: string;
+};
+type ConductiveArcsEvent = {
+  kind: 'conductiveArcs';
+  id: number;
+  diePositions: Array<{ x: number; y: number }>; // viewport-relative
+  accent: string;
+};
+
+type Effect = SlamEvent | StampEvent | BoomEvent
+  | StarRippleEvent | MeteorShowerEvent | ConstellationSealEvent | ConductiveArcsEvent;
 
 // Default particle intensity (the demo's tweak slider goes 1–5; production
 // uses the tuned mid-high value).
@@ -439,10 +469,15 @@ function MultSlam({ label, color }: { label: string; color: string }) {
 }
 
 function TargetBeatStamp() {
+  // 2026-05-14 fancy-FX pass — the literal "TARGET BEAT" text was
+  // pulled. The constellation seal (rendered alongside this) now
+  // carries the identity message in the center; the sunburst + stamp
+  // shards stay as the radial celebration energy that radiates AROUND
+  // the seal. Together they read as one composed beat instead of two
+  // competing centerpieces.
   return (
     <div className="vfx-stamp-root">
       <Sunburst color="#f5c451" spokes={Math.round(20 + INTENSITY * 2)} />
-      <div className="vfx-stamp-text">TARGET BEAT</div>
       <StampShards count={Math.round(14 + INTENSITY * 3)} />
     </div>
   );
@@ -455,6 +490,187 @@ function BailStampInner() {
       <div className="vfx-bail-text">NOT ENOUGH</div>
       <BailAsh count={10 + INTENSITY * 2} />
     </div>
+  );
+}
+
+// Star-cluster ignite ripple — three staggered concentric brightening
+// rings emanating from the play-area center. The CSS animation uses
+// screen-blend so the rings WASH the underlying cosmos starfield
+// brighter rather than draw new circles. 'mega' adds a fourth outer
+// ring + bumps each ring's max radius. Stays on the world-canvas
+// layer (NOT inside the centered effects-layer) because it spans the
+// whole viewport.
+function StarRipple({ intensity }: { intensity: 'normal' | 'mega' }) {
+  const rings = intensity === 'mega' ? 4 : 3;
+  return (
+    <div className="vfx-star-ripple-root" aria-hidden="true">
+      {Array.from({ length: rings }).map((_, i) => (
+        <div
+          key={i}
+          className={`vfx-star-ripple vfx-star-ripple-${intensity}`}
+          style={{ animationDelay: `${i * 140}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Meteor shower — N comet streaks travel diagonally across the
+// cosmos backdrop. Each comet has a head dot + a long luminous
+// trail tinted in the run's accent. Staggered start times read as
+// a SHOWER (random arrivals) rather than a synchronous burst.
+// Diagonal angles vary slightly per streak so they don't feel
+// rail-aligned.
+function MeteorShower({ accent, count }: { accent: string; count: number }) {
+  const streaks = Array.from({ length: count }).map((_, i) => {
+    // Pseudo-random but deterministic per index so re-renders stay
+    // stable. Each streak: starting Y position, angle deviation,
+    // delay, and travel duration.
+    const startY = 5 + ((i * 37) % 50);     // 5-55% from the top
+    const angleDeg = 40 + ((i * 13) % 25);  // 40-65 degrees, downward-right
+    const delay = (i * 130) % 700;
+    const duration = 900 + ((i * 47) % 400); // 900-1300ms
+    const trailLen = 220 + ((i * 19) % 120); // 220-340px trail
+    return { i, startY, angleDeg, delay, duration, trailLen };
+  });
+  return (
+    <div className="vfx-meteor-root" aria-hidden="true">
+      {streaks.map((s) => (
+        <div
+          key={s.i}
+          className="vfx-meteor"
+          style={{
+            top: `${s.startY}%`,
+            transform: `rotate(${s.angleDeg}deg)`,
+            animationDelay: `${s.delay}ms`,
+            animationDuration: `${s.duration}ms`,
+            ['--meteor-accent' as string]: accent,
+            ['--meteor-trail-len' as string]: `${s.trailLen}px`,
+          }}
+        >
+          <div className="vfx-meteor-trail" />
+          <div className="vfx-meteor-head" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Constellation seal — stamps the active constellation's GLYPH (the
+// same point-array used in ConstellationSelect.Glyph) at the center
+// of the play area. Stars connect via dashed lines + each point
+// lights as a small pip, giving the seal the same visual vocabulary
+// as the picker. Replaces the generic gold "TARGET BEAT" ceremony
+// with the run's identity.
+function ConstellationSeal({ glyph, color, name }: { glyph: { x: number; y: number }[]; color: string; name: string }) {
+  return (
+    <div className="vfx-cons-seal-root" aria-hidden="true">
+      <svg
+        viewBox="0 0 100 100"
+        width="320"
+        height="320"
+        className="vfx-cons-seal-svg"
+        style={{ ['--seal-accent' as string]: color }}
+      >
+        {/* Connecting lines — drawn first so the bright pips render on top. */}
+        {glyph.slice(0, -1).map((p, i) => {
+          const next = glyph[i + 1]!;
+          return (
+            <line
+              key={`l${i}`}
+              x1={p.x} y1={p.y} x2={next.x} y2={next.y}
+              stroke={color}
+              strokeWidth={0.6}
+              strokeDasharray="1.5 2"
+              opacity={0.85}
+            />
+          );
+        })}
+        {/* Stars — each point as a glowing pip with an outer halo. */}
+        {glyph.map((p, i) => {
+          const isPrimary = i === 0;
+          const r = isPrimary ? 2.6 : 1.8;
+          return (
+            <g key={`s${i}`}>
+              <circle cx={p.x} cy={p.y} r={r * 2.4} fill={color} opacity={0.18} />
+              <circle cx={p.x} cy={p.y} r={r * 1.5} fill={color} opacity={0.4} />
+              <circle cx={p.x} cy={p.y} r={r} fill="#fff7e0" />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="vfx-cons-seal-name" style={{ color }}>
+        {name}
+      </div>
+    </div>
+  );
+}
+
+// Conductive arcs — the "constellation as conductor" visualisation.
+// Traced bezier paths fan from a virtual constellation anchor (above
+// the play area, top-center) DOWN to each scoring die in scoring
+// order. Each path uses stroke-dasharray to PAINT itself in over
+// 200ms, holds 100ms, then fades. Staggered by 80ms so they read as
+// a sequence — the constellation tapping each die in turn.
+//
+// Skips the effect entirely if fewer than 3 die positions are
+// supplied (the shorter sequences don't earn the visual; reserve
+// the moment for chains).
+function ConductiveArcs({ diePositions, accent }: { diePositions: Array<{ x: number; y: number }>; accent: string }) {
+  if (diePositions.length < 3) return null;
+  // Anchor: top-center of the viewport at 18% down. The "above the
+  // play area" framing requires the anchor to sit clearly above the
+  // dice tray, not inside it.
+  const ax = typeof window !== 'undefined' ? window.innerWidth / 2 : 640;
+  const ay = typeof window !== 'undefined' ? window.innerHeight * 0.18 : 120;
+  // Cap to the first 8 dice (largest scoring count is ~7 anyway).
+  const dice = diePositions.slice(0, 8);
+  return (
+    <svg
+      className="vfx-conductive-root"
+      aria-hidden="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+      }}
+    >
+      {/* Anchor pulse — the constellation conductor "preparing." */}
+      <circle
+        cx={ax} cy={ay} r="6"
+        fill={accent}
+        className="vfx-conductive-anchor"
+        style={{ filter: `drop-shadow(0 0 10px ${accent})` }}
+      />
+      {dice.map((d, i) => {
+        // Bezier path from anchor to die. Control point is between
+        // them but pulled inward so the curve arcs gracefully rather
+        // than a straight line. Single-curve cubic.
+        const cx1 = ax + (d.x - ax) * 0.35;
+        const cy1 = ay + (d.y - ay) * 0.7;
+        const cx2 = ax + (d.x - ax) * 0.7;
+        const cy2 = ay + (d.y - ay) * 0.85;
+        return (
+          <path
+            key={i}
+            d={`M ${ax} ${ay} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${d.x} ${d.y}`}
+            stroke={accent}
+            strokeWidth="1.4"
+            fill="none"
+            strokeDasharray="2 4"
+            strokeLinecap="round"
+            opacity={0}
+            className="vfx-conductive-arc"
+            style={{
+              animationDelay: `${i * 80}ms`,
+              filter: `drop-shadow(0 0 4px ${accent})`,
+            }}
+          />
+        );
+      })}
+    </svg>
   );
 }
 
@@ -533,6 +749,11 @@ type Callbacks = {
   targetBeat: (() => void) | null;
   bail: (() => void) | null;
   boom: ((variant: BoomVariant, total: number, newBest: boolean) => void) | null;
+  // Fancy-FX-pass additions:
+  starRipple: ((intensity: 'normal' | 'mega') => void) | null;
+  meteorShower: ((accent: string, count: number) => void) | null;
+  constellationSeal: ((glyph: { x: number; y: number }[], color: string, name: string) => void) | null;
+  conductiveArcs: ((diePositions: Array<{ x: number; y: number }>, accent: string) => void) | null;
 };
 
 export const scoringVFX = {
@@ -541,6 +762,10 @@ export const scoringVFX = {
     targetBeat: null,
     bail: null,
     boom: null,
+    starRipple: null,
+    meteorShower: null,
+    constellationSeal: null,
+    conductiveArcs: null,
   } as Callbacks,
 
   fireSlam(label: string, color: string = '#7be3ff', shake: ShakeKind = 'sm') {
@@ -557,6 +782,45 @@ export const scoringVFX = {
 
   fireBoom(variant: BoomVariant, total: number, newBest: boolean = false) {
     if (this.callbacks.boom) this.callbacks.boom(variant, total, newBest);
+  },
+
+  /**
+   * Star-cluster ignite ripple — three staggered concentric brightening
+   * waves that wash outward from the play area through the cosmos
+   * starfield. Reads as the cosmos noticing the boom rather than as
+   * "more circles at the boom point." 'mega' adds an outer ring and
+   * pushes the wave further before it fades.
+   */
+  fireStarRipple(intensity: 'normal' | 'mega' = 'normal') {
+    if (this.callbacks.starRipple) this.callbacks.starRipple(intensity);
+  },
+
+  /**
+   * Meteor shower across the cosmos backdrop — N comets streak
+   * diagonally with luminous trails in the run's accent. Fires on
+   * mega booms (ratio > 2). count = 3-7 streaks.
+   */
+  fireMeteorShower(accent: string, count: number = 5) {
+    if (this.callbacks.meteorShower) this.callbacks.meteorShower(accent, count);
+  },
+
+  /**
+   * Constellation seal — stamps the active constellation's glyph in
+   * the center of the play area at large scale on cross-target. Ties
+   * the run's identity into the climax instead of a generic stamp.
+   */
+  fireConstellationSeal(glyph: { x: number; y: number }[], color: string, name: string) {
+    if (this.callbacks.constellationSeal) this.callbacks.constellationSeal(glyph, color, name);
+  },
+
+  /**
+   * Conductive arcs — traced bezier paths from a constellation anchor
+   * point above the play area DOWN to each scoring die in scoring
+   * order. Reads as "the constellation is conducting the dice."
+   * diePositions are in viewport-relative pixels (top-left origin).
+   */
+  fireConductiveArcs(diePositions: Array<{ x: number; y: number }>, accent: string) {
+    if (this.callbacks.conductiveArcs) this.callbacks.conductiveArcs(diePositions, accent);
   },
 };
 
@@ -660,11 +924,48 @@ export function ScoringVFX() {
       }
     };
 
+    scoringVFX.callbacks.starRipple = (intensity) => {
+      const id = ++nextId.current;
+      const event: StarRippleEvent = { kind: 'starRipple', id, intensity };
+      setEffects((prev) => [...prev, event]);
+      // Lifetime: 1100ms (3 staggered rings × 300ms expand + 200ms fade tail).
+      window.setTimeout(() => removeEffect(id), 1100);
+    };
+
+    scoringVFX.callbacks.meteorShower = (accent, count) => {
+      const id = ++nextId.current;
+      const event: MeteorShowerEvent = { kind: 'meteorShower', id, accent, count };
+      setEffects((prev) => [...prev, event]);
+      // Longest streak ~1400ms + 300ms fade tail.
+      window.setTimeout(() => removeEffect(id), 1700);
+    };
+
+    scoringVFX.callbacks.constellationSeal = (glyph, color, name) => {
+      const id = ++nextId.current;
+      const event: ConstellationSealEvent = { kind: 'constellationSeal', id, glyph, color, name };
+      setEffects((prev) => [...prev, event]);
+      // Hold + fade ~1500ms to match the existing TargetBeatStamp lifetime.
+      window.setTimeout(() => removeEffect(id), 1500);
+    };
+
+    scoringVFX.callbacks.conductiveArcs = (diePositions, accent) => {
+      const id = ++nextId.current;
+      const event: ConductiveArcsEvent = { kind: 'conductiveArcs', id, diePositions, accent };
+      setEffects((prev) => [...prev, event]);
+      // Stagger 80ms per arc + 200ms hold + 200ms fade. Cap at 8 dice.
+      const lifetime = 80 * Math.min(8, diePositions.length) + 400;
+      window.setTimeout(() => removeEffect(id), lifetime);
+    };
+
     return () => {
       scoringVFX.callbacks.slam = null;
       scoringVFX.callbacks.targetBeat = null;
       scoringVFX.callbacks.bail = null;
       scoringVFX.callbacks.boom = null;
+      scoringVFX.callbacks.starRipple = null;
+      scoringVFX.callbacks.meteorShower = null;
+      scoringVFX.callbacks.constellationSeal = null;
+      scoringVFX.callbacks.conductiveArcs = null;
     };
   }, [removeEffect]);
 
@@ -690,6 +991,16 @@ export function ScoringVFX() {
       <div className="vfx-timedilate" />
       <div className="vfx-flash" />
 
+      {/* Scene-affecting effects sit OUTSIDE the centered effects-layer
+          so they fill the whole viewport (cosmos backdrop, edge-to-edge
+          meteor streaks, conductive arcs spanning to dice positions). */}
+      {effects.map((eff) => {
+        if (eff.kind === 'starRipple') return <StarRipple key={eff.id} intensity={eff.intensity} />;
+        if (eff.kind === 'meteorShower') return <MeteorShower key={eff.id} accent={eff.accent} count={eff.count} />;
+        if (eff.kind === 'conductiveArcs') return <ConductiveArcs key={eff.id} diePositions={eff.diePositions} accent={eff.accent} />;
+        return null;
+      })}
+
       {/* Effects layer (positioned at viewport center). The chromatic
           aberration filter is applied on this wrapper so all child SVG
           + DOM particles inherit the channel shift. */}
@@ -698,6 +1009,9 @@ export function ScoringVFX() {
           if (eff.kind === 'slam') return <MultSlam key={eff.id} label={eff.label} color={eff.color} />;
           if (eff.kind === 'target') return <TargetBeatStamp key={eff.id} />;
           if (eff.kind === 'bail') return <BailStampInner key={eff.id} />;
+          if (eff.kind === 'constellationSeal') {
+            return <ConstellationSeal key={eff.id} glyph={eff.glyph} color={eff.color} name={eff.name} />;
+          }
           if (eff.kind === 'boom') {
             return (
               <BoomNumber

@@ -658,6 +658,69 @@ export class Dice3D {
       // pipeline detects an affinitied pair on a die, it emits a
       // synthetic `affinity:<id>@<dieIdx>` event. We translate that into
       // a gold halo pulse queued for the die's score-tick.
+      // Crystalline edge catch — on cross-target, every die's accent
+      // edge briefly brightens via an opacity bounce, so the dice
+      // themselves acknowledge the moment instead of leaving the
+      // celebration to the overlay UI. Re-uses the edgeAccent
+      // LineSegments added in the dice-readability pass; no new mesh
+      // allocations.
+      bus.on('onCrystallineEdgeCatch', () => {
+        const t0 = performance.now();
+        const DURATION = 360;
+        for (const d of this.dice) {
+          d.group.traverse((node) => {
+            const mat = (node as THREE.LineSegments).material as
+              | THREE.LineBasicMaterial
+              | undefined;
+            // The accent edge is at scale 1.004; the base edge at 1.002.
+            // We catch both by name pattern (LineSegments don't carry
+            // a name by default, so just animate any LineBasicMaterial
+            // that's transparent — both edge passes match).
+            if (
+              node instanceof THREE.LineSegments &&
+              mat &&
+              mat.transparent &&
+              mat.userData.__originalOpacity === undefined
+            ) {
+              mat.userData.__originalOpacity = mat.opacity;
+            }
+          });
+        }
+        const tick = () => {
+          const dt = performance.now() - t0;
+          const t = Math.min(1, dt / DURATION);
+          // Bell curve peaking at 30% — quick brighten, slower decay.
+          const boost = t < 0.3 ? (t / 0.3) : (1 - (t - 0.3) / 0.7);
+          for (const d of this.dice) {
+            d.group.traverse((node) => {
+              if (node instanceof THREE.LineSegments) {
+                const mat = node.material as THREE.LineBasicMaterial;
+                if (mat.userData.__originalOpacity !== undefined) {
+                  const base = mat.userData.__originalOpacity as number;
+                  mat.opacity = Math.min(1, base + 0.45 * boost);
+                }
+              }
+            });
+          }
+          if (t < 1) requestAnimationFrame(tick);
+          else {
+            // Restore base opacity + clear the marker so subsequent
+            // catches re-capture cleanly.
+            for (const d of this.dice) {
+              d.group.traverse((node) => {
+                if (node instanceof THREE.LineSegments) {
+                  const mat = node.material as THREE.LineBasicMaterial;
+                  if (mat.userData.__originalOpacity !== undefined) {
+                    mat.opacity = mat.userData.__originalOpacity as number;
+                    delete mat.userData.__originalOpacity;
+                  }
+                }
+              });
+            }
+          }
+        };
+        requestAnimationFrame(tick);
+      }),
       bus.on('onUpgradeTriggered', ({ id }) => {
         if (!id.startsWith('affinity:')) return;
         const at = id.indexOf('@');
@@ -1270,6 +1333,28 @@ export class Dice3D {
   // swaps (Lyra d6 [1..6] → Eclipse d6 [0,0,0,1,1,1]); the latter would
   // otherwise leave the renderer on the pip-pattern path and never pick up
   // the digit textures. Mirrors syncDiceMods but keys off the spec.
+  /**
+   * Returns viewport-relative pixel positions for the LOCKED (scoring)
+   * dice. Used by the scoring fancy-FX (conductive arcs from a virtual
+   * constellation anchor down to each scoring die) so the overlay can
+   * draw its bezier paths to where the dice actually are on screen
+   * without re-doing the 3D math.
+   *
+   * Empty array when the canvas isn't visible (no rect) or no dice
+   * are locked.
+   */
+  public getScoringDieScreenPositions(): Array<{ x: number; y: number }> {
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return [];
+    const out: Array<{ x: number; y: number }> = [];
+    for (const d of this.dice) {
+      if (!d.locked) continue;
+      const screen = projectToScreen(d.group.position, this.camera, rect);
+      out.push({ x: screen.x, y: screen.y });
+    }
+    return out;
+  }
+
   private syncDiceSpecs(): void {
     const state = store.getState();
     const spec = getDiceSpec(state);

@@ -584,6 +584,172 @@
   100% { opacity: 0; transform: translate(-50%, calc(-50% - 18px)) scale(0.9); }
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Fancy-FX pass — scene-affecting moves (star ripple,        */
+/* meteor shower, constellation seal, conductive arcs).        */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Star ripple: three (or four for mega) concentric rings expand
+   outward from the dice center via screen-blend so they wash the
+   underlying cosmos brighter rather than read as solid circles. */
+.vfx-star-ripple-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.vfx-star-ripple {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 247, 224, 0.45) 0%,
+    rgba(255, 247, 224, 0.12) 35%,
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  animation: vfx-star-ripple-pulse 900ms cubic-bezier(0.16, 0.84, 0.34, 1) forwards;
+}
+.vfx-star-ripple-mega {
+  background: radial-gradient(
+    circle,
+    rgba(255, 232, 180, 0.6) 0%,
+    rgba(245, 196, 81, 0.15) 35%,
+    transparent 60%
+  );
+  animation-duration: 1100ms;
+}
+@keyframes vfx-star-ripple-pulse {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(38); }
+}
+
+/* Meteor shower: each streak is a rotated container holding a
+   long trailing rect + a head dot. The container slides across
+   the viewport using translate. */
+.vfx-meteor-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.vfx-meteor {
+  position: absolute;
+  left: -40%;
+  width: 120%;
+  height: 2px;
+  transform-origin: left center;
+  opacity: 0;
+  animation-name: vfx-meteor-fly;
+  animation-timing-function: cubic-bezier(0.34, 0, 0.78, 0.5);
+  animation-fill-mode: forwards;
+}
+.vfx-meteor-trail {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: var(--meteor-trail-len, 260px);
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--meteor-accent, #7be3ff) 80%,
+    #fff7e0 100%
+  );
+  filter: drop-shadow(0 0 6px var(--meteor-accent, #7be3ff))
+          drop-shadow(0 0 12px var(--meteor-accent, #7be3ff));
+  border-radius: 2px;
+}
+.vfx-meteor-head {
+  position: absolute;
+  left: var(--meteor-trail-len, 260px);
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  background: #fff7e0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 8px var(--meteor-accent, #7be3ff),
+    0 0 18px var(--meteor-accent, #7be3ff),
+    0 0 32px var(--meteor-accent, #7be3ff);
+}
+@keyframes vfx-meteor-fly {
+  0%   { transform: translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(120vw); opacity: 0; }
+}
+
+/* Constellation seal: the run's glyph stamps in the play-area
+   center, swells, holds, fades. */
+.vfx-cons-seal-root {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: vfx-cons-seal-life 1500ms cubic-bezier(0.2, 0.8, 0.34, 1) forwards;
+}
+.vfx-cons-seal-svg {
+  filter: drop-shadow(0 0 24px var(--seal-accent, #7be3ff))
+          drop-shadow(0 0 48px var(--seal-accent, #7be3ff));
+}
+.vfx-cons-seal-name {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 12px currentColor,
+    0 0 24px currentColor;
+}
+@keyframes vfx-cons-seal-life {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  18%  { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  35%  { transform: translate(-50%, -50%) scale(1); }
+  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18); }
+}
+
+/* Conductive arcs: anchor pulses once at start as the constellation
+   "primes," then each path flashes in via opacity + stroke-width
+   pulse. CSS can't directly tween path "drawing" without each path
+   knowing its length, so we use a brief opacity flash that reads as
+   a quick scribe. */
+.vfx-conductive-anchor {
+  opacity: 0;
+  animation: vfx-conductive-anchor-pulse 600ms cubic-bezier(0.2, 0.8, 0.34, 1) forwards;
+}
+@keyframes vfx-conductive-anchor-pulse {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.vfx-conductive-arc {
+  animation-name: vfx-conductive-arc-trace;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.34, 0, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes vfx-conductive-arc-trace {
+  0%   { opacity: 0; stroke-width: 1; }
+  35%  { opacity: 1; stroke-width: 1.6; }
+  60%  { opacity: 1; stroke-width: 2; }
+  100% { opacity: 0; stroke-width: 1; }
+}
+
 /* ── Reduce-motion (parity with rest of the game) ──────── */
 .reduce-motion #vfx-scoring-layer,
 .reduce-motion #vfx-scoring-layer * {

@@ -157,6 +157,11 @@ export type GameEventMap = {
     shardsBefore: number;
     shardsAfter: number;
   };
+  // Cross-target moment — every die's accent edge briefly catches a
+  // bright sweep so the dice themselves acknowledge the goal-cross.
+  // Decoupled from ScoreMoment so Dice3D handles the per-die material
+  // animation without ScoreMoment needing scene access.
+  onCrystallineEdgeCatch: { color: string };
 };
 
 export type GameEventEmission = {

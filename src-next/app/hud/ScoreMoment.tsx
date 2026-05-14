@@ -4,6 +4,7 @@ import { dispatch } from '../../actions/dispatch';
 import type { Beat } from '../../core/scoring/types';
 import { store } from '../../state/store';
 import { scoringVFX } from './ScoringVFX';
+import { lookupConstellation } from '../../data/constellations';
 
 // ScoreMoment is a pure scoring-beat controller — slam / target-beat / bail /
 // boom visuals are rendered by ScoringVFX. This component owns:
@@ -24,6 +25,18 @@ const BAIL_HOLD_MS = 2400;
 function isReducedMotion(): boolean {
   if (typeof document === 'undefined') return false;
   return document.documentElement.classList.contains('reduce-motion');
+}
+
+// Read viewport-relative pixel positions for the locked (scoring)
+// dice. Dice3D is instantiated lazily in app/perf/roundBundle.ts and
+// stashed on `window.__dice3d` for cross-module reads (the long-press
+// DieTip uses the same pattern). Returns [] if the bundle isn't
+// loaded yet, the canvas isn't visible, or no dice are locked.
+function readScoringDiePositions(): Array<{ x: number; y: number }> {
+  if (typeof window === 'undefined') return [];
+  const d3 = (window as unknown as { __dice3d?: { getScoringDieScreenPositions: () => Array<{ x: number; y: number }> } }).__dice3d;
+  if (!d3 || typeof d3.getScoringDieScreenPositions !== 'function') return [];
+  try { return d3.getScoringDieScreenPositions(); } catch { return []; }
 }
 
 function slamColor(crossed: boolean, tint?: 'gold' | 'magenta'): string {
@@ -65,10 +78,23 @@ export function ScoreMoment() {
 
     const off = bus.on('onScoreBeat', ({ beat }: { beat: Beat }) => {
       switch (beat.kind) {
-        case 'cast-swell':
+        case 'cast-swell': {
           clearAllTimers();
           crossed = false;
+          // Conductive arcs — fires at the START of scoring when 3+
+          // dice will score. Pulls die positions from the dice canvas
+          // via the data-die-rect dataset (set by Dice3D's onScoreBeat
+          // listener — see below). Skips silently when fewer than 3
+          // positions are available so short hands don't get the
+          // "constellation conducting" flourish for a 1-die nudge.
+          const positions = readScoringDiePositions();
+          if (positions.length >= 3) {
+            const constellationId = store.getState().run.constellationId;
+            const constellation = lookupConstellation(constellationId);
+            scoringVFX.fireConductiveArcs(positions, constellation.color);
+          }
           break;
+        }
         case 'combo-bonus':
           // The combo's chip/mult deltas already light up ScoreBreakdown;
           // a separate named-constellation label here is noise.
@@ -85,12 +111,29 @@ export function ScoreMoment() {
           scoringVFX.fireSlam(beat.label, color, shake ?? 'sm');
           break;
         }
-        case 'cross-target':
+        case 'cross-target': {
           crossed = true;
           // Target Beat already orchestrates godrays + vignette + flash +
           // time-dilation + medium shake inside ScoringVFX.
           scoringVFX.fireTargetBeat();
+          // Constellation seal — replaces the generic gold TARGET BEAT
+          // stamp with the run's active constellation glyph. Reuses
+          // the same point array the picker uses, so the stamp reads
+          // as the run's identity confirming the cross.
+          const constellationId = store.getState().run.constellationId;
+          const constellation = lookupConstellation(constellationId);
+          scoringVFX.fireConstellationSeal(
+            constellation.glyph,
+            constellation.color,
+            constellation.name,
+          );
+          // Crystalline edge catch — pulse every die's accent edge so
+          // the dice themselves acknowledge the moment. Bus-driven so
+          // Dice3D handles the actual material animation; this is just
+          // a notification.
+          bus.emit('onCrystallineEdgeCatch', { color: constellation.color });
           break;
+        }
         case 'boom': {
           const gold = beat.crossedTarget;
           const ratio = beat.megaRatio ?? 0;
@@ -106,6 +149,23 @@ export function ScoreMoment() {
           const isNewBest = peakHandNow > 0 && peakHandNow === beat.finalTotal;
 
           scoringVFX.fireBoom(variant, beat.finalTotal, isNewBest);
+
+          // Star-cluster ripple — fires on every boom (gold and mega
+          // get the brighter 'mega' tier). Washes the cosmos starfield
+          // with three (or four) screen-blend rings so the boom reads
+          // as "the cosmos noticed" rather than a centered burst.
+          scoringVFX.fireStarRipple(variant === 'mega' ? 'mega' : 'normal');
+
+          // Meteor shower — only on mega booms. Constellation accent
+          // for the streaks; count scales with megaRatio so a 6×
+          // crush gets more streaks than a 3×.
+          if (variant === 'mega') {
+            const constellation = lookupConstellation(
+              store.getState().run.constellationId,
+            );
+            const streakCount = Math.max(3, Math.min(7, Math.round(2 + ratio)));
+            scoringVFX.fireMeteorShower(constellation.color, streakCount);
+          }
 
           // Mega-boom hit-stop on #stage-root (separate from ScoringVFX's
           // own chromatic-aberration layer). Reduced-motion users skip.
