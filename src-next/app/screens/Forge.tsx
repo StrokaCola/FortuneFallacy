@@ -301,6 +301,43 @@ export function Forge() {
             position: 'relative', display: 'grid', placeItems: 'center',
             overflow: 'hidden',
           }}>
+            {/* Oracle-table rim — a faint circular outline + four
+                cardinal glyphs (N/S/E/W as ◇/◆/▲/▼) that frame the
+                die as if it sat on a divination table. Reinforces
+                the alchemy / oracle theming without competing with
+                the constellation sigil ring inside. The rim color
+                inherits the run's constellation accent so it carries
+                the same identity thread. */}
+            <svg aria-hidden="true" style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              width: '92%', height: '92%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              opacity: 0.42,
+            }} viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="92" fill="none"
+                stroke={constellation.color}
+                strokeWidth="0.8"
+                strokeDasharray="2 4" />
+              <circle cx="100" cy="100" r="88" fill="none"
+                stroke={constellation.color}
+                strokeWidth="0.4"
+                opacity="0.5" />
+              {/* Cardinal alchemy glyphs — top/right/bottom/left. */}
+              <text x="100" y="14" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">◇</text>
+              <text x="186" y="103" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">▲</text>
+              <text x="100" y="194" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">◆</text>
+              <text x="14" y="103" textAnchor="middle"
+                fill={constellation.color} fontSize="8"
+                fontFamily="serif" opacity="0.7">▼</text>
+            </svg>
             {/* Light shaft — column of soft warm/cool gradient descending
                 onto the die. Breathes very slowly so the panel never
                 feels static. */}

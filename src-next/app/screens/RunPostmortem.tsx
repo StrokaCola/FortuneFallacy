@@ -131,8 +131,21 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
       animation: mode === 'fail' ? 'fadein 800ms ease-out both' : undefined,
       overflowY: 'auto', overflowX: 'hidden', padding: 16,
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center', maxWidth: 540 }}>
+      {/* Fail-screen vignette collapse — bright center shrinks, edges
+          flood black. The visual metaphor for "the light goes out"
+          frames the loss as a descent rather than a flat layout.
+          Sits above the dark background but below the postmortem
+          content (own z-index 0 vs the content's natural stacking). */}
+      {mode === 'fail' && (
+        <div aria-hidden="true" className="postmortem-fail-vignette" style={{
+          position: 'absolute', inset: 0,
+          pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center, transparent 0%, transparent 35%, rgba(3,2,12,0.55) 65%, rgba(3,2,12,0.95) 100%)',
+        }} />
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center', maxWidth: 540, position: 'relative' }}>
 
+        {mode === 'win' && <WinFlourish accent={constellation.color} />}
         {mode === 'win' && <ShatterConstellation />}
 
         <div className="f-display" style={{
@@ -469,6 +482,57 @@ function Stat({ color, label, value, coachId }: { color: string; label: string; 
       <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff' }}>
         {label}
       </div>
+    </div>
+  );
+}
+
+// Win-screen constellation flourish: a celebratory halo bloom tinted
+// in the run's constellation color + 20 upward-rising particles. Sits
+// behind ShatterConstellation so the gold stars draw ON TOP of the
+// constellation-tinted halo, layering the two effects. The cosmos
+// outside the postmortem is already darkened — this is the moment of
+// the run's color *winning*.
+function WinFlourish({ accent }: { accent: string }) {
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute', left: '50%', top: 20,
+      transform: 'translateX(-50%)',
+      pointerEvents: 'none',
+      width: 240, height: 240,
+    }}>
+      {/* Radial halo bloom — slow expand to 1.4× over 1.2s, fade to
+          0 by 2s. The constellation color is the dominant tint. */}
+      <div className="win-flourish-halo" style={{
+        position: 'absolute', inset: 0,
+        background: `radial-gradient(circle, ${accent}66 0%, ${accent}22 35%, transparent 70%)`,
+        borderRadius: '50%',
+      }} />
+      {/* Upward-rising particle burst: 20 small dots drift up, fade.
+          Pseudo-random seeded positions so the layout reads natural
+          without RNG bias. */}
+      <svg viewBox="0 0 240 240" width="240" height="240"
+        style={{ position: 'absolute', inset: 0 }}>
+        {Array.from({ length: 20 }).map((_, i) => {
+          const ang = (i * 137.5) * (Math.PI / 180);
+          const r = 30 + (i % 5) * 20;
+          const cx = 120 + Math.cos(ang) * r * 0.6;
+          const cy = 120 + Math.sin(ang) * r * 0.4 + 30;
+          const delay = (i * 60) % 900;
+          const size = 1.2 + ((i * 13) % 5) * 0.4;
+          return (
+            <circle
+              key={i}
+              cx={cx} cy={cy} r={size}
+              fill={i % 2 === 0 ? accent : '#fff7e0'}
+              style={{
+                filter: `drop-shadow(0 0 6px ${accent})`,
+                animation: `win-flourish-spark 1800ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms both`,
+                transformOrigin: `${cx}px ${cy}px`,
+              }}
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 }

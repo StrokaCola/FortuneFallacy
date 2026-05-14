@@ -91,6 +91,16 @@ export function BossReveal() {
           pointerEvents: 'auto', zIndex: Z.bannerBoss,
           cursor: 'pointer',
         }}>
+        {/* Boss-sting flash — fires in sync with the bossSting SFX cue.
+            A brief crimson-tinted white flash punches the moment the
+            sting hits so the audio + visual land as one beat. Fades
+            back out by 220ms so the dread vignette takes over. */}
+        <div className="boss-sting-flash" style={{
+          position: 'absolute', inset: 0,
+          background: `radial-gradient(ellipse at center, ${def.color}aa 0%, ${def.color}33 30%, transparent 70%)`,
+          mixBlendMode: 'screen',
+          pointerEvents: 'none',
+        }} />
         <div className="boss-dread-vignette" style={{
           position: 'absolute', inset: 0,
           background: `radial-gradient(ellipse at center, transparent 0%, transparent 35%, rgba(3,2,12,0.85) 75%, ${def.color}55 100%)`,

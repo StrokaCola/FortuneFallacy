@@ -1,6 +1,11 @@
 // Inline pill that renders next to an upgrade's name when it's been
-// stamped with an edition. Color-coded by edition; tooltip text
-// explains the mechanical bonus.
+// stamped with an edition. Color-coded by edition + animated:
+//   - foil : a left-to-right shimmer sweep every 3.2s
+//   - holo : a cyan-violet-cyan iridescent hue cycle every 4.8s
+//   - poly : a red→yellow→green→blue rainbow gradient cycle every 6.4s
+//   - void : a slow black-aura pulse so the "slot bypass" reads as
+//            a distinct, important rarity tier
+// Animations skip under .reduce-motion.
 //
 // Used by:
 //   - OfferCard.tsx (shop offer with `o.edition` set)
@@ -8,6 +13,14 @@
 
 import { editionLabel, editionColor } from '../../../core/upgrades/editions';
 import type { CatalystEdition } from '../../../state/slices/run';
+
+const EDITION_CLASS: Record<CatalystEdition, string> = {
+  base: '',
+  foil: 'edition-foil',
+  holo: 'edition-holo',
+  poly: 'edition-poly',
+  void: 'edition-void',
+};
 
 export function EditionBadge({ edition }: { edition: CatalystEdition }) {
   const c = editionColor(edition);
@@ -18,7 +31,7 @@ export function EditionBadge({ edition }: { edition: CatalystEdition }) {
     : 'Polychrome — adds +50% of this catalyst\'s contribution each fire.';
   return (
     <span
-      className="f-mono uc has-tip"
+      className={`f-mono uc has-tip ${EDITION_CLASS[edition] ?? ''}`}
       style={{
         position: 'relative',
         marginLeft: 6,
@@ -31,6 +44,7 @@ export function EditionBadge({ edition }: { edition: CatalystEdition }) {
         background: `${c}22`,
         fontWeight: edition === 'void' ? 700 : undefined,
         textShadow: edition === 'void' ? `0 0 6px ${c}` : undefined,
+        overflow: 'hidden',
       }}
     >
       {edition === 'void' ? '★' : editionLabel(edition).slice(0, 4).toLowerCase()}
