@@ -189,15 +189,19 @@ export function ScoreMoment() {
             }
           }
 
-          // END_SCORING right as the boom number lands at the counter
-          // (the round can advance immediately; visual catch is owned
-          // by TopBar via the onScoreCounterFill event below).
-          schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 150);
+          // END_SCORING fires 350ms before the boom number's fly
+          // visually finishes so the next-hand inputs feel responsive
+          // (action bar unlocks early; the counter-fill tween below
+          // keeps animating over the unlocked HUD without blocking
+          // it). See responsiveness pass 47ebfb1.
+          schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 350);
           // Counter fill — fire exactly when the first star trail
-          // reaches the counter. TopBar tweens its displayed total
-          // from the pre-boom value to the new round.score over
-          // COUNTER_FILL_MS so the meter visually fills under the
-          // trailing stars instead of catching ahead of them.
+          // reaches the counter. ScoreFloat tweens its displayed
+          // total from the pre-boom value to the new round.score
+          // over COUNTER_FILL_MS so the meter visually fills under
+          // the trailing stars instead of catching ahead of them.
+          // Independent from finishBoom's timing — state commit and
+          // visual catch are intentionally decoupled.
           schedule(
             () => bus.emit('onScoreCounterFill', { durationMs: COUNTER_FILL_MS }),
             BOOM_FLY_START_MS + STAR_TRAIL_MS,
