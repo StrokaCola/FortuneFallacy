@@ -187,6 +187,42 @@ export function Scores() {
             <span className="font-mono text-gold">{s.score.toLocaleString()}</span>
           </div>
         ))}
+        {/* Empty-state: leaderboard loaded successfully but has zero rows
+            for this scope (no runs ever logged, or first-time visit on
+            a constellation the player hasn't shipped a run with). The
+            "No runs yet" copy + Start-a-Run CTA gives the screen
+            something to point at instead of dead space. */}
+        {selectedUnlocked && visible !== null && visible.length === 0 && !loadError && (
+          <div style={{
+            textAlign: 'center', padding: '32px 16px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              fontSize: 36, opacity: 0.45,
+              filter: 'drop-shadow(0 0 12px #7be3ff66)',
+            }}>★</div>
+            <div className="f-mono uc" style={{
+              fontSize: 11, letterSpacing: '0.32em', color: '#bba8ff',
+            }}>
+              no runs yet
+            </div>
+            <div style={{
+              fontSize: 12, color: '#9577ff', lineHeight: 1.5,
+              maxWidth: 280, fontFamily: '"Exo 2", sans-serif',
+            }}>
+              Finish a run to record your first score. Top finishers stay
+              listed across runs.
+            </div>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
+              className="btn btn-primary mat-interactive tap"
+              style={{ marginTop: 4, padding: '8px 18px', fontSize: 12 }}
+            >
+              Start a run
+            </button>
+          </div>
+        )}
       </div>
 
       <button

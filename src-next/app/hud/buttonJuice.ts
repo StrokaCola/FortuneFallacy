@@ -34,12 +34,26 @@ function spawnShockwave(btn: HTMLElement): void {
   setTimeout(cleanup, SHOCKWAVE_DURATION_MS + 200);
 }
 
+// Vibration on tap is a no-op on devices without a vibration motor +
+// most desktop browsers — the API just returns false. We gate it on
+// pointerType === 'touch' so a mouse-on-laptop doesn't try to vibrate.
+function tapHaptic(): void {
+  const vib = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
+  if (typeof vib === 'function') {
+    try { vib.call(navigator, 10); } catch { /* ignore */ }
+  }
+}
+
 export function installButtonJuice(): () => void {
-  const onMouseDown = (ev: MouseEvent): void => {
+  // Switched from mouse* events to pointer* so touch users get the
+  // same juice (shockwave + click sfx + 10ms haptic) as desktop. Mouse
+  // mouseover stays — hover sound is mouse-only by design.
+  const onPointerDown = (ev: PointerEvent): void => {
     if (!isPrimaryButton(ev.target)) return;
     sfxModule.sfxPlay('uiClick');
+    if (ev.pointerType === 'touch') tapHaptic();
   };
-  const onMouseUp = (ev: MouseEvent): void => {
+  const onPointerUp = (ev: PointerEvent): void => {
     const btn = isPrimaryButton(ev.target);
     if (!btn) return;
     if (reducedMotion()) return;
@@ -49,12 +63,12 @@ export function installButtonJuice(): () => void {
     if (!isPrimaryButton(ev.target)) return;
     sfxModule.sfxPlay('uiHover');
   };
-  document.addEventListener('mousedown', onMouseDown);
-  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('mouseover', onMouseOver);
   return () => {
-    document.removeEventListener('mousedown', onMouseDown);
-    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('pointerdown', onPointerDown);
+    document.removeEventListener('pointerup', onPointerUp);
     document.removeEventListener('mouseover', onMouseOver);
   };
 }

@@ -469,8 +469,17 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
 }
 
 /* Hover lift for any material element marked as interactive */
+/* Material-feeling interactive surface. Hover lifts the element a few
+   pixels and adds a soft cyan shadow so the "this is responsive" beat
+   actually registers — 1px was perceptually null on a 120ms tween.
+   Active state inverts the lift and adds an inset shadow so a
+   pointer-down feels caught. Touch users get the inset shadow via the
+   .tap:active rule above; this hover/active pair is purely pointer. */
 .mat-interactive { transition: transform var(--snap) var(--ease-snap), box-shadow var(--snap) var(--ease-snap); }
-@media (hover: hover) { .mat-interactive:hover { transform: translateY(-1px); } }
+@media (hover: hover) {
+  .mat-interactive:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(123,227,255,0.18); }
+  .mat-interactive:active { transform: translateY(0); box-shadow: inset 0 0 12px rgba(123,227,255,0.22); }
+}
 
 /* Forge orbit ring — gated on motion preference like the rest of the app. */
 html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }

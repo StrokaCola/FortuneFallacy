@@ -34,6 +34,13 @@ export function ForgeBackdrop() {
   const constellation = lookupConstellation(constellationId);
   const accent = constellation.color;
 
+  // Reduce the spark count on short viewports. On a 360px-tall landscape
+  // phone the 18-spark cloud + 4.4s ember pulse + 30s orbit + mod-row
+  // hover flicker tipped into motion saturation; halving the sparks
+  // calms the screen without losing the "embers rising" feel.
+  const isShort = typeof window !== 'undefined' && window.innerHeight < 600;
+  const sparkCount = isShort ? Math.round(SPARK_COUNT / 2) : SPARK_COUNT;
+
   return (
     <div
       aria-hidden="true"
@@ -82,7 +89,7 @@ export function ForgeBackdrop() {
       {/* Sparks — 18 sprite divs rising from a band along the bottom
           half. Each gets an animation-delay so they don't all rise at
           the same time. CSS keyframes do the lift + sin-wave drift. */}
-      {Array.from({ length: SPARK_COUNT }, (_, i) => {
+      {Array.from({ length: sparkCount }, (_, i) => {
         const lateral = ((i * 113) % 100); // pseudo-random lateral position 0..100%
         const delay = (i * 0.42) % 5.6;
         const size = 2 + ((i * 7) % 4); // 2..6px
