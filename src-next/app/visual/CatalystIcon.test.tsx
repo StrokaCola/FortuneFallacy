@@ -78,7 +78,35 @@ describe('CatalystIcon', () => {
     }
   });
 
-  it('total registered sigils is at least 30 after the third pass', () => {
-    expect(Object.keys(CATALYST_ICON_SVGS).length).toBeGreaterThanOrEqual(30);
+  it('has every duplicate-Unicode-icon catalyst registered (2026-05-14 fourth pass)', () => {
+    // These catalysts share their `icon` codepoint with at least one
+    // other catalyst, so a sigil is the only way to tell them apart on
+    // the strip / shop / codex.
+    const required = [
+      'shard_sink', 'recursive_sink', 'odd_voice', 'usurer', 'all_band',
+      'straight_signal', 'low_choir', 'dust_off', 'crescendo_run', 'shard_lung',
+      'mod_gravity', 'face_value', 'first_strike', 'streak_seeker', 'economy_engine',
+      'penumbra', 'wildcard_waltz', 'lodestone', 'memento_star', 'tide',
+      'highwater', 'refrain', 'mirror_edge', 'curtain_call', 'stutter',
+      'silent_witness', 'kinetic_charge', 'kindred_clatter',
+    ];
+    for (const id of required) {
+      expect(CATALYST_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('has weak-Unicode catalysts upgraded to sigils (2026-05-14 fifth pass)', () => {
+    const required = [
+      'chance_doctrine', 'event_horizon', 'crowded_table', 'echo_chamber',
+      'shadow_cache', 'unseen_chorus', 'audit', 'chain_reaction',
+      'gilding_press', 'star_chart',
+    ];
+    for (const id of required) {
+      expect(CATALYST_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('total registered sigils is at least 65 after the fifth pass', () => {
+    expect(Object.keys(CATALYST_ICON_SVGS).length).toBeGreaterThanOrEqual(65);
   });
 });

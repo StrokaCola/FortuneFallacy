@@ -16,8 +16,8 @@ npx tsx scripts/extract-brand.ts
 | `mark.svg`                        | Hand-authored (d6 silhouette on cosmos disc)      |
 | `boss-<id>.svg` (×8)              | `BOSS_BLINDS[*].sigil` in `src-next/data/blinds.ts` |
 | `constellation-<id>.svg` (×8)     | `CONSTELLATIONS[*].glyph` in `src-next/data/constellations.ts` |
-| `catalysts/<id>.svg` (×30)        | JSX renderers in `src-next/data/catalystIcons.tsx` |
-| `mods/<id>.svg` (×2)              | JSX renderers in `src-next/data/modIcons.tsx`     |
+| `catalysts/<id>.svg` (×68)        | JSX renderers in `src-next/data/catalystIcons.tsx` |
+| `mods/<id>.svg` (×18)             | JSX renderers in `src-next/data/modIcons.tsx`     |
 
 All assets use the cosmos backdrop (`#07051a`) so they read identically
 against the game's own dark-mode chrome.

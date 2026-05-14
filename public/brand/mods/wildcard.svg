@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Wildcard — mod sigil">
+  <title>Wildcard — mod sigil</title>
+  <rect width="100%" height="100%" fill="#07051a"/>
+  <g fill="none" stroke="#e0c8ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="20"></line><line x1="4.5" y1="8" x2="19.5" y2="16"></line><line x1="4.5" y1="16" x2="19.5" y2="8"></line><path d="M 12 9 L 15 12 L 12 15 L 9 12 Z" fill="#e0c8ff" stroke="none"></path></g>
+</svg>

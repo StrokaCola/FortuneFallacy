@@ -71,18 +71,72 @@ function renderSigilSvg(boss: BossBlind): string {
 
 function renderConstellationSvg(c: { id: string; name: string; color: string; glyph: { x: number; y: number }[] }): string {
   const pts = c.glyph;
-  const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
-  const dots = pts.map((p) => `  <circle cx="${p.x}" cy="${p.y}" r="2.4" fill="${c.color}" />`).join('\n');
+  // Deterministic field stars seeded from the glyph points so each
+  // constellation has its own stable scatter — same algorithm as the
+  // in-game picker (Glyph component in ConstellationSelect.tsx).
+  let seed = 0;
+  for (const p of pts) seed = (seed * 31 + (p.x | 0) * 17 + (p.y | 0)) | 0;
+  const rnd = mulberry32(seed >>> 0);
+  const field: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const fx = (4 + rnd() * 92).toFixed(2);
+    const fy = (4 + rnd() * 92).toFixed(2);
+    const fr = (0.4 + rnd() * 0.6).toFixed(2);
+    const fo = (0.18 + rnd() * 0.18).toFixed(2);
+    field.push(`  <circle cx="${fx}" cy="${fy}" r="${fr}" fill="#f3f0ff" opacity="${fo}" />`);
+  }
+  // Two-tone connector: a soft solid base + a dashed memory line —
+  // reads as a traced sigil rather than a node-graph.
+  const lines: string[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i]!;
+    const b = pts[i + 1]!;
+    lines.push(
+      `  <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${c.color}" stroke-width="0.5" opacity="0.55" stroke-linecap="round" />`,
+      `  <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${c.color}" stroke-width="0.8" stroke-dasharray="0.4 3" opacity="0.85" stroke-linecap="round" />`,
+    );
+  }
+  // Each star: outer glow + mid halo + bright pip. The primary (index
+  // 0) gets a cross-glint sparkle so the figure has a leading anchor.
+  const stars: string[] = [];
+  pts.forEach((p, i) => {
+    const isPrimary = i === 0;
+    const r = isPrimary ? 2.6 : 1.8;
+    stars.push(
+      `  <circle cx="${p.x}" cy="${p.y}" r="${(r * 2.4).toFixed(2)}" fill="${c.color}" opacity="0.18" />`,
+      `  <circle cx="${p.x}" cy="${p.y}" r="${(r * 1.5).toFixed(2)}" fill="${c.color}" opacity="0.35" />`,
+      `  <circle cx="${p.x}" cy="${p.y}" r="${r}" fill="#fff7e0" />`,
+    );
+    if (isPrimary) {
+      stars.push(
+        `  <g stroke="#fff7e0" stroke-width="0.4" stroke-linecap="round" opacity="0.9">`,
+        `    <line x1="${p.x - 5}" y1="${p.y}" x2="${p.x + 5}" y2="${p.y}" />`,
+        `    <line x1="${p.x}" y1="${p.y - 5}" x2="${p.x}" y2="${p.y + 5}" />`,
+        `  </g>`,
+      );
+    }
+  });
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="${c.name} glyph">`,
     `  <title>${c.name} — constellation glyph</title>`,
     `  <rect width="100%" height="100%" fill="#07051a"/>`,
-    `  <polyline points="${polyline}" fill="none" stroke="${c.color}" stroke-width="0.8" opacity="0.55" stroke-linecap="round" stroke-linejoin="round" />`,
-    dots,
+    ...field,
+    ...lines,
+    ...stars,
     `</svg>`,
     ``,
   ].join('\n');
+}
+
+function mulberry32(a: number) {
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function renderWordmarkSvg(): string {

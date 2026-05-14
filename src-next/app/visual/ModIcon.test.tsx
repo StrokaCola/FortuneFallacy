@@ -40,4 +40,30 @@ describe('ModIcon', () => {
     expect(MOD_ICON_SVGS['high_roller']).toBeDefined();
     expect(MOD_ICON_SVGS['pyre_mark']).toBeDefined();
   });
+
+  it('has every duplicate-Unicode-icon mod registered (2026-05-14)', () => {
+    // Mods that share their `icon` codepoint with at least one other
+    // mod — sigil is the only disambiguation in the strip / build tray.
+    const required = [
+      'gilded', 'keystone',           // both ◆
+      'loaded', 'veteran',            // both ⚔
+      'backstop', 'anti_one_sigil',   // both ✦
+      'brittle', 'pyre_pact',         // both ☄
+      'anchor', 'ballast',            // both ⚓
+      'refinery', 'mirror_banish',    // both ◇
+    ];
+    for (const id of required) {
+      expect(MOD_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('has high-visibility mods (sharpened, crown, wildcard, echo) registered', () => {
+    for (const id of ['sharpened', 'crown', 'wildcard', 'echo']) {
+      expect(MOD_ICON_SVGS[id], `missing renderer for ${id}`).toBeDefined();
+    }
+  });
+
+  it('total registered mod sigils is at least 18', () => {
+    expect(Object.keys(MOD_ICON_SVGS).length).toBeGreaterThanOrEqual(18);
+  });
 });

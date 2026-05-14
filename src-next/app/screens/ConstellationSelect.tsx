@@ -223,20 +223,80 @@ function Card({ c, compact, tight, progressId, unlocked }: { c: Constellation; c
 }
 
 function Glyph({ points, accent, tight }: { points: { x: number; y: number }[]; accent: string; tight?: boolean }) {
+  const field = fieldStars(points);
   return (
     <svg viewBox="0 0 100 100" width="100%" height={tight ? 36 : 60} style={{ display: 'block' }}>
-      {points.map((p, i, arr) => (
-        <g key={i}>
-          {i < arr.length - 1 && (
-            <line
-              x1={p.x} y1={p.y}
-              x2={arr[i + 1]!.x} y2={arr[i + 1]!.y}
-              stroke={accent} strokeWidth="0.6" strokeDasharray="2 3" opacity="0.6" />
-          )}
-          <circle cx={p.x} cy={p.y} r="2.4" fill="#f5c451"
-            style={{ filter: 'drop-shadow(0 0 4px #f5c451)' }} />
-        </g>
+      {/* Dim field stars: deterministic seeded specks that give the picker
+          a sense of depth so the connected constellation reads as figure
+          against a sky, not a graph of nodes. */}
+      {field.map((f, i) => (
+        <circle key={`f${i}`} cx={f.x} cy={f.y} r={f.r}
+          fill="#f3f0ff" opacity={f.o} />
       ))}
+      {/* Solid main connector at half stroke (the actual line) + dashed
+          overlay (memory of how the line was traced). Two-tone reads as
+          sigil rather than diagram. */}
+      {points.map((p, i, arr) => {
+        if (i >= arr.length - 1) return null;
+        const n = arr[i + 1]!;
+        return (
+          <g key={`l${i}`}>
+            <line x1={p.x} y1={p.y} x2={n.x} y2={n.y}
+              stroke={accent} strokeWidth="0.5" opacity="0.55"
+              strokeLinecap="round" />
+            <line x1={p.x} y1={p.y} x2={n.x} y2={n.y}
+              stroke={accent} strokeWidth="0.8" strokeDasharray="0.4 3"
+              opacity="0.85" strokeLinecap="round" />
+          </g>
+        );
+      })}
+      {points.map((p, i) => {
+        const isPrimary = i === 0;
+        const r = isPrimary ? 2.6 : 1.8;
+        return (
+          <g key={`s${i}`}>
+            <circle cx={p.x} cy={p.y} r={r * 2.4} fill={accent} opacity="0.18" />
+            <circle cx={p.x} cy={p.y} r={r * 1.5} fill={accent} opacity="0.35" />
+            <circle cx={p.x} cy={p.y} r={r} fill="#fff7e0"
+              style={{ filter: `drop-shadow(0 0 3px ${accent})` }} />
+            {isPrimary && (
+              <g stroke="#fff7e0" strokeWidth="0.4" strokeLinecap="round" opacity="0.9">
+                <line x1={p.x - 5} y1={p.y} x2={p.x + 5} y2={p.y} />
+                <line x1={p.x} y1={p.y - 5} x2={p.x} y2={p.y + 5} />
+              </g>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
+}
+
+// Deterministic dim background stars for the picker glyph. Seeded from
+// the input points so each constellation gets a stable field pattern
+// (no flicker on re-render, no two constellations sharing layout).
+function fieldStars(points: { x: number; y: number }[]) {
+  let seed = 0;
+  for (const p of points) seed = (seed * 31 + (p.x | 0) * 17 + (p.y | 0)) | 0;
+  const r = mulberry32(seed >>> 0);
+  const stars: { x: number; y: number; r: number; o: number }[] = [];
+  for (let i = 0; i < 6; i++) {
+    stars.push({
+      x: 4 + r() * 92,
+      y: 4 + r() * 92,
+      r: 0.4 + r() * 0.6,
+      o: 0.18 + r() * 0.18,
+    });
+  }
+  return stars;
+}
+
+function mulberry32(a: number) {
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
