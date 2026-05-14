@@ -92,14 +92,25 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
       type="button"
       onClick={buy}
       disabled={owned || !affordable}
-      className="text-left tap"
+      // panel-strong baseline aligns the perk card with the rest of
+      // the game's clickable cards (Hub trial, Shop offer). State-
+      // specific overlays (owned wash, locked desaturation, accent
+      // ring) layer on top via inline style.
+      className="panel-strong text-left tap"
       aria-label={`${perk.name} — ${owned ? 'owned' : `${perk.cost} cosmic dust`}`}
       style={{
         position: 'relative',
         padding: 14,
-        borderRadius: 12,
-        background: owned ? 'rgba(91,232,164,0.08)' : 'rgba(28,18,69,0.6)',
-        border: `1px solid ${ringColor}`,
+        // panel-strong already supplies a violet-gradient background;
+        // for owned perks we wash with the success tint as an overlay
+        // via gradient stacking so the panel's base stays visible.
+        background: owned
+          ? 'linear-gradient(180deg, rgba(91,232,164,0.18), rgba(15,9,37,0.85))'
+          : undefined,
+        // Accent ring inherits perk-state colour; overrides panel's
+        // default rgba(149,119,255,0.34) border without losing the
+        // shared shadow/inset-highlight from panel-strong.
+        borderColor: ringColor,
         color: owned ? '#5be8a4' : affordable ? '#f3f0ff' : '#9577ff',
         cursor: owned ? 'default' : affordable ? 'pointer' : 'not-allowed',
         opacity: owned || affordable ? 1 : 0.65,

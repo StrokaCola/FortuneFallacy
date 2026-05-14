@@ -124,10 +124,16 @@ export function CatalystStrip() {
     linkedIds.add(r.b);
   }
 
+  // Apply the scroll-fade utility only when the row actually overflows
+  // (5+ catalysts on a non-wide viewport). Pinning the class always
+  // would render the fade even on a single-card strip, which reads as
+  // visual debris when there's nothing offscreen to discover.
+  const useScrollFade = !wide && catalysts.length >= 5;
   return (
     <div
       ref={inspectRef}
       data-coach="catalyst-strip"
+      className={useScrollFade ? 'scroll-x-fade' : undefined}
       style={{
         position: 'absolute',
         // Stack from the bottom edge of TopBar (with breathing room) so
@@ -141,24 +147,10 @@ export function CatalystStrip() {
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
-        // Narrow viewports: cap the row width to the visible play area
-        // and allow horizontal scrolling for 5+ catalysts. The mask
-        // gradient on the right edge signals "more off-screen" so the
-        // player knows to swipe — without it the trailing cards just
-        // silently disappear.
         ...(wide ? {} : {
+          // Cap to visible play area so the absolute-positioned row
+          // never extends past the viewport edge.
           maxWidth: 'calc(100vw - 36px)',
-          overflowX: 'auto',
-          overflowY: 'visible',
-          paddingBottom: 4,
-          paddingRight: catalysts.length >= 5 ? 18 : 0,
-          WebkitMaskImage: catalysts.length >= 5
-            ? 'linear-gradient(90deg, #000 0%, #000 85%, transparent 100%)'
-            : undefined,
-          maskImage: catalysts.length >= 5
-            ? 'linear-gradient(90deg, #000 0%, #000 85%, transparent 100%)'
-            : undefined,
-          scrollbarWidth: 'none',
         }),
       }}
     >

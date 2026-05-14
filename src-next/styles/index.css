@@ -147,6 +147,32 @@ html, body {
 .panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius:16px; }
 .panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius:16px; box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
 
+/* Horizontal scroll row with right-edge fade.
+   Use when a flex/inline row can overflow horizontally and you want
+   the player to KNOW more items are off-screen instead of silently
+   hiding them past the viewport. Pair with `flex-shrink: 0` on the
+   children so they don't compress instead of overflowing.
+   Examples: CatalystStrip on tight (5+ catalysts), Codex tabs (10 tabs). */
+.scroll-x-fade {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;            /* Firefox */
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+  padding-bottom: 4px;              /* room for any focus ring on the children */
+  padding-right: 14px;              /* breathing room so the fade isn't on a child edge */
+}
+.scroll-x-fade::-webkit-scrollbar { display: none; }
+
+/* Action-button row from app/hud/ActionBar.tsx. The component sets
+   `data-action-bar-grow="true"` on tight viewports and the children
+   pick up the flex-grow rule via this selector — no call site has to
+   remember to set `flex: 1; min-width: X` on each button. */
+[data-action-bar-grow="true"] > * {
+  flex: 1 1 auto;
+  min-width: var(--action-bar-min-w, 80px);
+}
+
 /* Buttons */
 .btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms; user-select: none; }
 @media (hover: hover) { .btn:hover { filter: brightness(1.1); } }

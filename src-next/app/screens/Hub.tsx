@@ -19,6 +19,7 @@ import { describeDiceSpec } from '../../data/dice';
 import { isForgeDisabled } from '../../core/run/diceContext';
 import { stakeContext } from '../../core/run/stakeContext';
 import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
+import { ActionBar } from '../hud/ActionBar';
 
 const selectConstellationId = (s: GameState) => s.run.constellationId;
 const selectForgeDisabled = (s: GameState) => isForgeDisabled(s) || stakeContext(s).forgeDisabled;
@@ -439,30 +440,20 @@ export function Hub() {
             which floated this row into the middle of the screen on
             short landscape phones. Inline placement keeps it under the
             cards at every viewport size. */}
-        <div style={{
-          display: 'flex',
-          gap: tight ? 4 : 12,
-          flexWrap: 'wrap', justifyContent: 'center',
+        <ActionBar tight={tight} style={{
           maxWidth: 'calc(100% - 40px)',
-          // Tight: add a clear 12px gutter between trial cards and the
-          // action row. With `clamp(140px, 45vh, 180px)` card heights on
-          // a 360px-tall landscape phone, the previous 0 margin let the
-          // cards' "Begin" button overhang touch the action row's
-          // pill buttons. 12px is the breathing room without pushing
-          // the action row off-screen.
+          // Tight: clear 12px gutter between trial cards and the action
+          // row. With `clamp(140px, 45vh, 180px)` card heights on a
+          // 360px-tall landscape phone, the previous 0 margin let the
+          // cards' "Begin" button overhang touch the action row's pill
+          // buttons.
           marginTop: tight ? 12 : 4,
         }}>
-          {/* Tight viewports: buttons grow to share the row evenly with
-              a 80px floor each. Without this, three buttons on a
-              360px-wide landscape phone wrap into a 3-row stack that
-              eats vertical space. The flex grow + min-width packs
-              them into a 2-row stack (or 1-row on slightly wider) and
-              reclaims ~40% of the action-row height. */}
           {!forgeDisabled && (
             <button
               className="btn btn-ghost mat-interactive has-tip tap"
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'forge' })}
-              style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
               ⚒ Forge
               <span className="tip tip-above">
                 <span className="tip-title">Star Forge</span>
@@ -475,7 +466,7 @@ export function Hub() {
               className="btn btn-ghost mat-interactive has-tip tap"
               data-coach="skip-button"
               onClick={() => dispatch({ type: 'SKIP_BLIND' })}
-              style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
+              style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
               ↪ Skip (+{blinds[blindIdx]?.def.skipReward ?? 0} ◇)
               <span className="tip tip-above">
                 <span className="tip-title">Skip Trial</span>
@@ -486,14 +477,14 @@ export function Hub() {
           <button
             className="btn btn-ghost mat-interactive has-tip tap"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-            style={tight ? { fontSize: 11, padding: '4px 10px', flex: 1, minWidth: 80 } : undefined}>
+            style={tight ? { fontSize: 11, padding: '4px 10px' } : undefined}>
             ← Title
             <span className="tip tip-above">
               <span className="tip-title">Return to Title</span>
               Abandon this run and go back to the title screen. Progress this run is lost.
             </span>
           </button>
-        </div>
+        </ActionBar>
 
         {/* Travel portals are decorative and don't fit on landscape
             phones (~360px tall) alongside trial cards + action row. They

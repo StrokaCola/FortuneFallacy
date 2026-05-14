@@ -68,20 +68,12 @@ export function Codex() {
         </div>
 
         {/* Tab row: with 10 tabs the wrap into 2-3 rows on narrow
-            phones eats vertical space. Switch to a horizontal scroll
-            container with a fade-mask on the right edge so off-screen
-            tabs are obviously reachable instead of silently wrapped. */}
-        <div style={{
+            phones eats vertical space. Use the shared .scroll-x-fade
+            utility so the right-edge fade telegraphs off-screen tabs. */}
+        <div className="scroll-x-fade" style={{
           display: 'flex', gap: 6,
           justifyContent: 'flex-start',
           marginBottom: 18,
-          overflowX: 'auto',
-          overflowY: 'visible',
-          paddingBottom: 4,
-          paddingRight: 16,
-          WebkitMaskImage: 'linear-gradient(90deg, #000 0%, #000 90%, transparent 100%)',
-          maskImage: 'linear-gradient(90deg, #000 0%, #000 90%, transparent 100%)',
-          scrollbarWidth: 'none',
         }}>
           {TABS.map((t) => (
             <button
