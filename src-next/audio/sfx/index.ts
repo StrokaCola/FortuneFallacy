@@ -84,6 +84,30 @@ const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
   // 6 scaling catalysts could otherwise queue dozens of bells. 60ms gap
   // lets a chain READ as a chain without auditioning as a stutter.
   scalingTick: 60,
+  // 2026-05-14 audio polish — bound every mod voice so a 5-mod hand
+  // doesn't pile 5 simultaneous tails on top of each other. The
+  // long-sustain voices (Crescendo / Resonance / Awaken / Appetite)
+  // get aggressive gaps; the short percussive ones a lighter touch.
+  // Numbers picked to match each voice's natural decay time so the
+  // throttle is inaudible on isolated fires but bounds the worst case.
+  modPulse:       40,
+  modLoaded:      90,
+  modPipCharge:   40,
+  modBackstop:   100,
+  modCrown:      120,
+  modShatter:     90,
+  modSwirl:       80,
+  modFlashback:   90,
+  modConduit:     60,
+  modCrescendo:  220,
+  modResonance:  260,
+  modPyreMark:    40,
+  modTallyMark:   40,
+  modTwinGlow:   100,
+  modShardClink:  90,
+  modRhythmStack:240,
+  modAppetite:   200,
+  modAwaken:     500,
 };
 const lastPlayedAt: Partial<Record<SfxId, number>> = {};
 

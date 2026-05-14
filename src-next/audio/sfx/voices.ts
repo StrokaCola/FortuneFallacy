@@ -422,22 +422,26 @@ export function modConduit(bank: SynthBank): void {
 
 // ---- modCrescendo: pink swell + arriving chord ---------------------------
 // For Crescendo. Wave builds, chord lands as it peaks.
+// Shortened from '4n' swell + '8n' chord to '8n' + '16n' so a 5-die
+// Crescendo wave doesn't trail across the whole next die-tick.
 export function modCrescendo(bank: SynthBank): void {
   const t = jitteredTime();
   bank.modCrescendo.swell.volume.value = vol('modCrescendoSwell', -22);
   bank.modCrescendo.chord.volume.value = vol('modCrescendoChord', -16);
-  bank.modCrescendo.swell.triggerAttackRelease('4n', t);
-  bank.modCrescendo.chord.triggerAttackRelease(['E4', 'G4', 'B4'], '8n', t + 0.10);
+  bank.modCrescendo.swell.triggerAttackRelease('8n', t);
+  bank.modCrescendo.chord.triggerAttackRelease(['E4', 'G4', 'B4'], '16n', t + 0.10);
 }
 
 // ---- modResonance: held chord + harmonic ring ----------------------------
 // For Resonance — the legendary double-fire deserves a sustained shimmer.
+// Shortened from '2n' to '4n' so multiple Resonance fires in one hand
+// don't compound into a 2+ second wash of chord.
 export function modResonance(bank: SynthBank): void {
   const t = jitteredTime();
   bank.modResonance.chord.volume.value = vol('modResonanceChord', -14);
   bank.modResonance.harmonic.volume.value = vol('modResonanceHarmonic', -24);
-  bank.modResonance.chord.triggerAttackRelease(['D4', 'A4', 'D5'], '2n', t);
-  bank.modResonance.harmonic.triggerAttackRelease('4n', t + 0.05);
+  bank.modResonance.chord.triggerAttackRelease(['D4', 'A4', 'D5'], '4n', t);
+  bank.modResonance.harmonic.triggerAttackRelease('8n', t + 0.05);
 }
 
 // ---- modPyreMark: ember crackle + tiny ping ------------------------------
@@ -500,22 +504,26 @@ export function modRhythmStack(bank: SynthBank): void {
 
 // ---- modAppetite: inward whoosh + low gulp -------------------------------
 // For Glutton. Whoosh in, gulp lands.
+// Whoosh shortened from '4n' → '8n' so back-to-back glutton fires
+// don't pile a continuous low-frequency drone.
 export function modAppetite(bank: SynthBank): void {
   const t = jitteredTime();
   bank.modAppetite.whoosh.volume.value = vol('modAppetiteWhoosh', -22);
   bank.modAppetite.gulp.volume.value = vol('modAppetiteGulp', -18);
-  bank.modAppetite.whoosh.triggerAttackRelease('4n', t);
-  bank.modAppetite.gulp.triggerAttackRelease('G2', '16n', t + 0.18);
+  bank.modAppetite.whoosh.triggerAttackRelease('8n', t);
+  bank.modAppetite.gulp.triggerAttackRelease('G2', '16n', t + 0.12);
 }
 
 // ---- modAwaken: held drone + bright flash --------------------------------
 // For Dormant. Longest mod voice — the once-per-run awakening earns it.
+// Drone bounded to '4n' so concurrent awakenings cap at ~0.6s of overlap
+// instead of 2+ seconds.
 export function modAwaken(bank: SynthBank): void {
   const t = jitteredTime();
   bank.modAwaken.drone.volume.value = vol('modAwakenDrone', -14);
   bank.modAwaken.flash.volume.value = vol('modAwakenFlash', -16);
-  bank.modAwaken.drone.triggerAttackRelease(['D3', 'A3', 'D4'], '2n', t);
-  bank.modAwaken.flash.triggerAttackRelease('D5', '4n', t + 0.40);
+  bank.modAwaken.drone.triggerAttackRelease(['D3', 'A3', 'D4'], '4n', t);
+  bank.modAwaken.flash.triggerAttackRelease('D5', '8n', t + 0.25);
 }
 
 // ---- uiClick: short white noise burst ------------------------------------
