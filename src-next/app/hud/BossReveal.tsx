@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { BOSS_BLINDS, BOSS_CINEMATIC_FLAVOR } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
+import { BossDreadFlourish } from '../visual/BossDreadFlourish';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
 import { triggerShake } from '../visual/screenShake';
@@ -113,6 +114,12 @@ export function BossReveal() {
         }}>
           <BossSigil boss={def} size={240} animate="none" glow />
         </div>
+        {/* Per-boss bespoke flourish — adds a unique visual layer
+            above the sigil silhouette so each boss reveal feels
+            distinct rather than "same dread vignette, different
+            colour." See BossDreadFlourish for the boss-id → kind
+            mapping. */}
+        <BossDreadFlourish bossId={def.id} color={def.color} />
         <div className="f-mono uc boss-dread-label" style={{
           position: 'absolute',
           left: '50%', bottom: '12%',
