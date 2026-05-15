@@ -47,7 +47,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ display: 'flex', justifyContent: 'space-between' }}>
         <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>{label}</span>
-        <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}</span>
+        <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}<span style={{ opacity: 0.55, marginLeft: 1 }}>%</span></span>
       </span>
       <input
         className="ff-range"

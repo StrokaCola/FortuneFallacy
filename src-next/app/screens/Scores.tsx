@@ -111,7 +111,7 @@ export function Scores() {
       </div>
 
       <div
-        className="w-full max-w-md mb-4 overflow-x-auto"
+        className="w-full max-w-md mb-4 scroll-x-fade"
         style={{
           WebkitOverflowScrolling: 'touch',
           // The constellation picker is meaningless on the daily scope —

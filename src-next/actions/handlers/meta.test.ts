@@ -58,6 +58,18 @@ describe('SET_SCREEN', () => {
     expect(after.run).toBe(before.run);
     expect(after.pingCount).toBe(before.pingCount);
   });
+
+  it('clears a stale dieTip on screen change', () => {
+    const before = {
+      ...baseState(),
+      ui: {
+        screen: 'round' as const, paused: false, tooltip: null, transition: 'idle' as const,
+        dieTip: { dieIdx: 0, screenX: 100, screenY: 200, pointerType: 'mouse' as const },
+      },
+    };
+    const after = metaHandler({ type: 'SET_SCREEN', screen: 'hub' }, before).state;
+    expect(after.ui.dieTip).toBeNull();
+  });
 });
 
 describe('SET_PLAYER_NAME', () => {

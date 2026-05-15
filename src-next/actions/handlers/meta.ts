@@ -10,7 +10,10 @@ export const metaHandler: ActionHandler = (a, s) => {
         events: [{ type: 'onPing', payload: { msg: a.msg } }],
       };
     case 'SET_SCREEN':
-      return { state: { ...s, ui: { ...s.ui, screen: a.screen } }, events: [] };
+      // Clear the in-round die tooltip on every screen change. Without this,
+      // a stale tip captured from a Round long-press leaks into Hub/Shop and
+      // can render over the score panel (DieTip lives at Z.dieTip > Z.hudTop).
+      return { state: { ...s, ui: { ...s.ui, screen: a.screen, dieTip: null } }, events: [] };
     case 'SET_PLAYER_NAME':
       return { state: { ...s, meta: { ...s.meta, playerName: a.name } }, events: [] };
     case 'TOGGLE_PAUSE':

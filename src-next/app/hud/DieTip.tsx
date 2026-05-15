@@ -64,6 +64,11 @@ export function DieTip() {
   if (typeof document !== 'undefined' && document.body.dataset.coachActive === 'true') return null;
   const die = dice[activeTip.dieIdx];
   if (!die) return null;
+  // Paranoid guard: (0,0) screen coords mean the projection hasn't run yet
+  // (e.g. Dice3D init race) or a stale tip leaked across a screen change.
+  // Either way, rendering at the viewport origin lands the chip on the
+  // score panel — skip the render until valid coords arrive.
+  if (activeTip.screenX === 0 && activeTip.screenY === 0) return null;
 
   const mods = diceMods[activeTip.dieIdx] ?? [];
   const eds = diceModEditions[activeTip.dieIdx] ?? [];
@@ -104,7 +109,6 @@ export function DieTip() {
         top: topPx,
         transform: `translate(-50%, ${translateY})`,
         zIndex: Z.dieTip,
-        pointerEvents: 'auto',
         minWidth: 180,
         maxWidth: 280,
         padding: '8px 10px',
