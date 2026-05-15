@@ -68,6 +68,12 @@ export function ScreenTransition({
   // constellation wipe so the descent into play has a distinct visual
   // signature vs. routine screen-to-screen swaps.
   const enteringRound = phase === 'entering' && screenKey === 'round';
+  // Leaving a Round — counterpart drift OUTWARD as the round screen
+  // fades, so the player feels the cosmos releasing them back to the
+  // hub / shop / postmortem instead of just dimming in place. Reads
+  // the currently-rendered key (which is still the OUTGOING screen
+  // during the exit phase).
+  const exitingRound = phase === 'exiting' && renderedKey === 'round';
 
   return (
     <div
@@ -84,8 +90,55 @@ export function ScreenTransition({
     >
       <ConstellationWipe phase={phase} />
       {enteringRound && <StellarDive />}
+      {exitingRound && <StellarDrift />}
       {renderedChildren}
     </div>
+  );
+}
+
+// "Stellar drift" — counterpart to StellarDive, fired when the
+// player leaves the Round. A handful of soft star points drift
+// OUTWARD from center as the round screen fades, signalling "the
+// cosmos releases the play table" — the boom celebration's energy
+// doesn't just disappear with the fade; it gently radiates outward
+// into the next screen. Skipped under reduce-motion via class hook.
+function StellarDrift() {
+  return (
+    <svg
+      className="stellar-drift"
+      aria-hidden="true"
+      style={{
+        position: 'absolute', inset: 0,
+        pointerEvents: 'none',
+        zIndex: 1,
+      }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      {Array.from({ length: 10 }).map((_, i) => {
+        // Each streak runs from a small inner ring (radius 6) outward
+        // to a wider outer ring (radius 58) — softer reach than
+        // StellarDive's 70 so the drift reads as "letting go" rather
+        // than "diving in."
+        const angle = (i / 10) * Math.PI * 2 + 0.18; // small offset so drift doesn't mirror dive exactly
+        const xInner = 50 + Math.cos(angle) * 6;
+        const yInner = 50 + Math.sin(angle) * 6;
+        const xOuter = 50 + Math.cos(angle) * 58;
+        const yOuter = 50 + Math.sin(angle) * 58;
+        return (
+          <line
+            key={i}
+            className="stellar-drift-streak"
+            x1={xInner} y1={yInner}
+            x2={xOuter} y2={yOuter}
+            stroke="#fff7e0"
+            strokeWidth={0.18}
+            strokeLinecap="round"
+            style={{ animationDelay: `${i * 24}ms` }}
+          />
+        );
+      })}
+    </svg>
   );
 }
 

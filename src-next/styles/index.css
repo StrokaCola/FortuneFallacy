@@ -365,6 +365,16 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
 @keyframes orbit   { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes drift   { 0% { transform: translate(0,0); } 100% { transform: translate(-2%, 1%); } }
 @keyframes float-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* PackOverlay card entry — each card drifts up from below + scales
+   in. Composed with the existing float-y idle via inline
+   animation-delay; the entry uses `backwards` fill so the card is
+   invisible during its stagger wait, then animates in. Used in
+   PackOverlay.tsx; consumed via the keyframe name + custom delay
+   per card. */
+@keyframes pack-card-stagger-enter {
+  from { opacity: 0; transform: translateY(28px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 @keyframes card-wobble {
   0%, 100% { transform: translateY(0)   rotate(0); }
   25%      { transform: translateY(-3px) rotate(0.8deg); }
@@ -1251,6 +1261,28 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 .reduce-motion .stellar-dive,
 .reduce-motion .stellar-dive-streak { animation: none; opacity: 0; }
+
+/* Stellar drift — counterpart to stellar-dive, fired when the
+   player leaves the Round. Softer + slower fade-in so the drift
+   reads as "releasing" rather than "exploding outward." Mirrors
+   the dive's stroke-width pulse but with a gentler peak. */
+.stellar-drift { opacity: 0; animation: stellar-drift-fade 560ms ease-out forwards; }
+@keyframes stellar-drift-fade {
+  0%   { opacity: 0; }
+  40%  { opacity: 0.65; }
+  100% { opacity: 0; }
+}
+.stellar-drift-streak {
+  opacity: 0;
+  animation: stellar-drift-streak 560ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+@keyframes stellar-drift-streak {
+  0%   { opacity: 0; stroke-width: 0.06; }
+  45%  { opacity: 0.85; stroke-width: 0.22; }
+  100% { opacity: 0; stroke-width: 0.06; }
+}
+.reduce-motion .stellar-drift,
+.reduce-motion .stellar-drift-streak { animation: none; opacity: 0; }
 
 /* New-best stamp on the boom moment — drops down with overshoot,
    holds, then floats up + fades. Tied to the same lifecycle as the

@@ -144,7 +144,16 @@ export function PackOverlay() {
                 cursor: taken ? 'default' : 'pointer',
                 opacity: taken ? 0.35 : 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                animation: !taken ? `float-y ${3 + i * 0.4}s ease-in-out infinite` : undefined,
+                // Two-stage animation: entry (one-shot stagger via
+                // backwards-fill — card is invisible during its delay,
+                // then drifts up + scales in) chained with the idle
+                // float (delayed to start AFTER the entry settles so
+                // the two don't fight over the transform). Taken
+                // cards drop both — they're already past the
+                // celebration and shouldn't keep floating.
+                animation: !taken
+                  ? `pack-card-stagger-enter 420ms cubic-bezier(0.2, 0.9, 0.3, 1) ${i * 110}ms backwards, float-y ${3 + i * 0.4}s ease-in-out infinite ${i * 110 + 480}ms`
+                  : undefined,
               }}
             >
               <div className="f-mono uc" style={{
