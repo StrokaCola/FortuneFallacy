@@ -224,14 +224,19 @@ export function Title() {
               </div>
             )}
           </button>
-          {/* On tight viewports, fold the four secondary buttons into a
-              two-row wrap so they take half the vertical space. */}
+          {/* Wave Q — secondary nav reflows into a 2-column grid even on
+              desktop. Previously stacked vertically into 5 rows, which
+              read as listy and pushed Tip of the Day below the fold on
+              shorter viewports. Tight viewports stay row-wrap so 3 or
+              4-column layouts emerge naturally on phone landscape. */}
           <div style={{
-            display: 'flex',
-            flexDirection: tight ? 'row' : 'column',
-            flexWrap: tight ? 'wrap' : 'nowrap',
+            display: tight ? 'flex' : 'grid',
+            flexDirection: tight ? 'row' : undefined,
+            flexWrap: tight ? 'wrap' : undefined,
+            gridTemplateColumns: tight ? undefined : `repeat(2, ${ghostBtnWidth}px)`,
             gap: buttonsGap,
             justifyContent: 'center',
+            justifyItems: tight ? undefined : 'center',
             maxWidth: tight ? 360 : undefined,
           }}>
             <button
