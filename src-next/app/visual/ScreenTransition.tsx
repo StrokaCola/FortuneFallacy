@@ -67,6 +67,12 @@ export function ScreenTransition({
   const [renderedKey, setRenderedKey] = useState(screenKey);
   const [renderedChildren, setRenderedChildren] = useState<ReactNode>(children);
   const [direction, setDirection] = useState<Direction>('neutral');
+  // Wave S — `fromKey` snapshots the screen the player left so the
+  // overlay layer can branch on the specific pair (e.g. Hub → Round
+  // gets the PortalWarp, but Shop → Round skips it). Updated alongside
+  // the phase swap so the entering screen still knows where it came
+  // from after lastKey.current rolls forward.
+  const [fromKey, setFromKey] = useState<string>(screenKey);
   const lastKey = useRef(screenKey);
   const tEnterRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
@@ -81,6 +87,7 @@ export function ScreenTransition({
     // down" scale.
     const nextDirection = transitionDirection(lastKey.current, screenKey);
     setDirection(nextDirection);
+    setFromKey(lastKey.current);
 
     setPhase('exiting');
     const tExit = window.setTimeout(() => {
@@ -124,6 +131,15 @@ export function ScreenTransition({
   // the currently-rendered key (which is still the OUTGOING screen
   // during the exit phase).
   const exitingRound = phase === 'exiting' && renderedKey === 'round';
+  // Wave S — Hub→Round is the most narratively-charged transition (the
+  // player chose a trial; they're committing to it). On top of the
+  // stellar dive, fire a PortalWarp: three concentric rings expand
+  // outward from center with a subtle chromatic shimmer. Only on the
+  // Hub→Round direction, not on Shop→Round or Forge→Round, so the
+  // signature stays "commit to a trial" rather than "every Round
+  // entry." Reads fromKey (the captured source screen) so the check
+  // still works after lastKey.current rolls forward mid-swap.
+  const portalWarp = phase === 'entering' && screenKey === 'round' && fromKey === 'hub';
 
   return (
     <div
@@ -140,6 +156,7 @@ export function ScreenTransition({
     >
       <ConstellationWipe phase={phase} />
       {enteringRound && <StellarDive />}
+      {portalWarp && <PortalWarp />}
       {exitingRound && <StellarDrift />}
       {renderedChildren}
     </div>
@@ -188,6 +205,55 @@ function StellarDrift() {
           />
         );
       })}
+    </svg>
+  );
+}
+
+// Wave S — Portal warp layer. Three concentric cyan rings expand
+// outward from the center with a brief gold flare in the middle,
+// plus a chromatic-shimmer split so the entry reads as "stepping
+// through a gate" rather than "the screen faded." Only fires on
+// Hub → Round (the player's deliberate commitment to a trial).
+function PortalWarp() {
+  return (
+    <svg
+      className="portal-warp"
+      aria-hidden="true"
+      style={{
+        position: 'absolute', inset: 0,
+        pointerEvents: 'none',
+        zIndex: 2,
+        mixBlendMode: 'screen',
+      }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      {/* Three rings staggered 80ms apart so the warp reads as a
+          ripple rather than a single pop. Each expands from r=4 to
+          r=70 and fades out over 500ms. The middle ring picks up
+          a faint chromatic split via a duplicate offset stroke. */}
+      {[0, 1, 2].map((i) => (
+        <circle
+          key={i}
+          className={`portal-warp-ring portal-warp-ring-${i}`}
+          cx={50}
+          cy={50}
+          r={4}
+          fill="none"
+          stroke={i === 1 ? '#f5c451' : '#7be3ff'}
+          strokeWidth={0.6}
+          style={{ animationDelay: `${i * 80}ms` }}
+        />
+      ))}
+      {/* Center flare — a brief gold bloom right as the rings
+          expand outward, the visual "moment of crossing." */}
+      <circle
+        className="portal-warp-core"
+        cx={50}
+        cy={50}
+        r={3}
+        fill="#fff7e0"
+      />
     </svg>
   );
 }

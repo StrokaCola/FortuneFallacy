@@ -1615,6 +1615,42 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 .reduce-motion .stellar-drift,
 .reduce-motion .stellar-drift-streak { animation: none; opacity: 0; }
 
+/* Wave S — Portal warp layer on Hub→Round only. Three rings expand
+   outward + a gold core flare punches in the middle. Total runtime
+   ~640ms (3 rings × 80ms stagger + 400ms each). Reduce-motion strips
+   every animation; the warp layer is decorative and the existing
+   StellarDive still tells the player a round started. */
+.portal-warp { opacity: 0; animation: portal-warp-fade 640ms ease-out forwards; }
+@keyframes portal-warp-fade {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+.portal-warp-ring {
+  opacity: 0;
+  transform-origin: 50% 50%;
+  animation: portal-warp-ring 420ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  filter: drop-shadow(0 0 1.2px currentColor);
+}
+@keyframes portal-warp-ring {
+  0%   { opacity: 0; r: 4; stroke-width: 0.8; }
+  35%  { opacity: 0.9; stroke-width: 0.5; }
+  100% { opacity: 0; r: 70; stroke-width: 0.1; }
+}
+.portal-warp-core {
+  opacity: 0;
+  animation: portal-warp-core 320ms ease-out forwards;
+  filter: drop-shadow(0 0 2.5px #fff7e0);
+}
+@keyframes portal-warp-core {
+  0%   { opacity: 0; r: 1; }
+  50%  { opacity: 1; r: 5; }
+  100% { opacity: 0; r: 7; }
+}
+.reduce-motion .portal-warp,
+.reduce-motion .portal-warp-ring,
+.reduce-motion .portal-warp-core { animation: none; opacity: 0; }
+
 /* New-best stamp on the boom moment — drops down with overshoot,
    holds, then floats up + fades. Tied to the same lifecycle as the
    boom number so it tracks the celebration arc. */
