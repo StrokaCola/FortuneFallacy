@@ -150,6 +150,28 @@ export function startAudioBridge(): () => void {
       lastProgress = p;
       audioEngine.setProgress(p);
     }
+    // Wave O — color-temperature ramp. Stage-root carries a
+    // data-score-warmth attribute keyed off the current score / target
+    // ratio. CSS layers (see styles/index.css "Wave O score warmth"
+    // block) add a stepped warmth tint to the screen as the player
+    // approaches and crosses the trial target. Bypassed under
+    // .reduce-motion; ring-buffered so we don't thrash setAttribute.
+    if (typeof document !== 'undefined' && s.ui.screen === 'round' && target > 0) {
+      const ratio = s.round.score / target;
+      const next =
+        ratio >= 1.5 ? '4' :
+        ratio >= 1.0 ? '3' :
+        ratio >= 0.7 ? '2' :
+        ratio >= 0.35 ? '1' :
+        '0';
+      const stage = document.getElementById('stage-root');
+      if (stage && stage.getAttribute('data-score-warmth') !== next) {
+        stage.setAttribute('data-score-warmth', next);
+      }
+    } else if (typeof document !== 'undefined' && prev.ui.screen === 'round' && s.ui.screen !== 'round') {
+      const stage = document.getElementById('stage-root');
+      if (stage) stage.removeAttribute('data-score-warmth');
+    }
   });
 
   return () => {
