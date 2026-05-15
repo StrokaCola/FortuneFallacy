@@ -6,6 +6,19 @@ import { CHALLENGES } from '../../data/challenges';
 import { lookupConstellation } from '../../data/constellations';
 import { lookupStake } from '../../data/stakes';
 
+// Wave M — per-challenge glyph + accent. Each challenge id maps to a
+// unicode glyph + tint so the row of cards differentiates at a glance
+// instead of all reading as "another orange BEGIN button". Falls back
+// to a neutral sigil if a new challenge ships without an entry.
+const CHALLENGE_VISUALS: Record<string, { glyph: string; color: string }> = {
+  silent_market: { glyph: '◌', color: '#bba8ff' }, // closed lips / no exchange
+  cold_forge:    { glyph: '❄', color: '#7be3ff' }, // ice over the hammer
+  one_breath:    { glyph: '◉', color: '#ff7847' }, // single ember
+  austere:       { glyph: '⊞', color: '#f5c451' }, // capped grid
+  siege:         { glyph: '▣', color: '#e2334a' }, // walled
+};
+const FALLBACK_VISUAL = { glyph: '◇', color: '#bba8ff' };
+
 const selectChallengeWins = (s: GameState) => s.meta.challengeWins;
 
 export function ChallengeSelect() {
@@ -37,13 +50,14 @@ export function ChallengeSelect() {
             const won = wins.includes(ch.id);
             const constellation = lookupConstellation(ch.constellationId);
             const stake = lookupStake(ch.stakeId ?? 'spark');
+            const visual = CHALLENGE_VISUALS[ch.id] ?? FALLBACK_VISUAL;
             return (
               <div
                 key={ch.id}
                 className="panel"
                 style={{
                   padding: 16, borderRadius: 12,
-                  border: `1px solid ${won ? '#f5c45166' : 'rgba(149,119,255,0.25)'}`,
+                  border: `1px solid ${won ? '#f5c45166' : `${visual.color}40`}`,
                   background: 'rgba(15,9,37,0.65)',
                   display: 'flex', flexDirection: 'column', gap: 10,
                   position: 'relative',
@@ -60,8 +74,21 @@ export function ChallengeSelect() {
                     ✓ cleared
                   </span>
                 )}
-                <div className="f-display" style={{ fontSize: 20, color: '#f3f0ff' }}>
-                  {ch.name}
+                {/* Per-challenge glyph header — differentiates the
+                    row at a glance instead of relying on the name
+                    alone. Color also tints the BEGIN button border. */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <span aria-hidden style={{
+                    fontSize: 28, lineHeight: 1,
+                    color: visual.color,
+                    textShadow: `0 0 12px ${visual.color}66`,
+                    width: 36, textAlign: 'center',
+                  }}>{visual.glyph}</span>
+                  <div className="f-display" style={{ fontSize: 20, color: '#f3f0ff', flex: 1 }}>
+                    {ch.name}
+                  </div>
                 </div>
                 <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.22em', color: '#bba8ff' }}>
                   {constellation.name} · {stake.name}
@@ -83,7 +110,7 @@ export function ChallengeSelect() {
                 </div>
                 <button
                   type="button"
-                  className="btn btn-primary mat-interactive tap"
+                  className="btn btn-cta mat-interactive tap"
                   onClick={() => dispatch({
                     type: 'NEW_RUN',
                     constellationId: ch.constellationId,
