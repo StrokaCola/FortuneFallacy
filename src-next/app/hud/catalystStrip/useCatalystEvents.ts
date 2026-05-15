@@ -14,7 +14,23 @@ import { bus } from '../../../events/bus';
 import { lookupCatalyst, SCALING_CATALYST_IDS, COLLISION_CATALYST_IDS } from '../../../data/catalysts';
 import { catalystIdFromEvent, resonanceIdFromEvent } from '../../../core/upgrades/eventId';
 import { lookupResonance } from '../../../data/resonances';
+import type { CatalystEdition } from '../../../state/slices/run';
 import type { FloaterRecord, RingRecord, PulseKind } from './types';
+
+// Per-edition fire-ring color override. Foil rings glint gold,
+// holo rings push violet (the holo accent), poly rings push
+// orange (the poly accent), void rings stay deep-violet for the
+// "cosmic" feel. Null = no override, fall back to legendary /
+// collision / catalyst color.
+function editionRingColor(edition: CatalystEdition | undefined): string | null {
+  switch (edition) {
+    case 'foil': return '#ffd97a';
+    case 'holo': return '#cc88ff';
+    case 'poly': return '#ff7847';
+    case 'void': return '#aa66ff';
+    default: return null;
+  }
+}
 
 // Animation timings — tuned so the per-fire burst feels distinct
 // without spilling into the next event. Mirror values used by the
@@ -48,7 +64,11 @@ export type CatalystEventState = {
  *   staggered by 120ms so a chain of fires reads sequentially
  *   rather than overlapping.
  */
-export function useCatalystEvents(catalysts: string[], tight: boolean): CatalystEventState {
+export function useCatalystEvents(
+  catalysts: string[],
+  tight: boolean,
+  editions: Record<string, CatalystEdition | undefined> = {},
+): CatalystEventState {
   const [pulsing, setPulsing] = useState<Record<string, PulseKind | undefined>>({});
   const [floaters, setFloaters] = useState<FloaterRecord[]>([]);
   const [rings, setRings] = useState<RingRecord[]>([]);
@@ -179,10 +199,16 @@ export function useCatalystEvents(catalysts: string[], tight: boolean): Catalyst
       // screens where 4+ concurrent rings stack into visual mud.
       if (!tight) {
         const ringKey = ++ringKeyRef.current;
+        // Edition tints win over the rarity / kind defaults so a
+        // foil/holo/poly/void catalyst's fire ring matches its
+        // surface treatment. Legendary still keeps the warm coral
+        // when no edition is set.
+        const editionTint = editionRingColor(editions[catalystId]);
         const ringColor =
-          isLegendary ? '#ff9466'
-          : isCollision ? COLLISION_RING_COLOR
-          : meta?.color ?? '#7be3ff';
+          editionTint ??
+          (isLegendary ? '#ff9466'
+            : isCollision ? COLLISION_RING_COLOR
+            : meta?.color ?? '#7be3ff');
         setRings((rs) => [...rs, { key: ringKey, catalystId, color: ringColor }]);
         track(() => {
           setRings((rs) => rs.filter((r) => r.key !== ringKey));

@@ -17,6 +17,7 @@ import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
 import type { CatalystEdition } from '../../../state/slices/run';
 import { offerMeta, editionBonusDescription } from './offerMeta';
 import { EditionBadge } from './EditionBadge';
+import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
 
 const ACCENT = '#7be3ff';
 
@@ -90,7 +91,11 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
         />
       )}
       <div
-        className={`panel-strong${isLegendary ? ' legendary-aura' : ''}`}
+        className={[
+          'panel-strong',
+          isLegendary ? 'legendary-aura' : '',
+          isLegendary ? 'ff-legendary-lift' : '',
+        ].filter(Boolean).join(' ')}
         onPointerEnter={() => sfxPlay('cardFlip')}
         onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
         style={{
@@ -107,12 +112,27 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
           overflow: 'hidden',
         }}
       >
-        {/* Holographic foil sweep — legendary only. Sits above the
-            panel-strong gradient but below the content via z-index. */}
-        {isLegendary && (
+        {/* Bespoke edition surface — same per-edition material
+            language as the in-strip CatalystCard. Foil/holo/poly/void
+            each render a distinct visual phenomenon below the card
+            content. */}
+        {o.kind === 'catalyst' && o.edition && (
+          <div
+            className={`ff-edition-surface ${
+              o.edition === 'foil' ? 'ff-surface-foil' :
+              o.edition === 'holo' ? 'ff-surface-holo' :
+              o.edition === 'poly' ? 'ff-surface-poly' :
+              o.edition === 'void' ? 'ff-surface-void' : ''
+            }`}
+            aria-hidden="true"
+          />
+        )}
+        {/* Per-legendary signature flourish + idle embers. Catalyst
+            kind only; mods/vouchers/packs don't have legendary tier. */}
+        {isLegendary && o.kind === 'catalyst' && (
           <>
-            <div className="ff-holo" />
-            <div className="ff-holo-shimmer" />
+            <LegendaryFlourish catalystId={o.id} />
+            <LegendaryEmbers />
           </>
         )}
 
@@ -152,9 +172,9 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
               )}
             </KindFrame>
           </div>
-          <div className="f-head" style={{
-            fontSize: 14, color: '#f3f0ff', marginTop: 12, textAlign: 'center',
-            textShadow: isLegendary ? `0 0 8px ${ringColor}80` : undefined,
+          <div className={`f-head${isLegendary ? ' ff-legendary-name' : ''}`} style={{
+            fontSize: 14, color: isLegendary ? '#ffd97a' : '#f3f0ff', marginTop: 12, textAlign: 'center',
+            textShadow: isLegendary ? `0 0 10px ${ringColor}88` : undefined,
           }}>
             {m.name}
             {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
