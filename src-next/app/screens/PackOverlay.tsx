@@ -7,6 +7,7 @@ import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { sfxPlay } from '../../audio/sfx';
 import { Z } from '../hud/zLayers';
 import { useFocusTrap } from '../hud/useFocusTrap';
+import { useModalExit } from '../hooks/useModalExit';
 
 const accent = '#cc88ff';
 
@@ -49,7 +50,12 @@ export function PackOverlay() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
-  if (!pack) return null;
+  // Stay mounted long enough to play an exit fade when the player
+  // takes / skips. Pack picker is the highest-energy modal in the
+  // game — pairing entry + exit fades keeps the open and the close
+  // feeling like one composed beat.
+  const { rendered, exiting } = useModalExit(isOpen, 140);
+  if (!rendered || !pack) return null;
 
   const def = lookupPack(pack.kind);
   const title = def?.name ?? 'Galaxy Pack';
@@ -60,6 +66,7 @@ export function PackOverlay() {
   return (
     <div
       ref={dialogRef}
+      className={exiting ? 'modal-exit-anim' : undefined}
       role="dialog"
       aria-modal="true"
       aria-label={`${title} pack — pick ${pack.picksLeft} ${pack.picksLeft === 1 ? itemNoun : itemNounPlural}`}
@@ -69,7 +76,10 @@ export function PackOverlay() {
         backdropFilter: 'blur(6px)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: '32px 16px',
-        pointerEvents: 'auto',
+        pointerEvents: exiting ? 'none' : 'auto',
+        animation: exiting
+          ? 'modalFadeOut var(--modal-out, 140ms) ease-in forwards'
+          : 'fadein var(--modal-in, 200ms) var(--ease-modal, ease-out)',
       }}
     >
       <div className="f-mono uc" style={{ fontSize: 11, color: accent, letterSpacing: '0.4em' }}>
@@ -134,7 +144,16 @@ export function PackOverlay() {
                 cursor: taken ? 'default' : 'pointer',
                 opacity: taken ? 0.35 : 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                animation: !taken ? `float-y ${3 + i * 0.4}s ease-in-out infinite` : undefined,
+                // Two-stage animation: entry (one-shot stagger via
+                // backwards-fill — card is invisible during its delay,
+                // then drifts up + scales in) chained with the idle
+                // float (delayed to start AFTER the entry settles so
+                // the two don't fight over the transform). Taken
+                // cards drop both — they're already past the
+                // celebration and shouldn't keep floating.
+                animation: !taken
+                  ? `pack-card-stagger-enter 420ms cubic-bezier(0.2, 0.9, 0.3, 1) ${i * 110}ms backwards, float-y ${3 + i * 0.4}s ease-in-out infinite ${i * 110 + 480}ms`
+                  : undefined,
               }}
             >
               <div className="f-mono uc" style={{

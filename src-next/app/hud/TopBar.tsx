@@ -11,6 +11,7 @@ import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useReportHudHeight } from './useReportHudHeight';
 import { bus } from '../../events/bus';
+import { useCounterTween } from '../hooks/useCounterTween';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
 // switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
@@ -130,6 +131,12 @@ export function TopBar({
             counter.style.animation = 'scoreCounterCatch 220ms cubic-bezier(0.2, 1.6, 0.4, 1)';
             window.setTimeout(() => { if (counter) counter.style.animation = ''; }, 240);
           }
+          // Celebration afterglow — fires alongside the catch pulse
+          // so the boom's golden warmth visually carries into the
+          // round → shop screen swap that follows ~200ms later.
+          // App-level <AfterglowOverlay> consumes the event so the
+          // tint persists across the screen transition.
+          bus.emit('onCelebrationAfterglow', { durationMs: 900 });
         }
       };
       requestAnimationFrame(tick);
@@ -140,6 +147,13 @@ export function TopBar({
   const scoreFmt = formatScore(displayedScore);
   const targetFmt = target ? formatScore(target) : null;
   const isCompactScore = scoreFmt.display !== scoreFmt.full;
+  // Smooth count-ups / count-downs on the three secondary counters.
+  // Shards gets the longest tween because deltas are biggest (clear
+  // rewards can drop +20 in a single frame); hands / rerolls deltas
+  // are usually ±1 so a tighter ramp avoids feeling laggy.
+  const shardsDisplay = useCounterTween(shards, 320);
+  const handsDisplay = useCounterTween(hands, 200);
+  const rerollsDisplay = useCounterTween(rerolls, 200);
   const tight = useIsTightStage();
   // The big blind line restates the same word that's already in the
   // small "ante NN · blind" label above it. On a phone where vertical
@@ -212,7 +226,7 @@ export function TopBar({
           <div className="f-display" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
         )}
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
-          hands {hands} · rerolls {rerolls}
+          hands {handsDisplay} · rerolls {rerollsDisplay}
         </div>
         {/* Boss debuff readout — small chip with the boss's name + icon,
             long-press / hover for the full description. Always sits in
@@ -284,7 +298,7 @@ export function TopBar({
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
         <div className="has-tip" style={{ display: 'flex', alignItems: 'baseline', gap: 8, position: 'relative' }}>
           <Sigil kind="star" size={tight ? 14 : 20} color="#f5c451" />
-          <div className="f-display num" style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}>{shards}</div>
+          <div className="f-display num" style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}>{shardsDisplay}</div>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
           <span className="tip">
             <span className="tip-title">Shards ◆</span>

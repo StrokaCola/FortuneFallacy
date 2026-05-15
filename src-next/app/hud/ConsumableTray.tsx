@@ -100,7 +100,8 @@ export function ConsumableTray() {
                   cursor: locked ? 'not-allowed' : 'pointer',
                   color: '#dcd4ff',
                   opacity: locked ? 0.4 : 1,
-                  filter: locked ? 'grayscale(0.7)' : undefined,
+                  filter: locked ? 'grayscale(0.7)' : 'grayscale(0)',
+                  transition: 'opacity 120ms ease, filter 120ms ease',
                 }}>
                 <div className="f-mono uc" style={{
                   fontSize: 8, letterSpacing: '0.18em', color,

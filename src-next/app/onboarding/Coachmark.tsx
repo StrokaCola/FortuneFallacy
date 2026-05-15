@@ -32,7 +32,7 @@ function rectsEqual(a: Rect | null, b: Rect | null): boolean {
   return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
 }
 
-export function Coachmark({ def }: { def: CoachmarkDef }) {
+export function Coachmark({ def, exiting = false }: { def: CoachmarkDef; exiting?: boolean }) {
   const tight = useIsTightStage();
   const [rect, setRect] = useState<Rect | null>(() => readAnchorRect(def.anchor));
 
@@ -110,8 +110,10 @@ export function Coachmark({ def }: { def: CoachmarkDef }) {
         // crash overlays" tier — coachmarks sit at the same level so a
         // future Z-map change doesn't strand them under a new modal.
         zIndex: Z.orientation,
-        pointerEvents: 'auto',
-        animation: 'fadein 200ms ease-out',
+        pointerEvents: exiting ? 'none' : 'auto',
+        animation: exiting
+          ? 'modalFadeOut 160ms ease-in forwards'
+          : 'fadein 200ms ease-out',
         // Bound vertical growth so a long hint can't push the bubble
         // off-screen on a 320-tall landscape phone.
         maxHeight: '60vh',

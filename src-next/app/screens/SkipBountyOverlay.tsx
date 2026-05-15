@@ -14,6 +14,7 @@ import { CATALYST_META } from '../../data/catalysts';
 import { Z } from '../hud/zLayers';
 import { useFocusTrap } from '../hud/useFocusTrap';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { useModalExit } from '../hooks/useModalExit';
 
 const selectPendingSkipBounty = (s: GameState) => s.shop.pendingSkipBounty;
 
@@ -47,7 +48,10 @@ export function SkipBountyOverlay() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, bounty]);
 
-  if (!bounty) return null;
+  // Stay mounted long enough to fade out cleanly when the player
+  // resolves the bounty.
+  const { rendered, exiting } = useModalExit(isOpen, 140);
+  if (!rendered || !bounty) return null;
 
   return (
     <div
@@ -55,13 +59,19 @@ export function SkipBountyOverlay() {
       role="dialog"
       aria-label="Choose your skip bounty"
       ref={dialogRef}
+      className={exiting ? 'modal-exit-anim' : undefined}
       style={{
         position: 'absolute', inset: 0,
         background: 'rgba(7,5,26,0.78)',
-        pointerEvents: 'auto',
-        zIndex: Z.bannerArrival,
+        pointerEvents: exiting ? 'none' : 'auto',
+        // Forced-choice modal — stack above banners (Z.bannerArrival = 40)
+        // so a celebration toast can't pop on top of it. Matches
+        // PackOverlay's Z.overlay (100).
+        zIndex: Z.overlay,
         display: 'grid', placeItems: 'center',
-        animation: 'fadein 220ms ease-out',
+        animation: exiting
+          ? 'modalFadeOut var(--modal-out, 140ms) ease-in forwards'
+          : 'fadein var(--modal-in, 220ms) var(--ease-modal, ease-out)',
         padding: tight ? 16 : 32,
       }}
     >

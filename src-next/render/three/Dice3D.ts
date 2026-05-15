@@ -111,6 +111,12 @@ type DieAnim = {
   // tilt once `performance.now()` crosses this value (set ~700ms in
   // the future to land after the primary tumble settles). 0 = idle.
   banishPopStart: number;
+  // Lock-toggle click pulse — ms timestamp when this die's locked
+  // state last flipped. Render loop applies a brief scale bounce
+  // (1 → 1.08 → 0.95 → 1 over 240ms) so the tap reads as "caught"
+  // instead of just the silent translate to/from the hold strip.
+  // 0 = idle. Set by syncDice on lock-state change.
+  lockPulseStart: number;
   // Physical shape (d4/d6/d8/d10/d12/d20). Drives the lock-snap rotation
   // table and tells the lens/halo loop how many faces this die has.
   shape: DieShape;
@@ -1283,6 +1289,7 @@ export class Dice3D {
         faceHaloMats: built.faceHaloMats,
         scorePopStart: 0,
         banishPopStart: 0,
+        lockPulseStart: 0,
         shape,
         faceValues,
         baseScale,
@@ -1403,6 +1410,7 @@ export class Dice3D {
           faceHaloMats: built.faceHaloMats,
           scorePopStart: 0,
         banishPopStart: 0,
+          lockPulseStart: 0,
           shape,
           faceValues,
           baseScale,
@@ -1547,6 +1555,13 @@ export class Dice3D {
       const wasLocked = die.locked;
       const isLocked = !!d.locked;
       die.locked = isLocked;
+      // Fire a brief scale bounce when the lock state flips, so the
+      // tap reads as "caught" instead of just the silent slide to /
+      // from the hold strip. Skip the initial mount where wasLocked
+      // and isLocked already match (no state change → no pulse).
+      if (wasLocked !== isLocked) {
+        die.lockPulseStart = performance.now();
+      }
 
       // Position target. Scale targets are world-space and bake in `baseScale`
       // so single-die specs (Argo) animate to a much larger end-pose.
@@ -1948,6 +1963,26 @@ export class Dice3D {
           // While scoring, dim non-active dice slightly to draw focus to the active one.
           if (this.scoringActive && !isActiveScoring && d.scorePopStart === 0) {
             popMul *= 0.85;
+          }
+          // Lock-toggle click pulse — brief multiplicative scale
+          // bounce on top of whatever the lerp + score pop are
+          // doing. Bell curve over 240ms: 1 → 1.08 (at 35%) → 0.95
+          // (at 70%) → 1 (settle). After 240ms, clear the timestamp
+          // so the pulse doesn't keep firing.
+          if (d.lockPulseStart > 0) {
+            const lockDt = now - d.lockPulseStart;
+            const LOCK_PULSE_MS = 240;
+            if (lockDt < LOCK_PULSE_MS) {
+              const lt = lockDt / LOCK_PULSE_MS;
+              // 3-segment piecewise — fast overshoot, recovery, settle.
+              let lockMul = 1;
+              if (lt < 0.35) lockMul = 1 + 0.08 * (lt / 0.35);
+              else if (lt < 0.7) lockMul = 1.08 - 0.13 * ((lt - 0.35) / 0.35);
+              else lockMul = 0.95 + 0.05 * ((lt - 0.7) / 0.3);
+              popMul *= lockMul;
+            } else {
+              d.lockPulseStart = 0;
+            }
           }
           d.group.scale.setScalar(sc * popMul);
           d.group.quaternion.slerpQuaternions(d.startQuat, d.targetQuat, t);

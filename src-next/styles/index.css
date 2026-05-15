@@ -33,8 +33,16 @@
   --snap-fast: 80ms;
   --snap: 120ms;
   --savored-short: 450ms;
-  --savored: 600ms;
+  --savored: 720ms;
   --savored-long: 900ms;
+  /* Modal entry / exit timing — every overlay should pair an enter
+     fade with a matching exit so the close doesn't snap. Exit is
+     slightly faster than enter so the release feels tighter than
+     the deliberate open. Consumed by useModalExit + the modalExit
+     keyframe below. */
+  --modal-in: 200ms;
+  --modal-out: 140ms;
+  --ease-modal: cubic-bezier(0.2, 0.9, 0.3, 1);
   --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-savor: cubic-bezier(0.25, 0.46, 0.2, 1.0);
 
@@ -185,7 +193,7 @@ html, body {
 }
 
 /* Buttons */
-.btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms; user-select: none; }
+.btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms, opacity 120ms; user-select: none; }
 @media (hover: hover) { .btn:hover { filter: brightness(1.1); } }
 .btn:active:not(:disabled) { filter: brightness(0.92); }
 .btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
@@ -357,6 +365,35 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
 @keyframes orbit   { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes drift   { 0% { transform: translate(0,0); } 100% { transform: translate(-2%, 1%); } }
 @keyframes float-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* PackOverlay card entry — each card drifts up from below + scales
+   in. Composed with the existing float-y idle via inline
+   animation-delay; the entry uses `backwards` fill so the card is
+   invisible during its stagger wait, then animates in. Used in
+   PackOverlay.tsx; consumed via the keyframe name + custom delay
+   per card. */
+@keyframes pack-card-stagger-enter {
+  from { opacity: 0; transform: translateY(28px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Celebration afterglow — radial gold tint that fires alongside
+   the boom catch pulse and persists through the round → shop
+   screen swap. Fades in fast, holds briefly, fades out gradually
+   so the warmth lingers as the next screen takes focus. Used by
+   `<AfterglowOverlay>` (App-mounted) with `animationDuration`
+   set inline from the bus event payload. */
+.vfx-afterglow {
+  opacity: 0;
+  animation-name: vfx-afterglow-fade;
+  animation-timing-function: cubic-bezier(0.2, 0.85, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes vfx-afterglow-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.85; }
+  45%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+.reduce-motion .vfx-afterglow { animation: none; opacity: 0; }
 @keyframes card-wobble {
   0%, 100% { transform: translateY(0)   rotate(0); }
   25%      { transform: translateY(-3px) rotate(0.8deg); }
@@ -384,6 +421,11 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
   100% { transform: translate(-50%, -72px) scale(0.95); opacity: 0; }
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+/* Mirrored exit — paired with `fadein` for any modal that uses
+   useModalExit. Slightly different easing (ease-in vs ease-out) so
+   the exit reads as a release, not a reverse of the entry. */
+@keyframes modalFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.96); } }
+.reduce-motion .modal-exit-anim { animation: none; opacity: 0; }
 /* Mobile bottom-sheet entrance — slides up from below the viewport. */
 @keyframes sheetSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -1238,6 +1280,28 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 .reduce-motion .stellar-dive,
 .reduce-motion .stellar-dive-streak { animation: none; opacity: 0; }
+
+/* Stellar drift — counterpart to stellar-dive, fired when the
+   player leaves the Round. Softer + slower fade-in so the drift
+   reads as "releasing" rather than "exploding outward." Mirrors
+   the dive's stroke-width pulse but with a gentler peak. */
+.stellar-drift { opacity: 0; animation: stellar-drift-fade 560ms ease-out forwards; }
+@keyframes stellar-drift-fade {
+  0%   { opacity: 0; }
+  40%  { opacity: 0.65; }
+  100% { opacity: 0; }
+}
+.stellar-drift-streak {
+  opacity: 0;
+  animation: stellar-drift-streak 560ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+@keyframes stellar-drift-streak {
+  0%   { opacity: 0; stroke-width: 0.06; }
+  45%  { opacity: 0.85; stroke-width: 0.22; }
+  100% { opacity: 0; stroke-width: 0.06; }
+}
+.reduce-motion .stellar-drift,
+.reduce-motion .stellar-drift-streak { animation: none; opacity: 0; }
 
 /* New-best stamp on the boom moment — drops down with overshoot,
    holds, then floats up + fades. Tied to the same lifecycle as the
