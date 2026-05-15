@@ -2789,4 +2789,247 @@ body.ff-stake-sandstorm  .panel-strong { border-color: rgba(245, 196, 81, 0.36);
   opacity: 0.85;
 }
 
+/* ============================================================ */
+/* DEFERRED ITEMS — per-boss reveal flourishes, dice canvas     */
+/* frame, loading first-paint splash.                           */
+/* Added 2026-05-15 on claude/deferred-ui-polish.               */
+/* ============================================================ */
+
+/* Boss dread flourish — each per-boss variant layers a unique
+   visual on top of the existing dread vignette + sigil silhouette.
+   All fade in during the first 300ms of the 1100ms dread phase,
+   hold, then fade with the dread overlay. */
+
+/* Pluto / Sedna — orbital rings collapse inward. Three rings
+   start large and shrink toward center over the dread window. */
+.ff-boss-flourish-orbital-collapse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+.ff-boss-flourish-orbital-collapse > div {
+  position: absolute;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+.ff-boss-flourish-orbital-collapse > div:nth-child(1) {
+  width: 90vmin; height: 90vmin;
+  animation: ff-orbital-collapse 1100ms ease-in forwards;
+}
+.ff-boss-flourish-orbital-collapse > div:nth-child(2) {
+  width: 90vmin; height: 90vmin;
+  animation: ff-orbital-collapse 1100ms ease-in 180ms forwards;
+}
+.ff-boss-flourish-orbital-collapse > div:nth-child(3) {
+  width: 90vmin; height: 90vmin;
+  animation: ff-orbital-collapse 1100ms ease-in 360ms forwards;
+}
+@keyframes ff-orbital-collapse {
+  0%   { opacity: 0; transform: scale(1); }
+  25%  { opacity: 0.55; }
+  100% { opacity: 0; transform: scale(0.12); }
+}
+
+/* Ceres — starfall: small stars drift from the upper edges down
+   toward center, accelerating. Six streaks staggered. */
+.ff-boss-flourish-starfall {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ff-boss-flourish-starfall > span {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+  top: -8px;
+  animation: ff-starfall-drop 1100ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  opacity: 0;
+}
+.ff-boss-flourish-starfall > span:nth-child(1) { left: 12%; animation-delay: 0ms;   }
+.ff-boss-flourish-starfall > span:nth-child(2) { left: 28%; animation-delay: 90ms;  }
+.ff-boss-flourish-starfall > span:nth-child(3) { left: 44%; animation-delay: 180ms; }
+.ff-boss-flourish-starfall > span:nth-child(4) { left: 60%; animation-delay: 270ms; }
+.ff-boss-flourish-starfall > span:nth-child(5) { left: 76%; animation-delay: 130ms; }
+.ff-boss-flourish-starfall > span:nth-child(6) { left: 88%; animation-delay: 220ms; }
+@keyframes ff-starfall-drop {
+  0%   { opacity: 0; transform: translateY(0) scale(0.4); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(60vh) scale(0.2); }
+}
+
+/* Triton / Charon — frost streaks creep in from the corners as
+   four diagonal lines that grow toward the center. */
+.ff-boss-flourish-frost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ff-boss-flourish-frost > div {
+  position: absolute;
+  width: 2px;
+  height: 0;
+  background: linear-gradient(180deg, transparent, currentColor, transparent);
+  opacity: 0;
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: ff-frost-grow 1100ms cubic-bezier(0.4, 0.1, 0.4, 1) forwards;
+}
+.ff-boss-flourish-frost > div:nth-child(1) { top: 0; left: 10%;  transform: rotate(15deg);  animation-delay: 0ms; }
+.ff-boss-flourish-frost > div:nth-child(2) { top: 0; right: 10%; transform: rotate(-15deg); animation-delay: 80ms; }
+.ff-boss-flourish-frost > div:nth-child(3) { bottom: 0; left: 22%;  transform: rotate(-15deg); animation-delay: 160ms; }
+.ff-boss-flourish-frost > div:nth-child(4) { bottom: 0; right: 22%; transform: rotate(15deg);  animation-delay: 240ms; }
+@keyframes ff-frost-grow {
+  0%   { opacity: 0; height: 0; }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; height: 40vh; }
+}
+
+/* Callisto / Phobos — chromatic split: two thin coloured bands
+   pulse horizontally across the screen, like a TV channel hiccup. */
+.ff-boss-flourish-chromatic {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ff-boss-flourish-chromatic > div {
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 2px;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+.ff-boss-flourish-chromatic > div:nth-child(1) {
+  top: 38%;
+  background: linear-gradient(90deg, transparent, rgba(123,227,255,0.85), transparent);
+  filter: blur(1.5px);
+  animation: ff-chromatic-band 1100ms ease-out forwards;
+}
+.ff-boss-flourish-chromatic > div:nth-child(2) {
+  top: 56%;
+  background: linear-gradient(90deg, transparent, rgba(255,82,200,0.85), transparent);
+  filter: blur(1.5px);
+  animation: ff-chromatic-band 1100ms ease-out 140ms forwards;
+}
+.ff-boss-flourish-chromatic > div:nth-child(3) {
+  top: 70%;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  filter: blur(1.5px);
+  animation: ff-chromatic-band 1100ms ease-out 280ms forwards;
+}
+@keyframes ff-chromatic-band {
+  0%   { opacity: 0; transform: translateX(-30%); }
+  20%  { opacity: 0.95; }
+  100% { opacity: 0; transform: translateX(30%); }
+}
+
+/* Eris — discord scatter: 8 small glyphs (×) burst outward from
+   center on the dread beat. */
+.ff-boss-flourish-scatter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+.ff-boss-flourish-scatter > span {
+  position: absolute;
+  font-size: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  color: currentColor;
+  text-shadow: 0 0 8px currentColor;
+  opacity: 0;
+  --ff-scatter-angle: 0deg;
+  animation: ff-scatter-burst 1100ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+.ff-boss-flourish-scatter > span:nth-child(1) { --ff-scatter-angle: 0deg;   animation-delay: 0ms;   }
+.ff-boss-flourish-scatter > span:nth-child(2) { --ff-scatter-angle: 45deg;  animation-delay: 60ms;  }
+.ff-boss-flourish-scatter > span:nth-child(3) { --ff-scatter-angle: 90deg;  animation-delay: 120ms; }
+.ff-boss-flourish-scatter > span:nth-child(4) { --ff-scatter-angle: 135deg; animation-delay: 60ms;  }
+.ff-boss-flourish-scatter > span:nth-child(5) { --ff-scatter-angle: 180deg; animation-delay: 0ms;   }
+.ff-boss-flourish-scatter > span:nth-child(6) { --ff-scatter-angle: 225deg; animation-delay: 60ms;  }
+.ff-boss-flourish-scatter > span:nth-child(7) { --ff-scatter-angle: 270deg; animation-delay: 120ms; }
+.ff-boss-flourish-scatter > span:nth-child(8) { --ff-scatter-angle: 315deg; animation-delay: 60ms;  }
+@keyframes ff-scatter-burst {
+  0%   { opacity: 0; transform: rotate(var(--ff-scatter-angle)) translateX(0) rotate(0); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--ff-scatter-angle)) translateX(40vmin) rotate(720deg); }
+}
+
+.reduce-motion .ff-boss-flourish-orbital-collapse > div,
+.reduce-motion .ff-boss-flourish-starfall > span,
+.reduce-motion .ff-boss-flourish-frost > div,
+.reduce-motion .ff-boss-flourish-chromatic > div,
+.reduce-motion .ff-boss-flourish-scatter > span {
+  animation: none;
+  opacity: 0;
+}
+
+/* Dice canvas frame — two diagonal corner ornaments anchored to
+   the dice play area. Top-left + bottom-right give the area a
+   sense of containment without colliding with HUD elements at
+   top-right (TopBar / PauseButton) or bottom-left (action bar's
+   WHY? button). Anchored via CSS vars to stay correct across
+   viewports. Pointer-events: none so dice interaction is
+   unaffected. */
+.ff-dice-frame {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  top: calc(var(--hud-top-h, 134px) + 100px);
+  bottom: calc(var(--hud-bottom-h, 80px) + 80px);
+  left: max(96px, calc(50% - 360px));
+  right: max(96px, calc(50% - 360px));
+}
+.ff-dice-frame-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(245, 196, 81, 0.32);
+  filter: drop-shadow(0 0 4px rgba(245, 196, 81, 0.4));
+}
+.ff-dice-frame-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+.ff-dice-frame-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* Loading first-paint splash — covers the whole viewport with a
+   cosmic ignition before React mounts. The HTML splash lives in
+   index.html so it paints BEFORE the JS bundle even loads; React
+   triggers the fadeout once it's mounted by removing the
+   `data-boot` attribute on body. */
+@keyframes ff-boot-ignite {
+  0%   { opacity: 0; transform: scale(0.4); }
+  30%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ff-boot-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+#boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(ellipse at 50% 35%, #1c1245 0%, #0f0925 45%, #07051a 100%);
+  display: grid;
+  place-items: center;
+  transition: opacity 520ms ease-out;
+  pointer-events: none;
+}
+body:not([data-boot]) #boot-splash {
+  opacity: 0;
+}
+body:not([data-boot]) #boot-splash > * {
+  animation-play-state: paused;
+}
+
+
 

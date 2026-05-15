@@ -141,6 +141,16 @@ export function Round() {
           width: 1, height: 1, transform: 'translateX(-50%)', pointerEvents: 'none',
         }}
       />
+      {/* Dice play-area frame — two diagonal gold corner ornaments
+          anchored to the dice region's safe bounds (well clear of
+          HUD chrome). Gives the play area a sense of containment
+          without colliding with rails / banners / action bar.
+          Bounded inside max() so the frame stays centered on wide
+          viewports instead of stretching to the screen edges. */}
+      <div className="ff-dice-frame" aria-hidden="true">
+        <span className="ff-dice-frame-corner tl" />
+        <span className="ff-dice-frame-corner br" />
+      </div>
       <RoundDebugOverlay />
     </div>
   );

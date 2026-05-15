@@ -104,3 +104,18 @@ createRoot(host).render(
     <App />
   </StrictMode>,
 );
+
+// Dismiss the boot splash. React has rendered; wait one frame so
+// the first paint includes our shell, then clear `data-boot` to
+// trigger the splash's CSS opacity transition. After the fade
+// settles, remove the splash DOM entirely so it can't intercept
+// pointer events on slow machines.
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    document.body.removeAttribute('data-boot');
+    window.setTimeout(() => {
+      const splash = document.getElementById('boot-splash-inline');
+      if (splash) splash.remove();
+    }, 600);
+  });
+});
