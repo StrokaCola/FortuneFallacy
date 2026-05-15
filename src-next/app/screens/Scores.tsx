@@ -185,16 +185,39 @@ export function Scores() {
             <span className="f-mono" style={{ fontSize: 10, opacity: 0.7 }}>{loadError}</span>
           </div>
         )}
-        {selectedUnlocked && visible !== null && visible.length > 0 && visible.map((s, i) => (
-          <div
-            key={`${s.date}-${i}`}
-            className="flex justify-between items-baseline py-1 border-b border-cosmos-300/10 last:border-0"
-          >
-            <span className="font-mono text-xs text-cosmos-300 w-6">{i + 1}.</span>
-            <span className="text-cosmos-100 flex-1 truncate">{s.name || 'anon'}</span>
-            <span className="font-mono text-gold">{s.score.toLocaleString()}</span>
-          </div>
-        ))}
+        {selectedUnlocked && visible !== null && visible.length > 0 && visible.map((s, i) => {
+          // Wave P — top-3 podium accents. The first three rows pick up
+          // gold/silver/bronze tints + a left ribbon so the leaderboard
+          // reads as a podium instead of a uniform list. Rows 4+ stay
+          // the original neutral style.
+          const rank = i + 1;
+          const podium =
+            rank === 1 ? { color: '#ffd66e', ribbon: '#f5c451', glow: 'rgba(245,196,81,0.5)', medal: '◆' } :
+            rank === 2 ? { color: '#dbe7f2', ribbon: '#9fb4cf', glow: 'rgba(159,180,207,0.4)', medal: '◇' } :
+            rank === 3 ? { color: '#e8b58a', ribbon: '#c08866', glow: 'rgba(192,136,102,0.35)', medal: '◈' } :
+            null;
+          return (
+            <div
+              key={`${s.date}-${i}`}
+              className="flex justify-between items-baseline py-1 border-b border-cosmos-300/10 last:border-0"
+              style={podium ? {
+                position: 'relative',
+                paddingLeft: 12,
+                borderLeft: `3px solid ${podium.ribbon}`,
+                marginBottom: 2,
+                background: `linear-gradient(90deg, ${podium.glow.replace('0.','0.0')} 0%, transparent 100%)`,
+              } : undefined}
+            >
+              <span className="font-mono text-xs w-6" style={podium ? { color: podium.color, textShadow: `0 0 4px ${podium.glow}` } : { color: 'inherit' }}>
+                {podium ? podium.medal : `${rank}.`}
+              </span>
+              <span className="text-cosmos-100 flex-1 truncate">{s.name || 'anon'}</span>
+              <span className="font-mono" style={podium ? { color: podium.color, fontSize: rank === 1 ? '1.05em' : undefined, textShadow: `0 0 6px ${podium.glow}` } : { color: '#f5c451' }}>
+                {s.score.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
         {/* Empty-state: leaderboard loaded successfully but has zero rows
             for this scope (no runs ever logged, or first-time visit on
             a constellation the player hasn't shipped a run with). The
