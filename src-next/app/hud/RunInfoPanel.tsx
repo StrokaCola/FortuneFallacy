@@ -80,20 +80,23 @@ export function RunInfoPanel() {
       maskImage: 'linear-gradient(to bottom, black calc(100% - 24px), transparent)',
       WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 24px), transparent)',
     }}>
-      {/* Header — constellation + ante + blind + economy */}
+      {/* Header — constellation + ante + blind + economy. Each
+          stat block gains the .ff-panel-framed gold corner trim so
+          the pause menu reads as a "cosmic ID card" — separate
+          inscribed plaques rather than dark rectangles. */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div className="mat-obsidian" style={{ padding: 10, borderRadius: 8 }}>
+        <div className="mat-obsidian ff-panel-framed" style={{ padding: 10, borderRadius: 8 }}>
           <div className="f-mono uc" style={labelStyle}>constellation</div>
           <div className="f-display" style={{ fontSize: 16, color: '#f3f0ff', marginTop: 4 }}>{constellation.name}</div>
           <div className="f-mono" style={{ fontSize: 10, color: '#bba8ff', marginTop: 2, lineHeight: 1.3 }}>
             {constellation.flavor ?? '—'}
           </div>
         </div>
-        <div className="mat-obsidian" style={{ padding: 10, borderRadius: 8 }}>
+        <div className="mat-obsidian ff-panel-framed" style={{ padding: 10, borderRadius: 8 }}>
           <div className="f-mono uc" style={labelStyle}>progress</div>
           <div style={{ ...rowStyle, marginTop: 4 }}>
             <span className="f-mono" style={{ fontSize: 11, color: '#dcd4ff' }}>ante</span>
-            <span className="f-mono num" style={{ fontSize: 14, color: '#f5c451' }}>{ante}</span>
+            <span className="f-mono num ff-number-plate" style={{ fontSize: 14, color: '#f5c451' }}>{ante}</span>
           </div>
           <div style={rowStyle}>
             <span className="f-mono" style={{ fontSize: 11, color: '#dcd4ff' }}>blind</span>
@@ -111,11 +114,11 @@ export function RunInfoPanel() {
       </section>
 
       {/* Economy row */}
-      <section className="mat-obsidian" style={{ padding: 10, borderRadius: 8 }}>
+      <section className="mat-obsidian ff-panel-framed" style={{ padding: 10, borderRadius: 8 }}>
         <div className="f-mono uc" style={labelStyle}>treasury</div>
         <div style={{ ...rowStyle, marginTop: 4 }}>
           <span className="f-mono" style={{ fontSize: 11, color: '#dcd4ff' }}>shards on hand</span>
-          <span className="f-mono num" style={{ fontSize: 14, color: '#f5c451' }}>◆ {shards}</span>
+          <span className="f-mono num ff-number-plate" style={{ fontSize: 14, color: '#f5c451' }}>◆ {shards}</span>
         </div>
         <div style={rowStyle}>
           <span className="f-mono" style={{ fontSize: 11, color: '#dcd4ff' }}>spent on catalysts</span>

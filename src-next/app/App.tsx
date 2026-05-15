@@ -7,6 +7,7 @@ import { BossReveal } from './hud/BossReveal';
 import { BossPhaseBanner } from './hud/BossPhaseBanner';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
+import { VoucherToast } from './hud/VoucherToast';
 import { WhisperToast } from './hud/WhisperToast';
 import { EventFlash } from './hud/EventFlash';
 import { ToastHost } from './hud/toastQueue';
@@ -206,6 +207,7 @@ export function App() {
           <BossPhaseBanner />
           <ArrivalToast />
           <AchievementToast />
+          <VoucherToast />
           <WhisperToast />
           <EventFlash />
           {/* Centralised toast queue (see app/hud/toastQueue/). Migrated

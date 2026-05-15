@@ -79,6 +79,15 @@ export function ConsumableTray() {
         opacity: scoring ? 0.35 : 1,
         transition: 'opacity 220ms ease',
       }}>
+        {/* Wide-mode rail header — mirrors CatalystStrip's "vessel"
+            naming on the opposite side. Hidden on tight portrait
+            where the row sits inline next to the dice canvas. */}
+        {wide && (
+          <div className="ff-rail-header" style={{ alignSelf: 'flex-end' }}>
+            <span className="ff-rail-header-sigil">◇</span>
+            consumables
+          </div>
+        )}
         {items.length === 0 && <EmptySlot kind="consumable" />}
         {items.map((id, i) => {
           const def = lookupConsumable(id);
