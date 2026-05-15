@@ -1,6 +1,7 @@
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
-import { ScreenHeader } from '../visual/AstralPrimitives';
+import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { CHALLENGES } from '../../data/challenges';
 import { lookupConstellation } from '../../data/constellations';
 import { lookupStake } from '../../data/stakes';
@@ -15,7 +16,10 @@ export function ChallengeSelect() {
       position: 'absolute', inset: 0, pointerEvents: 'auto',
       overflow: 'auto', padding: '32px 24px',
     }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <ScreenWatermark color="#ff4d6d" position="bottom-right">
+        <Sigil kind="comet" size={220} color="#ff4d6d" />
+      </ScreenWatermark>
+      <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 22 }}>
           <ScreenHeader title="Challenges" subtitle="◇ constraint runs ◇" />
           <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 4, opacity: 0.85 }}>

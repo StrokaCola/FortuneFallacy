@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
+import { ConstellationCount } from '../visual/AstralPrimitives';
 import { lookupMod } from '../../core/mods';
 import { ModIcon } from '../visual/ModIcon';
 import { maxModSlots } from '../../core/vouchers';
@@ -183,7 +184,10 @@ export function Forge() {
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
         <span className="f-mono" style={{ color: '#f5c451', fontSize: 16 }}>◆ {shards}</span>
-        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff' }}>catalysts {catalysts.length}/{maxCatalysts}</span>
+        <span className="f-mono" style={{ fontSize: 10, color: '#bba8ff', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          catalysts
+          <ConstellationCount filled={catalysts.length} total={maxCatalysts} color="#7be3ff" size={6} />
+        </span>
       </div>
       <PauseButton />
 

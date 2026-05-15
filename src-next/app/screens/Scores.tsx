@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
-import { ScreenHeader, AstralSpinner } from '../visual/AstralPrimitives';
+import { ScreenHeader, AstralSpinner, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { selectUnlocks } from '../../state/selectors';
 import { CONSTELLATIONS, DEFAULT_CONSTELLATION_ID } from '../../data/constellations';
 import { fetchOnlineScores, type OnlineScore } from '../../online/leaderboard';
@@ -65,6 +66,9 @@ export function Scores() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-auto px-4">
+      <ScreenWatermark color="#f5c451" position="bottom-right">
+        <Sigil kind="star" size={220} color="#f5c451" />
+      </ScreenWatermark>
       <ScreenHeader title="High Scores" subtitle="◇ records ◇" />
 
       {/* Scope tabs — All-time / Today's daily. Daily is the shared

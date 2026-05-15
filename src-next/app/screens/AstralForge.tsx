@@ -5,7 +5,8 @@
 
 import { useStore } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
-import { ScreenHeader } from '../visual/AstralPrimitives';
+import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { ASTRAL_PERKS, type AstralPerkDef } from '../../data/astralPerks';
 import type { GameState } from '../../state/store';
 
@@ -20,6 +21,9 @@ export function AstralForge() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center pointer-events-auto px-4 py-6 overflow-y-auto">
+      <ScreenWatermark color="#f5c451" position="bottom-right">
+        <Sigil kind="sun" size={220} color="#f5c451" />
+      </ScreenWatermark>
       <ScreenHeader title="Astral Forge" subtitle="⟡ between the rolls, the stars settle ⟡" />
 
       <div
