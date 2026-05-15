@@ -5,6 +5,7 @@
 
 import { useStore } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
+import { ScreenHeader } from '../visual/AstralPrimitives';
 import { ASTRAL_PERKS, type AstralPerkDef } from '../../data/astralPerks';
 import type { GameState } from '../../state/store';
 
@@ -19,10 +20,7 @@ export function AstralForge() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center pointer-events-auto px-4 py-6 overflow-y-auto">
-      <h2 className="font-display text-4xl text-cosmos-50 mb-1">ASTRAL FORGE</h2>
-      <div className="f-mono uc text-cosmos-300" style={{ fontSize: 10, letterSpacing: '0.4em', marginBottom: 18 }}>
-        ⟡ between the rolls, the stars settle ⟡
-      </div>
+      <ScreenHeader title="Astral Forge" subtitle="⟡ between the rolls, the stars settle ⟡" />
 
       <div
         className="flex items-baseline gap-4 mb-6"

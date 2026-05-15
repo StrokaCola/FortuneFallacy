@@ -496,10 +496,14 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
 }
 
 function Stat({ color, label, value, coachId }: { color: string; label: string; value: string; coachId?: string }) {
+  // Each stat is now a celestial-scroll panel — gold corner trim +
+  // a subtle parchment-of-stars background — so the run summary
+  // reads as inscribed rather than data-dumped. The number itself
+  // gets the ff-number-plate treatment (thin gold underline).
   return (
-    <div data-coach={coachId} style={{ textAlign: 'center', minWidth: 76 }}>
-      <div className="f-mono num" style={{ fontSize: 22, color }}>{value}</div>
-      <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff' }}>
+    <div data-coach={coachId} className="ff-celestial-panel" style={{ textAlign: 'center', minWidth: 96 }}>
+      <div className="f-mono num ff-number-plate" style={{ fontSize: 22, color, lineHeight: 1.15 }}>{value}</div>
+      <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.3em', color: '#bba8ff', marginTop: 6 }}>
         {label}
       </div>
     </div>

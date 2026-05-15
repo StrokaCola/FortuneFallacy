@@ -36,39 +36,37 @@ const KIND_COPY: Record<Kind, { label: string; sigil: string; tip: string }> = {
 
 export function EmptySlot({ kind, hint }: EmptySlotProps) {
   const { label, sigil, tip } = KIND_COPY[kind];
+  // .ff-empty-slot replaces the old plain dashed-border placeholder
+  // with a soft constellation outline (small star points + thin
+  // connecting lines, pulsing). Reads as "a sky waiting to be
+  // charted" rather than "a thing is missing here."
   return (
     <div
-      className="has-tip"
+      className="has-tip ff-empty-slot"
       role="img"
       aria-label={`No ${label} owned yet`}
       style={{
         width: 64,
         height: 88,
-        borderRadius: 8,
-        border: '1px dashed rgba(187,168,255,0.35)',
-        background: 'rgba(28,18,69,0.25)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '6px 4px',
-        position: 'relative',
         cursor: 'help',
-        opacity: 0.7,
+        opacity: 0.78,
       }}
     >
       <div className="f-mono uc" style={{
         fontSize: 8,
         letterSpacing: '0.18em',
         color: 'rgba(187,168,255,0.6)',
+        position: 'relative', zIndex: 2,
       }}>
         {label}
       </div>
       <div style={{
-        fontSize: 28,
+        fontSize: 26,
         lineHeight: 1,
-        color: 'rgba(149,119,255,0.55)',
-        textShadow: '0 0 8px rgba(149,119,255,0.35)',
+        color: 'rgba(149,119,255,0.6)',
+        textShadow: '0 0 8px rgba(149,119,255,0.4)',
+        position: 'relative', zIndex: 2,
+        margin: '4px 0',
       }}>
         {sigil}
       </div>
@@ -78,8 +76,9 @@ export function EmptySlot({ kind, hint }: EmptySlotProps) {
         color: 'rgba(187,168,255,0.55)',
         textAlign: 'center',
         lineHeight: 1.2,
+        position: 'relative', zIndex: 2,
       }}>
-        none yet
+        unwritten
       </div>
       <div className="tip">
         <span className="tip-title">No {label} owned</span>

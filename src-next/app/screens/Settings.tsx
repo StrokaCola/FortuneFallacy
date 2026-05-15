@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import * as audioSettings from '../../audio/audioSettings';
+import { ScreenHeader } from '../visual/AstralPrimitives';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
 import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
 import { getColorblindPref, setColorblindPref, subscribeColorblind } from '../visual/colorblind';
@@ -49,10 +50,11 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
         <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}</span>
       </span>
       <input
+        className="ff-range"
         type="range" min={0} max={1} step={0.01} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={`${label} volume`}
-        style={{ accentColor: '#7be3ff', width: '100%' }}
+        style={{ width: '100%' }}
       />
     </label>
   );
@@ -331,7 +333,7 @@ export function Settings() {
         padding: 16,
         animation: 'fadein 400ms ease-out both',
       }}>
-      <div className="panel-strong" style={{
+      <div className="panel-strong ff-panel-settle" style={{
         width: 'min(460px, 100%)', padding: 'clamp(20px, 3vw, 32px)', position: 'relative',
         display: 'flex', flexDirection: 'column', gap: 22,
         maxHeight: 'calc(100% - 32px)', overflowY: 'auto',
@@ -341,14 +343,7 @@ export function Settings() {
         <span className="flourish-corner bl" />
         <span className="flourish-corner br" />
 
-        <div style={{ textAlign: 'center' }}>
-          <div className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.5em', color: '#bba8ff' }}>
-            ◇ preferences ◇
-          </div>
-          <div className="f-display" style={{ fontSize: 'clamp(22px, 6vw, 32px)', color: '#f3f0ff', marginTop: 6 }}>
-            Settings
-          </div>
-        </div>
+        <ScreenHeader title="Settings" subtitle="◇ preferences ◇" />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Slider label="master volume" value={audio.master} onChange={audioSettings.setMaster} />

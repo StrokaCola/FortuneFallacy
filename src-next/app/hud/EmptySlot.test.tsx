@@ -6,7 +6,10 @@ describe('EmptySlot', () => {
   it('renders the catalyst-flavour ghost when kind="catalyst"', () => {
     const { container } = render(<EmptySlot kind="catalyst" />);
     expect(container.textContent).toContain('catalyst');
-    expect(container.textContent).toContain('none yet');
+    // Empty-slot bottom label changed from 'none yet' to 'unwritten'
+    // in the bespoke-astral pass — reads as "a sky waiting to be
+    // charted" instead of a flat absence statement.
+    expect(container.textContent).toContain('unwritten');
     expect(container.textContent).toContain('Buy them at the Bazaar');
     cleanup();
   });
