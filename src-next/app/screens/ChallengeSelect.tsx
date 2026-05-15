@@ -126,6 +126,12 @@ export function ChallengeSelect() {
           })}
         </div>
 
+        {/* Wave R — challenge badge progress strip. Fills the empty
+            band below the wrapped card grid with a "you've beaten N
+            of M" stat so the screen has a goal post instead of dead
+            space. Clean clear-all triggers a celebratory variant. */}
+        <ChallengeProgressStrip won={wins.length} total={CHALLENGES.length} />
+
         <div style={{ textAlign: 'center', marginTop: 18 }}>
           <button
             type="button"
@@ -135,6 +141,46 @@ export function ChallengeSelect() {
             ← Back
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ChallengeProgressStrip({ won, total }: { won: number; total: number }) {
+  const all = won >= total;
+  const ratio = total > 0 ? won / total : 0;
+  return (
+    <div style={{
+      maxWidth: 420, margin: '24px auto 0',
+      padding: '12px 22px', borderRadius: 12,
+      border: `1px solid ${all ? 'rgba(245,196,81,0.55)' : 'rgba(149,119,255,0.3)'}`,
+      background: 'rgba(15,9,37,0.6)',
+      textAlign: 'center',
+      boxShadow: all ? '0 0 22px rgba(245,196,81,0.18)' : undefined,
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.32em',
+        color: all ? '#f5c451' : '#bba8ff',
+      }}>
+        {all ? '✦ every constraint cleared ✦' : '◇ codex badges earned ◇'}
+      </div>
+      <div className="f-display num" style={{
+        fontSize: 22, color: '#f3f0ff', marginTop: 4,
+      }}>
+        {won} <span style={{ color: '#9577ff', fontSize: 16 }}>/ {total}</span>
+      </div>
+      <div style={{
+        marginTop: 8, height: 3, borderRadius: 2,
+        background: 'rgba(149,119,255,0.18)', overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%', width: `${Math.round(ratio * 100)}%`,
+          background: all
+            ? 'linear-gradient(90deg, #f5c451, #ff8a5e)'
+            : 'linear-gradient(90deg, #7be3ff, #c084fc)',
+          boxShadow: all ? '0 0 10px rgba(245,196,81,0.6)' : undefined,
+          transition: 'width 600ms ease-out',
+        }} />
       </div>
     </div>
   );
