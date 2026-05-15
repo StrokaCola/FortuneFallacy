@@ -2652,3 +2652,141 @@ input[type="range"].ff-range:active::-moz-range-thumb { cursor: grabbing; }
 .reduce-motion .ff-spinner-rays,
 .reduce-motion .ff-spinner-ember { animation: none; }
 
+/* ============================================================ */
+/* WAVE F-I — persistent surface polish + micro details         */
+/* Added 2026-05-15. Builds on the bespoke astral primitives.   */
+/* ============================================================ */
+
+/* Tooltip arrow pointer — a tiny gold triangle indicating the
+   source of structured tooltips. Only renders for tooltips that
+   have a .tip-title (so plain-text tooltips stay clean), and only
+   for downward-anchored tips (the default placement). */
+.has-tip .tip:has(.tip-title):not(.tip-above):not(.tip-left):not(.tip-right)::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: calc(50% + var(--tip-shift, 0px));
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(7, 5, 26, 0.95);
+  border-top: 1px solid rgba(149, 119, 255, 0.55);
+  border-left: 1px solid rgba(149, 119, 255, 0.55);
+  pointer-events: none;
+}
+.has-tip .tip.tip-above:has(.tip-title)::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: calc(50% + var(--tip-shift, 0px));
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(7, 5, 26, 0.95);
+  border-right: 1px solid rgba(149, 119, 255, 0.55);
+  border-bottom: 1px solid rgba(149, 119, 255, 0.55);
+  pointer-events: none;
+}
+
+/* Pack-pick ascent — when a card in PackOverlay is taken, it
+   briefly rises + glows in the constellation accent before
+   fading. The `.taken` state stays via the existing opacity:0.35;
+   the ascent adds a one-shot animation layered on top. */
+@keyframes ff-pack-ascend {
+  0%   { transform: translateY(0)    scale(1);   filter: brightness(1) drop-shadow(0 0 0 rgba(245,196,81,0)); }
+  35%  { transform: translateY(-22px) scale(1.06); filter: brightness(1.4) drop-shadow(0 0 14px rgba(245,196,81,0.85)); }
+  100% { transform: translateY(0)    scale(1);   filter: brightness(1) drop-shadow(0 0 0 rgba(245,196,81,0)); }
+}
+.ff-pack-ascend {
+  animation: ff-pack-ascend 700ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.reduce-motion .ff-pack-ascend { animation: none; }
+
+/* Hub trial thread particle — a small gold dot flows along the
+   SVG line connecting the three blind cards. Uses pathLength so
+   the offset can drive it without measuring the path. */
+.ff-thread-particle {
+  fill: #ffd97a;
+  filter: drop-shadow(0 0 4px rgba(245,196,81,0.85));
+  animation: ff-thread-particle-flow 3.6s ease-in-out infinite;
+}
+@keyframes ff-thread-particle-flow {
+  0%, 100% { opacity: 0; offset-distance: 0%; }
+  10%      { opacity: 1; }
+  85%      { opacity: 1; }
+  100%     { offset-distance: 100%; opacity: 0; }
+}
+.reduce-motion .ff-thread-particle { animation: none; opacity: 0; }
+
+/* Per-stake border accent — applied as a body-level class so
+   panels can pick up the stake's tint without each component
+   needing to know the current stake. Subtle: just shifts the
+   panel border tint, keeps the body palette unchanged. */
+body.ff-stake-spark      .panel,
+body.ff-stake-spark      .panel-strong { border-color: rgba(123, 227, 255, 0.32); }
+body.ff-stake-ember      .panel,
+body.ff-stake-ember      .panel-strong { border-color: rgba(255, 120, 71, 0.36); }
+body.ff-stake-blackstar  .panel,
+body.ff-stake-blackstar  .panel-strong { border-color: rgba(204, 136, 255, 0.36); }
+body.ff-stake-voidlit    .panel,
+body.ff-stake-voidlit    .panel-strong { border-color: rgba(149, 119, 255, 0.42); }
+body.ff-stake-sandstorm  .panel,
+body.ff-stake-sandstorm  .panel-strong { border-color: rgba(245, 196, 81, 0.36); }
+
+/* Voucher pickup celebration — when a new voucher enters the
+   voucher row, briefly inscribe it: gold trim ring expands +
+   fades, the voucher itself scales in. */
+@keyframes ff-voucher-inscribe {
+  0%   { transform: scale(0.7) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.12) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.ff-voucher-inscribe {
+  animation: ff-voucher-inscribe 540ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.reduce-motion .ff-voucher-inscribe { animation: none; }
+
+/* Pause icon — bespoke twin-arc SVG hover state. The arc strokes
+   intensify on hover. */
+.ff-pause-icon path {
+  transition: stroke 200ms ease, filter 200ms ease;
+}
+.ff-pause-icon:hover path {
+  filter: drop-shadow(0 0 4px rgba(187, 168, 255, 0.85));
+}
+
+/* Catalyst / Consumable rail vessel header — small labelled
+   header strip. Sits at the top of each rail (CatalystStrip /
+   ConsumableTray) when on wide / desktop mode so the rails read
+   as named cosmic vessels rather than anonymous lists. */
+.ff-rail-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 9, 37, 0.6);
+  border: 1px solid rgba(149, 119, 255, 0.25);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #bba8ff;
+  opacity: 0.85;
+}
+.ff-rail-header-sigil {
+  color: #f5c451;
+  text-shadow: 0 0 4px rgba(245, 196, 81, 0.55);
+}
+
+/* Settings option glyph — small leading glyph on each toggle
+   option button so the choices feel distinct at a glance. */
+.ff-option-glyph {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 1.05em;
+  vertical-align: -1px;
+  opacity: 0.85;
+}
+
+

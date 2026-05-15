@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { useStore } from '../../state/store';
 import { selectPendingPack, selectUnlocks } from '../../state/selectors';
@@ -38,6 +38,11 @@ export function PackOverlay() {
   void unlocks;
   const dialogRef = useRef<HTMLDivElement>(null);
   const isOpen = !!pack;
+  // Track the most recently picked card index so we can apply the
+  // ff-pack-ascend animation only to that card. Clears after the
+  // animation finishes (700ms) so the rest of the cards fade out
+  // through the normal `taken` opacity path.
+  const [recentPickIdx, setRecentPickIdx] = useState<number | null>(null);
 
   useFocusTrap(dialogRef, isOpen);
 
@@ -132,10 +137,12 @@ export function PackOverlay() {
               disabled={taken}
               onClick={() => {
                 if (taken) return;
+                setRecentPickIdx(i);
+                window.setTimeout(() => setRecentPickIdx(null), 720);
                 sfxPlay('cardFlip');
                 dispatch({ type: 'PICK_FROM_PACK', galaxyIdx: i });
               }}
-              className="panel-strong tap"
+              className={`panel-strong tap${recentPickIdx === i ? ' ff-pack-ascend' : ''}`}
               aria-label={`${name} — ${comboLabel}`}
               style={{
                 width: 200, height: 280, padding: 16,

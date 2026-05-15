@@ -194,7 +194,7 @@ export function TopBar({
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
               data-score-counter
-              className={`f-display num${tense ? ' last-throw-warn' : ''}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
                 color: tense ? '#ff4d6d' : '#f3f0ff',

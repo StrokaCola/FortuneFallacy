@@ -60,6 +60,20 @@ export function App() {
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
+  // Per-stake border tint — drives a body-level class that shifts
+  // panel border colors so two players on different stakes see
+  // visually distinct runs. Subtle: only changes the border-color
+  // tokens, no full-screen overlay.
+  const stakeId = useStore((s) => s.run.stakeId);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const classes = ['ff-stake-spark', 'ff-stake-ember', 'ff-stake-blackstar', 'ff-stake-voidlit', 'ff-stake-sandstorm'];
+    for (const c of classes) document.body.classList.remove(c);
+    if (stakeId) document.body.classList.add(`ff-stake-${stakeId}`);
+    return () => {
+      for (const c of classes) document.body.classList.remove(c);
+    };
+  }, [stakeId]);
   // Score-progress drives the gold tint + halo aura on the cosmos
   // background — completely orthogonal to tension. >=1.0 = crossed
   // target; >=2.0 = doubled over. Clamped in CosmosBackground.
