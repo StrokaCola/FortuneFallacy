@@ -33,7 +33,7 @@
   --snap-fast: 80ms;
   --snap: 120ms;
   --savored-short: 450ms;
-  --savored: 600ms;
+  --savored: 720ms;
   --savored-long: 900ms;
   --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-savor: cubic-bezier(0.25, 0.46, 0.2, 1.0);

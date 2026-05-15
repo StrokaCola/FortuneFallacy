@@ -19,7 +19,14 @@ export function PauseButton() {
         top: tight
           ? 'max(80px, calc(var(--hud-top-h, 110px) + 8px))'
           : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
-        right: tight ? 12 : 18,
+        // Tight portrait: shift LEFT of the right-rail consumable card so
+        // they don't stack on top of each other. ConsumableTray sits at
+        // `right: 18, width: 64` (left edge ≈ 82px from viewport right);
+        // the 96 here parks the 44px-wide pause button just left of
+        // that with a 14px gap. Desktop tucks under TopBar at `right: 18`
+        // — there's no overlap there because the desktop button is
+        // raised by `-24px`, ABOVE the consumable tray's top edge.
+        right: tight ? 96 : 18,
         zIndex: Z.hudControl,
         width: 44,
         height: 44,

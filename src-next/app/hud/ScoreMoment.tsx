@@ -30,6 +30,12 @@ const BAIL_HOLD_MS = 2400;
 // the trails got there.
 const STAR_TRAIL_MS = 820;
 const COUNTER_FILL_MS = 360;
+// Savor pause after the counter fill completes before the screen
+// swap fires (clearBlind → ui.screen = 'shop' | 'hub' | 'win'). Gives
+// the catch-pulse a moment to settle on the visible counter before
+// the entire screen fades out, so the player actually SEES the
+// celebration land instead of getting yanked into the shop mid-flight.
+const POST_FILL_SAVOR_MS = 240;
 
 function isReducedMotion(): boolean {
   if (typeof document === 'undefined') return false;
@@ -192,22 +198,29 @@ export function ScoreMoment() {
             }
           }
 
-          // END_SCORING fires 350ms before the boom number's fly
-          // visually finishes so the next-hand inputs feel responsive
-          // (action bar unlocks early; the counter-fill tween below
-          // keeps animating over the unlocked HUD without blocking
-          // it). See responsiveness pass 47ebfb1.
-          schedule(finishBoom, BOOM_FLY_START_MS + BOOM_FLY_MS - 350);
           // Counter fill — fire exactly when the first star trail
-          // reaches the counter. ScoreFloat tweens its displayed
-          // total from the pre-boom value to the new round.score
+          // reaches the counter. TopBar's tween advances the displayed
+          // total from the pre-boom value up to the new round.score
           // over COUNTER_FILL_MS so the meter visually fills under
           // the trailing stars instead of catching ahead of them.
-          // Independent from finishBoom's timing — state commit and
-          // visual catch are intentionally decoupled.
           schedule(
             () => bus.emit('onScoreCounterFill', { durationMs: COUNTER_FILL_MS }),
             BOOM_FLY_START_MS + STAR_TRAIL_MS,
+          );
+          // END_SCORING fires AFTER the full celebration ladder
+          // (boom pop + fly + star trails + counter fill + catch
+          // pulse + a brief savor pause) has played out. Earlier the
+          // dispatch fired at FLY_END − 350ms for "responsiveness,"
+          // but the boom IS the end of the hand — there's no next
+          // input to be responsive to — so the screen swap was
+          // yanking the player into the shop while the celebration
+          // was still in mid-air. With the swap held until the
+          // celebration lands, the same Round-screen TopBar handles
+          // pin → tween → catch end-to-end without unmounting
+          // mid-flight.
+          schedule(
+            finishBoom,
+            BOOM_FLY_START_MS + STAR_TRAIL_MS + COUNTER_FILL_MS + POST_FILL_SAVOR_MS,
           );
           break;
         }

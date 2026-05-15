@@ -2,8 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 type Phase = 'idle' | 'exiting' | 'entering';
 
-const SAVORED_MS = 600;
+// 720ms is the sweet spot between "snappy" (≤600ms feels abrupt
+// after the recent scoring-celebration changes) and "slow" (≥900ms
+// drags on Hub ↔ Forge round-trips). Tuned with the post-boom screen
+// swap in mind: the celebration finishes, the round screen lingers
+// briefly, then the fade carries the player into the shop.
+const SAVORED_MS = 720;
 const SNAP_MS = 120;
+// Outgoing scale — slightly past 1 so the leaving screen reads as
+// "pulling away" instead of just dimming in place. Paired with the
+// 0.98 entering scale, the effect is a soft push-out / settle-in
+// rather than a static crossfade.
+const EXIT_SCALE = 1.05;
+const ENTER_SCALE = 0.985;
 
 export function ScreenTransition({
   screenKey,
@@ -50,7 +61,7 @@ export function ScreenTransition({
   }, [phase, children]);
 
   const opacity = phase === 'exiting' ? 0 : 1;
-  const scale = phase === 'exiting' ? 1.04 : phase === 'entering' ? 0.98 : 1;
+  const scale = phase === 'exiting' ? EXIT_SCALE : phase === 'entering' ? ENTER_SCALE : 1;
 
   // Entering a Round is the player's commitment moment — fold in a
   // "stellar dive" overlay (inward star streaks) on top of the standard
@@ -67,7 +78,7 @@ export function ScreenTransition({
         inset: 0,
         opacity,
         transform: `scale(${scale})`,
-        transition: `opacity var(--savored, 600ms) var(--ease-savor, ease), transform var(--savored, 600ms) var(--ease-savor, ease)`,
+        transition: `opacity var(--savored, 720ms) var(--ease-savor, ease), transform var(--savored, 720ms) var(--ease-savor, ease)`,
         pointerEvents: phase === 'idle' ? 'auto' : 'none',
       }}
     >
@@ -131,7 +142,7 @@ function ConstellationWipe({ phase }: { phase: Phase }) {
         inset: 0,
         pointerEvents: 'none',
         opacity: phase === 'exiting' ? 0.7 : 0.35,
-        transition: 'opacity var(--savored, 600ms) var(--ease-savor, ease)',
+        transition: 'opacity var(--savored, 720ms) var(--ease-savor, ease)',
       }}
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
