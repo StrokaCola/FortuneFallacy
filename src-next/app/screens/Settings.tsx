@@ -134,10 +134,10 @@ function CaptionsToggle() {
 }
 
 function HapticsToggle({ pref }: { pref: HapticsPref }) {
-  const opts: { id: HapticsPref; label: string; hint: string }[] = [
-    { id: 'on',  label: 'On',  hint: 'Always buzz on key moments' },
-    { id: 'os',  label: 'Match system', hint: 'Buzz unless Reduce Motion is on' },
-    { id: 'off', label: 'Off', hint: 'No vibration' },
+  const opts: { id: HapticsPref; label: string; hint: string; glyph: string }[] = [
+    { id: 'on',  label: 'On',           hint: 'Always buzz on key moments',    glyph: '〰' },
+    { id: 'os',  label: 'Match system', hint: 'Buzz unless Reduce Motion is on', glyph: '◐' },
+    { id: 'off', label: 'Off',          hint: 'No vibration',                  glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -159,6 +159,7 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -247,10 +248,10 @@ function LongPressToggle() {
 function PerfModeToggle() {
   const [pref, setPref] = useState<PerfMode>(getPerfMode);
   useEffect(() => subscribePerfMode(() => setPref(getPerfMode())), []);
-  const opts: { id: PerfMode; label: string; hint: string }[] = [
-    { id: 'off',  label: 'Full',    hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.' },
-    { id: 'auto', label: 'Auto',    hint: 'Adapts to device + live frame budget. Default. (Recommended)' },
-    { id: 'on',   label: 'Performance', hint: 'Lower DPR + no AA + softer shadows + drops cosmos halos, stardust drift, edition animations. Reload to fully apply DPR/AA.' },
+  const opts: { id: PerfMode; label: string; hint: string; glyph: string }[] = [
+    { id: 'off',  label: 'Full',        hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.', glyph: '✦' },
+    { id: 'auto', label: 'Auto',        hint: 'Adapts to device + live frame budget. Default. (Recommended)', glyph: '◐' },
+    { id: 'on',   label: 'Performance', hint: 'Lower DPR + no AA + softer shadows + drops cosmos halos, stardust drift, edition animations. Reload to fully apply DPR/AA.', glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -270,6 +271,7 @@ function PerfModeToggle() {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -280,10 +282,10 @@ function PerfModeToggle() {
 }
 
 function MotionToggle({ pref }: { pref: MotionPref }) {
-  const opts: { id: MotionPref; label: string; hint: string }[] = [
-    { id: 'allow', label: 'Full',    hint: 'Always animate' },
-    { id: 'os',    label: 'Match system', hint: 'Use OS Reduce Motion preference' },
-    { id: 'reduce', label: 'Reduced', hint: 'Minimise motion in-app' },
+  const opts: { id: MotionPref; label: string; hint: string; glyph: string }[] = [
+    { id: 'allow',  label: 'Full',         hint: 'Always animate',                     glyph: '✦' },
+    { id: 'os',     label: 'Match system', hint: 'Use OS Reduce Motion preference',    glyph: '◐' },
+    { id: 'reduce', label: 'Reduced',      hint: 'Minimise motion in-app',             glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -305,6 +307,7 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
