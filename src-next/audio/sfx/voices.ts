@@ -109,16 +109,31 @@ export function upgrade(bank: SynthBank): void {
 }
 
 // ---- bossSting -------------------------------------------------------------
-export function bossSting(bank: SynthBank): void {
+// Wave L — per-boss sting variants. opts.idx is the BOSS_BLINDS array
+// index; each row picks {brassStartHz, brassEndHz, subHz, durBeats} so
+// every boss gets a recognisable harmonic signature instead of every
+// reveal sounding identical. The original (110→45, sub55) is preserved
+// at idx 0 so legacy callers without opts keep their cue intact.
+const BOSS_STING_VARIANTS: Array<{ brassStart: number; brassEnd: number; sub: number; release: string }> = [
+  { brassStart: 110, brassEnd: 45, sub: 55,  release: '2n' },  // 0
+  { brassStart: 138, brassEnd: 52, sub: 41,  release: '2n' },  // 1 — higher start, deeper sub
+  { brassStart: 92,  brassEnd: 38, sub: 73,  release: '2n' },  // 2 — lower start, bright sub
+  { brassStart: 165, brassEnd: 62, sub: 49,  release: '2n.' }, // 3 — wide drop, slow release
+  { brassStart: 123, brassEnd: 41, sub: 61,  release: '2n' },  // 4
+  { brassStart: 98,  brassEnd: 33, sub: 87,  release: '2n.' }, // 5 — earthy
+];
+
+export function bossSting(bank: SynthBank, opts: VoiceOpts = {}): void {
   const t = jitteredTime();
   const s = bank.bossSting;
+  const variant = BOSS_STING_VARIANTS[(opts.idx ?? 0) % BOSS_STING_VARIANTS.length]!;
   s.brass.volume.value = vol('bossBrass', -10);
-  s.brass.triggerAttackRelease(110, '2n', t);
+  s.brass.triggerAttackRelease(variant.brassStart, variant.release, t);
   // Ramp the frequency down AFTER the trigger sets it, starting one tick later.
   s.brass.frequency.cancelScheduledValues(t + 0.001);
-  s.brass.frequency.exponentialRampToValueAtTime(45, t + 0.6);
+  s.brass.frequency.exponentialRampToValueAtTime(variant.brassEnd, t + 0.6);
   s.sub.volume.value = vol('bossSub', -14);
-  s.sub.triggerAttackRelease(55, '2n', t);
+  s.sub.triggerAttackRelease(variant.sub, variant.release, t);
   triggerDuck(bank.buses, 4, 80, 250);
   lastTime = t + 1.0;
 }

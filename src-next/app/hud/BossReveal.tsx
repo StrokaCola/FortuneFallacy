@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { BOSS_BLINDS, BOSS_CINEMATIC_FLAVOR } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
@@ -9,6 +9,93 @@ import { triggerShake } from '../visual/screenShake';
 import { audioEngine } from '../../audio/AudioEngine';
 import { DUCK_PRESETS } from '../../audio/duckEnvelope';
 import { Z } from './zLayers';
+
+// Wave L — per-run skip memory. The boss sting eats 1.1s + reveal animation
+// (~2.4s total). On a re-encounter within the same run the player has
+// already seen the cinematic; auto-skip to phase 2 so the run doesn't
+// drag. sessionStorage scopes "this run" naturally — closing the tab
+// resets, which matches roguelike "fresh attempt" expectations.
+const SKIP_STORAGE_KEY = 'ff_boss_seen_v1';
+function readSeenBosses(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(SKIP_STORAGE_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch { return new Set(); }
+}
+function markBossSeen(id: string): void {
+  try {
+    const seen = readSeenBosses();
+    seen.add(id);
+    sessionStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify([...seen]));
+  } catch { /* sessionStorage may be unavailable in privacy mode */ }
+}
+
+// Wave L — typewriter name reveal. Renders one letter at a time with a
+// ~70ms cadence so the boss name lands as a verdict. Reduce-motion
+// short-circuits to instant render with the existing 600ms fade.
+function BossNameTypewriter({ name, color }: { name: string; color: string }) {
+  const reduced = useMemo(() =>
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('reduce-motion'),
+  []);
+  const [n, setN] = useState(reduced ? name.length : 0);
+
+  useEffect(() => {
+    if (reduced) return;
+    // Initial pause matches the existing 1300ms wait-for-fadein beat so
+    // the typewriter starts roughly when the player's eye has settled on
+    // the empty name slot. After that, ~70ms per letter (matches --snap).
+    let cancelled = false;
+    const startDelay = 1100;
+    const perLetter = 70;
+    const handles: number[] = [];
+    const startTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      for (let i = 1; i <= name.length; i++) {
+        const id = window.setTimeout(() => {
+          if (!cancelled) setN(i);
+        }, perLetter * (i - 1));
+        handles.push(id);
+      }
+    }, startDelay);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(startTimer);
+      handles.forEach((h) => window.clearTimeout(h));
+    };
+  }, [name, reduced]);
+
+  const visible = name.slice(0, n);
+  const showCursor = !reduced && n > 0 && n < name.length;
+  return (
+    <div
+      className="f-display"
+      style={{
+        fontSize: 28, color: '#f3f0ff', marginTop: 16, textAlign: 'center',
+        minHeight: '1.2em',
+        // The pre-typewriter empty slot stays invisible (no flash of
+        // empty space). Once any letter has landed, the container
+        // fades in alongside.
+        opacity: reduced ? 0 : n > 0 ? 1 : 0,
+        animation: reduced ? 'fadein 600ms ease-out 1300ms both' : undefined,
+        transition: 'opacity 120ms ease-out',
+      }}
+      aria-label={name}
+    >
+      {visible}
+      {showCursor && (
+        <span style={{
+          display: 'inline-block', width: '0.06em', height: '0.9em',
+          marginLeft: 2, verticalAlign: 'baseline',
+          background: color,
+          boxShadow: `0 0 8px ${color}cc`,
+          animation: 'fadein 120ms ease-out',
+        }} />
+      )}
+    </div>
+  );
+}
 
 type RevealPhase = 'dread' | 'reveal';
 type Reveal = { id: string; ts: number; ante: number; phase: RevealPhase };
@@ -37,13 +124,32 @@ export function BossReveal() {
 
   useEffect(() => {
     const off = bus.on('onBossRevealed', ({ blindId, ante }) => {
-      // Phase 1: void approaches. Darken edges, duck music, low drone.
-      // The reveal panel itself doesn't render yet — the screen
-      // becomes a frame of dread before the boss lands.
-      setReveal({ id: blindId, ts: Date.now(), ante, phase: 'dread' });
-      audioEngine.duck(DUCK_PRESETS.holdBreath(DREAD_DURATION_MS));
-      sfxPlay('bossSting');
+      const bossIdx = BOSS_BLINDS.findIndex((b) => b.id === blindId);
+      // Wave L — per-run skip: if the player has seen this boss this
+      // session, jump straight to the reveal panel (still rings the
+      // sting at a lower volume so the bus duck still happens, but
+      // skip the 1.1s dread vignette + flourish loop).
+      const seen = readSeenBosses();
+      const skipDread = seen.has(blindId);
+      markBossSeen(blindId);
 
+      // Phase 1: void approaches. Darken edges, duck music, low drone.
+      // Per-boss sting variant indexed by BOSS_BLINDS position so each
+      // boss gets a distinct harmonic shape (see voices.bossSting).
+      setReveal({
+        id: blindId, ts: Date.now(), ante,
+        phase: skipDread ? 'reveal' : 'dread',
+      });
+      audioEngine.duck(DUCK_PRESETS.holdBreath(skipDread ? 350 : DREAD_DURATION_MS));
+      sfxPlay('bossSting', { idx: bossIdx >= 0 ? bossIdx : 0 });
+
+      if (skipDread) {
+        sfxPlay('sigilDraw');
+        triggerShake('mid');
+        const auto = setTimeout(() => dismiss(), 1800);
+        timersRef.current.add(auto);
+        return;
+      }
       const dreadEnd = setTimeout(() => {
         // Phase 2: actual reveal. Slam in with the existing sigil
         // sequence on top of the established mood.
@@ -184,13 +290,11 @@ export function BossReveal() {
                 <BossSigil boss={def} size={180} animate="both" glow />
               </div>
 
-              <div className="f-display" style={{
-                fontSize: 28, color: '#f3f0ff', marginTop: 16, textAlign: 'center',
-                opacity: 0,
-                animation: 'fadein 600ms ease-out 1300ms both',
-              }}>
-                {def.name}
-              </div>
+              {/* Wave L — typewriter reveal. Letter-by-letter drop at
+                  ~70ms cadence lands the boss name like a verdict
+                  instead of a fade. Reduce-motion bypasses to instant. */}
+              <BossNameTypewriter name={def.name} color={def.color} />
+
               <div className="f-mono uc" style={{
                 fontSize: 10, letterSpacing: '0.32em', color: def.color, marginTop: 6,
                 opacity: 0,

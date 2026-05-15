@@ -161,7 +161,7 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'buy':             v.buy(bank as never); break;
       case 'combo':           v.combo(bank as never, opts); break;
       case 'upgrade':         v.upgrade(bank as never); break;
-      case 'bossSting':       v.bossSting(bank as never); break;
+      case 'bossSting':       v.bossSting(bank as never, opts); break;
       case 'bigScore':        v.bigScore(bank as never); break;
       case 'win':             v.winFanfare(bank as never); break;
       case 'bust':            v.bust(bank as never); break;
