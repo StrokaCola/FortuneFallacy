@@ -3,7 +3,7 @@ import { PortalGate } from '../portal/PortalGate';
 import { useStore, store } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
-import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { useIsTightStage, useIsLandscapeTight } from '../hooks/useIsCompactStage';
 import { getDailyChallenge } from '../../online/dailyChallenge';
 import { lookupStake } from '../../data/stakes';
 import { getTipOfTheDay } from '../../data/tips';
@@ -38,6 +38,7 @@ export function Title() {
   const lifetimeDust = useStore(selectCosmicDustLifetime);
   const prestige = currentPrestigeTier(lifetimeDust);
   const tight = useIsTightStage();
+  const landscapeTight = useIsLandscapeTight();
 
   // Today's daily challenge config. Computed render-side off the system
   // clock — cheap, deterministic, and refreshes on screen revisits so
@@ -70,9 +71,11 @@ export function Title() {
   // FORTUNE at the top + SETTINGS at the bottom under placeItems:center.
   // Adding a vh-aware ceiling (8vh = 64px on an 800-tall window) keeps
   // the wide-but-short desktop viewport from blowing out vertically.
-  const titleFontSize = tight
-    ? 'clamp(28px, 6vw, 56px)'
-    : 'min(clamp(44px, 10vw, 84px), 9vh)';
+  const titleFontSize = landscapeTight
+    ? 'clamp(22px, 9vh, 38px)'
+    : tight
+      ? 'clamp(28px, 6vw, 56px)'
+      : 'min(clamp(44px, 10vw, 84px), 9vh)';
   const taglineMarginBottom = tight ? 12 : 18;
   const ornamentMargin = tight ? '16px auto 0' : '24px auto 0';
   const ornamentW = tight ? 160 : 220;

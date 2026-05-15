@@ -56,6 +56,34 @@ export function useIsTightStage(): boolean {
   return tight;
 }
 
+// Landscape-tight: tight viewport (phone landscape, mostly) where the
+// width axis is the longer one. Title and Pause screens use this to
+// flip from a vertical stack to a side-by-side 2-column layout so the
+// whole screen fits without scrolling on a 812×375 phone.
+function computeLandscapeTight(): boolean {
+  if (typeof window === 'undefined') return false;
+  // Same height threshold as `tight` (≤599px) plus landscape orientation
+  // (width strictly greater than height). 720+ wide rules out portrait-
+  // tall narrow phones where the side-by-side layout would feel cramped.
+  return window.innerHeight < 600 && window.innerWidth > window.innerHeight && window.innerWidth >= 600;
+}
+
+export function useIsLandscapeTight(): boolean {
+  const [v, setV] = useState(computeLandscapeTight);
+
+  useEffect(() => {
+    const update = () => setV(computeLandscapeTight());
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  return v;
+}
+
 // Wide-mode: desktop landscape viewports with enough room to break out
 // of the mobile-first vertical stack. The original layout centres the
 // dice tray on a 1280-wide stage; on actual desktop monitors that
