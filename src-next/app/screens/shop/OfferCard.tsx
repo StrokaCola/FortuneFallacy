@@ -174,7 +174,11 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
           </div>
           <div className={`f-head${isLegendary ? ' ff-legendary-name' : ''}`} style={{
             fontSize: 14, color: isLegendary ? '#ffd97a' : '#f3f0ff', marginTop: 12, textAlign: 'center',
-            textShadow: isLegendary ? `0 0 10px ${ringColor}88` : undefined,
+            // Lighter glow for legendaries — the nameplate sweep already
+            // carries the celebratory motion. A heavy text-shadow on top
+            // smears the glyphs as the bright bar passes, costing
+            // legibility on the smallest viewports.
+            textShadow: isLegendary ? `0 0 4px ${ringColor}66` : undefined,
           }}>
             {m.name}
             {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}

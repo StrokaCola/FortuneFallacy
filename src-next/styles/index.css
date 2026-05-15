@@ -1305,34 +1305,38 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 
 /* Animated nameplate — slow gold light-bar travels through the
-   catalyst's name on legendaries. Uses background-clip to mask
-   the gradient onto the text glyphs. */
+   catalyst's name on legendaries. Renders the bright sweep as a
+   pseudo-element ABOVE the text via mix-blend-mode: screen so the
+   solid text color is preserved underneath (no `background-clip:
+   text` swap that wipes the fill at certain phases). The bright
+   spot is narrow (8% wide), gentle (0.55 alpha) so the glyphs
+   stay readable as it passes. */
 .ff-legendary-name {
-  background-image: linear-gradient(
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+.ff-legendary-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
     100deg,
-    currentColor 0%,
-    currentColor 38%,
-    rgba(255, 247, 224, 1) 50%,
-    currentColor 62%,
-    currentColor 100%
+    transparent 38%,
+    rgba(255, 247, 224, 0.55) 50%,
+    transparent 62%
   );
   background-size: 220% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent;
+  background-position: 100% 50%;
+  mix-blend-mode: screen;
   animation: ff-legendary-name-sweep 6s ease-in-out infinite;
 }
 @keyframes ff-legendary-name-sweep {
   0%, 60%   { background-position: 100% 50%; }
   100%      { background-position: -120% 50%; }
 }
-.reduce-motion .ff-legendary-name {
-  animation: none;
-  background: none;
-  color: currentColor !important;
-  -webkit-text-fill-color: currentColor;
-}
+.reduce-motion .ff-legendary-name::after { animation: none; opacity: 0; }
 
 /* Drift embers — tiny gold sparks float upward from a legendary
    card during idle. Rendered as 1-2 dots positioned near the
