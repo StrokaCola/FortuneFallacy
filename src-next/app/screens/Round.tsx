@@ -212,7 +212,7 @@ function ActionBar({
           onClick={() => { playHaptic('tap'); dispatch({ type: 'REROLL_REQUESTED' }); }}
           title={scoring ? 'Scoring…' : handInProgress ? 'Rolling…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: accent }}>↻</span> Reroll
+            <RerollGlyph color={accent} /> Reroll
             <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
           </span>
         </button>
@@ -224,7 +224,7 @@ function ActionBar({
           onClick={triggerFirstRoll}
           title={!ready ? 'Loading dice physics…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: accent }}>⤴</span>
+            <RollGlyph color={accent} />
             {!ready ? 'Warming up…' : pulling ? 'Pulling…' : 'Roll'}
           </span>
         </button>
@@ -233,8 +233,79 @@ function ActionBar({
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0 || !firstRollDone || !ready}
         onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}>
-        ✦ Play Hand
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <PlayHandGlyph /> Play Hand
+        </span>
       </button>
     </div>
+  );
+}
+
+// Bespoke action-bar glyphs — replace the Unicode ↻ / ⤴ / ✦ with
+// SVG primitives so each button has a distinct instrument-feel
+// icon that picks up the constellation accent. Sized to match the
+// surrounding text (16px tall), drop-shadow for cosmic glow.
+
+function RollGlyph({ color }: { color: string }) {
+  // Upward swooping arc with a star at the apex — "the lever pulls
+  // and the chamber loads," then the dice fly.
+  return (
+    <svg width="18" height="18" viewBox="-12 -12 24 24" style={{ overflow: 'visible' }} aria-hidden="true">
+      <path
+        d="M -8 6 Q -2 -8 8 -6"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+        style={{ filter: `drop-shadow(0 0 3px ${color}aa)` }}
+      />
+      <path
+        d="M 0,-9 L 1.5,-3 L 7,-3 L 2.5,0.5 L 4,6 L 0,2.5 L -4,6 L -2.5,0.5 L -7,-3 L -1.5,-3 Z"
+        fill={color}
+        transform="scale(0.55) translate(14, -10)"
+        style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+      />
+    </svg>
+  );
+}
+
+function RerollGlyph({ color }: { color: string }) {
+  // Orbital arrow — three-quarters of a circle with a small chevron
+  // at the tail. Reads as "loop back" without being a generic refresh
+  // icon.
+  return (
+    <svg width="16" height="16" viewBox="-10 -10 20 20" style={{ overflow: 'visible' }} aria-hidden="true">
+      <path
+        d="M 6 -3 A 7 7 0 1 1 -3 -6"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+        style={{ filter: `drop-shadow(0 0 3px ${color}aa)` }}
+      />
+      <path
+        d="M -3 -6 L -6 -3 L -3 -1"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function PlayHandGlyph() {
+  // 5-point star with a soft gold outline. The play-hand button is
+  // already gold (btn-primary), so the star sits in white-cream so
+  // it reads cleanly without competing with the gradient.
+  return (
+    <svg width="16" height="16" viewBox="-10 -10 20 20" style={{ overflow: 'visible' }} aria-hidden="true">
+      <path
+        d="M 0,-9 L 2.6,-3 L 9,-3 L 3.8,0.8 L 5.8,7 L 0,3 L -5.8,7 L -3.8,0.8 L -9,-3 L -2.6,-3 Z"
+        fill="#fff7e0"
+        style={{ filter: 'drop-shadow(0 0 3px rgba(255, 247, 224, 0.8))' }}
+      />
+    </svg>
   );
 }

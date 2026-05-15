@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
+import { ScreenHeader, AstralSpinner, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { selectUnlocks } from '../../state/selectors';
 import { CONSTELLATIONS, DEFAULT_CONSTELLATION_ID } from '../../data/constellations';
 import { fetchOnlineScores, type OnlineScore } from '../../online/leaderboard';
@@ -64,7 +66,10 @@ export function Scores() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-auto px-4">
-      <h2 className="font-display text-4xl text-cosmos-50 mb-4">HIGH SCORES</h2>
+      <ScreenWatermark color="#f5c451" position="bottom-right">
+        <Sigil kind="star" size={220} color="#f5c451" />
+      </ScreenWatermark>
+      <ScreenHeader title="High Scores" subtitle="◇ records ◇" />
 
       {/* Scope tabs — All-time / Today's daily. Daily is the shared
           single-seed run across every player; all-time is per-
@@ -166,7 +171,10 @@ export function Scores() {
           </div>
         )}
         {selectedUnlocked && visible === null && (
-          <div className="text-cosmos-300 text-sm text-center py-8">loading…</div>
+          <div className="text-cosmos-300 text-sm text-center py-8" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <AstralSpinner size={42} />
+            <span className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.32em', color: '#bba8ff', opacity: 0.8 }}>· consulting the firmament ·</span>
+          </div>
         )}
         {selectedUnlocked && visible !== null && visible.length === 0 && !loadError && (
           <div className="text-cosmos-300 text-sm text-center py-8">— no runs yet —</div>

@@ -154,6 +154,16 @@ export function CatalystStrip() {
         }),
       }}
     >
+      {/* Wide-mode rail header — names the rail as a "vessel" rather
+          than an anonymous list of cards. Hidden on tight portrait
+          where the catalyst row is already horizontal + space-
+          constrained. */}
+      {wide && (
+        <div className="ff-rail-header" style={{ alignSelf: 'flex-start' }}>
+          <span className="ff-rail-header-sigil">✦</span>
+          catalysts
+        </div>
+      )}
       {catalysts.map((id, i) => (
         <CatalystCard
           key={i}

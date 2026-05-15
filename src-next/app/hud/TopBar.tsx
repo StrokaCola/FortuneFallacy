@@ -12,6 +12,7 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useReportHudHeight } from './useReportHudHeight';
 import { bus } from '../../events/bus';
 import { useCounterTween } from '../hooks/useCounterTween';
+import { ConstellationCount } from '../visual/AstralPrimitives';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
 // switch to compact notation (1.2M, 12B, 4.5T) and keep the precise
@@ -193,7 +194,7 @@ export function TopBar({
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
               data-score-counter
-              className={`f-display num${tense ? ' last-throw-warn' : ''}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
                 color: tense ? '#ff4d6d' : '#f3f0ff',
@@ -308,8 +309,10 @@ export function TopBar({
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
           {catalystSlots && (
             <span className="f-mono has-tip" style={{ fontSize: 10, color: '#7be3ff', padding: '2px 6px',
-              border: '1px solid rgba(123,227,255,0.4)', borderRadius: 4, position: 'relative', cursor: 'help' }}>
-              catalysts {catalystSlots.used}/{catalystSlots.max}
+              border: '1px solid rgba(123,227,255,0.4)', borderRadius: 4, position: 'relative', cursor: 'help',
+              display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              catalysts
+              <ConstellationCount filled={catalystSlots.used} total={catalystSlots.max} color="#7be3ff" size={6} />
               <span className="tip">
                 <span className="tip-title">Catalyst slots</span>
                 Catalysts are persistent run-long modifiers. The Bench voucher and some constellations grant extra slots.

@@ -1305,34 +1305,38 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 
 /* Animated nameplate — slow gold light-bar travels through the
-   catalyst's name on legendaries. Uses background-clip to mask
-   the gradient onto the text glyphs. */
+   catalyst's name on legendaries. Renders the bright sweep as a
+   pseudo-element ABOVE the text via mix-blend-mode: screen so the
+   solid text color is preserved underneath (no `background-clip:
+   text` swap that wipes the fill at certain phases). The bright
+   spot is narrow (8% wide), gentle (0.55 alpha) so the glyphs
+   stay readable as it passes. */
 .ff-legendary-name {
-  background-image: linear-gradient(
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+.ff-legendary-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
     100deg,
-    currentColor 0%,
-    currentColor 38%,
-    rgba(255, 247, 224, 1) 50%,
-    currentColor 62%,
-    currentColor 100%
+    transparent 38%,
+    rgba(255, 247, 224, 0.55) 50%,
+    transparent 62%
   );
   background-size: 220% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent;
+  background-position: 100% 50%;
+  mix-blend-mode: screen;
   animation: ff-legendary-name-sweep 6s ease-in-out infinite;
 }
 @keyframes ff-legendary-name-sweep {
   0%, 60%   { background-position: 100% 50%; }
   100%      { background-position: -120% 50%; }
 }
-.reduce-motion .ff-legendary-name {
-  animation: none;
-  background: none;
-  color: currentColor !important;
-  -webkit-text-fill-color: currentColor;
-}
+.reduce-motion .ff-legendary-name::after { animation: none; opacity: 0; }
 
 /* Drift embers — tiny gold sparks float upward from a legendary
    card during idle. Rendered as 1-2 dots positioned near the
@@ -2138,3 +2142,651 @@ body.perf-degraded .edition-void {
 body.perf-degraded .edition-poly {
   background: rgba(149, 119, 255, 0.22) !important;
 }
+
+/* ============================================================ */
+/* BESPOKE ASTRAL POLISH — design system additions              */
+/* Added 2026-05-15. Composable primitives + per-screen         */
+/* identity treatments + interaction polish + micro-details.    */
+/* ============================================================ */
+
+/* AstralDivider — thin gradient line bookended by tiny diamonds.
+   Replaces <hr> semantics with a cosmic seam. The two side bars
+   fade INTO the centre glyph so the eye is drawn there. */
+.ff-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 0;
+  user-select: none;
+  pointer-events: none;
+}
+.ff-divider-bar {
+  flex: 1;
+  height: 1px;
+  max-width: 140px;
+  background: linear-gradient(
+    90deg,
+    rgba(149, 119, 255, 0) 0%,
+    rgba(149, 119, 255, 0.45) 100%
+  );
+}
+.ff-divider-bar.right {
+  background: linear-gradient(
+    90deg,
+    rgba(149, 119, 255, 0.45) 0%,
+    rgba(149, 119, 255, 0) 100%
+  );
+}
+.ff-divider-glyph {
+  font-size: 10px;
+  color: rgba(245, 196, 81, 0.7);
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 6px rgba(245, 196, 81, 0.4);
+}
+
+/* Chip — standardized inline label with optional accent dot.
+   Replaces the dozens of inline-styled "ANTE 02" / "treasury" /
+   "score" labels with one consistent surface. */
+.ff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(15, 9, 37, 0.7);
+  border: 1px solid rgba(149, 119, 255, 0.3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #dcd4ff;
+  white-space: nowrap;
+}
+.ff-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  flex-shrink: 0;
+}
+
+/* Panel frame — tiny gold corner ornaments around premium panels.
+   Activates the latent .flourish-corner pattern. Apply via
+   ff-panel-framed wrapper class (sets up positioning), and the
+   four corners render via ::before / ::after + two extra spans. */
+.ff-panel-framed {
+  position: relative;
+}
+.ff-panel-framed::before,
+.ff-panel-framed::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border: 1px solid rgba(245, 196, 81, 0.55);
+  z-index: 5;
+}
+.ff-panel-framed::before {
+  top: 6px;
+  left: 6px;
+  border-right: none;
+  border-bottom: none;
+}
+.ff-panel-framed::after {
+  bottom: 6px;
+  right: 6px;
+  border-left: none;
+  border-top: none;
+}
+.ff-panel-framed > .ff-panel-corner-tr,
+.ff-panel-framed > .ff-panel-corner-bl {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border: 1px solid rgba(245, 196, 81, 0.55);
+  z-index: 5;
+}
+.ff-panel-framed > .ff-panel-corner-tr {
+  top: 6px;
+  right: 6px;
+  border-left: none;
+  border-bottom: none;
+}
+.ff-panel-framed > .ff-panel-corner-bl {
+  bottom: 6px;
+  left: 6px;
+  border-right: none;
+  border-top: none;
+}
+
+/* Bespoke tooltip enhancement — small leading diamond before the
+   tip-title. Only applies to STRUCTURED tooltips (those with a
+   .tip-title) so plain-text tips stay clean. Uses :has() which
+   is broadly supported. */
+.has-tip .tip:has(.tip-title) .tip-title::before {
+  content: '◇ ';
+  color: rgba(245, 196, 81, 0.7);
+  text-shadow: 0 0 4px rgba(245, 196, 81, 0.4);
+  font-weight: normal;
+  margin-right: 1px;
+}
+
+/* Screen header — flanked diamond glyphs + breathing gradient
+   underline. Standardizes Title / Settings / Codex / Scores /
+   etc. so every screen reads as having the same identity stamp. */
+.ff-screen-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.ff-screen-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(20px, 4vw, 32px);
+  color: #f3f0ff;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 18px rgba(123, 227, 255, 0.4);
+}
+.ff-screen-header-title::before,
+.ff-screen-header-title::after {
+  content: '◇';
+  color: #f5c451;
+  font-size: 0.5em;
+  text-shadow: 0 0 8px rgba(245, 196, 81, 0.65);
+  opacity: 0.8;
+}
+.ff-screen-header-underline {
+  height: 1px;
+  width: 80%;
+  max-width: 280px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(245, 196, 81, 0.6) 50%,
+    transparent 100%
+  );
+  animation: ff-screen-header-breathe 4s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes ff-screen-header-breathe {
+  0%, 100% { opacity: 0.45; transform: scaleX(0.85); }
+  50%      { opacity: 1;    transform: scaleX(1); }
+}
+.reduce-motion .ff-screen-header-underline { animation: none; opacity: 0.7; }
+.ff-screen-header-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #bba8ff;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+/* Screen watermark — large faint sigil at bottom corner so the
+   screen has a sense of ROOM beyond the immediate UI. ~3% opacity
+   keeps it ambient; doesn't compete with content. */
+.ff-screen-watermark {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.04;
+  bottom: 24px;
+  right: 24px;
+  width: 240px;
+  height: 240px;
+  z-index: 0;
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+/* Number plate — thin gold underline + tiny star endcaps. Wraps
+   key numeric readouts so they read as "inscribed totals" rather
+   than HTML text. */
+.ff-number-plate {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 5px;
+}
+.ff-number-plate::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 196, 81, 0) 0%,
+    rgba(245, 196, 81, 0.55) 18%,
+    rgba(245, 196, 81, 0.55) 82%,
+    rgba(245, 196, 81, 0) 100%
+  );
+}
+
+/* Cosmic scrollbar — thin gradient rail + glowing thumb. Replaces
+   the browser-default scrollbar everywhere. */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(15, 9, 37, 0.4);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(149, 119, 255, 0.55), rgba(123, 227, 255, 0.5));
+  border-radius: 4px;
+  box-shadow: 0 0 4px rgba(149, 119, 255, 0.3);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(149, 119, 255, 0.75), rgba(123, 227, 255, 0.7));
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(149, 119, 255, 0.55) rgba(15, 9, 37, 0.4);
+}
+
+/* Button starlight sheen — soft gold bar that catches across
+   .btn-primary on hover. Pseudo-element layered above the
+   gradient; only fires on hover-capable devices so touch doesn't
+   get a constantly-running animation. */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: -50%; bottom: -50%; left: -40%;
+  width: 32%;
+  background: linear-gradient(110deg,
+    transparent 30%,
+    rgba(255, 247, 224, 0.55) 50%,
+    transparent 70%);
+  transform: skewX(-12deg) translateX(0);
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(1px);
+  z-index: 0;
+}
+@media (hover: hover) {
+  .btn-primary:hover::before {
+    opacity: 1;
+    animation: ff-btn-sheen 1.2s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+}
+@keyframes ff-btn-sheen {
+  0%   { transform: skewX(-12deg) translateX(0); }
+  100% { transform: skewX(-12deg) translateX(800%); }
+}
+.reduce-motion .btn-primary::before { animation: none; opacity: 0; }
+
+/* Input chrome — bottom-emphasized border, focus ring in cyan. */
+.ff-input,
+input[type="text"].ff-input,
+input[type="search"].ff-input {
+  background: rgba(15, 9, 37, 0.7);
+  border: 1px solid rgba(149, 119, 255, 0.3);
+  border-bottom-color: rgba(149, 119, 255, 0.6);
+  color: #f3f0ff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.ff-input:focus,
+input[type="text"].ff-input:focus,
+input[type="search"].ff-input:focus {
+  border-color: rgba(123, 227, 255, 0.65);
+  border-bottom-color: rgba(123, 227, 255, 0.85);
+  box-shadow: 0 0 0 3px rgba(123, 227, 255, 0.12);
+}
+
+/* Range input — starlight track with glowing star thumb. The
+   audio sliders in Settings are the primary consumer. */
+input[type="range"].ff-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(149, 119, 255, 0.4),
+    rgba(123, 227, 255, 0.4)
+  );
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].ff-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd97a 30%, #f5c451 75%);
+  box-shadow:
+    0 0 6px rgba(245, 196, 81, 0.8),
+    0 0 12px rgba(245, 196, 81, 0.4);
+  cursor: grab;
+  border: 1px solid rgba(255, 247, 224, 0.7);
+}
+input[type="range"].ff-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd97a 30%, #f5c451 75%);
+  box-shadow:
+    0 0 6px rgba(245, 196, 81, 0.8),
+    0 0 12px rgba(245, 196, 81, 0.4);
+  cursor: grab;
+  border: 1px solid rgba(255, 247, 224, 0.7);
+}
+input[type="range"].ff-range:active::-webkit-slider-thumb { cursor: grabbing; }
+input[type="range"].ff-range:active::-moz-range-thumb { cursor: grabbing; }
+
+/* Panel settle entry — slight scale-in + briefly-glowing gold trim
+   on mount. Applied to panels that should feel like they
+   "switched on" rather than just appeared. */
+.ff-panel-settle {
+  animation: ff-panel-settle 360ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes ff-panel-settle {
+  0%   { opacity: 0; transform: scale(0.96); box-shadow: 0 0 0 1px rgba(245, 196, 81, 0); }
+  60%  { opacity: 1;                          box-shadow: 0 0 0 1px rgba(245, 196, 81, 0.5); }
+  100% { opacity: 1; transform: scale(1);     box-shadow: 0 0 0 1px rgba(245, 196, 81, 0); }
+}
+.reduce-motion .ff-panel-settle { animation: none; }
+
+/* Constellation count — N filled dots + N outlined dots, used as
+   a glanceable replacement for "1/6" style numeric capacities. */
+.ff-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ff-count-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+}
+.ff-count-dot.empty {
+  background: transparent;
+  border: 1px solid currentColor;
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+/* Empty slot — soft constellation-outline pulse instead of the
+   plain dashed-border placeholder. The slot looks like "a sky
+   waiting to be charted" rather than "a missing thing." */
+.ff-empty-slot {
+  position: relative;
+  border: 1px dashed rgba(187, 168, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(15, 9, 37, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  overflow: hidden;
+}
+.ff-empty-slot::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  background-image:
+    radial-gradient(circle at 30% 28%, rgba(187, 168, 255, 0.55) 0.7px, transparent 1.6px),
+    radial-gradient(circle at 70% 32%, rgba(187, 168, 255, 0.55) 0.7px, transparent 1.6px),
+    radial-gradient(circle at 50% 72%, rgba(187, 168, 255, 0.55) 0.7px, transparent 1.6px);
+  background-size: 100% 100%;
+  pointer-events: none;
+  animation: ff-empty-slot-pulse 4.4s ease-in-out infinite;
+}
+.ff-empty-slot::after {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  background-image:
+    linear-gradient(
+      to bottom right,
+      transparent 49.6%,
+      rgba(187, 168, 255, 0.18) 49.8%,
+      rgba(187, 168, 255, 0.18) 50.2%,
+      transparent 50.4%
+    ),
+    linear-gradient(
+      to top right,
+      transparent 49.6%,
+      rgba(187, 168, 255, 0.14) 49.8%,
+      rgba(187, 168, 255, 0.14) 50.2%,
+      transparent 50.4%
+    );
+  background-size: 100% 100%;
+  pointer-events: none;
+  opacity: 0.5;
+}
+@keyframes ff-empty-slot-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1;   }
+}
+.reduce-motion .ff-empty-slot::before { animation: none; opacity: 0.7; }
+
+/* Postmortem celestial-scroll panel treatment — gold corner trim +
+   subtle parchment-of-stars background. Used on the four stat
+   panels of RunPostmortem so the run summary feels inscribed
+   rather than data-dumped. */
+.ff-celestial-panel {
+  position: relative;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255, 247, 224, 0.08) 0.5px, transparent 1.2px),
+    radial-gradient(circle at 70% 65%, rgba(255, 247, 224, 0.06) 0.4px, transparent 1px),
+    radial-gradient(circle at 45% 88%, rgba(255, 247, 224, 0.05) 0.4px, transparent 1px),
+    linear-gradient(180deg, rgba(28, 18, 69, 0.7), rgba(15, 9, 37, 0.85));
+  background-size: 28px 28px, 36px 36px, 22px 22px, 100% 100%;
+  border: 1px solid rgba(149, 119, 255, 0.28);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.ff-celestial-panel::before,
+.ff-celestial-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  border: 1px solid rgba(245, 196, 81, 0.55);
+}
+.ff-celestial-panel::before {
+  top: 4px;
+  left: 4px;
+  border-right: none;
+  border-bottom: none;
+}
+.ff-celestial-panel::after {
+  bottom: 4px;
+  right: 4px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Astral spinner — generalized version of the Forge ember spinner.
+   Single-shot SVG-friendly rotation + ember pulse. Used on any
+   loading state. */
+.ff-spinner {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+.ff-spinner-rays {
+  position: absolute;
+  inset: 0;
+  animation: ff-spinner-rotate 2.4s linear infinite;
+}
+.ff-spinner-ember {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 217, 122, 0.9) 0%, rgba(245, 196, 81, 0.4) 60%, transparent 100%);
+  animation: ff-spinner-ember 1.6s ease-in-out infinite;
+}
+@keyframes ff-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+@keyframes ff-spinner-ember {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+.reduce-motion .ff-spinner-rays,
+.reduce-motion .ff-spinner-ember { animation: none; }
+
+/* ============================================================ */
+/* WAVE F-I — persistent surface polish + micro details         */
+/* Added 2026-05-15. Builds on the bespoke astral primitives.   */
+/* ============================================================ */
+
+/* Tooltip arrow pointer — a tiny gold triangle indicating the
+   source of structured tooltips. Only renders for tooltips that
+   have a .tip-title (so plain-text tooltips stay clean), and only
+   for downward-anchored tips (the default placement). */
+.has-tip .tip:has(.tip-title):not(.tip-above):not(.tip-left):not(.tip-right)::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: calc(50% + var(--tip-shift, 0px));
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(7, 5, 26, 0.95);
+  border-top: 1px solid rgba(149, 119, 255, 0.55);
+  border-left: 1px solid rgba(149, 119, 255, 0.55);
+  pointer-events: none;
+}
+.has-tip .tip.tip-above:has(.tip-title)::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: calc(50% + var(--tip-shift, 0px));
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(7, 5, 26, 0.95);
+  border-right: 1px solid rgba(149, 119, 255, 0.55);
+  border-bottom: 1px solid rgba(149, 119, 255, 0.55);
+  pointer-events: none;
+}
+
+/* Pack-pick ascent — when a card in PackOverlay is taken, it
+   briefly rises + glows in the constellation accent before
+   fading. The `.taken` state stays via the existing opacity:0.35;
+   the ascent adds a one-shot animation layered on top. */
+@keyframes ff-pack-ascend {
+  0%   { transform: translateY(0)    scale(1);   filter: brightness(1) drop-shadow(0 0 0 rgba(245,196,81,0)); }
+  35%  { transform: translateY(-22px) scale(1.06); filter: brightness(1.4) drop-shadow(0 0 14px rgba(245,196,81,0.85)); }
+  100% { transform: translateY(0)    scale(1);   filter: brightness(1) drop-shadow(0 0 0 rgba(245,196,81,0)); }
+}
+.ff-pack-ascend {
+  animation: ff-pack-ascend 700ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.reduce-motion .ff-pack-ascend { animation: none; }
+
+/* Hub trial thread particle — a small gold dot flows along the
+   SVG line connecting the three blind cards. Uses pathLength so
+   the offset can drive it without measuring the path. */
+.ff-thread-particle {
+  fill: #ffd97a;
+  filter: drop-shadow(0 0 4px rgba(245,196,81,0.85));
+  animation: ff-thread-particle-flow 3.6s ease-in-out infinite;
+}
+@keyframes ff-thread-particle-flow {
+  0%, 100% { opacity: 0; offset-distance: 0%; }
+  10%      { opacity: 1; }
+  85%      { opacity: 1; }
+  100%     { offset-distance: 100%; opacity: 0; }
+}
+.reduce-motion .ff-thread-particle { animation: none; opacity: 0; }
+
+/* Per-stake border accent — applied as a body-level class so
+   panels can pick up the stake's tint without each component
+   needing to know the current stake. Subtle: just shifts the
+   panel border tint, keeps the body palette unchanged. */
+body.ff-stake-spark      .panel,
+body.ff-stake-spark      .panel-strong { border-color: rgba(123, 227, 255, 0.32); }
+body.ff-stake-ember      .panel,
+body.ff-stake-ember      .panel-strong { border-color: rgba(255, 120, 71, 0.36); }
+body.ff-stake-blackstar  .panel,
+body.ff-stake-blackstar  .panel-strong { border-color: rgba(204, 136, 255, 0.36); }
+body.ff-stake-voidlit    .panel,
+body.ff-stake-voidlit    .panel-strong { border-color: rgba(149, 119, 255, 0.42); }
+body.ff-stake-sandstorm  .panel,
+body.ff-stake-sandstorm  .panel-strong { border-color: rgba(245, 196, 81, 0.36); }
+
+/* Voucher pickup celebration — when a new voucher enters the
+   voucher row, briefly inscribe it: gold trim ring expands +
+   fades, the voucher itself scales in. */
+@keyframes ff-voucher-inscribe {
+  0%   { transform: scale(0.7) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.12) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.ff-voucher-inscribe {
+  animation: ff-voucher-inscribe 540ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.reduce-motion .ff-voucher-inscribe { animation: none; }
+
+/* Pause icon — bespoke twin-arc SVG hover state. The arc strokes
+   intensify on hover. */
+.ff-pause-icon path {
+  transition: stroke 200ms ease, filter 200ms ease;
+}
+.ff-pause-icon:hover path {
+  filter: drop-shadow(0 0 4px rgba(187, 168, 255, 0.85));
+}
+
+/* Catalyst / Consumable rail vessel header — small labelled
+   header strip. Sits at the top of each rail (CatalystStrip /
+   ConsumableTray) when on wide / desktop mode so the rails read
+   as named cosmic vessels rather than anonymous lists. */
+.ff-rail-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 9, 37, 0.6);
+  border: 1px solid rgba(149, 119, 255, 0.25);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #bba8ff;
+  opacity: 0.85;
+}
+.ff-rail-header-sigil {
+  color: #f5c451;
+  text-shadow: 0 0 4px rgba(245, 196, 81, 0.55);
+}
+
+/* Settings option glyph — small leading glyph on each toggle
+   option button so the choices feel distinct at a glance. */
+.ff-option-glyph {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 1.05em;
+  vertical-align: -1px;
+  opacity: 0.85;
+}
+
+

@@ -563,6 +563,10 @@ function ConstellationThread({ blinds, accent }: { blinds: ThreadBlind[]; accent
   const centers = blinds.map((_, i) => i * (CARD_W + CARD_GAP) + CARD_W / 2);
   const cy = 16;
   const bandH = 32;
+  // Path data for the flowing gold particle — straight line through
+  // every center node, used by the animateMotion below so the
+  // particle traces the thread end-to-end.
+  const pathD = centers.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${cy}`).join(' ');
 
   const segmentColor = (a: ThreadBlind, b: ThreadBlind) => {
     if (a.cleared && b.cleared) return '#9577ff88';
@@ -609,6 +613,21 @@ function ConstellationThread({ blinds, accent }: { blinds: ThreadBlind[]; accent
           />
         );
       })}
+      {/* Flowing gold particle — traces the constellation thread
+          end-to-end on a 4s loop so the path reads as alive /
+          beckoning rather than a static dashed line. */}
+      <circle r={2.5} fill="#ffd97a" opacity={0} style={{
+        filter: 'drop-shadow(0 0 4px rgba(245,196,81,0.85))',
+      }}>
+        <animateMotion dur="4s" repeatCount="indefinite" path={pathD} />
+        <animate
+          attributeName="opacity"
+          values="0;1;1;0"
+          keyTimes="0;0.12;0.88;1"
+          dur="4s"
+          repeatCount="indefinite"
+        />
+      </circle>
     </svg>
   );
 }

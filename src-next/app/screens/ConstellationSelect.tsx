@@ -120,15 +120,13 @@ export function ConstellationSelect() {
             placeholder="XXXX-XXX"
             value={seedInput}
             onChange={(e) => setSeedInput(e.target.value)}
-            className="f-mono"
+            className="f-mono ff-input"
             style={{
-              width: 132, padding: '5px 10px',
+              width: 132,
               fontSize: 12, letterSpacing: '0.12em',
               textTransform: 'uppercase', textAlign: 'center',
-              color: '#f3f0ff',
-              background: 'rgba(15,9,37,0.7)',
-              border: `1px solid ${seedInvalid ? 'rgba(255,77,109,0.6)' : 'rgba(149,119,255,0.25)'}`,
-              borderRadius: 6, outline: 'none',
+              borderColor: seedInvalid ? 'rgba(255,77,109,0.6)' : undefined,
+              borderBottomColor: seedInvalid ? 'rgba(255,77,109,0.85)' : undefined,
             }}
           />
           {seedInvalid && (

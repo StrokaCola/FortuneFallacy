@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { dispatch } from '../../actions/dispatch';
+import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { useStore, type GameState } from '../../state/store';
 import { CATALYST_META } from '../../data/catalysts';
 import { MODS } from '../../core/mods';
@@ -51,17 +53,12 @@ export function Codex() {
       position: 'absolute', inset: 0, pointerEvents: 'auto',
       overflow: 'auto', padding: '32px 24px',
     }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <ScreenWatermark color="#cc88ff" position="bottom-right">
+        <Sigil kind="priestess" size={220} color="#cc88ff" />
+      </ScreenWatermark>
+      <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 18 }}>
-          <div className="f-mono uc" style={{ fontSize: 11, color: '#7be3ff', letterSpacing: '0.5em' }}>
-            ◇ catalogue ◇
-          </div>
-          <div className="f-display" style={{
-            fontSize: 'clamp(24px, 7vw, 40px)', color: '#f3f0ff', marginTop: 4,
-            textShadow: '0 0 30px rgba(123,227,255,0.4)',
-          }}>
-            Codex
-          </div>
+          <ScreenHeader title="Codex" subtitle="◇ catalogue ◇" />
           <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 4, opacity: 0.85 }}>
             Items you've encountered. The unseen are silhouetted.
           </div>

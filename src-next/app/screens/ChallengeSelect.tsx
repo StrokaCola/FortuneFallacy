@@ -1,5 +1,7 @@
 import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
+import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 import { CHALLENGES } from '../../data/challenges';
 import { lookupConstellation } from '../../data/constellations';
 import { lookupStake } from '../../data/stakes';
@@ -14,17 +16,12 @@ export function ChallengeSelect() {
       position: 'absolute', inset: 0, pointerEvents: 'auto',
       overflow: 'auto', padding: '32px 24px',
     }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <ScreenWatermark color="#ff4d6d" position="bottom-right">
+        <Sigil kind="comet" size={220} color="#ff4d6d" />
+      </ScreenWatermark>
+      <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 22 }}>
-          <div className="f-mono uc" style={{ fontSize: 11, color: '#7be3ff', letterSpacing: '0.5em' }}>
-            ◇ constraint runs ◇
-          </div>
-          <div className="f-display" style={{
-            fontSize: 'clamp(24px, 7vw, 40px)', color: '#f3f0ff', marginTop: 4,
-            textShadow: '0 0 30px rgba(123,227,255,0.4)',
-          }}>
-            Challenges
-          </div>
+          <ScreenHeader title="Challenges" subtitle="◇ constraint runs ◇" />
           <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 4, opacity: 0.85 }}>
             Curated runs with handcrafted restrictions. Beat one to earn its badge.
           </div>

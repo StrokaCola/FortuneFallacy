@@ -175,8 +175,17 @@ export function CatalystCard(props: CatalystCardProps) {
           </KindFrame>
         </div>
         <div
-          className={`f-mono uc${isLegendary ? ' ff-legendary-name' : ''}`}
-          style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}
+          className="f-mono uc"
+          style={{
+            fontSize: 7, letterSpacing: '0.14em',
+            color: c.color,
+            // Legendary strip-card name keeps a slight gold-warmth
+            // shift instead of the gradient sweep — at 7px the sweep
+            // washes the glyphs into illegibility. The OfferCard's
+            // 14px name is large enough for the sweep to read.
+            textShadow: isLegendary ? '0 0 3px rgba(255,217,122,0.5)' : undefined,
+            textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2,
+          }}
         >
           {c.name.split(' ').pop()}
         </div>

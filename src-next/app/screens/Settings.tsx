@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import * as audioSettings from '../../audio/audioSettings';
+import { ScreenHeader } from '../visual/AstralPrimitives';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
 import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
 import { getColorblindPref, setColorblindPref, subscribeColorblind } from '../visual/colorblind';
@@ -49,10 +50,11 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
         <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}</span>
       </span>
       <input
+        className="ff-range"
         type="range" min={0} max={1} step={0.01} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={`${label} volume`}
-        style={{ accentColor: '#7be3ff', width: '100%' }}
+        style={{ width: '100%' }}
       />
     </label>
   );
@@ -132,10 +134,10 @@ function CaptionsToggle() {
 }
 
 function HapticsToggle({ pref }: { pref: HapticsPref }) {
-  const opts: { id: HapticsPref; label: string; hint: string }[] = [
-    { id: 'on',  label: 'On',  hint: 'Always buzz on key moments' },
-    { id: 'os',  label: 'Match system', hint: 'Buzz unless Reduce Motion is on' },
-    { id: 'off', label: 'Off', hint: 'No vibration' },
+  const opts: { id: HapticsPref; label: string; hint: string; glyph: string }[] = [
+    { id: 'on',  label: 'On',           hint: 'Always buzz on key moments',    glyph: '〰' },
+    { id: 'os',  label: 'Match system', hint: 'Buzz unless Reduce Motion is on', glyph: '◐' },
+    { id: 'off', label: 'Off',          hint: 'No vibration',                  glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -157,6 +159,7 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -245,10 +248,10 @@ function LongPressToggle() {
 function PerfModeToggle() {
   const [pref, setPref] = useState<PerfMode>(getPerfMode);
   useEffect(() => subscribePerfMode(() => setPref(getPerfMode())), []);
-  const opts: { id: PerfMode; label: string; hint: string }[] = [
-    { id: 'off',  label: 'Full',    hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.' },
-    { id: 'auto', label: 'Auto',    hint: 'Adapts to device + live frame budget. Default. (Recommended)' },
-    { id: 'on',   label: 'Performance', hint: 'Lower DPR + no AA + softer shadows + drops cosmos halos, stardust drift, edition animations. Reload to fully apply DPR/AA.' },
+  const opts: { id: PerfMode; label: string; hint: string; glyph: string }[] = [
+    { id: 'off',  label: 'Full',        hint: 'Full quality (PBR, antialias, 30fps backdrop). Best look.', glyph: '✦' },
+    { id: 'auto', label: 'Auto',        hint: 'Adapts to device + live frame budget. Default. (Recommended)', glyph: '◐' },
+    { id: 'on',   label: 'Performance', hint: 'Lower DPR + no AA + softer shadows + drops cosmos halos, stardust drift, edition animations. Reload to fully apply DPR/AA.', glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -268,6 +271,7 @@ function PerfModeToggle() {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -278,10 +282,10 @@ function PerfModeToggle() {
 }
 
 function MotionToggle({ pref }: { pref: MotionPref }) {
-  const opts: { id: MotionPref; label: string; hint: string }[] = [
-    { id: 'allow', label: 'Full',    hint: 'Always animate' },
-    { id: 'os',    label: 'Match system', hint: 'Use OS Reduce Motion preference' },
-    { id: 'reduce', label: 'Reduced', hint: 'Minimise motion in-app' },
+  const opts: { id: MotionPref; label: string; hint: string; glyph: string }[] = [
+    { id: 'allow',  label: 'Full',         hint: 'Always animate',                     glyph: '✦' },
+    { id: 'os',     label: 'Match system', hint: 'Use OS Reduce Motion preference',    glyph: '◐' },
+    { id: 'reduce', label: 'Reduced',      hint: 'Minimise motion in-app',             glyph: '·' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -303,6 +307,7 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -331,7 +336,7 @@ export function Settings() {
         padding: 16,
         animation: 'fadein 400ms ease-out both',
       }}>
-      <div className="panel-strong" style={{
+      <div className="panel-strong ff-panel-settle" style={{
         width: 'min(460px, 100%)', padding: 'clamp(20px, 3vw, 32px)', position: 'relative',
         display: 'flex', flexDirection: 'column', gap: 22,
         maxHeight: 'calc(100% - 32px)', overflowY: 'auto',
@@ -341,14 +346,7 @@ export function Settings() {
         <span className="flourish-corner bl" />
         <span className="flourish-corner br" />
 
-        <div style={{ textAlign: 'center' }}>
-          <div className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.5em', color: '#bba8ff' }}>
-            ◇ preferences ◇
-          </div>
-          <div className="f-display" style={{ fontSize: 'clamp(22px, 6vw, 32px)', color: '#f3f0ff', marginTop: 6 }}>
-            Settings
-          </div>
-        </div>
+        <ScreenHeader title="Settings" subtitle="◇ preferences ◇" />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Slider label="master volume" value={audio.master} onChange={audioSettings.setMaster} />
