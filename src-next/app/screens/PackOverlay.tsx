@@ -7,6 +7,7 @@ import { GALAXY_BONUS, lookupPack } from '../../core/consumables/galaxies';
 import { sfxPlay } from '../../audio/sfx';
 import { Z } from '../hud/zLayers';
 import { useFocusTrap } from '../hud/useFocusTrap';
+import { useModalExit } from '../hooks/useModalExit';
 
 const accent = '#cc88ff';
 
@@ -49,7 +50,12 @@ export function PackOverlay() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
-  if (!pack) return null;
+  // Stay mounted long enough to play an exit fade when the player
+  // takes / skips. Pack picker is the highest-energy modal in the
+  // game — pairing entry + exit fades keeps the open and the close
+  // feeling like one composed beat.
+  const { rendered, exiting } = useModalExit(isOpen, 140);
+  if (!rendered || !pack) return null;
 
   const def = lookupPack(pack.kind);
   const title = def?.name ?? 'Galaxy Pack';
@@ -60,6 +66,7 @@ export function PackOverlay() {
   return (
     <div
       ref={dialogRef}
+      className={exiting ? 'modal-exit-anim' : undefined}
       role="dialog"
       aria-modal="true"
       aria-label={`${title} pack — pick ${pack.picksLeft} ${pack.picksLeft === 1 ? itemNoun : itemNounPlural}`}
@@ -69,7 +76,10 @@ export function PackOverlay() {
         backdropFilter: 'blur(6px)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: '32px 16px',
-        pointerEvents: 'auto',
+        pointerEvents: exiting ? 'none' : 'auto',
+        animation: exiting
+          ? 'modalFadeOut var(--modal-out, 140ms) ease-in forwards'
+          : 'fadein var(--modal-in, 200ms) var(--ease-modal, ease-out)',
       }}
     >
       <div className="f-mono uc" style={{ fontSize: 11, color: accent, letterSpacing: '0.4em' }}>

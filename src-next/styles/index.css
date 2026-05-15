@@ -35,6 +35,14 @@
   --savored-short: 450ms;
   --savored: 720ms;
   --savored-long: 900ms;
+  /* Modal entry / exit timing — every overlay should pair an enter
+     fade with a matching exit so the close doesn't snap. Exit is
+     slightly faster than enter so the release feels tighter than
+     the deliberate open. Consumed by useModalExit + the modalExit
+     keyframe below. */
+  --modal-in: 200ms;
+  --modal-out: 140ms;
+  --ease-modal: cubic-bezier(0.2, 0.9, 0.3, 1);
   --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-savor: cubic-bezier(0.25, 0.46, 0.2, 1.0);
 
@@ -185,7 +193,7 @@ html, body {
 }
 
 /* Buttons */
-.btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms; user-select: none; }
+.btn { cursor: pointer; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border: none; transition: filter 120ms, opacity 120ms; user-select: none; }
 @media (hover: hover) { .btn:hover { filter: brightness(1.1); } }
 .btn:active:not(:disabled) { filter: brightness(0.92); }
 .btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
@@ -384,6 +392,11 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
   100% { transform: translate(-50%, -72px) scale(0.95); opacity: 0; }
 }
 @keyframes fadein { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+/* Mirrored exit — paired with `fadein` for any modal that uses
+   useModalExit. Slightly different easing (ease-in vs ease-out) so
+   the exit reads as a release, not a reverse of the entry. */
+@keyframes modalFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.96); } }
+.reduce-motion .modal-exit-anim { animation: none; opacity: 0; }
 /* Mobile bottom-sheet entrance — slides up from below the viewport. */
 @keyframes sheetSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
 

@@ -12,16 +12,24 @@
 // React error #185 cascades when paired with Coachmark's measurement
 // effect.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { Coachmark } from './Coachmark';
-import { pickActiveCoachmark } from './coachmarks';
+import { pickActiveCoachmark, type CoachmarkDef } from './coachmarks';
+import { useModalExit } from '../hooks/useModalExit';
 
 const selectActiveCoachmark = (s: GameState) => pickActiveCoachmark(s);
 
 export function CoachmarkController() {
   const def = useStore(selectActiveCoachmark);
+  // Hold onto the previous def so the bubble can fade out cleanly
+  // after the active def flips back to null (Got it / Skip tutorial).
+  // Without this, Controller returns null immediately and Coachmark
+  // pops away with no exit animation.
+  const lastDefRef = useRef<CoachmarkDef | null>(def);
+  if (def) lastDefRef.current = def;
+  const { rendered, exiting } = useModalExit(!!def, 160);
 
   // Mirror "is a coachmark showing?" onto <body> so the tooltip
   // suppression CSS can hide hover/stuck tips while a coachmark is
@@ -36,8 +44,10 @@ export function CoachmarkController() {
     return undefined;
   }, [def?.id]);
 
-  if (!def) return null;
+  const activeDef = def ?? lastDefRef.current;
+  if (!rendered || !activeDef) return null;
   // Key on id so the bubble re-mounts cleanly between coachmarks (resets
-  // the rAF re-measure loop in Coachmark.tsx).
-  return <Coachmark key={def.id} def={def} />;
+  // the rAF re-measure loop in Coachmark.tsx). Pass `exiting` through so
+  // the bubble fades out instead of popping when the player dismisses.
+  return <Coachmark key={activeDef.id} def={activeDef} exiting={exiting} />;
 }

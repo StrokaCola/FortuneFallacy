@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore, type GameState } from '../../state/store';
 import { dispatch } from '../../actions/dispatch';
 import { lookupMod } from '../../core/mods';
@@ -7,6 +7,7 @@ import { editionColor, editionLabel } from '../../core/upgrades/editions';
 import { describeFace, WILD_SENTINEL } from '../../core/run/faceReadable';
 import { formatModStackLabel } from './modStackLabel';
 import { Z } from './zLayers';
+import { useModalExit } from '../hooks/useModalExit';
 
 // Long-press info tooltip for in-round 3D dice.
 //
@@ -48,26 +49,33 @@ export function DieTip() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  if (!tip) return null;
+  // Hold onto the last tip data so the chip can fade out cleanly when
+  // the player un-hovers / un-presses (without this, tip flips to null
+  // and the component pops away mid-fade).
+  const lastTipRef = useRef(tip);
+  if (tip) lastTipRef.current = tip;
+  const { rendered, exiting } = useModalExit(!!tip, 100);
+  const activeTip = tip ?? lastTipRef.current;
+  if (!rendered || !activeTip) return null;
   // Suppress while a coachmark bubble is showing — coachmarks are
   // higher-priority onboarding guidance and shouldn't share screen
   // real estate with the die info chip. Mirrors the CSS suppression
   // rule used for `.has-tip .tip` tooltips.
   if (typeof document !== 'undefined' && document.body.dataset.coachActive === 'true') return null;
-  const die = dice[tip.dieIdx];
+  const die = dice[activeTip.dieIdx];
   if (!die) return null;
 
-  const mods = diceMods[tip.dieIdx] ?? [];
-  const eds = diceModEditions[tip.dieIdx] ?? [];
-  const stacks = diceModStacks[tip.dieIdx] ?? [];
+  const mods = diceMods[activeTip.dieIdx] ?? [];
+  const eds = diceModEditions[activeTip.dieIdx] ?? [];
+  const stacks = diceModStacks[activeTip.dieIdx] ?? [];
 
   // Flip above the die when the anchor would push the tip off-screen below.
   // Rough estimate: the chip block is ~140-180px tall depending on mod count;
   // we leave 120px headroom which is generous on the smallest phones.
-  const flipBelow = tip.screenY < 200;
+  const flipBelow = activeTip.screenY < 200;
   const topPx = flipBelow
-    ? tip.screenY + ANCHOR_GAP_PX
-    : tip.screenY - ANCHOR_GAP_PX;
+    ? activeTip.screenY + ANCHOR_GAP_PX
+    : activeTip.screenY - ANCHOR_GAP_PX;
   const translateY = flipBelow ? '0%' : '-100%';
 
   // Clamp the horizontal anchor so the tip never reaches past the
@@ -76,7 +84,7 @@ export function DieTip() {
   // 6px safety margin. On a 320px phone a die near the right edge used
   // to render the right half of the tip off-screen.
   const TIP_HALF = 140;
-  const leftPx = Math.max(TIP_HALF + 6, Math.min(vp.vw - TIP_HALF - 6, tip.screenX));
+  const leftPx = Math.max(TIP_HALF + 6, Math.min(vp.vw - TIP_HALF - 6, activeTip.screenX));
 
   const isWild = die.face === WILD_SENTINEL;
 
@@ -107,7 +115,10 @@ export function DieTip() {
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        animation: 'fadein 120ms ease-out',
+        animation: exiting
+          ? 'modalFadeOut 100ms ease-in forwards'
+          : 'fadein 120ms ease-out',
+        pointerEvents: exiting ? 'none' : 'auto',
       }}
       data-die-tip
     >
@@ -116,7 +127,7 @@ export function DieTip() {
           fontSize: 9, letterSpacing: '0.28em', color: '#9577ff',
           padding: '2px 6px', border: '1px solid #9577ff66', borderRadius: 4,
         }}>
-          d{tip.dieIdx + 1}
+          d{activeTip.dieIdx + 1}
         </span>
         <span className="f-mono uc" style={{
           fontSize: 9, letterSpacing: '0.24em',

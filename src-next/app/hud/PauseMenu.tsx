@@ -7,6 +7,7 @@ import { RunInfoPanel } from './RunInfoPanel';
 import { Z } from './zLayers';
 import { useFocusTrap } from './useFocusTrap';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { useModalExit } from '../hooks/useModalExit';
 import { CATALYST_META } from '../../data/catalysts';
 import { lookupConstellation } from '../../data/constellations';
 
@@ -65,7 +66,9 @@ export function PauseMenu() {
     return () => off();
   }, [paused]);
 
-  if (!paused) return null;
+  // Stay mounted long enough to fade out cleanly when paused flips false.
+  const { rendered, exiting } = useModalExit(paused, 140);
+  if (!rendered) return null;
 
   const onResume = () => dispatch({ type: 'TOGGLE_PAUSE' });
   const onBackToTitle = () => {
@@ -76,12 +79,15 @@ export function PauseMenu() {
   return (
     <div
       ref={dialogRef}
+      className={exiting ? 'modal-exit-anim' : undefined}
       style={{
         position: 'absolute', inset: 0, zIndex: Z.modalStrong,
         background: 'rgba(7,5,26,0.75)',
         display: 'grid', placeItems: 'center',
-        animation: 'fadein 200ms ease-out',
-        pointerEvents: 'auto',
+        animation: exiting
+          ? 'modalFadeOut var(--modal-out, 140ms) ease-in forwards'
+          : 'fadein var(--modal-in, 200ms) ease-out',
+        pointerEvents: exiting ? 'none' : 'auto',
       }}
       role="dialog"
       aria-modal="true"

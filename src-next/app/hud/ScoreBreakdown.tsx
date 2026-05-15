@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useModalExit } from '../hooks/useModalExit';
 import { bus } from '../../events/bus';
 import type { Beat } from '../../core/scoring/types';
 import { formatNumber } from './scoreExplainData';
@@ -162,7 +163,12 @@ export function ScoreBreakdown() {
     };
   }, []);
 
-  if (!visible) return null;
+  // Stay mounted long enough to fade out cleanly when `visible` flips
+  // to false (boom / bail beats trigger setVisible(false) after a
+  // 1200ms hold — without the exit-anim wrap the strip pops away
+  // instead of fading).
+  const { rendered, exiting } = useModalExit(visible, 220);
+  if (!rendered) return null;
 
   const tier = multTier(mult);
 
@@ -182,7 +188,9 @@ export function ScoreBreakdown() {
         alignItems: 'center',
         zIndex: Z.hud,
         pointerEvents: 'none',
-        animation: 'fadein 0.25s ease-out',
+        animation: exiting
+          ? 'modalFadeOut 220ms ease-in forwards'
+          : 'fadein 0.25s ease-out',
       }}
     >
       <div
