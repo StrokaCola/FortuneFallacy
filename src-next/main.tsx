@@ -106,16 +106,28 @@ createRoot(host).render(
 );
 
 // Dismiss the boot splash. React has rendered; wait one frame so
-// the first paint includes our shell, then clear `data-boot` to
-// trigger the splash's CSS opacity transition. After the fade
-// settles, remove the splash DOM entirely so it can't intercept
-// pointer events on slow machines.
+// the first paint includes our shell, then hold the splash long
+// enough for its polyline + stars animation (~1100ms) to actually
+// finish on slow loads before triggering the CSS opacity transition.
+// Wave T — the hold + extended fade lets the Title polyline draw in
+// underneath the still-visible boot splash, so the eye reads the
+// constellation as a single continuous element bridging boot→Title
+// rather than two separate flashes. After the fade settles, remove
+// the splash DOM entirely so it can't intercept pointer events on
+// slow machines.
+const BOOT_MIN_HOLD_MS = 1100; // matches boot-draw + star-pop tail
+const BOOT_FADE_MS = 820;      // matches CSS transition in index.html
+const bootStart = performance.now();
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
-    document.body.removeAttribute('data-boot');
+    const elapsed = performance.now() - bootStart;
+    const remaining = Math.max(0, BOOT_MIN_HOLD_MS - elapsed);
     window.setTimeout(() => {
-      const splash = document.getElementById('boot-splash-inline');
-      if (splash) splash.remove();
-    }, 600);
+      document.body.removeAttribute('data-boot');
+      window.setTimeout(() => {
+        const splash = document.getElementById('boot-splash-inline');
+        if (splash) splash.remove();
+      }, BOOT_FADE_MS + 60);
+    }, remaining);
   });
 });
