@@ -12,6 +12,7 @@ import { KindFrame } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { SellButton } from '../SellButton';
 import { LunarPhaseBadge, TideBadge, CornerBadge } from './badges';
+import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
 import type { FloaterRecord, RingRecord, PulseKind } from './types';
 import { CATALYST_ANIM } from './useCatalystEvents';
 
@@ -79,11 +80,18 @@ export function CatalystCard(props: CatalystCardProps) {
 
   const isLegendary = c.rarity === 'legendary';
   const eColor = edition ? editionColor(edition) : null;
-  // Holo edition gets the rainbow sweep already used for legendaries.
-  // Foil gets a static rainbow border. Poly gets a chromatic-aberration
-  // double-shadow on the icon. Legendary already shimmers; if it ALSO
-  // has an edition, we just add the per-edition border accent.
-  const showHolo = edition === 'holo' || isLegendary;
+  // Bespoke surface treatment per edition (added 2026-05-15):
+  // every edition is now a distinct material, not a tint. The
+  // surface div renders BELOW the icon/name (z-index: 1). Legendary
+  // skips the per-edition surface only if it has no edition — the
+  // legendary frame ornament + embers carry that case. With both,
+  // the edition surface stacks UNDER the legendary frame.
+  const editionSurfaceClass =
+    edition === 'foil'  ? 'ff-edition-surface ff-surface-foil'  :
+    edition === 'holo'  ? 'ff-edition-surface ff-surface-holo'  :
+    edition === 'poly'  ? 'ff-edition-surface ff-surface-poly'  :
+    edition === 'void'  ? 'ff-edition-surface ff-surface-void'  :
+    null;
   const isVoid = edition === 'void';
   // Void edition wins the border slot — it's the most build-defining
   // edition and needs the strongest visual grammar. Cosmic-purple
@@ -110,7 +118,10 @@ export function CatalystCard(props: CatalystCardProps) {
     >
       <SellButton kind="catalyst" id={id} index={i} variant="badge" />
       <div
-        className={isLegendary ? 'legendary-aura legendary-aura-static' : undefined}
+        className={[
+          isLegendary ? 'legendary-aura legendary-aura-static' : '',
+          isLegendary ? 'ff-legendary-lift' : '',
+        ].filter(Boolean).join(' ') || undefined}
         style={{
           width: 64, height: 88, borderRadius: 8,
           background: `linear-gradient(180deg, ${c.color}25, rgba(15,9,37,0.85))`,
@@ -125,12 +136,15 @@ export function CatalystCard(props: CatalystCardProps) {
           position: 'relative',
           overflow: 'hidden',
         }}>
-        {showHolo && (
-          <>
-            <div className="ff-holo" />
-            <div className="ff-holo-shimmer" />
-          </>
-        )}
+        {/* Edition surface — bespoke material treatment per edition.
+            Sits below content via z-index. Each edition is a
+            different visual phenomenon (metal sweep / prismatic
+            refraction / faceted crystal / cosmic absence). */}
+        {editionSurfaceClass && <div className={editionSurfaceClass} aria-hidden="true" />}
+        {/* Per-legendary signature flourish — mechanic-hinting
+            micro-animation. Only fires when the catalyst is
+            legendary AND has a registered flourish. */}
+        {isLegendary && <LegendaryFlourish catalystId={id} />}
         <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff', position: 'relative', zIndex: 2 }}>catalyst</div>
         <div style={{
           position: 'relative', zIndex: 2,
@@ -160,7 +174,10 @@ export function CatalystCard(props: CatalystCardProps) {
             />
           </KindFrame>
         </div>
-        <div className="f-mono uc" style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}>
+        <div
+          className={`f-mono uc${isLegendary ? ' ff-legendary-name' : ''}`}
+          style={{ fontSize: 7, letterSpacing: '0.14em', color: c.color, textAlign: 'center', lineHeight: 1.2, position: 'relative', zIndex: 2 }}
+        >
           {c.name.split(' ').pop()}
         </div>
         {edition && eColor && (
@@ -267,6 +284,11 @@ export function CatalystCard(props: CatalystCardProps) {
           ) : null;
         })()}
       </div>
+      {/* Idle drift embers — only on legendaries. Two staggered
+          sparks float upward from the bottom of the card. Live
+          OUTSIDE the inner panel so they aren't clipped by the
+          panel's overflow: hidden as they drift up + away. */}
+      {isLegendary && <LegendaryEmbers />}
       {/* Ring bursts emanate from the card center on each fire. Live
           outside the inner card div so overflow: hidden doesn't clip
           them as they expand. */}

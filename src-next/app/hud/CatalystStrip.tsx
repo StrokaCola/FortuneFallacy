@@ -63,7 +63,7 @@ export function CatalystStrip() {
 
   // Bus-driven animation state lives in the dedicated hook so this
   // file can stay focused on layout + per-card prop assembly.
-  const { pulsing, floaters, rings } = useCatalystEvents(catalysts, tight);
+  const { pulsing, floaters, rings } = useCatalystEvents(catalysts, tight, catalystEditions);
 
   // Badge bump on stack increment. Diff the previous catalystStacks
   // snapshot against the current one; for each id whose stack went UP,
