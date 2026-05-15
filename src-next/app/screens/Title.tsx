@@ -61,18 +61,34 @@ export function Title() {
   // header drops from clamp(48px, 12vw, 96px) ≈ 96px on a 1170-wide
   // viewport down to clamp(28px, 6vw, 56px), cutting the two-word
   // stack in half. Buttons / margins / ornament shrink in lockstep.
-  const titleFontSize = tight ? 'clamp(28px, 6vw, 56px)' : 'clamp(48px, 12vw, 96px)';
-  const taglineMarginBottom = tight ? 12 : 24;
-  const ornamentMargin = tight ? '16px auto 0' : '40px auto 0';
-  const ornamentW = tight ? 160 : 240;
-  const ornamentH = tight ? 40 : 60;
-  const buttonsMarginTop = tight ? 14 : 36;
-  const buttonsGap = tight ? 8 : 12;
+  //
+  // Wave V — title font now caps against viewport HEIGHT too, not just
+  // width. On a 1280×800 desktop viewport the previous clamp landed at
+  // 96px per word + 96px line-height for two stacked words = ~190px of
+  // heading alone, which combined with the daily challenge card + 5
+  // secondary nav buttons pushed total content to ~1030px and clipped
+  // FORTUNE at the top + SETTINGS at the bottom under placeItems:center.
+  // Adding a vh-aware ceiling (8vh = 64px on an 800-tall window) keeps
+  // the wide-but-short desktop viewport from blowing out vertically.
+  const titleFontSize = tight
+    ? 'clamp(28px, 6vw, 56px)'
+    : 'min(clamp(44px, 10vw, 84px), 9vh)';
+  const taglineMarginBottom = tight ? 12 : 18;
+  const ornamentMargin = tight ? '16px auto 0' : '24px auto 0';
+  const ornamentW = tight ? 160 : 220;
+  const ornamentH = tight ? 40 : 50;
+  const buttonsMarginTop = tight ? 14 : 24;
+  const buttonsGap = tight ? 8 : 10;
   const primaryBtnWidth = tight ? 180 : 240;
   const ghostBtnWidth = tight ? 160 : 200;
-  const portalSize = tight ? 48 : 72;
-  const portalMarginTop = tight ? 8 : 18;
-  const versionMarginTop = tight ? 18 : 60;
+  const portalSize = tight ? 48 : 60;
+  const portalMarginTop = tight ? 8 : 14;
+  const versionMarginTop = tight ? 18 : 36;
+  // Wave V — drop the multi-line Tip-of-the-Day on shorter desktop
+  // viewports (≤900 tall) so the Begin/Continue/Daily/secondary nav
+  // stack fits above the fold without scrolling. Phones already hide
+  // it via the tight branch's compressed rhythm.
+  const showTip = tight ? true : typeof window !== 'undefined' ? window.innerHeight > 900 : true;
 
   return (
     <div style={{
@@ -190,10 +206,10 @@ export function Title() {
             className="btn btn-ghost mat-interactive tap"
             style={{
               width: primaryBtnWidth,
-              padding: tight ? '8px 12px' : '12px 16px',
+              padding: tight ? '8px 12px' : '8px 14px',
               borderColor: 'rgba(245,196,81,0.55)',
               boxShadow: '0 0 18px rgba(245,196,81,0.18)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
             }}
             onClick={() => {
               if (hasRun) {
@@ -241,31 +257,31 @@ export function Title() {
           }}>
             <button
               className="btn btn-ghost tap"
-              style={{ width: ghostBtnWidth }}
+              style={{ width: ghostBtnWidth, padding: tight ? undefined : '8px 14px', fontSize: tight ? undefined : 12 }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'codex' })}>
               Codex
             </button>
             <button
               className="btn btn-ghost tap"
-              style={{ width: ghostBtnWidth }}
+              style={{ width: ghostBtnWidth, padding: tight ? undefined : '8px 14px', fontSize: tight ? undefined : 12 }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'astral_forge' })}>
               Astral Forge
             </button>
             <button
               className="btn btn-ghost tap"
-              style={{ width: ghostBtnWidth }}
+              style={{ width: ghostBtnWidth, padding: tight ? undefined : '8px 14px', fontSize: tight ? undefined : 12 }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'challenges' })}>
               Challenges
             </button>
             <button
               className="btn btn-ghost tap"
-              style={{ width: ghostBtnWidth }}
+              style={{ width: ghostBtnWidth, padding: tight ? undefined : '8px 14px', fontSize: tight ? undefined : 12 }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'scores' })}>
               Records
             </button>
             <button
               className="btn btn-ghost tap"
-              style={{ width: ghostBtnWidth }}
+              style={{ width: ghostBtnWidth, padding: tight ? undefined : '8px 14px', fontSize: tight ? undefined : 12 }}
               onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })}>
               Settings
             </button>
@@ -284,13 +300,15 @@ export function Title() {
             toward systems they may not have discovered yet (mods,
             voidstorms, resonances, easter eggs); experienced players
             get a low-stakes inspirational sentence. See data/tips.ts. */}
-        <div className="f-mono" style={{
-          fontSize: 10, color: '#bba8ff', opacity: 0.55,
-          marginTop: 14, maxWidth: 'min(420px, 88vw)',
-          textAlign: 'center', lineHeight: 1.6, fontStyle: 'italic',
-        }}>
-          ◇ {getTipOfTheDay()}
-        </div>
+        {showTip && (
+          <div className="f-mono" style={{
+            fontSize: 10, color: '#bba8ff', opacity: 0.55,
+            marginTop: 14, maxWidth: 'min(420px, 88vw)',
+            textAlign: 'center', lineHeight: 1.6, fontStyle: 'italic',
+          }}>
+            ◇ {getTipOfTheDay()}
+          </div>
+        )}
 
         {/* Prestige chip — only renders for players who have earned
             past Wanderer. Sits between the Tip of the Day and the

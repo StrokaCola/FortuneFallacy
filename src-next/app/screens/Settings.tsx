@@ -84,7 +84,11 @@ function ColorblindToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setColorblindPref(o.id as 'off' | 'high_contrast')}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -120,7 +124,11 @@ function CaptionsToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => audioSettings.setCaptionsEnabled(o.val)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -143,7 +151,7 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>haptics</span>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Haptics preference">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }} role="radiogroup" aria-label="Haptics preference">
         {opts.map((o) => {
           const active = pref === o.id;
           return (
@@ -155,7 +163,11 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setHapticsPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -191,7 +203,11 @@ function OrientationOverrideToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setOrientationOverride(o.val)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -228,7 +244,11 @@ function LongPressToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setLongPressPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -267,7 +287,11 @@ function PerfModeToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setPerfMode(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -291,7 +315,7 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>motion</span>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Motion preference">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }} role="radiogroup" aria-label="Motion preference">
         {opts.map((o) => {
           const active = pref === o.id;
           return (
@@ -303,7 +327,11 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setMotionPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',

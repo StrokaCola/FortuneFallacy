@@ -41,10 +41,16 @@ export function PauseButton() {
       className="f-mono tap"
       style={{
         position: 'absolute',
-        top: tight
-          ? 'max(80px, calc(var(--hud-top-h, 110px) + 8px))'
-          : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
-        right: tight ? 96 : 18,
+        // Wave V — tight viewports moved the pause button to the
+        // bottom-right corner of the stage instead of floating
+        // alongside the wrapped TopBar. On mobile portrait the prior
+        // top-anchored placement overlapped the Shop "Celestial Bazaar"
+        // title and the Hub trial card row at narrow widths. Pinning
+        // bottom-right keeps it reachable for the thumb without
+        // colliding with any screen's title row.
+        top: tight ? undefined : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
+        bottom: tight ? 'calc(var(--hud-bottom-h, 60px) + 12px)' : undefined,
+        right: 18,
         zIndex: Z.hudControl,
         width: 44,
         height: 44,
@@ -56,6 +62,9 @@ export function PauseButton() {
         pointerEvents: 'auto',
         display: 'grid',
         placeItems: 'center',
+        // Subtle backdrop blur on tight so the bottom-right placement
+        // still reads clearly over dice/canvas content underneath.
+        backdropFilter: tight ? 'blur(8px)' : undefined,
       }}
       title="Pause (Esc)"
       aria-label="Pause"
