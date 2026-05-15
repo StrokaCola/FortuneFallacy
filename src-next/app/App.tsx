@@ -22,7 +22,7 @@ import { PauseMenu } from './hud/PauseMenu';
 import { PackOverlay } from './screens/PackOverlay';
 import { SkipBountyOverlay } from './screens/SkipBountyOverlay';
 import { useStore, store } from '../state/store';
-import { selectScreen, selectIsBoss, selectTensionFromState, selectPendingPack, selectScore, selectTarget } from '../state/selectors';
+import { selectScreen, selectIsBoss, selectTensionFromState, selectScore, selectTarget } from '../state/selectors';
 import { dispatch } from '../actions/dispatch';
 import { Title } from './screens/Title';
 import { ConstellationSelect } from './screens/ConstellationSelect';
@@ -46,6 +46,7 @@ import { AstralForge } from './screens/AstralForge';
 import { EventScreen } from './screens/EventScreen';
 import { CoachmarkController } from './onboarding/CoachmarkController';
 import { installLongPressTooltips } from './ui/longPressTip';
+import { AfterglowOverlay } from './visual/AfterglowOverlay';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
@@ -59,7 +60,6 @@ export function App() {
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
-  const pendingPack = useStore(selectPendingPack);
   // Score-progress drives the gold tint + halo aura on the cosmos
   // background — completely orthogonal to tension. >=1.0 = crossed
   // target; >=2.0 = doubled over. Clamped in CosmosBackground.
@@ -211,9 +211,14 @@ export function App() {
 
         <OrientationGate />
         <PauseMenu />
-        {pendingPack && <PackOverlay />}
+        {/* PackOverlay self-gates via useModalExit so it can fade
+            out cleanly when pendingPack flips to null. Wrapping it
+            in a conditional mount here would short-circuit the
+            exit animation. */}
+        <PackOverlay />
         <SkipBountyOverlay />
         <CoachmarkController />
+        <AfterglowOverlay />
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
         {import.meta.env.DEV && <SpawnOverlay />}

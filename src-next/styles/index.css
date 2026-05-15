@@ -375,6 +375,25 @@ body[data-coach-active] .has-tip .tip { opacity: 0 !important; }
   from { opacity: 0; transform: translateY(28px) scale(0.92); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
+/* Celebration afterglow — radial gold tint that fires alongside
+   the boom catch pulse and persists through the round → shop
+   screen swap. Fades in fast, holds briefly, fades out gradually
+   so the warmth lingers as the next screen takes focus. Used by
+   `<AfterglowOverlay>` (App-mounted) with `animationDuration`
+   set inline from the bus event payload. */
+.vfx-afterglow {
+  opacity: 0;
+  animation-name: vfx-afterglow-fade;
+  animation-timing-function: cubic-bezier(0.2, 0.85, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes vfx-afterglow-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.85; }
+  45%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+.reduce-motion .vfx-afterglow { animation: none; opacity: 0; }
 @keyframes card-wobble {
   0%, 100% { transform: translateY(0)   rotate(0); }
   25%      { transform: translateY(-3px) rotate(0.8deg); }

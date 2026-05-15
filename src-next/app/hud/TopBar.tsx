@@ -131,6 +131,12 @@ export function TopBar({
             counter.style.animation = 'scoreCounterCatch 220ms cubic-bezier(0.2, 1.6, 0.4, 1)';
             window.setTimeout(() => { if (counter) counter.style.animation = ''; }, 240);
           }
+          // Celebration afterglow — fires alongside the catch pulse
+          // so the boom's golden warmth visually carries into the
+          // round → shop screen swap that follows ~200ms later.
+          // App-level <AfterglowOverlay> consumes the event so the
+          // tint persists across the screen transition.
+          bus.emit('onCelebrationAfterglow', { durationMs: 900 });
         }
       };
       requestAnimationFrame(tick);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 type Phase = 'idle' | 'exiting' | 'entering';
+type Direction = 'forward' | 'back' | 'neutral';
 
 // 720ms is the sweet spot between "snappy" (≤600ms feels abrupt
 // after the recent scoring-celebration changes) and "slow" (≥900ms
@@ -9,12 +10,51 @@ type Phase = 'idle' | 'exiting' | 'entering';
 // briefly, then the fade carries the player into the shop.
 const SAVORED_MS = 720;
 const SNAP_MS = 120;
-// Outgoing scale — slightly past 1 so the leaving screen reads as
-// "pulling away" instead of just dimming in place. Paired with the
-// 0.98 entering scale, the effect is a soft push-out / settle-in
-// rather than a static crossfade.
-const EXIT_SCALE = 1.05;
-const ENTER_SCALE = 0.985;
+
+// Direction-aware scale curve so the swap reads as "forward
+// commitment" (leaving pushes outward, arriving rises up) vs.
+// "back retreat" (leaving recedes inward, arriving settles down).
+// Neutral keeps the gentle Wave 1 default.
+const SCALES: Record<Direction, { exit: number; enter: number }> = {
+  forward: { exit: 1.08, enter: 0.96 },
+  back:    { exit: 0.97, enter: 1.03 },
+  neutral: { exit: 1.05, enter: 0.985 },
+};
+
+// Screen "depth" — higher = further into the run. Used to derive
+// transition direction from (from, to) pairs. The tier values
+// describe a meaningful hierarchy:
+//   0 = top-level menus (title, codex, settings, scores, …)
+//   1 = run-setup screens (constellation_select, nameentry)
+//   2 = run home (hub)
+//   3 = run sidesteps (shop, forge, event)
+//   4 = active play (round)
+//   5 = terminal outcomes (win, fail)
+const SCREEN_DEPTH: Record<string, number> = {
+  title: 0,
+  codex: 0,
+  settings: 0,
+  scores: 0,
+  challenges: 0,
+  astral_forge: 0,
+  nameentry: 1,
+  constellation_select: 1,
+  hub: 2,
+  shop: 3,
+  forge: 3,
+  event: 3,
+  round: 4,
+  win: 5,
+  fail: 5,
+};
+
+function transitionDirection(from: string, to: string): Direction {
+  const f = SCREEN_DEPTH[from] ?? 0;
+  const t = SCREEN_DEPTH[to] ?? 0;
+  if (t > f) return 'forward';
+  if (t < f) return 'back';
+  return 'neutral';
+}
 
 export function ScreenTransition({
   screenKey,
@@ -26,6 +66,7 @@ export function ScreenTransition({
   const [phase, setPhase] = useState<Phase>('idle');
   const [renderedKey, setRenderedKey] = useState(screenKey);
   const [renderedChildren, setRenderedChildren] = useState<ReactNode>(children);
+  const [direction, setDirection] = useState<Direction>('neutral');
   const lastKey = useRef(screenKey);
   const tEnterRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
@@ -33,6 +74,13 @@ export function ScreenTransition({
     if (screenKey === lastKey.current) return;
     const reduced = document.documentElement.classList.contains('reduce-motion');
     const half = reduced ? SNAP_MS : SAVORED_MS / 2;
+    // Compute direction from the OUTGOING screen (lastKey.current) to
+    // the new screenKey. Lives in state so the same direction is
+    // active across both phases of the swap (exit + enter), giving
+    // the entering screen its matching "arriving up" or "settling
+    // down" scale.
+    const nextDirection = transitionDirection(lastKey.current, screenKey);
+    setDirection(nextDirection);
 
     setPhase('exiting');
     const tExit = window.setTimeout(() => {
@@ -42,6 +90,7 @@ export function ScreenTransition({
       setPhase('entering');
       tEnterRef.current = window.setTimeout(() => {
         setPhase('idle');
+        setDirection('neutral');
         tEnterRef.current = null;
       }, half);
     }, half);
@@ -61,7 +110,8 @@ export function ScreenTransition({
   }, [phase, children]);
 
   const opacity = phase === 'exiting' ? 0 : 1;
-  const scale = phase === 'exiting' ? EXIT_SCALE : phase === 'entering' ? ENTER_SCALE : 1;
+  const { exit: exitScale, enter: enterScale } = SCALES[direction];
+  const scale = phase === 'exiting' ? exitScale : phase === 'entering' ? enterScale : 1;
 
   // Entering a Round is the player's commitment moment — fold in a
   // "stellar dive" overlay (inward star streaks) on top of the standard

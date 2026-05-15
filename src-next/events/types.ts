@@ -175,6 +175,13 @@ export type GameEventMap = {
   // updates bypass this event — the counter updates immediately on
   // state change.
   onScoreCounterFill: { durationMs: number };
+  // Celebration afterglow — emitted by TopBar right as the catch
+  // pulse fires at the end of the counter fill tween. Drives a
+  // brief screen-wide golden glow that carries the boom's energy
+  // visually through the round → shop screen swap that follows
+  // ~200ms later. App.tsx mounts an `<AfterglowOverlay>` listener
+  // outside any screen so the glow persists across the transition.
+  onCelebrationAfterglow: { durationMs: number };
 };
 
 export type GameEventEmission = {
