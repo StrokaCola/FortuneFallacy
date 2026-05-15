@@ -556,6 +556,37 @@ export function uiHover(bank: SynthBank): void {
   bank.uiHover.shimmer.triggerAttackRelease('32n', t);
 }
 
+// ---- uiHoverSoft: quieter ghost-tier hover ---------------------------------
+// Wave K. Same shimmer as uiHover, dropped ~7dB so the ghost-tier hover
+// stays under the primary celebration tier. Reuses the uiHover synth so
+// no new audio nodes need allocation.
+export function uiHoverSoft(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.uiHover.shimmer.volume.value = vol('uiHoverSoft', -35);
+  bank.uiHover.shimmer.triggerAttackRelease('64n', t);
+}
+
+// ---- uiCommit: weighted danger / "this is a real action" click -------------
+// Wave K. NoiseSynth burst (uiClick) layered with a low membrane thud
+// (modAttach.thud sub-octave) so a destructive press carries weight.
+export function uiCommit(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.uiClick.click.volume.value = vol('uiCommitClick', -19);
+  bank.uiClick.click.triggerAttackRelease('32n', t);
+  bank.modAttach.thud.volume.value = vol('uiCommitThud', -24);
+  bank.modAttach.thud.triggerAttackRelease('A1', '16n', t + 0.004);
+}
+
+// ---- uiDenied: muted "press registered but blocked" --------------------------
+// Wave K. NoiseSynth burst pitched down via shorter envelope + lower vol.
+// Tells the player "your tap landed" without letting them think the
+// action succeeded. Paired with a CSS shake on the disabled button.
+export function uiDenied(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.uiClick.click.volume.value = vol('uiDenied', -28);
+  bank.uiClick.click.triggerAttackRelease('16n', t);
+}
+
 // ---- modAttach: chime + soft thud ----------------------------------------
 export function modAttach(bank: SynthBank): void {
   const t = jitteredTime();

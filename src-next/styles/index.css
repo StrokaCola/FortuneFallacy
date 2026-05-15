@@ -226,14 +226,24 @@ textarea:focus-visible,
 .reduce-motion .tap:active { transform: none; }
 .btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a; padding: 14px 28px; border-radius: 10px; font-size: 18px; box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
 .btn-ghost   { background: rgba(28,18,69,.6); color: #f3f0ff; padding: 12px 22px; border-radius: 10px; font-size: 14px; box-shadow: 0 0 0 1px rgba(149,119,255,.3); backdrop-filter: blur(8px); }
+/* CTA tier — gold accent, mid-energy. Used for "Begin Challenge",
+   "Begin Spark", and other "step into the run" affordances that are
+   primary by intent but shouldn't outshout the orange .btn-primary. */
+.btn-cta     { background: linear-gradient(180deg, rgba(245,196,81,.92), rgba(212,158,46,.92)); color: #1a1408; padding: 12px 22px; border-radius: 10px; font-size: 15px; box-shadow: 0 0 0 1px rgba(255,228,150,.55), 0 4px 14px rgba(245,196,81,.32), inset 0 1px 0 rgba(255,255,255,.35); }
+/* Danger tier — crimson tint, weighted padding. Reserved for confirm-only
+   destructive operations (Restore Defaults, Forfeit Run). Pair with the
+   ConfirmPress two-stage interaction so a single misclick never lands. */
+.btn-danger  { background: rgba(60,16,28,.88); color: #ffd6dc; padding: 12px 22px; border-radius: 10px; font-size: 14px; box-shadow: 0 0 0 1px rgba(226,51,74,.55), inset 0 1px 0 rgba(255,180,180,.18); }
 
 /* Tight viewports (narrow phones, landscape phones with tall browser
-   chrome) shrink primary/ghost buttons so the action bar doesn't eat
+   chrome) shrink primary/ghost/cta/danger buttons so the action bar doesn't eat
    a third of the screen. Mirrors useIsTightStage's breakpoints
    (width<720 || height<600). 44px tap target preserved by .tap. */
 @media (max-width: 719px), (max-height: 599px) {
   .btn-primary { padding: 8px 16px; font-size: 13px; }
   .btn-ghost   { padding: 6px 12px; font-size: 11px; }
+  .btn-cta     { padding: 7px 14px; font-size: 12px; }
+  .btn-danger  { padding: 7px 14px; font-size: 12px; }
 }
 
 /* Flourish corners */
@@ -1893,12 +1903,24 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 .reduce-motion #stage-root.shake-mid,
 .reduce-motion #stage-root.shake-big { animation: none; }
 
-/* Button juice — press scale + accent shockwave on release. */
-.btn-primary {
+/* Button juice — press scale + accent shockwave on release. Every
+   tier gets the scale dip; the shockwave is shaped by buttonJuice.ts
+   (primary = celebratory ring, ghost = soft cyan pulse, cta = gold,
+   danger = crimson). reduce-motion strips the dip from every tier. */
+.btn-primary,
+.btn-ghost,
+.btn-cta,
+.btn-danger {
   transition: transform 180ms ease-out;
 }
-.btn-primary:active {
+.btn-primary:active:not(:disabled) {
   transform: scale(0.96);
+  transition: transform 60ms ease-out;
+}
+.btn-ghost:active:not(:disabled),
+.btn-cta:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.97);
   transition: transform 60ms ease-out;
 }
 .btn-shockwave {
@@ -1913,8 +1935,59 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   animation: ringExpand 400ms ease-out forwards;
   z-index: 999;
 }
-.reduce-motion .btn-primary { transition: none; }
-.reduce-motion .btn-primary:active { transform: none; }
+/* Variants ride the same keyframe but scale + opacity differently so
+   the tier reads at a glance. Ghost is the quietest (60% alpha, no
+   shadow); CTA is gold and bolder; Danger flashes a heavier ring. */
+.btn-shockwave.btn-shockwave-ghost {
+  border-width: 1px;
+  opacity: 0.6;
+  box-shadow: none;
+}
+.btn-shockwave.btn-shockwave-cta {
+  border-width: 2px;
+  box-shadow: 0 0 22px var(--wave-accent, #f5c451);
+}
+.btn-shockwave.btn-shockwave-danger {
+  border-width: 3px;
+  box-shadow: 0 0 24px var(--wave-accent, #e2334a);
+}
+/* Disabled press deflection — a tiny shake + denied SFX (see
+   buttonJuice.ts). The shake is short enough that a fast double-click
+   doesn't stack, and bypassed under reduce-motion. */
+@keyframes btn-denied-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+.btn[data-denied="true"] {
+  animation: btn-denied-shake 220ms ease-out;
+}
+
+/* ConfirmPress armed state — crimson pulse + slight scale-up so the
+   "you've armed me, now confirm" beat reads at a glance. The shadow
+   pulses every 1.1s while armed (watchdog auto-clears at 2200ms by
+   default, so the player sees one and a half pulses before timeout). */
+@keyframes btn-confirm-armed-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(226,51,74,.65), 0 0 12px rgba(226,51,74,.32); }
+  50%      { box-shadow: 0 0 0 2px rgba(255,140,150,.85), 0 0 22px rgba(226,51,74,.6); }
+}
+.btn-danger[data-confirm-armed="true"] {
+  background: rgba(86,18,32,.95);
+  color: #ffe2e7;
+  animation: btn-confirm-armed-pulse 1.1s ease-in-out infinite;
+}
+.reduce-motion .btn-danger[data-confirm-armed="true"] { animation: none; }
+.reduce-motion .btn-primary,
+.reduce-motion .btn-ghost,
+.reduce-motion .btn-cta,
+.reduce-motion .btn-danger { transition: none; }
+.reduce-motion .btn-primary:active,
+.reduce-motion .btn-ghost:active,
+.reduce-motion .btn-cta:active,
+.reduce-motion .btn-danger:active { transform: none; }
+.reduce-motion .btn[data-denied="true"] { animation: none; }
 
 /* Forge codex chip — hover pulse + accent ring overlay. */
 @keyframes mod-chip-pulse {

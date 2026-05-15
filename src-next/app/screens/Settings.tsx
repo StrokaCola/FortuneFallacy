@@ -14,6 +14,7 @@ import {
 } from '../perf/perfMode';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
+import { ConfirmPress } from '../hud/ConfirmPress';
 
 function useAudio(): { master: number; music: number; sfx: number } {
   const [v, setV] = useState({
@@ -388,20 +389,20 @@ export function Settings() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 12, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn btn-ghost mat-interactive tap"
-            onClick={() => {
+          {/* Wave K — two-stage confirm so a misclick can't wipe a
+              carefully-tuned audio mix. First press arms (crimson
+              pulse), second within 2.2s commits. */}
+          <ConfirmPress
+            label="Restore defaults"
+            confirmLabel="Tap again to reset"
+            style={{ fontSize: 11, padding: '8px 14px' }}
+            onConfirm={() => {
               audioSettings.setMaster(1);
               audioSettings.setMusic(1);
               audioSettings.setSfx(1);
               setMotionPref('os');
-              sfxPlay('uiClick');
             }}
-            style={{ fontSize: 11, padding: '8px 14px' }}
-          >
-            Restore defaults
-          </button>
+          />
           <button
             type="button"
             className="btn btn-primary mat-interactive tap"

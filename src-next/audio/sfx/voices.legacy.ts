@@ -111,3 +111,15 @@ export function nodePulse(bank: SynthBank): void {
 export function transitionWipe(bank: SynthBank): void {
   bank.transitionWipe.triggerAttackRelease('4n', nextTime());
 }
+
+// ---- Wave K press-tier voice stubs ----
+// The legacy synth bank never wired uiClick/uiHover, so the new
+// Wave K tiers (uiHoverSoft, uiCommit, uiDenied) stay silent in legacy
+// mode rather than crashing on a missing bank node. Players in legacy
+// mode (?sfx=legacy) keep the original sparse UI sound until they opt
+// back into the modern bank.
+export function uiClick(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiHover(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiHoverSoft(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiCommit(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiDenied(_bank: SynthBank): void { /* legacy no-op */ }
