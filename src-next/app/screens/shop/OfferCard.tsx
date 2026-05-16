@@ -93,6 +93,8 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
       <div
         className={[
           'panel-strong',
+          'ff-offer-card',
+          affordable ? 'ff-offer-card-affordable' : '',
           isLegendary ? 'legendary-aura' : '',
           isLegendary ? 'ff-legendary-lift' : '',
         ].filter(Boolean).join(' ')}

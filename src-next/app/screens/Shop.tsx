@@ -44,6 +44,10 @@ const ACCENT = '#7be3ff';
 export function Shop() {
   const tight = useIsTightStage();
   const [collectionOpen, setCollectionOpen] = useState(false);
+  // Wave Z — reroll spin counter. Increments on each successful reroll;
+  // the glyph's key changes so the spin keyframe replays cleanly even
+  // when React re-renders mid-animation (state-driven, not DOM-mutated).
+  const [rerollSpin, setRerollSpin] = useState(0);
   const shards   = useStore(selectShards);
   const offers   = useStore(selectShopOffers);
   const rerollCost = useStore(selectShopRerollCost);
@@ -201,11 +205,15 @@ export function Shop() {
         zIndex: 5,
       }}>
         <button
-          className="btn mat-interactive has-tip"
+          className="btn mat-interactive has-tip ff-reroll-btn"
+          // Wave Z — increment a spin counter on each successful reroll so
+          // the ↻ glyph re-mounts (via the key on its span) and the spin
+          // keyframe replays from 0 deg even on rapid clicks.
           onClick={() => {
             if (shards >= rerollCost) {
               dispatch({ type: 'REROLL_SHOP' });
               sfxPlay('cardFlip');
+              setRerollSpin((n) => n + 1);
             }
           }}
           disabled={shards < rerollCost}
@@ -214,7 +222,7 @@ export function Shop() {
             cursor: shards >= rerollCost ? 'pointer' : 'not-allowed',
           }}
         >
-          ↻ Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
+          <span key={`spin-${rerollSpin}`} className={`ff-reroll-glyph${rerollSpin > 0 ? ' ff-reroll-glyph-spinning' : ''}`} aria-hidden="true">↻</span> Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
           <span className="tip tip-above">Replace all current offers with a new set. Cost rises by 1 each reroll this visit.</span>
         </button>
         {tight && (

@@ -270,14 +270,25 @@ textarea:focus-visible,
      on hover/long-press so a tooltip near a screen edge slides back into
      the viewport instead of clipping. Default 0 keeps the centered anchor
      when there's no clipping. */
-  transform: translateX(calc(-50% + var(--tip-shift, 0px)));
+  /* Wave Z — tooltip arrival animation. Resting transform offsets the
+     tip 4px DOWN (below its final spot), opacity 0. On :hover the
+     --tip-y custom property settles to 0 and the tip eases up + in. */
+  transform: translateX(calc(-50% + var(--tip-shift, 0px))) translateY(var(--tip-y, 4px));
   background: rgba(7,5,26,.95); color: #dcd4ff; font-size: 11px; padding: 8px 12px;
   border: 1px solid rgba(149,119,255,.4); border-radius: 6px;
   white-space: normal; max-width: 240px; width: max-content; text-align: center; line-height: 1.4;
-  opacity: 0; transition: opacity 150ms; pointer-events: none; z-index: 50;
+  opacity: 0;
+  transition:
+    opacity 180ms ease-out,
+    transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none; z-index: 50;
   font-family: 'Exo 2', sans-serif;
 }
 .has-tip .tip.tip-above { top: auto; bottom: calc(100% + 6px); }
+/* Wave Z — tip-above slides DOWN into place instead of up. Reverse
+   the resting --tip-y by setting it negative so the entry feels
+   consistent regardless of which side the tip anchors to. */
+.has-tip .tip.tip-above { --tip-y: -4px; }
 /* Side-anchored tooltips. Used by the CatalystStrip (left rail in
    wide mode) and ConsumableTray (right rail) so the tooltip lands in
    the play area instead of covering the neighbouring card in the
@@ -299,7 +310,7 @@ textarea:focus-visible,
   display: block; margin-top: 6px; font-style: italic; color: #bba8ff; font-size: 10px;
 }
 @media (hover: hover) {
-  .has-tip:hover .tip { opacity: 1; }
+  .has-tip:hover .tip { opacity: 1; --tip-y: 0px; }
   /* Nested .has-tip: when an inner has-tip is being hovered, suppress the
      outer has-tip's own direct-child .tip so the two tooltips don't
      overlap. The 2026-05-14 boss-debuff bug — hovering the boss chip
@@ -313,9 +324,9 @@ textarea:focus-visible,
    hold; pure :active was unreliable because the tooltip vanished as soon
    as the finger lifted, before the player could read it. Keyboard focus
    still pops the tip for accessibility. */
-.has-tip.tip-stuck .tip { opacity: 1; }
+.has-tip.tip-stuck .tip { opacity: 1; --tip-y: 0px; }
 @media (hover: none) {
-  .has-tip:focus-within .tip { opacity: 1; }
+  .has-tip:focus-within .tip { opacity: 1; --tip-y: 0px; }
 }
 
 /* Single-tooltip-at-a-time: hide hover tips on every other element while
@@ -2243,6 +2254,57 @@ html:not(.reduce-motion) .rarity-rare-aura::after {
 html:not(.reduce-motion) .rarity-uncommon-aura::before {
   animation: rarity-uncommon-pulse 3.8s ease-in-out infinite;
 }
+
+/* Wave Z — Shop offer card hover. Affordable offers lift + brighten
+   on pointer-over so the row reads as a row of tactile cards instead
+   of a static catalog. Non-affordable cards (insufficient shards)
+   stay flat — the lift is the "you can take this" affordance. */
+.ff-offer-card {
+  transition:
+    transform var(--snap) var(--ease-snap),
+    box-shadow var(--snap) var(--ease-snap),
+    filter var(--snap) var(--ease-snap);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .ff-offer-card.ff-offer-card-affordable:hover {
+    transform: translateY(-4px);
+    filter: brightness(1.08);
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.55),
+      0 0 32px rgba(123, 227, 255, 0.18);
+  }
+  .ff-offer-card.ff-offer-card-affordable:active {
+    transform: translateY(-1px);
+    filter: brightness(0.96);
+    transition:
+      transform 60ms ease-out,
+      filter 60ms ease-out;
+  }
+}
+.reduce-motion .ff-offer-card { transition: none; }
+.reduce-motion .ff-offer-card:hover { transform: none; }
+
+/* Wave Z — Reroll button ↻ glyph spin. The React span receives a
+   keyed remount on each click + the spinning modifier class, so the
+   animation replays cleanly from 0deg even on rapid presses. */
+.ff-reroll-glyph {
+  display: inline-block;
+  transform-origin: center;
+}
+.ff-reroll-glyph-spinning {
+  animation: reroll-spin 520ms cubic-bezier(0.2, 0.7, 0.25, 1);
+}
+@keyframes reroll-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.reduce-motion .ff-reroll-glyph-spinning { animation: none; }
+
+/* Wave Z — reduce-motion strips the tooltip slide-up but keeps the
+   fade transition. Set --tip-y to 0 so the resting transform doesn't
+   offset the tip vertically when motion is reduced. */
+.reduce-motion .has-tip .tip { --tip-y: 0px; transition: opacity 150ms; }
 
 /* Compact rarity tag chip used above the artwork on shop cards. */
 .rarity-tag {
