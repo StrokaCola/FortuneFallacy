@@ -1,6 +1,8 @@
 import { dispatch } from '../../actions/dispatch';
 import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 // Bespoke pause icon — twin orbital arcs replace the Unicode ⏸
 // glyph. Reads as "two suspended cosmic objects" instead of a
@@ -37,8 +39,16 @@ export function PauseButton() {
   const tight = useIsTightStage();
   return (
     <button
-      onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}
-      className="f-mono tap"
+      // Wave KK — pause button picks up its own press feedback. It
+      // intentionally doesn't carry a .btn-* tier (the Wave K juice
+      // would override its bespoke icon-square style) so play the
+      // ghost-tier cues manually: uiClick + tap haptic on press.
+      onClick={() => {
+        sfxPlay('uiClick');
+        playHaptic('tap');
+        dispatch({ type: 'TOGGLE_PAUSE' });
+      }}
+      className="f-mono tap ff-pause-btn"
       style={{
         position: 'absolute',
         // Wave V — tight viewports moved the pause button to the

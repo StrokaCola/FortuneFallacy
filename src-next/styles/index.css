@@ -2397,6 +2397,25 @@ html:not(.reduce-motion) .rarity-uncommon-aura::before {
 }
 .reduce-motion .ff-score-cross-pulse { animation: none; }
 
+/* Wave KK — pause button press juice. Inherits the ghost-tier press
+   feel (light scale dip + hover brighten) without inheriting the
+   .btn-* tier classes that would override the icon-square geometry. */
+.ff-pause-btn {
+  transition: transform 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out;
+}
+@media (hover: hover) {
+  .ff-pause-btn:hover {
+    background: rgba(28, 18, 69, 0.85) !important;
+    border-color: rgba(123, 227, 255, 0.55) !important;
+  }
+}
+.ff-pause-btn:active:not(:disabled) {
+  transform: scale(0.94);
+  transition: transform 60ms ease-out;
+}
+.reduce-motion .ff-pause-btn { transition: none; }
+.reduce-motion .ff-pause-btn:active { transform: none; }
+
 /* Wave BB — Pause panel slide-down entrance. The backdrop already
    fades in via the modal-in keyframe; the panel itself now drops
    from a few px above with a slight overshoot so the dialog lands
