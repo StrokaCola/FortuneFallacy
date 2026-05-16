@@ -59,7 +59,13 @@ export function PauseButton() {
         // bottom-right keeps it reachable for the thumb without
         // colliding with any screen's title row.
         top: tight ? undefined : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
-        bottom: tight ? 'calc(var(--hud-bottom-h, 60px) + 12px)' : undefined,
+        // Wave SS — push pause CLEAR of any bottom action bar on tight
+        // viewports. Earlier offset (hud-bottom-h + 12px) wasn't enough
+        // when --hud-bottom-h reported 0 (some screens like Forge don't
+        // self-measure their action row into the var). Use a hard 64px
+        // floor so the 44px icon always sits ≥20px above the action bar
+        // baseline regardless of which screen renders.
+        bottom: tight ? 'max(64px, calc(var(--hud-bottom-h, 60px) + 12px))' : undefined,
         right: 18,
         zIndex: Z.hudControl,
         width: 44,
