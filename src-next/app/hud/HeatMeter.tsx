@@ -20,7 +20,10 @@ const selectActive = (s: GameState) => s.round.active;
 export function HeatMeter() {
   const streak = useStore(selectComboStreak);
   const active = useStore(selectActive);
-  const tight = useIsTightStage();
+  // `tight` is no longer used now that the meter centers horizontally
+  // — kept the import so a future per-viewport tweak (e.g. compact
+  // segments on phone) has the hook already wired.
+  useIsTightStage();
 
   // Hide entirely when no streak running — the meter would otherwise
   // sit as visual debris on the very first hand of a blind.
@@ -37,14 +40,16 @@ export function HeatMeter() {
       aria-hidden="true"
       style={{
         position: 'absolute',
-        // Anchor below TopBar on the left edge. Tight portrait pushes
-        // the meter slightly inboard so it doesn't collide with the
-        // VoidstormBadge / boss panel readout.
-        top: 'calc(var(--hud-top-h, 134px) + 10px)',
-        left: tight ? 12 : 18,
+        // 2026-05-16 fix — the meter previously sat at left:18 directly
+        // over the CatalystStrip's first card column (overlap reported
+        // in playtest). Moved to top-CENTER between TopBar and the
+        // dice canvas so it doesn't compete with either side rail.
+        top: 'calc(var(--hud-top-h, 134px) + 6px)',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: Z.hud,
         pointerEvents: 'none',
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
         opacity: 0.92,
       }}
     >
