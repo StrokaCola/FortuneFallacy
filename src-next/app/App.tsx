@@ -75,6 +75,28 @@ export function App() {
       for (const c of classes) document.body.classList.remove(c);
     };
   }, [stakeId]);
+  // Wave OO — body class for the active cosmos theme so panels +
+  // chrome can pick up a warmth/cool tint that matches the backdrop
+  // instead of every screen wearing the same violet panel-strong
+  // gradient. CSS rules under `.ff-cosmos-sandstorm .panel` etc. pull
+  // the tint without per-component prop threading.
+  const themeForBody = (
+    screen === 'shop' || screen === 'forge' ? 'sandstorm' :
+    screen === 'scores' ? 'abyssal' :
+    screen === 'title' || screen === 'nameentry' || screen === 'codex' ||
+    screen === 'settings' || screen === 'constellation_select' || screen === 'astral_forge'
+      ? 'midnight'
+      : 'voidlit'
+  );
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const classes = ['ff-cosmos-midnight', 'ff-cosmos-voidlit', 'ff-cosmos-sandstorm', 'ff-cosmos-abyssal'];
+    for (const c of classes) document.body.classList.remove(c);
+    document.body.classList.add(`ff-cosmos-${themeForBody}`);
+    return () => {
+      for (const c of classes) document.body.classList.remove(c);
+    };
+  }, [themeForBody]);
   // Score-progress drives the gold tint + halo aura on the cosmos
   // background — completely orthogonal to tension. >=1.0 = crossed
   // target; >=2.0 = doubled over. Clamped in CosmosBackground.

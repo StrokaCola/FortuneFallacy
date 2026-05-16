@@ -3611,6 +3611,25 @@ html:not(.reduce-motion) .ff-dice-frame-corner.br {
 }
 .reduce-motion .transition-dustswirl .dust-swirl-mote { animation: none; opacity: 0; }
 
+/* Wave OO — per-cosmos-theme panel tint. Body class drives chrome
+   color so cards/panels echo the active sky tint instead of staying
+   uniformly violet. Variants stay subtle (≤ 12% alpha shift on the
+   gradient stops) — this is base-tone unification, not a palette
+   swap. Tracks ff-cosmos-* body classes set by App.tsx. */
+
+/* sandstorm — Shop / Forge. Warm amber wash on panel gradient + a
+   warmer border tint. Echoes the gold-orange backdrop. */
+body.ff-cosmos-sandstorm .panel        { background: linear-gradient(180deg, rgba(74, 42, 18, .45), rgba(28, 14, 6, .65)); border-color: rgba(245, 196, 81, .26); }
+body.ff-cosmos-sandstorm .panel-strong { background: linear-gradient(180deg, rgba(74, 42, 18, .72), rgba(28, 14, 6, .88)); border-color: rgba(245, 196, 81, .36); }
+
+/* abyssal — Scores. Deep cyan wash for archival depth. */
+body.ff-cosmos-abyssal .panel        { background: linear-gradient(180deg, rgba(14, 46, 64, .45), rgba(7, 22, 32, .65)); border-color: rgba(123, 227, 255, .26); }
+body.ff-cosmos-abyssal .panel-strong { background: linear-gradient(180deg, rgba(14, 46, 64, .72), rgba(7, 22, 32, .88)); border-color: rgba(123, 227, 255, .34); }
+
+/* voidlit (gameplay) keeps the original purple-violet treatment so
+   the run loop's chrome stays exactly where players' muscle memory
+   put it. midnight too — its violet IS the panel-strong default. */
+
 /* Loading first-paint splash — covers the whole viewport with a
    cosmic ignition before React mounts. The HTML splash lives in
    index.html so it paints BEFORE the JS bundle even loads; React
