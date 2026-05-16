@@ -1484,19 +1484,9 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 .reduce-motion .cosmos-stardust-near,
 .reduce-motion .cosmos-stardust-far { animation: none; }
 
-/* Lightning flash — tension-driven storm flash. The container fades
-   the radial-gradient in for 30ms then out over 160ms, total 190ms
-   per pulse. Single-shot per mount of the LightningFlash component
-   (re-mounted by pulseKey for each new strike). */
-.cosmos-lightning {
-  animation: cosmos-lightning-flash 190ms ease-out forwards;
-}
-@keyframes cosmos-lightning-flash {
-  0%   { opacity: 0; }
-  20%  { opacity: 0.55; }
-  100% { opacity: 0; }
-}
-.reduce-motion .cosmos-lightning { animation: none; opacity: 0; }
+/* Lightning flash rules removed 2026-05-16 — see CosmosBackground.tsx
+   for rationale (playtest flagged the periodic warm-white pulse near
+   the top of the screen as distracting). */
 
 /* Cosmic meteor shower — graceful shooting stars across the cosmos
    backdrop. Each streak is a single absolutely-positioned element
@@ -2597,7 +2587,6 @@ body.perf-degraded .btn-ghost   { backdrop-filter: none; }
    when the GPU is already saturated. */
 body.perf-degraded .cosmos-stardust-near,
 body.perf-degraded .cosmos-stardust-far,
-body.perf-degraded .cosmos-lightning,
 body.perf-degraded .cosmos-meteor,
 body.perf-degraded .forge-spark,
 body.perf-degraded .edition-foil::before,
