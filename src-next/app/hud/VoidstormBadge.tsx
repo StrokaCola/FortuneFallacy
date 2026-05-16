@@ -30,7 +30,16 @@ export function VoidstormBadge() {
   return (
     <div className="has-tip" data-coach="voidstorm-badge" style={{
       position: 'absolute',
-      top: 'calc(var(--hud-top-h, 134px) + 8px)',
+      // Wave TT — voidstorm badge previously shared the (hud-top-h + 8,
+      // right: 18) anchor with the ConsumableTray, stacking on top of
+      // the "consumable / unwritten" empty-slot card. Push the badge
+      // below the consumable rail's first 88px row + an 8px gap so the
+      // two right-rail elements stack cleanly. On tight phones the
+      // consumable row is more compact (~50px), so a 60px offset is
+      // enough — clamp keeps the badge under both layouts.
+      top: tight
+        ? 'calc(var(--hud-top-h, 134px) + 70px)'
+        : 'calc(var(--hud-top-h, 134px) + 110px)',
       right: tight ? 10 : 18,
       padding: tight ? '4px 8px' : '6px 12px',
       borderRadius: 8,
