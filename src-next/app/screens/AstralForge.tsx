@@ -160,7 +160,7 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
       // the game's clickable cards (Hub trial, Shop offer). State-
       // specific overlays (owned wash, locked desaturation, accent
       // ring) layer on top via inline style.
-      className="panel-strong text-left tap"
+      className={`panel-strong text-left tap ff-perk-card${owned ? ' ff-perk-owned' : affordable ? ' ff-perk-affordable' : ''}`}
       aria-label={`${perk.name} — ${owned ? 'owned' : `${perk.cost} cosmic dust`}`}
       style={{
         position: 'relative',
@@ -180,10 +180,7 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
         opacity: owned || affordable ? 1 : 0.65,
         minHeight: 130,
         display: 'flex', flexDirection: 'column', gap: 6,
-        transition: 'transform 120ms ease, border-color 120ms ease',
       }}
-      onPointerEnter={(e) => { if (!owned && affordable) (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; }}
-      onPointerLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-display" style={{ fontSize: 18, lineHeight: 1.1 }}>{perk.name}</span>

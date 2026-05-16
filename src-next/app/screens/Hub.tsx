@@ -303,7 +303,7 @@ export function Hub() {
           return (
             <div
               key={i}
-              className="panel-strong has-tip"
+              className={`panel-strong has-tip${cur ? ' ff-hub-current' : ''}`}
               style={{
                 // Tight: shrink width so 3 cards fit a 640px landscape
                 // phone (3*180 + 2*8 = 556 < 640). Wider viewports cap

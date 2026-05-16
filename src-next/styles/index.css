@@ -2338,6 +2338,61 @@ html:not(.reduce-motion) .rarity-uncommon-aura::before {
 }
 .reduce-motion .ff-pause-panel { animation: none; }
 
+/* Wave CC — AstralForge perk card hover. Affordable (unowned, can-buy)
+   perks lift + brighten on hover with a synced dust-gold glow that
+   reads as "spend me." Owned perks stay flat with a steady success
+   glow; locked-too-expensive perks remain inert. */
+.ff-perk-card {
+  transition:
+    transform var(--snap) var(--ease-snap),
+    box-shadow var(--snap) var(--ease-snap),
+    border-color var(--snap) var(--ease-snap),
+    filter var(--snap) var(--ease-snap);
+}
+.ff-perk-owned {
+  box-shadow:
+    0 0 0 1px rgba(91, 232, 164, 0.35),
+    0 0 18px rgba(91, 232, 164, 0.18),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+}
+@media (hover: hover) {
+  .ff-perk-affordable:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.08);
+    box-shadow:
+      0 10px 26px rgba(0, 0, 0, 0.55),
+      0 0 24px rgba(245, 196, 81, 0.35);
+  }
+  .ff-perk-affordable:active {
+    transform: translateY(-1px);
+    filter: brightness(0.95);
+    transition:
+      transform 60ms ease-out,
+      filter 60ms ease-out;
+  }
+}
+.reduce-motion .ff-perk-card { transition: none; }
+.reduce-motion .ff-perk-affordable:hover { transform: none; filter: none; }
+
+/* Wave DD — Hub current-trial breathing pulse. The current trial card
+   already has a static cyan border + glow; layering a slow box-shadow
+   breath cycle on top makes it read as "the trial waits for you" —
+   alive instead of statically lit. 3.6s sine so it doesn't fight for
+   attention with active animations. The card's inline style sets the
+   base box-shadow with the accent tint; the pulse modulates the glow
+   radius/intensity around that baseline. */
+@keyframes hub-current-breath {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(123, 227, 255, 0.5));
+  }
+}
+html:not(.reduce-motion) .ff-hub-current {
+  animation: hub-current-breath 3.6s ease-in-out infinite;
+}
+
 /* Compact rarity tag chip used above the artwork on shop cards. */
 .rarity-tag {
   font-family: 'JetBrains Mono', monospace;
