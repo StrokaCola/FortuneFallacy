@@ -1370,68 +1370,211 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
 }
 .reduce-motion .ff-surface-holo { animation: none; }
 
-/* POLY — faceted crystal. Triangular wireframe pattern overlaid
-   in violet; slow continuous rotation makes the facets shimmer
-   past each other so the card reads as a carved gemstone instead
-   of "rainbow shifted." */
+/* POLY — faceted crystal. 2026-05-16 brief-iterated treatment: hard-
+   edged conic-gradient wedges replace the previous repeating linear
+   grid. Two counter-rotating layers (38s + 52s) so the facets shimmer
+   past each other; fracture lines stitched into the second layer.
+   Distinct from Holo's smooth prismatic flow — Poly reads as carved
+   crystal, not a rainbow sticker. See docs/catalyst-card-system-brief.md
+   (Edition Overlay Paintings → Poly) for the design intent. */
 .ff-surface-poly {
-  background: linear-gradient(180deg, rgba(204, 136, 255, 0.10) 0%, transparent 100%);
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(28,18,69,0.35) 0%, rgba(15,9,37,0.55) 100%);
 }
 .ff-surface-poly::before {
+  /* Facet layer 1 — clockwise from upper-left pivot. */
   content: '';
-  position: absolute;
-  inset: -30%;
+  position: absolute; inset: -20%;
   background:
-    repeating-linear-gradient(60deg,
-      transparent 0px, transparent 11px,
-      rgba(204, 136, 255, 0.35) 11px, rgba(204, 136, 255, 0.35) 12px),
-    repeating-linear-gradient(-60deg,
-      transparent 0px, transparent 11px,
-      rgba(123, 227, 255, 0.30) 11px, rgba(123, 227, 255, 0.30) 12px),
-    repeating-linear-gradient(0deg,
-      transparent 0px, transparent 11px,
-      rgba(245, 196, 81, 0.25) 11px, rgba(245, 196, 81, 0.25) 12px);
-  animation: ff-poly-rotate 26s linear infinite;
-  opacity: 0.45;
+    conic-gradient(from 45deg at 35% 38%,
+      rgba(204,136,255,0.42) 0deg,
+      transparent 32deg,
+      transparent 88deg,
+      rgba(123,227,255,0.38) 122deg,
+      transparent 182deg,
+      transparent 238deg,
+      rgba(255,120,71,0.40) 272deg,
+      transparent 332deg);
+  mix-blend-mode: screen;
+  animation: ff-poly-rot 38s linear infinite;
+  transform-origin: 35% 38%;
 }
-@keyframes ff-poly-rotate {
+.ff-surface-poly::after {
+  /* Facet layer 2 — counter-rotates from lower-right pivot. Includes
+     fracture-line gradients stitched in so the lattice reads as
+     shattered crystal under animation. */
+  content: '';
+  position: absolute; inset: -20%;
+  background:
+    conic-gradient(from -30deg at 70% 65%,
+      rgba(245,196,81,0.38) 0deg,
+      transparent 42deg,
+      transparent 128deg,
+      rgba(91,232,164,0.34) 162deg,
+      transparent 222deg,
+      transparent 298deg,
+      rgba(168,140,255,0.40) 338deg),
+    linear-gradient(72deg, transparent 38%, rgba(255,255,255,0.18) 39%, rgba(255,255,255,0.18) 39.6%, transparent 40%),
+    linear-gradient(115deg, transparent 56%, rgba(255,255,255,0.14) 57%, rgba(255,255,255,0.14) 57.5%, transparent 58%),
+    linear-gradient(28deg, transparent 72%, rgba(255,255,255,0.12) 73%, rgba(255,255,255,0.12) 73.4%, transparent 74%);
+  mix-blend-mode: screen;
+  animation: ff-poly-rot-rev 52s linear infinite;
+  transform-origin: 70% 65%;
+}
+@keyframes ff-poly-rot {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-.reduce-motion .ff-surface-poly::before { animation: none; }
+@keyframes ff-poly-rot-rev {
+  0%   { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+.reduce-motion .ff-surface-poly::before,
+.reduce-motion .ff-surface-poly::after { animation: none; }
 
-/* VOID — cosmic absence. Inner panel shows a dense starfield
-   (multi-layer radial-gradients) with an event-horizon glow
-   pulsing inward. Reads as "the card is a window into deep
-   space" rather than "the card is a thing." */
+/* VOID — cosmic absence. 2026-05-16 brief-iterated treatment: dense
+   hand-placed starfield + slow gravitational lensing conic sweep +
+   event-horizon disc with bright accretion edge + pulsing aurora
+   "eye" at center. Painted hero of the four editions — see
+   docs/catalyst-card-system-brief.md (Edition Overlay Paintings →
+   Void) for design intent. Pseudo-element stack (::before = lensing
+   sweep, ::after = event horizon + central eye composited via
+   box-shadow layering) keeps the implementation single-div so it
+   slots into the existing .ff-edition-surface render path without
+   restructuring CatalystCard.tsx. */
 .ff-surface-void {
   background:
-    radial-gradient(ellipse at center, transparent 18%, rgba(0,0,0,0.85) 78%),
-    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.85) 0.5px, transparent 1.2px),
-    radial-gradient(circle at 62% 72%, rgba(255, 247, 224, 0.7) 0.4px, transparent 1px),
-    radial-gradient(circle at 85% 22%, rgba(123, 227, 255, 0.7) 0.4px, transparent 1px),
-    radial-gradient(circle at 35% 84%, rgba(255, 255, 255, 0.55) 0.4px, transparent 1px),
-    radial-gradient(circle at 75% 48%, rgba(204, 136, 255, 0.6) 0.5px, transparent 1.1px),
-    radial-gradient(circle at 8% 52%, rgba(255, 255, 255, 0.45) 0.3px, transparent 0.8px),
-    linear-gradient(180deg, rgba(7,5,26,0.95), rgba(0,0,0,0.95));
-  background-size: 100% 100%, 26px 26px, 33px 33px, 21px 21px, 38px 38px, 30px 30px, 24px 24px, 100% 100%;
+    /* Twinkling-star hot-spots layered over the dense static starfield. */
+    radial-gradient(2px 2px at 18% 14%, rgba(255,255,255,0.95), transparent 60%),
+    radial-gradient(2px 2px at 78% 19%, rgba(168,200,255,0.95), transparent 60%),
+    radial-gradient(2px 2px at 12% 78%, rgba(255,228,180,0.95), transparent 60%),
+    radial-gradient(2px 2px at 82% 84%, rgba(255,255,255,0.95), transparent 60%),
+    radial-gradient(2px 2px at 8%  42%, rgba(220,200,255,0.95), transparent 60%),
+    radial-gradient(2px 2px at 90% 58%, rgba(255,255,255,0.95), transparent 60%),
+    /* Dense hand-placed starfield — many sizes, scattered hues. */
+    radial-gradient(0.5px 0.5px at 4% 6%,   rgba(243,240,255,0.75), transparent 60%),
+    radial-gradient(0.5px 0.5px at 13% 11%, rgba(243,240,255,0.6),  transparent 60%),
+    radial-gradient(1px 1px   at 7% 19%,    rgba(243,240,255,0.9),  transparent 60%),
+    radial-gradient(0.5px 0.5px at 23% 8%,  rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 31% 16%,   rgba(243,240,255,0.55), transparent 60%),
+    radial-gradient(0.5px 0.5px at 16% 27%, rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 47% 12%,   rgba(123,227,255,0.7),  transparent 60%),
+    radial-gradient(0.5px 0.5px at 55% 6%,  rgba(243,240,255,0.65), transparent 60%),
+    radial-gradient(1px 1px   at 73% 9%,    rgba(243,240,255,0.85), transparent 60%),
+    radial-gradient(0.5px 0.5px at 91% 13%, rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 96% 24%,   rgba(204,136,255,0.65), transparent 60%),
+    radial-gradient(0.5px 0.5px at 88% 38%, rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 12% 62%,   rgba(243,240,255,0.65), transparent 60%),
+    radial-gradient(0.5px 0.5px at 5% 75%,  rgba(243,240,255,0.6),  transparent 60%),
+    radial-gradient(1px 1px   at 16% 84%,   rgba(243,240,255,0.85), transparent 60%),
+    radial-gradient(0.5px 0.5px at 38% 86%, rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 51% 94%,   rgba(123,227,255,0.6),  transparent 60%),
+    radial-gradient(0.5px 0.5px at 76% 92%, rgba(243,240,255,0.7),  transparent 60%),
+    radial-gradient(1px 1px   at 86% 82%,   rgba(243,240,255,0.85), transparent 60%),
+    /* Center darkness so the event-horizon disc reads. */
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(28,18,69,0.5) 0%, transparent 70%),
+    /* Background depth wash. */
+    linear-gradient(180deg, #040214 0%, #060418 100%);
 }
-.ff-surface-void::after {
+.ff-surface-void::before {
+  /* Slow gravitational-lensing conic sweep — rotates around the
+     event horizon every 28s. Mix-blend screen so the lensing reads
+     as bent light over the starfield, not paint over it. */
   content: '';
   position: absolute;
-  inset: 6%;
-  border-radius: inherit;
+  inset: 0;
   pointer-events: none;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    rgba(149,119,255,0.10) 24deg,
+    transparent 48deg,
+    transparent 96deg,
+    rgba(149,119,255,0.12) 120deg,
+    transparent 144deg,
+    transparent 192deg,
+    rgba(149,119,255,0.08) 216deg,
+    transparent 240deg,
+    transparent 288deg,
+    rgba(149,119,255,0.11) 312deg,
+    transparent 336deg);
+  mix-blend-mode: screen;
+  animation: ff-void-lens 28s linear infinite;
+}
+.ff-surface-void::after {
+  /* Event horizon disc + pulsing aurora "eye" at center.
+     box-shadow stack: inner = central eye, outer = accretion ring. */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at center,
+    rgba(220,200,255,0.9) 0%,
+    rgba(149,119,255,0.85) 20%,
+    rgba(149,119,255,0.45) 45%,
+    rgba(149,119,255,0.15) 70%,
+    transparent 90%);
+  filter: blur(3px);
   box-shadow:
-    inset 0 0 16px rgba(204, 136, 255, 0.55),
-    inset 0 0 32px rgba(204, 136, 255, 0.22);
-  animation: ff-void-horizon 3.6s ease-in-out infinite;
+    /* Accretion ring + outer aurora bleed — read as event horizon. */
+    0 0 14px 6px rgba(149,119,255,0.45),
+    0 0 28px 14px rgba(149,119,255,0.20),
+    0 0 56px 24px rgba(149,119,255,0.08);
+  animation: ff-void-eye 3.6s ease-in-out infinite;
+  mix-blend-mode: screen;
 }
-@keyframes ff-void-horizon {
-  0%, 100% { box-shadow: inset 0 0 14px rgba(204, 136, 255, 0.5),  inset 0 0 28px rgba(204, 136, 255, 0.2); }
-  50%      { box-shadow: inset 0 0 22px rgba(204, 136, 255, 0.85), inset 0 0 46px rgba(204, 136, 255, 0.45); }
+@keyframes ff-void-lens {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
+@keyframes ff-void-eye {
+  0%, 100% { transform: scale(0.85); opacity: 0.7; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+.reduce-motion .ff-surface-void::before,
 .reduce-motion .ff-surface-void::after { animation: none; }
+
+/* Card-level treatments for void + poly editions. The brief calls
+   for the WHOLE card to telegraph the edition at a glance across
+   a shop offer row — wider rim glow for void, chromatic aberration
+   for poly. Applied via additional classes on the outer card div
+   (see CatalystCard.tsx + OfferCard.tsx where the surface class
+   is computed). Selectors target the existing legendary-aura host
+   so they stack cleanly with rarity treatments. */
+.ff-card-void {
+  box-shadow:
+    0 0 0 1px rgba(149,119,255,0.85),
+    0 0 26px rgba(149,119,255,0.45),
+    0 0 54px rgba(149,119,255,0.28),
+    0 0 100px rgba(149,119,255,0.14),
+    0 18px 40px rgba(0,0,0,0.7) !important;
+  animation: ff-void-card-breathe 5s ease-in-out infinite;
+}
+@keyframes ff-void-card-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(149,119,255,0.85),
+      0 0 26px rgba(149,119,255,0.45),
+      0 0 54px rgba(149,119,255,0.28),
+      0 0 100px rgba(149,119,255,0.14),
+      0 18px 40px rgba(0,0,0,0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(168,140,255,1),
+      0 0 36px rgba(149,119,255,0.75),
+      0 0 80px rgba(149,119,255,0.50),
+      0 0 140px rgba(149,119,255,0.25),
+      0 18px 40px rgba(0,0,0,0.7);
+  }
+}
+.reduce-motion .ff-card-void { animation: none; }
 
 /* Legendary lift — heavier drop-shadow so legendary cards visibly
    sit higher than commons. Composed with .legendary-aura's pulse. */

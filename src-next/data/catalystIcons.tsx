@@ -865,6 +865,55 @@ export const CATALYST_ICON_SVGS: Record<string, CatalystIconRenderer> = {
       <circle cx="20" cy="5" r="1" fill={color} stroke="none" />
     </svg>
   ),
+
+  // 2026-05-16 risk-pack glyphs. Replace the unicode fallbacks
+  // (☠ ♟ 🜍) which render inconsistently across OSes. Each leans
+  // into the brief's "instrument / artifact / sample" framing.
+
+  // Bone Tax — a balance scale with one pan tipped down; the down-pan
+  // holds a fractured cube (the chip-tax "bite" the catalyst takes).
+  bone_tax: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 4 L 12 8" />
+      <path d="M 6 8 L 18 8" />
+      <path d="M 6 8 L 4 16" />
+      <path d="M 18 8 L 20 16" />
+      <path d="M 7 16 L 13 16" />
+      <path d="M 8 16 L 9.5 21 L 11.5 17.5 L 13 21" />
+      <circle cx="11" cy="13" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Hollow Bishop — a chess-bishop silhouette with the upper third
+  // hollowed out. Dot inside the hollow marks the gating threshold.
+  hollow_bishop: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 3 L 12 5" />
+      <path d="M 9 7 C 9 5.5 10.5 5 12 5 C 13.5 5 15 5.5 15 7 L 14.5 9 L 9.5 9 Z" />
+      <path d="M 10.5 9 L 10.5 11" />
+      <path d="M 13.5 9 L 13.5 11" />
+      <path d="M 8 17 L 8 15 C 8 12.5 9.5 11 12 11 C 14.5 11 16 12.5 16 15 L 16 17" />
+      <path d="M 7 17 L 17 17 L 17 19 L 7 19 Z" />
+      <circle cx="12" cy="14" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Witch's Bargain — a brass coin paired with a notched tally.
+  // The notch reads as the per-die chip subtraction the catalyst
+  // levies before the multiplier hits. No witch imagery — the
+  // bargain is the literal transaction.
+  witchs_bargain: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="8" cy="12" r="4" />
+      <path d="M 8 9.5 L 8 14.5" />
+      <path d="M 6 12 L 10 12" />
+      <path d="M 14 7 L 19 7" />
+      <path d="M 14 10 L 19 10" />
+      <path d="M 14 13 L 17 13" />
+      <path d="M 14 16 L 19 16" />
+      <circle cx="17.5" cy="13" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
 };
 
 /** True iff a hand-authored SVG renderer exists for this catalyst id. */

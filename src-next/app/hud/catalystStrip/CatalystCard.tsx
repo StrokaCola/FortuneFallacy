@@ -121,6 +121,11 @@ export function CatalystCard(props: CatalystCardProps) {
         className={[
           isLegendary ? 'legendary-aura legendary-aura-static' : '',
           isLegendary ? 'ff-legendary-lift' : '',
+          // 2026-05-16 brief-iterated polish — Void edition gets a
+          // wider, breathing rim glow so a Void card visibly stands
+          // out in a shop offer row, matching the design brief at
+          // docs/catalyst-card-system-brief.md (Edition Overlay → Void).
+          isVoid ? 'ff-card-void' : '',
         ].filter(Boolean).join(' ') || undefined}
         style={{
           width: 64, height: 88, borderRadius: 8,

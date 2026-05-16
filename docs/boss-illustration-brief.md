@@ -4,6 +4,8 @@ Briefing pack for the 8 final-trial anomalies. Hand directly to a contracted con
 
 Authored: 2026-05-16. Canonical source data: [`src-next/data/blinds.ts`](../src-next/data/blinds.ts) `BOSS_BLINDS` + `BOSS_CINEMATIC_FLAVOR`.
 
+> **For art-director review** — open the editorial HTML render at [`public/brand/boss-roster-brief.html`](../public/brand/boss-roster-brief.html). Served during dev at `http://localhost:5173/FortuneFallacy/brand/boss-roster-brief.html` (Vite `base: '/FortuneFallacy/'`). It surfaces the same content in the in-game cinematic vocabulary (Cinzel / Exo 2, cosmos palette, the boss sigils from `BOSS_BLINDS`) with click-to-copy hex swatches per boss. The markdown below is the canonical source — the HTML is a viewing layer.
+
 ---
 
 ## Shared Style Bible
