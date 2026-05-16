@@ -258,8 +258,9 @@ function ActionBar({
       <button
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0 || !firstRollDone || !ready}
-        onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}
+        style={{ whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <PlayHandGlyph /> Play Hand
         </span>
       </button>
