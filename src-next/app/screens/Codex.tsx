@@ -222,17 +222,39 @@ function CodexProgressHeader({
   );
 }
 
-function Cell({ children, locked = false, accent = '#7be3ff' }: { children: React.ReactNode; locked?: boolean; accent?: string }) {
+function Cell({
+  children, locked = false, accent = '#7be3ff', tipTitle, tipBody,
+}: {
+  children: React.ReactNode;
+  locked?: boolean;
+  accent?: string;
+  /** Optional tooltip title (typically the kind label or unlock prerequisite). */
+  tipTitle?: string;
+  /** Optional tooltip body — shown on hover. Wave JJ surfaces unlock
+   * hints for locked codex entries so the ???-card has an answer. */
+  tipBody?: string;
+}) {
+  const hasTip = !!(tipTitle || tipBody);
   return (
-    <div className="panel" style={{
-      padding: 12, borderRadius: 10,
-      border: `1px solid ${locked ? 'rgba(149,119,255,0.18)' : `${accent}55`}`,
-      background: locked ? 'rgba(15,9,37,0.55)' : 'rgba(15,9,37,0.7)',
-      filter: locked ? 'grayscale(0.85)' : undefined,
-      opacity: locked ? 0.55 : 1,
-      minHeight: 110,
-    }}>
+    <div
+      className={`panel${hasTip ? ' has-tip' : ''}`}
+      style={{
+        padding: 12, borderRadius: 10,
+        border: `1px solid ${locked ? 'rgba(149,119,255,0.18)' : `${accent}55`}`,
+        background: locked ? 'rgba(15,9,37,0.55)' : 'rgba(15,9,37,0.7)',
+        filter: locked ? 'grayscale(0.85)' : undefined,
+        opacity: locked ? 0.55 : 1,
+        minHeight: 110,
+        position: 'relative',
+        cursor: hasTip ? 'help' : undefined,
+      }}>
       {children}
+      {hasTip && (
+        <span className="tip" style={{ maxWidth: 240, textAlign: 'left' }}>
+          {tipTitle && <span className="tip-title">{tipTitle}</span>}
+          {tipBody}
+        </span>
+      )}
     </div>
   );
 }
@@ -257,7 +279,13 @@ function CatalystGrid({ discovered }: { discovered: string[] }) {
         const seen = discovered.includes(c.id);
         const accent = RARITY_COLORS[c.rarity] ?? c.color;
         return (
-          <Cell key={c.id} locked={!seen} accent={accent}>
+          <Cell
+            key={c.id}
+            locked={!seen}
+            accent={accent}
+            tipTitle={seen ? undefined : 'Catalyst · undiscovered'}
+            tipBody={seen ? undefined : 'Encounter this catalyst at the Bazaar in a run to reveal its name, effect, and flavor here.'}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="catalyst" rarity={seen ? c.rarity : null} size={32}>
                 {seen ? (
@@ -308,7 +336,13 @@ function ModGrid({ discovered }: { discovered: string[] }) {
         // tribe in the Codex.
         const isBanish = !!(m.banishFaces || m.banishFaceResolver);
         return (
-          <Cell key={m.id} locked={!seen} accent={accent}>
+          <Cell
+            key={m.id}
+            locked={!seen}
+            accent={accent}
+            tipTitle={seen ? undefined : 'Mod · undiscovered'}
+            tipBody={seen ? undefined : 'Encounter this mod (drops as a Bazaar offer or pack reward) to reveal its name, effect, and flavor here.'}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="mod" rarity={seen ? m.rarity : null} size={32}>
                 <span style={{ color: seen ? accent : '#6a6080' }}>{seen ? m.icon : '⫶'}</span>
@@ -354,7 +388,13 @@ function VoucherGrid({ discovered }: { discovered: string[] }) {
         const seen = discovered.includes(v.id);
         const accent = RARITY_COLORS[v.rarity];
         return (
-          <Cell key={v.id} locked={!seen} accent={accent}>
+          <Cell
+            key={v.id}
+            locked={!seen}
+            accent={accent}
+            tipTitle={seen ? undefined : 'Voucher · undiscovered'}
+            tipBody={seen ? undefined : 'Buy this voucher at the Bazaar in a run to reveal its name and permanent perk here.'}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="voucher" rarity={seen ? v.rarity : null} size={32}>
                 <span style={{ color: seen ? '#f5c451' : '#6a6080' }}>◆</span>
@@ -390,7 +430,13 @@ function ConsumableGrid({ discovered }: { discovered: string[] }) {
           : c.type === 'maneuver' ? '#7be3ff'
           : '#bba8ff';
         return (
-          <Cell key={c.id} locked={!seen} accent={tint}>
+          <Cell
+            key={c.id}
+            locked={!seen}
+            accent={tint}
+            tipTitle={seen ? undefined : 'Consumable · undiscovered'}
+            tipBody={seen ? undefined : 'Open a pack containing this consumable, or buy it directly, to reveal its name and effect here.'}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="consumable" rarity={seen ? consumableRarity(c.type) : null} size={32}>
                 <span style={{ color: seen ? tint : '#6a6080' }}>{seen ? (c.icon ?? '◇') : '◇'}</span>
