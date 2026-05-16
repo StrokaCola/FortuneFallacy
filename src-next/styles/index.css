@@ -2816,6 +2816,17 @@ body.perf-degraded .edition-poly {
   z-index: 0;
   filter: drop-shadow(0 0 12px currentColor);
 }
+/* Wave PP — watermark slow breath. 8s sine modulates the opacity
+   from 0.025 → 0.055 → 0.025 so the corner sigil ambient-glows
+   without ever climbing into "actual UI" attention. Reduce-motion
+   keeps the static 0.04. */
+@keyframes ff-screen-watermark-breath {
+  0%, 100% { opacity: 0.025; }
+  50%      { opacity: 0.055; }
+}
+html:not(.reduce-motion) .ff-screen-watermark {
+  animation: ff-screen-watermark-breath 8s ease-in-out infinite;
+}
 
 /* Number plate — thin gold underline + tiny star endcaps. Wraps
    key numeric readouts so they read as "inscribed totals" rather
