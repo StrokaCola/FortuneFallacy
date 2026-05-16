@@ -156,16 +156,23 @@ export function TopBar({
   const handsDisplay = useCounterTween(hands, 200);
   const rerollsDisplay = useCounterTween(rerolls, 200);
   const tight = useIsTightStage();
-  // Wave Z2 — shard gain pulse. Detect a positive delta in the source
-  // shard value (not the tweened display) and fire a brief glow on the
-  // digit so a +N gain reads as "look here, you got something" instead
-  // of a quiet number-roll. State drives a keyed remount of the digit
-  // span so the keyframe replays on every gain.
+  // Wave Z2 + CC — shard delta pulse. Detect a positive OR negative
+  // delta and fire a brief glow on the digit. Gold for gains (+N
+  // earned), crimson for spends (-N paid). State drives a keyed
+  // remount of the digit span so the keyframe replays cleanly on
+  // every change, and the direction class picks the tint.
   const [shardPulseKey, setShardPulseKey] = useState(0);
+  const [shardPulseDir, setShardPulseDir] = useState<'gain' | 'spend' | null>(null);
   const prevShardsRef = useRef(shards);
   useEffect(() => {
     const prev = prevShardsRef.current;
-    if (shards > prev) setShardPulseKey((k) => k + 1);
+    if (shards > prev) {
+      setShardPulseDir('gain');
+      setShardPulseKey((k) => k + 1);
+    } else if (shards < prev) {
+      setShardPulseDir('spend');
+      setShardPulseKey((k) => k + 1);
+    }
     prevShardsRef.current = shards;
   }, [shards]);
   // The big blind line restates the same word that's already in the
@@ -313,7 +320,11 @@ export function TopBar({
           <Sigil kind="star" size={tight ? 14 : 20} color="#f5c451" />
           <div
             key={`shards-pulse-${shardPulseKey}`}
-            className={`f-display num${shardPulseKey > 0 ? ' ff-shard-gain-pulse' : ''}`}
+            className={`f-display num${
+              shardPulseKey > 0
+                ? shardPulseDir === 'spend' ? ' ff-shard-spend-pulse' : ' ff-shard-gain-pulse'
+                : ''
+            }`}
             style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}
           >
             {shardsDisplay}

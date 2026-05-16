@@ -2323,6 +2323,22 @@ html:not(.reduce-motion) .rarity-uncommon-aura::before {
 }
 .reduce-motion .ff-shard-gain-pulse { animation: none; }
 
+/* Wave EE — shard spend pulse. Symmetrical counterpart to the gain
+   pulse: crimson glow + slight scale-down so a -N spend reads as
+   "you just paid for this" instead of a quiet number drop. Same
+   keyed remount pattern as gain. */
+@keyframes shard-spend-pulse {
+  0%   { transform: scale(1);    filter: drop-shadow(0 0 0 transparent); }
+  20%  { transform: scale(0.88); filter: drop-shadow(0 0 12px rgba(226,51,74,0.85)); }
+  55%  { transform: scale(0.97); filter: drop-shadow(0 0 6px rgba(226,51,74,0.4)); }
+  100% { transform: scale(1);    filter: drop-shadow(0 0 0 transparent); }
+}
+.ff-shard-spend-pulse {
+  animation: shard-spend-pulse 480ms cubic-bezier(0.25, 0.8, 0.4, 1);
+  transform-origin: center;
+}
+.reduce-motion .ff-shard-spend-pulse { animation: none; }
+
 /* Wave BB — Pause panel slide-down entrance. The backdrop already
    fades in via the modal-in keyframe; the panel itself now drops
    from a few px above with a slight overshoot so the dialog lands
