@@ -182,6 +182,28 @@ export function TopBar({
     }
     prevShardsRef.current = shards;
   }, [shards]);
+  // Wave II — score-cross-target pulse. Detect the moment the running
+  // score (tweened) crosses the trial target threshold for the first
+  // time in a hand. Fire a brief gold scale-pulse on the score panel
+  // so the TopBar acknowledges the cross even when the cinematic VFX
+  // (godrays / CA / star ripples) is happening over the dice canvas.
+  // Reset the "crossed" flag whenever target changes (new blind).
+  const [scoreCrossKey, setScoreCrossKey] = useState(0);
+  const crossedThisHandRef = useRef(false);
+  const prevTargetRef = useRef(target);
+  useEffect(() => {
+    if (target !== prevTargetRef.current) {
+      crossedThisHandRef.current = false;
+      prevTargetRef.current = target;
+    }
+    if (!crossedThisHandRef.current && target > 0 && displayedScore >= target) {
+      crossedThisHandRef.current = true;
+      setScoreCrossKey((k) => k + 1);
+    } else if (target > 0 && displayedScore < target) {
+      // Allow re-cross next hand if score dips back (round reset path).
+      crossedThisHandRef.current = false;
+    }
+  }, [displayedScore, target]);
   // The big blind line restates the same word that's already in the
   // small "ante NN · blind" label above it. On a phone where vertical
   // space is precious we drop it; on desktop the redundancy is fine
@@ -220,7 +242,8 @@ export function TopBar({
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
               data-score-counter
-              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}`}
+              key={`score-cross-${scoreCrossKey}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
                 color: tense ? '#ff4d6d' : '#f3f0ff',

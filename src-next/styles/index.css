@@ -2380,6 +2380,23 @@ html:not(.reduce-motion) .rarity-uncommon-aura::before {
   100% { transform: translate(-50%, -220%) scale(0.6);  opacity: 0; }
 }
 
+/* Wave II — Score panel cross-target pulse. Fires on the TopBar score
+   digit the first time the displayed score crosses the trial target
+   each hand. Gold scale-up + drop-shadow ramp so the TopBar
+   acknowledges the cross even when the dice-canvas VFX (godrays /
+   chromatic aberration / star ripples) is firing simultaneously. */
+@keyframes score-cross-pulse {
+  0%   { transform: scale(1);    filter: drop-shadow(0 0 0 transparent); }
+  22%  { transform: scale(1.18); filter: drop-shadow(0 0 18px rgba(245, 196, 81, 0.95)); }
+  60%  { transform: scale(1.04); filter: drop-shadow(0 0 10px rgba(245, 196, 81, 0.55)); }
+  100% { transform: scale(1);    filter: drop-shadow(0 0 0 transparent); }
+}
+.ff-score-cross-pulse {
+  animation: score-cross-pulse 700ms cubic-bezier(0.2, 1.1, 0.35, 1);
+  transform-origin: left center;
+}
+.reduce-motion .ff-score-cross-pulse { animation: none; }
+
 /* Wave BB — Pause panel slide-down entrance. The backdrop already
    fades in via the modal-in keyframe; the panel itself now drops
    from a few px above with a slight overshoot so the dialog lands
