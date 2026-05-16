@@ -62,6 +62,62 @@
   --z-modal-strong: 60;
   --z-overlay: 100;
   --z-orientation: 200;
+
+  /* 2026-05-16 — Semantic spacing scale. Steps follow a 4 → 48px progression
+     so new components can pull `var(--space-3)` instead of inventing a
+     fresh 12px value. Existing hand-tuned numbers (button padding, panel
+     gap) intentionally keep their inline values until a dedicated cleanup
+     pass migrates them; the scale exists so NEW code stops bloating the
+     hardcoded-value list. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Border-radius scale. Pulled from observed values across the codebase
+     (6 = chips/rows, 10 = buttons, 16 = panels) and rounded to a clean
+     {4,6,8,10,12,16,24} progression. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Type scale. Pairs with the .f-display / .f-head / .f-body / .f-mono
+     family classes already in this file. Sizes follow a 12→48px ramp
+     that covers the existing button text (11/13), body (14), panel
+     headings (18/22), screen headers (28/36), and hero (48). */
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-md:   14px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  36px;
+  --text-hero: 48px;
+
+  /* Semantic font-family tokens. Mirrors the existing .f-* classes so
+     new inline styles can reach for a role rather than a font name. */
+  --f-display: 'Cinzel Decorative', serif;
+  --f-head:    'Cinzel', serif;
+  --f-body:    'Exo 2', sans-serif;
+  --f-mono:    'JetBrains Mono', monospace;
+
+  /* Letter-spacing scale. Caps want more spacing than lowercase; the
+     `--ls-uc-*` tokens match the existing `.uc` letter-spacing values
+     scattered across components (0.18em / 0.28em / 0.32em / 0.4em). */
+  --ls-tight:    -0.01em;
+  --ls-normal:   0;
+  --ls-loose:    0.04em;
+  --ls-uc-sm:    0.18em;
+  --ls-uc-md:    0.28em;
+  --ls-uc-lg:    0.32em;
+  --ls-uc-xl:    0.4em;
 }
 
 html, body {
@@ -151,9 +207,11 @@ html, body {
 .uc        { text-transform: uppercase; }
 .num       { font-variant-numeric: tabular-nums; }
 
-/* Panels */
-.panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius:16px; }
-.panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius:16px; box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
+/* Panels — radius pulls from the new token scale (--radius-lg = 16px,
+   --radius-sm = 6px) so panel rounding stays consistent with future
+   per-component rounding decisions. */
+.panel        { background: linear-gradient(180deg, rgba(46,29,107,.35), rgba(15,9,37,.55)); backdrop-filter: blur(10px); border:1px solid rgba(149,119,255,.22); border-radius: var(--radius-lg); }
+.panel-strong { background: linear-gradient(180deg, rgba(46,29,107,.65), rgba(15,9,37,.85)); border:1px solid rgba(149,119,255,.34); border-radius: var(--radius-lg); box-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); }
 
 /* Compact row-card baseline. Same gradient/border tokens as .panel but
    with a smaller radius (6) tuned for list rows — RunInfoPanel catalyst
@@ -163,7 +221,7 @@ html, body {
 .panel-row {
   background: rgba(15, 9, 37, 0.6);
   border: 1px solid rgba(149, 119, 255, 0.22);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 /* Horizontal scroll row with right-edge fade.
@@ -224,7 +282,7 @@ textarea:focus-visible,
 .tap { min-height: var(--touch-target-min); min-width: var(--touch-target-min); touch-action: manipulation; -webkit-tap-highlight-color: rgba(123,227,255,0.18); }
 .tap:active { transform: scale(0.96); transition: transform 60ms ease-out; }
 .reduce-motion .tap:active { transform: none; }
-.btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a; padding: 14px 28px; border-radius: 10px; font-size: 18px; box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
+.btn-primary { background: linear-gradient(180deg, #ff8a5e, #e85a28); color: #20100a; padding: 14px 28px; border-radius: var(--radius-md); font-size: var(--text-lg); box-shadow: 0 0 0 1px rgba(255,180,140,.6), 0 6px 18px rgba(255,120,71,.35), inset 0 1px 0 rgba(255,255,255,.4); }
 .btn-ghost   { background: rgba(28,18,69,.6); color: #f3f0ff; padding: 12px 22px; border-radius: 10px; font-size: 14px; box-shadow: 0 0 0 1px rgba(149,119,255,.3); backdrop-filter: blur(8px); }
 /* CTA tier — gold accent, mid-energy. Used for "Begin Challenge",
    "Begin Spark", and other "step into the run" affordances that are
@@ -1065,6 +1123,65 @@ html:not(.reduce-motion) .forge-orbit { animation: orbit 30s linear infinite; }
   opacity: 1;
 }
 .reduce-motion .boss-sting-flash { animation: none; opacity: 0; }
+
+/* Boss reveal slam — the panel and sigil enter with weight on the
+   reveal-phase swap. Panel arrives from 0.82× with a brief overshoot
+   so the lock-in feels like a verdict rather than a fade. Sigil
+   slams in larger and settles to its baseline over 600ms with a
+   short-lived chromatic split (mimics the screen-shake transient
+   without a separate filter pass). Both honor reduce-motion below. */
+.boss-reveal-panel-slam {
+  animation: boss-reveal-panel-slam 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes boss-reveal-panel-slam {
+  0%   { opacity: 0; transform: scale(0.82); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.boss-sigil-slam {
+  animation: boss-sigil-slam 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes boss-sigil-slam {
+  0%   { transform: scale(1.55); filter: drop-shadow(0 0 30px var(--boss-color, #ff4d6d)) drop-shadow(2px 0 0 rgba(255,80,80,0.6)) drop-shadow(-2px 0 0 rgba(80,180,255,0.6)); }
+  55%  { transform: scale(0.96); filter: drop-shadow(0 0 30px var(--boss-color, #ff4d6d)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 30px var(--boss-color, #ff4d6d)); }
+}
+.reduce-motion .boss-reveal-panel-slam,
+.reduce-motion .boss-sigil-slam { animation: none; transform: none; }
+
+/* Heat meter — ember pulse on the lit segments once the streak passes
+   the SEGMENTS threshold (3 by default). Honors reduce-motion so the
+   bar still reads as "max" without the throb. */
+.heat-seg-hot {
+  animation: heat-seg-pulse 900ms ease-in-out infinite;
+}
+@keyframes heat-seg-pulse {
+  0%, 100% { transform: scaleY(1);   box-shadow: 0 0 6px rgba(255,77,109,0.7), 0 0 14px rgba(255,77,109,0.35); }
+  50%      { transform: scaleY(1.4); box-shadow: 0 0 12px rgba(255,77,109,0.95), 0 0 24px rgba(255,77,109,0.55); }
+}
+.reduce-motion .heat-seg-hot { animation: none; transform: none; }
+
+/* Boss aura — the runic ring counter-rotates around the sigil at a slow
+   ambient pace (36s per lap) so the boss panel reads as alive without
+   demanding attention. The creature silhouette breathes on a 5s cycle.
+   Both honour reduce-motion below. */
+.boss-aura-ring {
+  animation: boss-aura-ring-spin 36s linear infinite;
+}
+@keyframes boss-aura-ring-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.boss-aura-creature {
+  animation: boss-aura-creature-breathe 5s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes boss-aura-creature-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.92; }
+  50%      { transform: scale(1.04); opacity: 1; }
+}
+.reduce-motion .boss-aura-ring,
+.reduce-motion .boss-aura-creature { animation: none; }
 
 /* Postmortem fail-screen vignette — the bright center collapses
    inward over 1.4s, framing the loss as a descent rather than a flat

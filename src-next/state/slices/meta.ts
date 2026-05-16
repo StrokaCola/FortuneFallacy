@@ -91,6 +91,11 @@ export type MetaSlice = {
     date: number;
     stake: string;
   }>;
+  // 2026-05-16 — Cosmetic Dust Shop unlocks. Pure-cosmetic skins /
+  // palettes purchased with Cosmic Dust at the Astral Forge once the
+  // mechanical perks are owned. Optional for back-compat; selectors
+  // default to [] when missing on older saves.
+  cosmeticsUnlocked?: string[];
 };
 
 // Import maneuvers up-front so the seed lists below can both reference
@@ -171,4 +176,5 @@ export const initialMetaSlice = (): MetaSlice => ({
   dailyLogin: { lastDate: null },
   easterEggs: [],
   endlessHighwater: {},
+  cosmeticsUnlocked: [],
 });

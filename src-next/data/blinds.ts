@@ -150,13 +150,13 @@ export const BOSS_BLINDS: BossBlind[] = [
     id: 'pluto', name: 'Pluto', color: '#44bb66',
     description: 'Demoted. 1s refuse to transform.', debuffs: ['no_mod_transforms_on_ones'],
     secondWind: {
-      // Pluto's identity is "1s can't transform" — phase-2 keeps that
-      // thematic shape by also capping the hand size, so the player
-      // has fewer dice in which to dodge the transform lock. Rerolls
-      // stay on; no_rerolls was tested and tanked Spark win-rates.
+      // Pluto's phase-2: 1s remain inert AND only even faces count for
+      // combo + scoring. Forces the player to either re-roll odds away
+      // or accept a sparse hand. Hand cap removed so the player still
+      // has enough dice to land an even-only hand at all.
       trigger: 'hand-2',
-      debuffs: ['hand_size_cap_4'],
-      flavor: 'the gambler\'s bones tighten — fewer dice answer the call.',
+      debuffs: ['only_even_faces'],
+      flavor: 'the gambler\'s bones sift — only the even count.',
     },
     iconGlyph: { viewBox: '0 0 24 24', paths: [
       'M 7 12 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0',

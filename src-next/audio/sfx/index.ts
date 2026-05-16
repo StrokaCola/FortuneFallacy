@@ -27,7 +27,13 @@ export type SfxId =
   // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
   // fires once per retrigger catalyst hit (Polaris/Refrain/etc). whisperChime
   // fires once when an easter egg is discovered for the first time.
-  | 'scalingTick' | 'retriggerEcho' | 'whisperChime';
+  | 'scalingTick' | 'retriggerEcho' | 'whisperChime'
+  // 2026-05-16 polish — near-miss sting played from RunPostmortem when
+  // the player busts within 10% of the target. Falling minor third on
+  // the lockTap ping with a sub-thud tail, distinct from `notEnough`
+  // (which fires on a per-hand bail) so the postmortem moment reads
+  // as "you almost had it" rather than "wrong hand".
+  | 'nearMiss';
 
 export type SfxOpts = { tier?: number; volume?: number; idx?: number; freq?: number; gain?: number };
 
@@ -204,6 +210,7 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'scalingTick':     (v as typeof voices).scalingTick(bank as never, opts); break;
       case 'retriggerEcho':   (v as typeof voices).retriggerEcho(bank as never, opts); break;
       case 'whisperChime':    (v as typeof voices).whisperChime(bank as never, opts); break;
+      case 'nearMiss':        (v as typeof voices).nearMiss(bank as never); break;
     }
   } catch (e) {
     console.warn('[sfx] play failed:', id, e);

@@ -147,6 +147,13 @@ export function CatalystStrip() {
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
+        // Round's root container ships pointer-events:none so dice +
+        // canvas hits pass through to the Three.js layer; HUD strips
+        // re-enable explicitly so per-card hover + sell-button + the
+        // .has-tip tooltip surface all receive events. The empty-slot
+        // branch above does the same; this matches it for the
+        // populated case so tooltips fire on real mouse hover.
+        pointerEvents: 'auto',
         ...(wide ? {} : {
           // Cap to visible play area so the absolute-positioned row
           // never extends past the viewport edge.

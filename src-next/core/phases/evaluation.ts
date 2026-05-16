@@ -2,6 +2,7 @@ import type { PhaseFn } from '../pipeline/types';
 import { detectCombo } from '../scoring/detectCombo';
 import { getComboCtx, getDiceSpec, getScoringMode, getBaseScoreMults, getFaceMultiplierPerCatalyst } from '../run/diceContext';
 import { GALAXY_BONUS } from '../consumables/galaxies';
+import { activeDebuffs } from '../round/debuffs';
 
 // Resolve a hand of faces (some of which may be 'WILD') into the substitution
 // that maximises the combo tier. Strategy:
@@ -113,7 +114,19 @@ function resolveWildcards(
 export const evaluation: PhaseFn = (ctx) => {
   const allFaces = ctx.sim?.finalFaces ?? [];
   const order = ctx.state.round.scoringOrder ?? allFaces.map((_, i) => i);
-  const heldIdxs = order.filter((idx) => idx >= 0 && idx < allFaces.length);
+  let heldIdxs = order.filter((idx) => idx >= 0 && idx < allFaces.length);
+  // 2026-05-16 — Pluto phase-2 only_even_faces debuff. Filter the held
+  // dice down to even faces BEFORE combo detection so the displayed
+  // combo + chip math both reflect the post-filter set. WILD faces
+  // (raw=-1) are dropped here too — they need a numeric face to be
+  // odd/even, and the existing evaluator already excludes them from
+  // straight runs separately.
+  if (activeDebuffs(ctx.state).has('only_even_faces')) {
+    heldIdxs = heldIdxs.filter((idx) => {
+      const f = allFaces[idx];
+      return typeof f === 'number' && f > 0 && f % 2 === 0;
+    });
+  }
 
   const scoringMode = getScoringMode(ctx.state);
   const spec = getDiceSpec(ctx.state);

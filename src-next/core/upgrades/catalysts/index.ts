@@ -84,6 +84,12 @@ import './unseenChorus';
 import './kineticCharge';
 import './chainReaction';
 import './kindredClatter';
+// 2026-05-16 risk pack — tradeoff catalysts with explicit downsides.
+// Each one trades a build constraint for an outsized payoff so the
+// shop offers a real choice instead of a strictly-positive ladder.
+import './boneTax';
+import './hollowBishop';
+import './witchsBargain';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -125,5 +131,7 @@ export const CATALYST_IDS = [
   // 2026-05-13 unheld + collision pack
   'shadow_cache', 'reservoir', 'silent_witness', 'unseen_chorus',
   'kinetic_charge', 'chain_reaction', 'kindred_clatter',
+  // 2026-05-16 risk pack
+  'bone_tax', 'hollow_bishop', 'witchs_bargain',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

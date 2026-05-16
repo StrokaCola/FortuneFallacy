@@ -247,7 +247,16 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
   // docs/sim-data/dust_earn.csv.
   const dustForBlind = 1 + s.run.ante;
   const winBonus = won ? 15 * Math.max(1, stakeIndex(s.run.stakeId) + 1) : 0;
-  const dustGained = dustForBlind + winBonus;
+  // 2026-05-16 — daily clear bonus. Daily runs are short, deterministic,
+  // and intentionally low-variance, so a flat +25 dust on win turns the
+  // daily into a real meta-progression beat instead of a flavour mode.
+  // Streak hint: today's clear with yesterday's cleared in history adds
+  // another +5 per consecutive day, capped at +25 so a long streak can
+  // double the daily payout without breaking the dust curve.
+  const dailyWinBonus = won && s.run.dailyDate
+    ? 25 + dailyStreakBonus(s.meta.dailyHistory ?? {}, s.run.dailyDate)
+    : 0;
+  const dustGained = dustForBlind + winBonus + dailyWinBonus;
   const highScores = won ? pushHighScore(s, s.round.score) : s.meta.highScores;
   // On a successful run, record the cleared stake for this constellation
   // so the next stake unlocks. Tied per-constellation so stake progress on
@@ -552,6 +561,31 @@ function recordDailyAttempt(
     playedAt: Date.now(),
   };
   return { ...history, [date]: next };
+}
+
+// Daily-streak bonus. Walks backward from yesterday in the daily history
+// counting consecutive cleared days. Returns +5 per step capped at +25
+// (so a 5-day streak doubles the base 25 dust to 50 total). Pure helper —
+// no state mutation, no clock reads beyond the date string parsing.
+function dailyStreakBonus(
+  history: Record<string, { cleared: boolean }>,
+  todayUtc: string,
+): number {
+  // todayUtc format: 'YYYY-MM-DD'. Walk back day-by-day; the helper
+  // exits as soon as a missing or unclear day breaks the streak.
+  const STEP_DUST = 5;
+  const STEP_CAP = 5;
+  let streak = 0;
+  const cursor = new Date(`${todayUtc}T00:00:00Z`);
+  if (Number.isNaN(cursor.getTime())) return 0;
+  for (let i = 0; i < STEP_CAP; i++) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+    const key = cursor.toISOString().slice(0, 10);
+    const entry = history[key];
+    if (!entry?.cleared) break;
+    streak++;
+  }
+  return streak * STEP_DUST;
 }
 
 function pushHighScore(s: GameState, score: number) {

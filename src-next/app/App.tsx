@@ -49,6 +49,7 @@ import { CoachmarkController } from './onboarding/CoachmarkController';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { AfterglowOverlay } from './visual/AfterglowOverlay';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
+import { ScreenSilhouette } from './visual/ScreenSilhouette';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
 import { useMotion } from './hooks/useMotion';
 import { ScreenTransition } from './visual/ScreenTransition';
@@ -215,6 +216,11 @@ export function App() {
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
         <CosmosBackground theme={theme} density={1} nebula drift tension={cosmosTension} progress={cosmosProgress} />
+        {/* Per-screen procedural silhouette — Hub / Shop / Forge /
+            Astral Forge get a unique horizon shape so each destination
+            reads as a place rather than "same starfield, different
+            content." See ScreenSilhouette for the path table. */}
+        <ScreenSilhouette screen={screen} />
 
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>

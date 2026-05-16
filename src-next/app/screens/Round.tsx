@@ -9,6 +9,7 @@ import { PauseButton } from '../hud/PauseButton';
 import { CatalystStrip } from '../hud/CatalystStrip';
 import { LegendaryFire } from '../hud/LegendaryFire';
 import { HotStreakBanner } from '../hud/HotStreakBanner';
+import { HeatMeter } from '../hud/HeatMeter';
 import { VoidstormBadge } from '../hud/VoidstormBadge';
 import { PatternDetectedBanner } from '../hud/PatternDetectedBanner';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
@@ -107,6 +108,7 @@ export function Round() {
       <CatalystStrip />
       <LegendaryFire />
       <HotStreakBanner />
+      <HeatMeter />
       <VoidstormBadge />
       <PatternDetectedBanner />
       <ShardDeductToast />
@@ -209,12 +211,19 @@ function ActionBar({
     }, PULL_DURATION_MS);
   };
 
+  // 2026-05-16 — ultra-narrow viewport polish. Below 400px wide the
+  // 16px gap + default button padding pushes the action row past the
+  // viewport edge on iPhone-SE-class phones. Tighten gap + add an
+  // inline scale-down class via maxWidth so the row never overflows.
+  const ultraNarrow = typeof window !== 'undefined' && window.innerWidth < 400;
   return (
     <div
       ref={ref}
       style={{
         position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', gap: 16, zIndex: 5, pointerEvents: 'auto',
+        display: 'flex', gap: ultraNarrow ? 8 : 16,
+        zIndex: 5, pointerEvents: 'auto',
+        maxWidth: ultraNarrow ? 'calc(100vw - 16px)' : undefined,
       }}>
       {firstRollDone ? (
         <button

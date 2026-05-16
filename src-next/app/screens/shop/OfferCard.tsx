@@ -11,6 +11,7 @@ import { sfxPlay } from '../../../audio/sfx';
 import { sellRefund } from '../../../core/shop/sellRefund';
 import { editionLabel, editionColor } from '../../../core/upgrades/editions';
 import { pairsCompletedBy } from '../../../data/resonances';
+import { lookupCatalyst, CATALYST_META } from '../../../data/catalysts';
 import { KindFrame, type UpgradeKind } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
@@ -249,6 +250,30 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
             {editionLabel(o.edition)}: {editionBonusDescription(o.kind, o.edition)}
           </span>
         )}
+        {/* Synergy preview — names owned catalysts that share this
+            offer's archetype tribe so the player can read the build
+            implication at a glance. Skipped silently for first-buy
+            (no owned matches) or non-catalyst offers. */}
+        {(() => {
+          if (o.kind !== 'catalyst') return null;
+          const offerArchetype = lookupCatalyst(o.id)?.archetype;
+          if (!offerArchetype) return null;
+          const matches = catalysts
+            .filter((id) => id !== o.id)
+            .map((id) => CATALYST_META.find((c) => c.id === id))
+            .filter((meta) => meta?.archetype === offerArchetype)
+            .map((meta) => meta!.name);
+          if (matches.length === 0) return null;
+          const list = matches.length <= 2 ? matches.join(' + ') : `${matches.slice(0, 2).join(' + ')} +${matches.length - 2} more`;
+          return (
+            <span style={{
+              display: 'block', marginTop: 6, color: '#5be8a4',
+              fontFamily: '"JetBrains Mono", monospace', fontSize: 10,
+            }}>
+              ◇ synergy with your build · {list}
+            </span>
+          );
+        })()}
         <span style={{ display: 'block', marginTop: 6, color: '#f5c451' }}>
           Buy ◆ {o.price} · sell back ◆ {refundIfBought}
         </span>

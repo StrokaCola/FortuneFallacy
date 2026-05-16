@@ -2,13 +2,33 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { bus } from '../../events/bus';
 import { BOSS_BLINDS, BOSS_CINEMATIC_FLAVOR } from '../../data/blinds';
 import { BossSigil } from '../visual/BossSigil';
+import { BossAura } from '../visual/BossAura';
 import { BossDreadFlourish } from '../visual/BossDreadFlourish';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
 import { triggerShake } from '../visual/screenShake';
 import { audioEngine } from '../../audio/AudioEngine';
 import { DUCK_PRESETS } from '../../audio/duckEnvelope';
+import { useStore, type GameState } from '../../state/store';
 import { Z } from './zLayers';
+
+// Aurora Sigils cosmetic palette — when the player has unlocked
+// `palette_aurora_sigils` at the Astral Forge, each boss's default
+// accent shifts to a pastel-aurora variant. Pure cosmetic; the boss
+// still scores / debuffs identically.
+const AURORA_PALETTE: Record<string, string> = {
+  pluto:    '#7af0d6',
+  ceres:    '#ff9dd1',
+  triton:   '#9affd6',
+  charon:   '#c4b4ff',
+  sedna:    '#7eecff',
+  callisto: '#ffd6a8',
+  phobos:   '#ffb4c8',
+  eris:     '#d6a8ff',
+};
+
+const EMPTY_COSMETICS: string[] = [];
+const selectCosmetics = (s: GameState) => s.meta.cosmeticsUnlocked ?? EMPTY_COSMETICS;
 
 // Wave L — per-run skip memory. The boss sting eats 1.1s + reveal animation
 // (~2.4s total). On a re-encounter within the same run the player has
@@ -108,6 +128,11 @@ const DREAD_DURATION_MS = 1100;
 
 export function BossReveal() {
   const [reveal, setReveal] = useState<Reveal | null>(null);
+  // Aurora Sigils cosmetic — read once at the top so the reveal phase
+  // and the dread phase both see the same palette choice. Subscribed
+  // via useStore so a purchase mid-session takes effect on the next
+  // boss without a reload.
+  const cosmetics = useStore(selectCosmetics);
   // Hold every timer so the auto-dismiss + secondary stings can be
   // cleared if the player taps to skip or the component unmounts.
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -177,9 +202,18 @@ export function BossReveal() {
   }, [reveal]);
 
   if (!reveal) return null;
-  const def = BOSS_BLINDS.find((b) => b.id === reveal.id);
-  if (!def) return null;
+  const baseDef = BOSS_BLINDS.find((b) => b.id === reveal.id);
+  if (!baseDef) return null;
   const anomalyIdx = BOSS_BLINDS.findIndex((b) => b.id === reveal.id) + 1;
+  // Apply Aurora Sigils palette override before any color is read
+  // downstream so a single derived `def` flows through the entire
+  // reveal panel + dread phase + sigil + aura without per-site
+  // cosmetic plumbing. Falls back to the boss's catalog color when
+  // the cosmetic isn't owned or the boss isn't in the aurora table.
+  const auroraOwned = cosmetics.includes('palette_aurora_sigils');
+  const def = auroraOwned && AURORA_PALETTE[baseDef.id]
+    ? { ...baseDef, color: AURORA_PALETTE[baseDef.id]! }
+    : baseDef;
 
   // Phase 1: dread. Edges darken inward; sigil silhouettes faintly in
   // the center. Player can still tap to skip ahead to the panel.
@@ -254,15 +288,20 @@ export function BossReveal() {
         animation: 'fadein 0.4s ease-out',
         cursor: 'pointer',
       }}>
-      <div style={{
-        // Cap to viewport so the reveal panel never overflows on
-        // landscape phones; preserves the original 440×600 on desktop.
-        width: 'min(440px, calc(100vw - 32px))',
-        // 100dvh tracks the visible viewport on mobile browsers.
-        height: 'min(600px, calc(100dvh - 32px))',
-        position: 'relative',
-        animation: 'float-y 4s ease-in-out infinite',
-      }}>
+      <div
+        className="boss-reveal-panel-slam"
+        style={{
+          // Cap to viewport so the reveal panel never overflows on
+          // landscape phones; preserves the original 440×600 on desktop.
+          width: 'min(440px, calc(100vw - 32px))',
+          // 100dvh tracks the visible viewport on mobile browsers.
+          height: 'min(600px, calc(100dvh - 32px))',
+          position: 'relative',
+          // Slam-in scale plays once on enter; float-y idles on top via a
+          // chained animation so the panel keeps breathing after the
+          // entrance transient lands.
+          animation: 'boss-reveal-panel-slam 620ms cubic-bezier(0.16, 1, 0.3, 1) both, float-y 4s ease-in-out 620ms infinite',
+        }}>
         <div className="panel-strong" style={{
           width: '100%', height: '100%', padding: 28,
           border: `2px solid ${def.color}`,
@@ -282,11 +321,27 @@ export function BossReveal() {
               </div>
               <div style={{ width: 36, height: 1, background: def.color, marginTop: 8, opacity: 0.6 }} />
 
-              <div style={{
-                marginTop: 20,
-                filter: `drop-shadow(0 0 30px ${def.color}cc)`,
-                lineHeight: 1,
-              }}>
+              <div
+                className="boss-sigil-slam"
+                style={{
+                  marginTop: 20,
+                  // CSS var consumed by the sigil-slam keyframe's
+                  // drop-shadow so the brief chromatic split tints with
+                  // the boss's color rather than a generic red/blue.
+                  ['--boss-color' as string]: def.color,
+                  lineHeight: 1,
+                  // Aura layer wraps the sigil — relative positioning
+                  // so the absolute-positioned BossAura children pin
+                  // to this container instead of climbing to the
+                  // panel. Sized to fit a 180-sigil plus the aura's
+                  // outer ring.
+                  position: 'relative',
+                  width: 260,
+                  height: 260,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}>
+                <BossAura bossId={def.id} color={def.color} size={180} />
                 <BossSigil boss={def} size={180} animate="both" glow />
               </div>
 
