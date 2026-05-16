@@ -15,6 +15,8 @@ import {
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
 import { ConfirmPress } from '../hud/ConfirmPress';
+import { ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 
 function useAudio(): { master: number; music: number; sfx: number } {
   const [v, setV] = useState({
@@ -365,6 +367,13 @@ export function Settings() {
         padding: 16,
         animation: 'fadein 400ms ease-out both',
       }}>
+      {/* Wave NN — Settings was the only meta screen without a
+          ScreenWatermark sigil. The moon kind reads as "rest /
+          quiet preferences" and tints the bottom-right with a
+          violet that pairs with the cosmos backdrop. */}
+      <ScreenWatermark color="#9577ff" position="bottom-right">
+        <Sigil kind="moon" size={220} color="#9577ff" />
+      </ScreenWatermark>
       <div className="panel-strong ff-panel-settle" style={{
         width: 'min(460px, 100%)', padding: 'clamp(20px, 3vw, 32px)', position: 'relative',
         display: 'flex', flexDirection: 'column', gap: 22,

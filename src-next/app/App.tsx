@@ -149,10 +149,23 @@ export function App() {
     return () => unsub();
   }, []);
 
+  // Wave NN — cosmos theme per screen. The previous picker only swung
+  // between voidlit (default) and sandstorm (shop / forge), leaving
+  // the calm meta screens (Title / Codex / Settings / Scores) sharing
+  // the boss-run backdrop. Each meta screen now picks the tint that
+  // matches its emotional beat:
+  //   midnight  — cool violet, contemplative (Title / NameEntry / Codex
+  //               / Settings / Constellation Select / Astral Forge)
+  //   abyssal   — deep cyan, archival depth (Scores)
+  //   sandstorm — gold/ember, transactional (Shop / Forge)
+  //   voidlit   — magenta/cyan, primary gameplay (Hub / Round / Event)
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
-    isBoss && screen === 'round' ? 'voidlit' :
-    'voidlit';
+    screen === 'scores' ? 'abyssal' :
+    screen === 'title' || screen === 'nameentry' || screen === 'codex' ||
+    screen === 'settings' || screen === 'constellation_select' || screen === 'astral_forge'
+      ? 'midnight'
+      : 'voidlit';
 
   // Per-screen cosmos reactivity. Without these overrides the
   // tension + progress signals would read stale Round state on every
