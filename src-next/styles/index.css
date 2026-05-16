@@ -3471,6 +3471,25 @@ body.ff-stake-sandstorm  .panel-strong { border-color: rgba(245, 196, 81, 0.36);
 .ff-dice-frame-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
 .ff-dice-frame-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
 
+/* Wave LL — dice frame corner breath. The static gold trims now
+   pulse softly (5s cycle) so the play area reads as alive during
+   the round. The tl + br ornaments alternate so the breath cross-
+   fades across the diagonal pair. */
+@keyframes ff-dice-frame-breath-a {
+  0%, 100% { opacity: 0.78; filter: drop-shadow(0 0 4px rgba(245,196,81,0.35)); }
+  50%      { opacity: 1;    filter: drop-shadow(0 0 9px rgba(245,196,81,0.7)); }
+}
+@keyframes ff-dice-frame-breath-b {
+  0%, 100% { opacity: 1;    filter: drop-shadow(0 0 9px rgba(245,196,81,0.7)); }
+  50%      { opacity: 0.78; filter: drop-shadow(0 0 4px rgba(245,196,81,0.35)); }
+}
+html:not(.reduce-motion) .ff-dice-frame-corner.tl {
+  animation: ff-dice-frame-breath-a 5s ease-in-out infinite;
+}
+html:not(.reduce-motion) .ff-dice-frame-corner.br {
+  animation: ff-dice-frame-breath-b 5s ease-in-out infinite;
+}
+
 /* Loading first-paint splash — covers the whole viewport with a
    cosmic ignition before React mounts. The HTML splash lives in
    index.html so it paints BEFORE the JS bundle even loads; React
