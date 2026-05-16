@@ -160,7 +160,17 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
     offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
   }
 
-  const availableVouchers = VOUCHERS.filter((v) => !ownedVouchers.includes(v.id));
+  // 2026-05-16 polish — Sixth Star (+1 die for the run) is the single
+  // biggest power swing in the voucher pool; gate it behind ante 3 so
+  // early shops can't pivot the whole run on a coin-flip voucher draw.
+  // Other vouchers stay open from ante 1 — only the +1-die slot needs
+  // the lockout. Matches Balatro's late-tier voucher cadence.
+  const SIXTH_STAR_MIN_ANTE = 3;
+  const availableVouchers = VOUCHERS.filter((v) => {
+    if (ownedVouchers.includes(v.id)) return false;
+    if (v.id === 'extra_die' && s.run.ante < SIXTH_STAR_MIN_ANTE) return false;
+    return true;
+  });
   // 2026-05-13 (post-Pillar-G): Consumables are no longer offered in the
   // shop. They're acquired exclusively via Skip Bounty (Pillar G) and
   // event encounters (Pillar C), which gives skipping a real second-

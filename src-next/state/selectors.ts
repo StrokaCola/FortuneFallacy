@@ -19,13 +19,33 @@ export const selectRoundActive = (s: GameState) => s.round.active;
 export const selectBlindId    = (s: GameState) => s.round.blindId;
 export const selectIsBoss     = (s: GameState) => s.round.isBoss;
 
+// 2026-05-16 — Cosmetic skin override. Cosmetic ids of kind
+// 'constellation_skin' carry a payload like `lyra:#4ff7c8` — when the
+// player has unlocked one targeting the active constellation, the
+// override color wins over the catalog default. Pure cosmetic; no
+// mechanic reads this lookup.
+function constellationTint(s: GameState): string {
+  const base = lookupConstellation(s.run.constellationId).color;
+  const cosmetics = s.meta.cosmeticsUnlocked ?? [];
+  if (cosmetics.length === 0) return base;
+  for (const cId of cosmetics) {
+    // Payload format: `<constellationId>:#<hex>` — parse lazily so we
+    // don't need to round-trip through lookupCosmetic on every render.
+    // Skin ids live in data/cosmetics.ts; the schema is intentionally
+    // small so this string-match check stays cheap.
+    if (cId === 'skin_lyra_aurora' && s.run.constellationId === 'lyra') return '#4ff7c8';
+    if (cId === 'skin_argo_ember'  && s.run.constellationId === 'argo')  return '#ff6347';
+  }
+  return base;
+}
+
 // Run-wide accent color. Boss debuffs override the constellation tint
 // (red trumps everything — players need to recognise boss state at a
 // glance) so this is intentionally a derived selector rather than a
 // raw read off run.constellationId.
 export function selectAccent(s: GameState): string {
   if (s.round.isBoss) return '#e2334a';
-  return lookupConstellation(s.run.constellationId).color;
+  return constellationTint(s);
 }
 
 // The constellation accent, *always* — never flips to crimson on boss
@@ -35,7 +55,7 @@ export function selectAccent(s: GameState): string {
 // (the action-bar arrows). See `docs/company-review-2026-05-13.md`
 // Dept 5 — Boss reveal rec.
 export function selectConstellationAccent(s: GameState): string {
-  return lookupConstellation(s.run.constellationId).color;
+  return constellationTint(s);
 }
 
 export const selectShopOffers = (s: GameState) => s.shop.offers;

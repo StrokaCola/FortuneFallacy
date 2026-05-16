@@ -339,6 +339,21 @@ export function notEnough(bank: SynthBank): void {
   bank.castBoom.kick.triggerAttackRelease(80, '8n', t + 0.32);
 }
 
+// ---- nearMiss ---------------------------------------------------------------
+// Postmortem "so close" sting — three falling notes over ~600ms with a
+// trailing sub-thud. Lower base pitch + longer interval than notEnough so
+// it reads as melancholy rather than terse. Played from RunPostmortem on
+// fail when score / target >= 0.9.
+export function nearMiss(bank: SynthBank): void {
+  const t = jitteredTime();
+  bank.lockTap.ping.volume.value = vol('nearMiss', -12);
+  bank.lockTap.ping.triggerAttackRelease(196, '4n', t);
+  bank.lockTap.ping.triggerAttackRelease(164.8, '4n', t + 0.22);
+  bank.lockTap.ping.triggerAttackRelease(130.8, '2n', t + 0.46);
+  bank.castBoom.kick.volume.value = vol('nearMissThud', -14);
+  bank.castBoom.kick.triggerAttackRelease(60, '4n', t + 0.62);
+}
+
 // ---- modPulse: short bright chime per generic mod fire -------------------
 export function modPulse(bank: SynthBank): void {
   const t = jitteredTime();

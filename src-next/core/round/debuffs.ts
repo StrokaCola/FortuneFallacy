@@ -14,7 +14,15 @@ export type Debuff =
   | 'disable_catalysts_first_hand'
   | 'disable_catalysts_first_2_hands'
   | 'mod_slots_capped_1'
-  | 'consumables_locked';
+  | 'consumables_locked'
+  // 2026-05-16 structural twist — only even-faced dice count toward
+  // combo detection + scoring. Forces a fundamentally different hand
+  // shape: face-bias builds on 6s still pay, but odd-face economy
+  // builds (Three Pact, Iron Six's odd sibling) become inert. Applied
+  // in core/phases/evaluation.ts via a heldIdxs filter BEFORE combo
+  // detection runs, so the player's combo readout reflects the
+  // post-filter face set.
+  | 'only_even_faces';
 
 export function activeDebuffs(s: GameState): Set<Debuff> {
   if (!s.round.isBoss || !s.round.blindId) return new Set();

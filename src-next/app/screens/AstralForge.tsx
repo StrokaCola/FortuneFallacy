@@ -8,16 +8,20 @@ import { dispatch } from '../../actions/dispatch';
 import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
 import { Sigil } from '../visual/Sigil';
 import { ASTRAL_PERKS, type AstralPerkDef } from '../../data/astralPerks';
+import { COSMETICS, type CosmeticDef } from '../../data/cosmetics';
 import type { GameState } from '../../state/store';
 
 const selectDust = (s: GameState) => s.meta.cosmicDust;
 const selectDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime;
 const selectOwnedPerks = (s: GameState) => s.meta.astralPerks;
+const EMPTY_COSMETICS: string[] = [];
+const selectOwnedCosmetics = (s: GameState) => s.meta.cosmeticsUnlocked ?? EMPTY_COSMETICS;
 
 export function AstralForge() {
   const dust = useStore(selectDust);
   const lifetime = useStore(selectDustLifetime);
   const ownedPerks = useStore(selectOwnedPerks);
+  const ownedCosmetics = useStore(selectOwnedCosmetics);
 
   return (
     <div className="absolute inset-0 flex flex-col items-center pointer-events-auto px-4 py-6 overflow-y-auto">
@@ -64,6 +68,35 @@ export function AstralForge() {
       </div>
 
       <NextUnlockTeaser dust={dust} ownedPerks={ownedPerks} />
+
+      {/* Cosmetic Dust Shop — pure-vanity unlocks bought with the same
+          dust pool. Surfaces only after the player has unlocked at
+          least one mechanical perk so the section never lands first
+          for new players still chasing the bread-and-butter ladder. */}
+      {ownedPerks.length > 0 && (
+        <>
+          <div className="f-mono uc" style={{
+            marginTop: 32, marginBottom: 12,
+            fontSize: 10, letterSpacing: '0.4em',
+            color: '#cc88ff',
+            textShadow: '0 0 12px rgba(204,136,255,0.4)',
+          }}>
+            ◇ cosmetic shelf ◇
+          </div>
+          <div className="w-full max-w-2xl grid gap-3" style={{
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          }}>
+            {COSMETICS.map((cosmetic) => (
+              <CosmeticCard
+                key={cosmetic.id}
+                cosmetic={cosmetic}
+                owned={ownedCosmetics.includes(cosmetic.id)}
+                affordable={dust >= cosmetic.cost}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <button
         type="button"
@@ -189,6 +222,55 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
       <div style={{ fontSize: 13, color: '#cfc5ff' }}>{perk.description}</div>
       <div className="f-mono" style={{ fontSize: 11, fontStyle: 'italic', color: '#9577ff', marginTop: 'auto' }}>
         {perk.flavor}
+      </div>
+    </button>
+  );
+}
+
+// Cosmetic card — mirrors PerkCard's affordance grammar (owned /
+// affordable / locked tint, dust cost stamp) but tints with the
+// cosmetic accent (lavender) so the cosmetic shelf reads as a parallel
+// track to the mechanical perk grid rather than a continuation.
+function CosmeticCard({ cosmetic, owned, affordable }: { cosmetic: CosmeticDef; owned: boolean; affordable: boolean }) {
+  const buy = () => {
+    if (owned || !affordable) return;
+    dispatch({ type: 'BUY_COSMETIC', cosmeticId: cosmetic.id });
+  };
+  const stateLabel = owned ? 'owned' : affordable ? `◇ ${cosmetic.cost}` : `◇ ${cosmetic.cost}  (locked)`;
+  const ringColor = owned
+    ? 'rgba(91,232,164,0.7)'
+    : affordable
+      ? 'rgba(204,136,255,0.55)'
+      : 'rgba(149,119,255,0.25)';
+
+  return (
+    <button
+      type="button"
+      onClick={buy}
+      disabled={owned || !affordable}
+      className={`panel-strong text-left tap${owned ? ' ff-perk-owned' : ''}`}
+      aria-label={`${cosmetic.name} — ${owned ? 'owned' : `${cosmetic.cost} cosmic dust`}`}
+      style={{
+        position: 'relative',
+        padding: 14,
+        background: owned
+          ? 'linear-gradient(180deg, rgba(91,232,164,0.18), rgba(15,9,37,0.85))'
+          : 'linear-gradient(180deg, rgba(204,136,255,0.08), rgba(15,9,37,0.85))',
+        borderColor: ringColor,
+        color: owned ? '#5be8a4' : affordable ? '#f3f0ff' : '#9577ff',
+        cursor: owned ? 'default' : affordable ? 'pointer' : 'not-allowed',
+        opacity: owned || affordable ? 1 : 0.65,
+        minHeight: 130,
+        display: 'flex', flexDirection: 'column', gap: 6,
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-display" style={{ fontSize: 18, lineHeight: 1.1 }}>{cosmetic.name}</span>
+        <span className="f-mono" style={{ fontSize: 11, color: owned ? '#5be8a4' : '#cc88ff', whiteSpace: 'nowrap' }}>{stateLabel}</span>
+      </div>
+      <div style={{ fontSize: 13, color: '#cfc5ff' }}>{cosmetic.description}</div>
+      <div className="f-mono" style={{ fontSize: 11, fontStyle: 'italic', color: '#9577ff', marginTop: 'auto' }}>
+        {cosmetic.flavor}
       </div>
     </button>
   );

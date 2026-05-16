@@ -57,6 +57,12 @@ function readScoringDiePositions(): Array<{ x: number; y: number }> {
 function slamColor(crossed: boolean, tint?: 'gold' | 'magenta'): string {
   if (tint === 'magenta') return '#ff52c8';
   if (tint === 'gold' || crossed) return '#f5c451';
+  // 2026-05-16 — Solar Flare particle palette cosmetic shifts the
+  // default cyan slam color to a warm coral so every scoring beat
+  // picks up the solar tone. Crossed-target and explicit gold/magenta
+  // tints override (the player's tier feedback still needs to read).
+  const cosmetics = store.getState().meta.cosmeticsUnlocked ?? [];
+  if (cosmetics.includes('particles_solar_flare')) return '#ff9d4a';
   return '#7be3ff';
 }
 
@@ -201,26 +207,34 @@ export function ScoreMoment() {
           // Counter fill — fire exactly when the first star trail
           // reaches the counter. TopBar's tween advances the displayed
           // total from the pre-boom value up to the new round.score
-          // over COUNTER_FILL_MS so the meter visually fills under
-          // the trailing stars instead of catching ahead of them.
+          // over the scaled fill duration so the meter visually fills
+          // under the trailing stars instead of catching ahead.
+          //
+          // 2026-05-16 polish — scale fill duration with score magnitude
+          // (log10) so a 50k hand reads as longer + heavier than a 1k
+          // hand. Floor at 240ms keeps small-clear payoffs snappy;
+          // ceiling at 900ms prevents late-run megas from dragging the
+          // hand-off out past the boom celebration. Pitch of the
+          // chipTick beat already scales with chip delta in
+          // audio/scoring.ts (upgrade-chip case), so the visual ramp
+          // and audio ramp now land together.
+          const total = Math.max(1, beat.finalTotal);
+          const scaledFillMs = Math.max(
+            240,
+            Math.min(900, COUNTER_FILL_MS + (Math.log10(total) - 2) * 165),
+          );
           schedule(
-            () => bus.emit('onScoreCounterFill', { durationMs: COUNTER_FILL_MS }),
+            () => bus.emit('onScoreCounterFill', { durationMs: scaledFillMs }),
             BOOM_FLY_START_MS + STAR_TRAIL_MS,
           );
           // END_SCORING fires AFTER the full celebration ladder
           // (boom pop + fly + star trails + counter fill + catch
-          // pulse + a brief savor pause) has played out. Earlier the
-          // dispatch fired at FLY_END − 350ms for "responsiveness,"
-          // but the boom IS the end of the hand — there's no next
-          // input to be responsive to — so the screen swap was
-          // yanking the player into the shop while the celebration
-          // was still in mid-air. With the swap held until the
-          // celebration lands, the same Round-screen TopBar handles
-          // pin → tween → catch end-to-end without unmounting
-          // mid-flight.
+          // pulse + a brief savor pause) has played out. Use the
+          // SAME scaled duration so the hand-off lands right after
+          // the counter catches.
           schedule(
             finishBoom,
-            BOOM_FLY_START_MS + STAR_TRAIL_MS + COUNTER_FILL_MS + POST_FILL_SAVOR_MS,
+            BOOM_FLY_START_MS + STAR_TRAIL_MS + scaledFillMs + POST_FILL_SAVOR_MS,
           );
           break;
         }

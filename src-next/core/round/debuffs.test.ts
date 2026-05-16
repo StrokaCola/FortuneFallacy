@@ -28,9 +28,10 @@ describe('activeDebuffs — phase escalation (Pillar B)', () => {
   it('phase 2 unions secondWind.debuffs (Pluto)', () => {
     const set = activeDebuffs(mkState('pluto', 2));
     expect(set.has('no_mod_transforms_on_ones')).toBe(true);
-    // Pluto phase-2 caps hand size rather than killing rerolls. The
-    // softer escalation was tuned in via the sim sweep.
-    expect(set.has('hand_size_cap_4')).toBe(true);
+    // 2026-05-16 — Pluto phase-2 escalates to the structural
+    // only_even_faces twist. 1s stay inert from phase 1; only even
+    // faces count toward combo + chips for the rest of the blind.
+    expect(set.has('only_even_faces')).toBe(true);
   });
 
   it('Callisto phase 2 RELAXES — removeDebuffs lifts the silence', () => {

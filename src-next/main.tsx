@@ -8,7 +8,7 @@ import { applySavedToInitial, startPersistence } from './state/persistence';
 import { startDiscoveryBridge } from './state/discoveryBridge';
 import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from './audio/audioBridge';
 import { startHapticsBridge } from './app/haptics/hapticsBridge';
-import { sfxInit } from './audio/sfx';
+import { sfxInit, sfxPlay } from './audio/sfx';
 import { startScalingSfxListener } from './audio/listeners/scalingSfx';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
@@ -75,7 +75,96 @@ const sfxGestureHandler = () => {
 for (const e of sfxUnlockEvents) document.addEventListener(e, sfxGestureHandler);
 
 if (import.meta.env.DEV) {
-  (window as unknown as { __ff: unknown }).__ff = { store, dispatch, audio: audioEngine, sfx: { bank: sfxBank } };
+  // Expanded dev surface so dev probes (preview eval, devtools console)
+  // can drive the bus + SFX + scoring beat events directly without
+  // having to round-trip through user input. Used by the verification
+  // sweep in `docs/sweep` and by ad-hoc playtest experiments.
+  (window as unknown as { __ff: unknown }).__ff = {
+    store,
+    dispatch,
+    audio: audioEngine,
+    sfx: {
+      bank: sfxBank,
+      // Direct SFX play hook — lets a probe fire any SfxId on demand
+      // to confirm the audio path is wired (e.g. the new `nearMiss`
+      // voice). Throws audibly on bad ids so a typo doesn't fail silent.
+      play: sfxPlay,
+    },
+    // Bus hook — primary way to trigger reveal-phase boss panels and
+    // scoring-beat ladders from a probe. Mirrors the bus instance the
+    // app subscribes to so the dev path and the runtime path land on
+    // the same listeners.
+    bus,
+    // Curated test scenarios — single-call entry points for the four
+    // pieces the static eval sweep can't reach: boss reveal end-to-end,
+    // Pluto phase-2 mid-blind, full cosmetic palette swap, and the
+    // near-miss audio beat. Each returns a {ok} marker so a probe can
+    // assert success rather than parsing console output.
+    scenarios: {
+      bossReveal(blindId = 'pluto', ante = 1) {
+        bus.emit('onBossRevealed', { blindId, ante });
+        return { ok: true, blindId, ante };
+      },
+      plutoPhase2() {
+        // Drop into a Pluto boss blind already promoted to phase 2.
+        // The pipeline will read only_even_faces from activeDebuffs the
+        // moment a hand is scored; this just stages the state.
+        const s = store.getState();
+        setStateRaw({
+          ...s,
+          run: { ...s.run, ante: 1, upcomingBossId: 'pluto' },
+          round: {
+            ...s.round,
+            active: true,
+            isBoss: true,
+            blindId: 'pluto',
+            bossPhase: 2,
+            target: 1000,
+            score: 400,
+            handsLeft: 2,
+            handsMax: 3,
+          },
+        });
+        return { ok: true, phase: store.getState().round.bossPhase };
+      },
+      cosmeticPalette() {
+        // Unlock every cosmetic so visual paths are all live.
+        const s = store.getState();
+        setStateRaw({
+          ...s,
+          meta: {
+            ...s.meta,
+            cosmicDust: 1000,
+            astralPerks: ['morning_star'],
+            cosmeticsUnlocked: [
+              'skin_lyra_aurora', 'skin_argo_ember',
+              'palette_aurora_sigils', 'particles_solar_flare',
+            ],
+          },
+        });
+        return { ok: true, unlocked: store.getState().meta.cosmeticsUnlocked };
+      },
+      nearMissAudio() {
+        sfxPlay('nearMiss');
+        return { ok: true };
+      },
+      // Combined sweep — fires boss reveal with full cosmetic palette
+      // already in place so a single call surfaces the whole "post-#20
+      // boss-aura with aurora skin" combo.
+      bossRevealAurora(blindId = 'eris') {
+        const s = store.getState();
+        setStateRaw({
+          ...s,
+          meta: {
+            ...s.meta,
+            cosmeticsUnlocked: ['palette_aurora_sigils'],
+          },
+        });
+        bus.emit('onBossRevealed', { blindId, ante: 3 });
+        return { ok: true, blindId, palette: 'aurora' };
+      },
+    },
+  };
   void Promise.all([
     import('./devtools/inspector/overrides'),
     import('./devtools/inspector/applyOverrides'),

@@ -1,5 +1,6 @@
 import type { ActionHandler } from './types';
 import { lookupAstralPerk } from '../../data/astralPerks';
+import { lookupCosmetic } from '../../data/cosmetics';
 import { lookupAchievement } from '../../data/achievements';
 
 export const metaHandler: ActionHandler = (a, s) => {
@@ -37,6 +38,28 @@ export const metaHandler: ActionHandler = (a, s) => {
           },
         },
         events: [{ type: 'onAstralPerkBought', payload: { perkId: a.perkId, cost: perk.cost } }],
+      };
+    }
+    case 'BUY_COSMETIC': {
+      // Cosmetic shop — pure-vanity unlocks bought with Cosmic Dust at
+      // the Astral Forge after the mechanical perks are owned. Mirrors
+      // BUY_ASTRAL_PERK's affordability + dedupe checks.
+      const cosmetic = lookupCosmetic(a.cosmeticId);
+      if (!cosmetic) return { state: s, events: [] };
+      const owned = s.meta.cosmeticsUnlocked ?? [];
+      if (owned.includes(a.cosmeticId)) return { state: s, events: [] };
+      const dust = s.meta.cosmicDust ?? 0;
+      if (dust < cosmetic.cost) return { state: s, events: [] };
+      return {
+        state: {
+          ...s,
+          meta: {
+            ...s.meta,
+            cosmicDust: dust - cosmetic.cost,
+            cosmeticsUnlocked: [...owned, a.cosmeticId],
+          },
+        },
+        events: [],
       };
     }
     case 'SEE_COACHMARK': {

@@ -37,6 +37,7 @@ export type Action =
   | { type: 'RESOLVE_EVENT_CHOICE'; eventId: string; choiceIdx: number }
   | { type: 'FORGE_MOD'; modId: string; targetEdition: 'foil' | 'holo' | 'poly' }
   | { type: 'BUY_ASTRAL_PERK'; perkId: string }
+  | { type: 'BUY_COSMETIC'; cosmeticId: string }
   | { type: 'UNLOCK_ACHIEVEMENT'; achievementId: string }
   | { type: 'UNLOCK_CONSTELLATION'; constellationId: string }
   | { type: 'CLAIM_DAILY_LOGIN'; date: string }

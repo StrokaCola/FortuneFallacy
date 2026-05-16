@@ -83,7 +83,12 @@ export function Title() {
   const buttonsMarginTop = tight ? 14 : 24;
   const buttonsGap = tight ? 8 : 10;
   const primaryBtnWidth = tight ? 180 : 240;
-  const ghostBtnWidth = tight ? 160 : 200;
+  // 2026-05-16 mobile polish — drop the ghost button width on very-narrow
+  // viewports so the 5-button secondary nav grid fits in a 320px-wide
+  // window (iPhone SE / older small phones). Falls back to 160 on
+  // standard tight (480px phone) and 200 on desktop.
+  const ultraNarrow = typeof window !== 'undefined' && window.innerWidth < 400;
+  const ghostBtnWidth = ultraNarrow ? 132 : tight ? 160 : 200;
   const portalSize = tight ? 48 : 60;
   const portalMarginTop = tight ? 8 : 14;
   const versionMarginTop = tight ? 18 : 36;
@@ -256,7 +261,7 @@ export function Title() {
             gap: buttonsGap,
             justifyContent: 'center',
             justifyItems: tight ? undefined : 'center',
-            maxWidth: tight ? 360 : undefined,
+            maxWidth: tight ? (ultraNarrow ? 280 : 360) : undefined,
           }}>
             <button
               className="btn btn-ghost tap"

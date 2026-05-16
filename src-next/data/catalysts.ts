@@ -16,7 +16,11 @@ export type CatalystArchetype =
   | 'mods'
   | 'timing'
   | 'utility'
-  | 'collision';
+  | 'collision'
+  // 2026-05-16 — tradeoff catalysts. Upside paired with an explicit
+  // downside; shop archetype-bias still works because the bias only
+  // requires the archetype string match.
+  | 'risk';
 
 export type CatalystMeta = {
   id: string;
@@ -398,6 +402,20 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: '+3 mult for each collision between dice that ended on the same value.',
     flavor: 'Twins find each other in mid-air.',
     rarity: 'rare', archetype: 'collision' },
+  // 2026-05-16 risk pack — tradeoff catalysts. Each pairs a real
+  // upside with an explicit downside the player has to plan around.
+  { id: 'bone_tax', name: 'Bone Tax', icon: '☠', color: '#ff4d6d',
+    desc: '+5 mult per scoring die. Chips ×0.85 each hand.',
+    flavor: 'The table eats first. What\'s left, you keep.',
+    rarity: 'uncommon', archetype: 'risk' },
+  { id: 'hollow_bishop', name: 'Hollow Bishop', icon: '♟', color: '#cc88ff',
+    desc: 'Full House and above: +12 mult. One Pair and Two Pair score zero chips.',
+    flavor: 'A bishop only moves diagonal. Stop crawling sideways.',
+    rarity: 'rare', archetype: 'risk' },
+  { id: 'witchs_bargain', name: 'Witch\'s Bargain', icon: '🜍', color: '#a080c0',
+    desc: 'Mult ×1.4 every hand. Each scoring die: -8 chips before the multiplier.',
+    flavor: 'The price is named. Pay it once, pay it every time.',
+    rarity: 'uncommon', archetype: 'risk' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

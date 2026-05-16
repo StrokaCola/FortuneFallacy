@@ -17,7 +17,7 @@ export type OneMoreRunHook = {
   // Single sentence shown above the action button.
   label: string;
   // Drives the accent color in the UI.
-  tone: 'daily' | 'dust' | 'codex' | 'stake' | 'generic';
+  tone: 'daily' | 'dust' | 'codex' | 'stake' | 'generic' | 'nearMiss';
   // Optional click handler — when non-null, the postmortem makes the
   // carrot itself a button (e.g. starts today's daily directly).
   onClick?: () => void;
@@ -30,7 +30,17 @@ export function computeOneMoreRunHook(
   meta: GameState['meta'],
   run: GameState['run'],
   now: Date = new Date(),
+  nearMiss?: { deficit: number } | null,
 ): OneMoreRunHook {
+  // 0. Near-miss bust: highest priority when set. Bust within 10% of target
+  // gets a forward-tilted carrot ("you were N short") instead of the
+  // standard daily/dust nudges. Drives immediate retry intent.
+  if (nearMiss && nearMiss.deficit > 0) {
+    return {
+      label: `${nearMiss.deficit.toLocaleString()} short — one more`,
+      tone: 'nearMiss',
+    };
+  }
   // 1. Daily challenge available today?
   // The just-finished run might itself BE today's daily (in which case the
   // history entry already exists for today and we skip this carrot).
@@ -116,4 +126,5 @@ export const HOOK_TONE_COLOR: Record<OneMoreRunHook['tone'], string> = {
   codex: '#cc88ff',
   stake: '#ff7847',
   generic: '#bba8ff',
+  nearMiss: '#ff8aa8',
 };

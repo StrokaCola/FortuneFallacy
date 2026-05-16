@@ -44,7 +44,10 @@ describe('evaluateBossPhase', () => {
     expect(r.promote).toBe(true);
     if (r.promote) {
       expect(r.secondWind.trigger).toBe('hand-2');
-      expect(r.secondWind.debuffs).toContain('hand_size_cap_4');
+      // 2026-05-16 — Pluto phase-2 now ships with only_even_faces
+      // (structural twist replacing the earlier hand_size_cap_4
+      // softer escalation).
+      expect(r.secondWind.debuffs).toContain('only_even_faces');
     }
   });
 

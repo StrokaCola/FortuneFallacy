@@ -1,0 +1,2757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Catalyst Card System Brief — FortuneFallacy2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --cosmos-50:#f3f0ff; --cosmos-100:#dcd4ff; --cosmos-200:#bba8ff;
+    --cosmos-300:#9577ff; --cosmos-400:#7752f0; --cosmos-500:#5c39c4;
+    --cosmos-600:#432896; --cosmos-700:#2e1d6b; --cosmos-800:#1c1245;
+    --cosmos-900:#0f0925; --cosmos-950:#07051a;
+    --aurora:#9577ff;
+    --gold:#f5c451;
+    --bone:#f3f0ff;
+    --crimson:#e2334a;
+    --copper:#b87333;
+    --rule: rgba(149,119,255,0.18);
+    --rule-strong: rgba(149,119,255,0.42);
+    --f-display: 'Cinzel Decorative', serif;
+    --f-head: 'Cinzel', serif;
+    --f-body: 'Exo 2', system-ui, sans-serif;
+    --f-mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--cosmos-950); color: var(--bone); }
+  body {
+    font-family: var(--f-body);
+    font-weight: 300;
+    line-height: 1.55;
+    font-size: 15px;
+    background:
+      radial-gradient(ellipse 1200px 800px at 50% -10%, rgba(149,119,255,0.10), transparent 70%),
+      radial-gradient(ellipse 800px 600px at 100% 30%, rgba(122,82,240,0.06), transparent 60%),
+      var(--cosmos-950);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(1px 1px at 17% 22%, rgba(243,240,255,0.45), transparent 60%),
+      radial-gradient(1px 1px at 73% 14%, rgba(243,240,255,0.35), transparent 60%),
+      radial-gradient(1px 1px at 42% 78%, rgba(243,240,255,0.30), transparent 60%),
+      radial-gradient(1px 1px at 88% 64%, rgba(243,240,255,0.40), transparent 60%),
+      radial-gradient(1px 1px at 12% 58%, rgba(243,240,255,0.25), transparent 60%),
+      radial-gradient(1px 1px at 58% 36%, rgba(243,240,255,0.30), transparent 60%),
+      radial-gradient(1px 1px at 28% 92%, rgba(243,240,255,0.35), transparent 60%),
+      radial-gradient(1px 1px at 92% 88%, rgba(243,240,255,0.20), transparent 60%);
+    opacity: 0.7;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 56px; }
+
+  /* —— Type utilities (parallel to boss brief) —— */
+  .f-display { font-family: var(--f-display); letter-spacing: 0.02em; }
+  .f-head    { font-family: var(--f-head); letter-spacing: 0.06em; }
+  .f-mono    { font-family: var(--f-mono); }
+  .uc        { text-transform: uppercase; }
+  .mono-label {
+    font-family: var(--f-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.32em;
+    color: var(--cosmos-200);
+  }
+  .mono-eyebrow {
+    font-family: var(--f-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5em;
+    color: var(--crimson);
+  }
+
+  /* —— Cover —— */
+  .cover {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 56px 0 48px;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; }
+  .cover-title {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: clamp(48px, 6.4vw, 92px);
+    line-height: 1.0;
+    letter-spacing: 0.02em;
+    color: var(--bone);
+    max-width: 16ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .cover-title em {
+    font-style: normal;
+    color: var(--aurora);
+    text-shadow: 0 0 24px rgba(149,119,255,0.5);
+  }
+  .cover-sub {
+    font-family: var(--f-body);
+    font-size: 17px;
+    color: var(--cosmos-100);
+    max-width: 64ch;
+    margin-top: 24px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+  .cover-formula {
+    margin-top: 32px;
+    padding: 18px 24px;
+    border: 1px solid var(--rule);
+    background: rgba(28,18,69,0.4);
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--bone);
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center; gap: 14px;
+    flex-wrap: wrap;
+  }
+  .cover-formula .cf-term { color: var(--aurora); }
+  .cover-formula .cf-op   { color: var(--cosmos-200); }
+  .cover-formula .cf-eq   { color: var(--gold); }
+  .cover-formula .cf-out  { color: var(--bone); font-weight: 600; }
+  .cover-formula .cf-from { color: var(--cosmos-200); font-style: italic; font-family: var(--f-body); }
+
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    margin-top: 56px;
+  }
+  .meta-cell .meta-label {
+    font-family: var(--f-mono); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.32em;
+    color: var(--cosmos-200);
+    margin-bottom: 8px;
+  }
+  .meta-cell .meta-val {
+    font-family: var(--f-head); font-size: 15px;
+    color: var(--bone);
+  }
+  .meta-cell .meta-val code {
+    font-family: var(--f-mono); font-size: 12px;
+    color: var(--cosmos-100);
+    background: rgba(28,18,69,0.6);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  /* Nav grid: rows of chips for archetypes / frames / editions */
+  .nav-section { margin: 48px 0 0; }
+  .nav-section + .nav-section { margin-top: 32px; }
+  .nav-section-label {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.4em; text-transform: uppercase;
+    color: var(--cosmos-200);
+    margin-bottom: 14px;
+  }
+  .nav-row {
+    display: grid;
+    gap: 12px;
+  }
+  .nav-row.cols-9 { grid-template-columns: repeat(9, 1fr); }
+  .nav-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .chip {
+    border: 1px solid var(--rule);
+    background: linear-gradient(180deg, rgba(28,18,69,0.5), rgba(7,5,26,0.65));
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    text-align: center;
+    transition: border-color 200ms, transform 200ms;
+    position: relative;
+    min-height: 90px;
+    justify-content: center;
+  }
+  .chip:hover { border-color: var(--rule-strong); transform: translateY(-2px); }
+  .chip-name {
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--bone);
+    margin-top: 8px;
+  }
+  .chip-detail {
+    font-family: var(--f-mono);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cosmos-200);
+    margin-top: 4px;
+  }
+  .chip-glyph {
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    color: var(--cosmos-100);
+  }
+  .chip-glyph svg { width: 100%; height: 100%; }
+  .chip-swatch {
+    width: 28px; height: 28px;
+    border: 1px solid var(--rule);
+    background: var(--chip-bg, #555);
+  }
+
+  /* —— Section —— */
+  .section {
+    padding: 88px 0 32px;
+    border-top: 1px solid var(--rule);
+  }
+  .section-eyebrow {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .section-eyebrow .dot {
+    width: 6px; height: 6px; background: var(--aurora); border-radius: 50%;
+    box-shadow: 0 0 10px var(--aurora);
+  }
+  .section-h {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(36px, 4.5vw, 58px);
+    line-height: 1.05;
+    margin: 0 0 16px;
+    color: var(--bone);
+    text-wrap: balance;
+  }
+  .section-lede {
+    font-size: 17px;
+    max-width: 64ch;
+    color: var(--cosmos-100);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* —— Style Bible rules —— */
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    margin-top: 48px;
+    border: 1px solid var(--rule);
+  }
+  .rule {
+    padding: 28px 28px 32px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+  }
+  .rule:nth-child(2n) { border-right: none; }
+  .rule.span-2 {
+    grid-column: span 2;
+    border-right: none;
+  }
+  .rule.last-row { border-bottom: none; }
+  .rule-num {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.4em;
+    color: var(--aurora);
+    text-transform: uppercase;
+  }
+  .rule-title {
+    font-family: var(--f-head);
+    font-size: 22px;
+    color: var(--bone);
+    margin: 0;
+    letter-spacing: 0.03em;
+  }
+  .rule-body { color: var(--cosmos-100); font-size: 14px; line-height: 1.6; font-weight: 300; }
+  .rule-body strong { color: var(--bone); font-weight: 500; }
+  .rule-body code {
+    font-family: var(--f-mono); font-size: 12px;
+    color: var(--bone);
+    background: rgba(28,18,69,0.6);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     CATALYST CARD MOCK
+     Mirrors src-next/app/hud/catalystStrip/CatalystCard.tsx +
+     OfferCard.tsx at the 180×260 offer-card size.
+     ──────────────────────────────────────────────────────────────── */
+  .card {
+    --cat-color: #cc88ff;
+    --cat-color-rgb: 204, 136, 255;
+    --archetype-tint: 0.16;
+    width: 180px;
+    height: 260px;
+    position: relative;
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg,
+        rgba(var(--cat-color-rgb), 0.18),
+        rgba(15,9,37,0.92) 70%);
+    /* Aurora rim glow — engine, always on */
+    box-shadow:
+      0 0 0 1px rgba(var(--cat-color-rgb), 0.5),
+      0 0 22px rgba(var(--cat-color-rgb), 0.30),
+      0 0 44px rgba(149,119,255,0.12),
+      0 14px 30px rgba(0,0,0,0.55);
+    overflow: hidden;
+    isolation: isolate;
+    font-family: var(--f-body);
+  }
+  .card-inner {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 14px 12px 16px;
+    z-index: 3;
+  }
+  .card-eyebrow {
+    font-family: var(--f-mono);
+    font-size: 8px; letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .card-glyph-frame {
+    margin-top: 18px;
+    width: 78px; height: 78px;
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .card-glyph-frame::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle, rgba(var(--cat-color-rgb),0.28), transparent 70%);
+    z-index: -1;
+  }
+  .card-glyph-frame svg {
+    width: 100%; height: 100%;
+    color: var(--cat-color);
+    filter: drop-shadow(0 0 8px rgba(var(--cat-color-rgb),0.55));
+  }
+  .card-name {
+    margin-top: 16px;
+    font-family: var(--f-head);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: var(--bone);
+    text-align: center;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .card-desc {
+    margin-top: 6px;
+    font-family: var(--f-body);
+    font-size: 10px;
+    color: var(--cosmos-100);
+    text-align: center;
+    line-height: 1.35;
+    font-style: italic;
+    font-weight: 300;
+    padding: 0 4px;
+  }
+
+  /* Archetype band — sits as layer 2 (above bg, below content) */
+  .card-band {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: var(--archetype-tint, 0.16);
+    z-index: 1;
+    mix-blend-mode: screen;
+    color: var(--cat-color);
+  }
+  .band-combo {
+    background-image:
+      linear-gradient(60deg, currentColor 25%, transparent 25.5%) 0 0,
+      linear-gradient(-60deg, currentColor 25%, transparent 25.5%) 0 0,
+      linear-gradient(60deg, transparent 74.5%, currentColor 75%) 0 0,
+      linear-gradient(-60deg, transparent 74.5%, currentColor 75%) 0 0;
+    background-size: 24px 42px;
+    background-position: 0 0, 0 0, 12px 21px, 12px 21px;
+    opacity: 0.10;
+  }
+  .band-face {
+    background:
+      radial-gradient(circle 1.5px at 50% 50%, currentColor 100%, transparent 100%) 0 0/16px 16px,
+      repeating-linear-gradient(0deg, transparent 0 22px, rgba(var(--cat-color-rgb),0.18) 22px 23px);
+    opacity: 0.18;
+  }
+  .band-economy {
+    background:
+      radial-gradient(circle 38px at 50% 50%, currentColor 0%, transparent 65%),
+      repeating-linear-gradient(0deg, transparent 0 14px, currentColor 14px 15px);
+    opacity: 0.10;
+  }
+  .band-scaling {
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(var(--cat-color-rgb),0.45) 0 1px,
+      transparent 1px 6px,
+      rgba(var(--cat-color-rgb),0.30) 6px 7px,
+      transparent 7px 18px,
+      rgba(var(--cat-color-rgb),0.20) 18px 19px,
+      transparent 19px 32px
+    );
+    opacity: 0.55;
+    mix-blend-mode: screen;
+  }
+  .band-mods {
+    background:
+      repeating-linear-gradient(45deg,
+        transparent 0 7px,
+        rgba(var(--cat-color-rgb),0.35) 7px 8px,
+        transparent 8px 14px),
+      repeating-linear-gradient(-45deg,
+        transparent 0 11px,
+        rgba(91,232,164,0.10) 11px 12px,
+        transparent 12px 22px);
+    opacity: 0.5;
+  }
+  .band-timing {
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 11px,
+      rgba(var(--cat-color-rgb),0.45) 11px 12px,
+      transparent 12px 14px,
+      rgba(var(--cat-color-rgb),0.20) 14px 15px,
+      transparent 15px 24px
+    );
+    opacity: 0.5;
+  }
+  .band-utility {
+    background:
+      radial-gradient(circle 1.5px at 50% 50%, currentColor 100%, transparent 100%) 0 0/14px 14px;
+    opacity: 0.16;
+  }
+  .band-collision {
+    background:
+      linear-gradient(135deg,
+        rgba(var(--cat-color-rgb),0.35) 0%,
+        transparent 30%,
+        transparent 70%,
+        rgba(var(--cat-color-rgb),0.10) 100%),
+      repeating-linear-gradient(135deg,
+        transparent 0 18px,
+        rgba(var(--cat-color-rgb),0.18) 18px 19px,
+        transparent 19px 36px);
+    opacity: 0.6;
+    mix-blend-mode: screen;
+  }
+  .band-risk {
+    background:
+      linear-gradient(180deg,
+        rgba(7,5,26,0.6) 0%,
+        rgba(7,5,26,0.2) 60%,
+        rgba(7,5,26,0.6) 100%),
+      conic-gradient(from 215deg at 30% 70%, rgba(var(--cat-color-rgb),0.30) 0deg, transparent 15deg, transparent 345deg, rgba(var(--cat-color-rgb),0.30) 360deg);
+    opacity: 0.85;
+    mix-blend-mode: multiply;
+  }
+
+  /* —— Rarity frames —— */
+  .frame {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    border-radius: 8px;
+  }
+  /* Common — thin engraved border */
+  .frame-common {
+    border: 1px solid rgba(var(--cat-color-rgb), 0.55);
+    box-shadow: inset 0 0 0 1px rgba(243,240,255,0.04);
+  }
+  /* Uncommon — stepped + nameplate notch */
+  .frame-uncommon {
+    border: 1px solid rgba(184,115,51,0.85);
+    box-shadow:
+      inset 0 0 0 1px rgba(15,9,37,0.6),
+      inset 0 0 0 4px rgba(184,115,51,0.4),
+      inset 0 0 0 5px rgba(15,9,37,0.4);
+  }
+  .frame-uncommon::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 5px;
+    background: rgba(184,115,51,0.85);
+    border-left: 1px solid rgba(184,115,51,0.85);
+    border-right: 1px solid rgba(184,115,51,0.85);
+  }
+  /* Rare — triple-step + crosshairs + aurora channel */
+  .frame-rare {
+    border: 1px solid rgba(123,227,255,0.8);
+    box-shadow:
+      inset 0 0 0 1px rgba(15,9,37,0.5),
+      inset 0 0 0 3px rgba(123,227,255,0.35),
+      inset 0 0 0 4px rgba(15,9,37,0.55),
+      inset 0 0 0 6px rgba(149,119,255,0.20),
+      inset 0 0 0 7px rgba(15,9,37,0.4);
+  }
+  .frame-rare::before,
+  .frame-rare::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 1px solid rgba(123,227,255,0.9);
+  }
+  .frame-rare::before {
+    top: 4px; left: 4px;
+    border-right: none; border-bottom: none;
+  }
+  .frame-rare::after {
+    top: 4px; right: 4px;
+    border-left: none; border-bottom: none;
+  }
+  .frame-rare .rare-bot-l,
+  .frame-rare .rare-bot-r {
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 1px solid rgba(123,227,255,0.9);
+  }
+  .frame-rare .rare-bot-l {
+    bottom: 4px; left: 4px;
+    border-right: none; border-top: none;
+  }
+  .frame-rare .rare-bot-r {
+    bottom: 4px; right: 4px;
+    border-left: none; border-top: none;
+  }
+  /* Legendary — ornate gold trim + corners + cartouche */
+  .frame-legendary {
+    border: 2px solid rgba(245,196,81,0.95);
+    box-shadow:
+      inset 0 0 0 1px rgba(15,9,37,0.5),
+      inset 0 0 0 3px rgba(245,196,81,0.55),
+      inset 0 0 0 5px rgba(15,9,37,0.5),
+      inset 0 0 0 7px rgba(245,196,81,0.30),
+      inset 0 0 0 8px rgba(15,9,37,0.4),
+      0 0 0 1px rgba(245,196,81,0.4),
+      0 0 28px rgba(255,120,71,0.35);
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        rgba(245,196,81,0) 0px,
+        rgba(245,196,81,0) 8px,
+        rgba(245,196,81,0.18) 8px,
+        rgba(245,196,81,0.18) 9px
+      );
+    background-position: 0 0;
+    background-size: 100% 2px;
+    background-repeat: no-repeat;
+    background-clip: padding-box;
+  }
+  .frame-legendary .leg-corner {
+    position: absolute; width: 22px; height: 22px;
+    pointer-events: none;
+  }
+  .frame-legendary .leg-corner svg { width: 100%; height: 100%; color: rgba(245,196,81,0.9); }
+  .frame-legendary .leg-corner.tl { top: 2px; left: 2px; }
+  .frame-legendary .leg-corner.tr { top: 2px; right: 2px; transform: scaleX(-1); }
+  .frame-legendary .leg-corner.bl { bottom: 2px; left: 2px; transform: scaleY(-1); }
+  .frame-legendary .leg-corner.br { bottom: 2px; right: 2px; transform: scale(-1,-1); }
+  .frame-legendary .leg-cartouche {
+    position: absolute;
+    left: 12px; right: 12px; bottom: 12px;
+    height: 26px;
+    border: 1px solid rgba(245,196,81,0.8);
+    background:
+      linear-gradient(180deg, rgba(245,196,81,0.18), rgba(15,9,37,0.7)),
+      linear-gradient(180deg, transparent, rgba(7,5,26,0.4));
+    box-shadow: inset 0 0 0 1px rgba(15,9,37,0.4);
+    display: grid; place-items: center;
+  }
+  .frame-legendary .leg-cartouche .cart-name {
+    font-family: var(--f-head);
+    font-size: 11px; letter-spacing: 0.18em;
+    color: rgba(255,217,122,1);
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(245,196,81,0.6);
+    font-weight: 600;
+  }
+
+  /* —— Edition overlays —— */
+  .edition {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+  }
+  /* Foil — brushed metal + sweep */
+  .edition-foil-mock {
+    background:
+      repeating-linear-gradient(135deg,
+        rgba(255,217,122,0.10) 0px,
+        rgba(255,217,122,0.10) 1px,
+        transparent 1px, transparent 4px),
+      linear-gradient(180deg, rgba(245,196,81,0.18), rgba(255,217,122,0.04));
+  }
+  .edition-foil-mock::after {
+    content: '';
+    position: absolute;
+    top: -50%; bottom: -50%; left: -40%; width: 32%;
+    background: linear-gradient(110deg,
+      transparent 30%,
+      rgba(255,247,224,0.6) 50%,
+      transparent 70%);
+    transform: skewX(-12deg);
+    animation: ff-foil-sweep 4.2s cubic-bezier(0.4,0,0.6,1) infinite;
+    filter: blur(2px);
+  }
+  @keyframes ff-foil-sweep {
+    0%,18% { transform: skewX(-12deg) translateX(0); opacity: 0; }
+    22% { opacity: 1; }
+    55% { opacity: 1; }
+    60%,100% { transform: skewX(-12deg) translateX(640%); opacity: 0; }
+  }
+  /* Holo — prismatic + 5 specular dots */
+  .edition-holo-mock {
+    background:
+      radial-gradient(circle 6px at 28% 22%, rgba(255,255,255,0.85), transparent 60%),
+      radial-gradient(circle 8px at 72% 32%, rgba(255,255,255,0.75), transparent 60%),
+      radial-gradient(circle 5px at 22% 58%, rgba(255,255,255,0.7), transparent 60%),
+      radial-gradient(circle 7px at 80% 68%, rgba(255,255,255,0.78), transparent 60%),
+      radial-gradient(circle 6px at 50% 88%, rgba(255,255,255,0.7), transparent 60%),
+      linear-gradient(115deg,
+        rgba(123,227,255,0.30) 0%,
+        rgba(204,136,255,0.30) 25%,
+        rgba(91,232,164,0.26) 50%,
+        rgba(245,196,81,0.28) 75%,
+        rgba(255,82,200,0.28) 100%);
+    animation: ff-holo-shift 6s ease-in-out infinite;
+  }
+  @keyframes ff-holo-shift {
+    0%,100% { filter: hue-rotate(0deg); }
+    50% { filter: hue-rotate(60deg); }
+  }
+  /* Poly — faceted crystalline interference. Two counter-rotating
+     conic-gradient wedge layers create hard-edged shards (distinct
+     from Holo's smooth prismatic flow). Bright sparkle vertices at
+     lattice corners + faint fracture lines reinforce "shattered
+     crystal" reading. The glyph picks up a chromatic-aberration
+     ghost split (mirrors CatalystCard.tsx poly branch). */
+  .edition-poly-mock {
+    background:
+      radial-gradient(ellipse 90% 80% at 50% 50%, rgba(28,18,69,0.35) 0%, rgba(15,9,37,0.55) 100%);
+  }
+  .edition-poly-mock::before {
+    /* Facet layer 1 — clockwise from upper-left pivot */
+    content: '';
+    position: absolute; inset: -20%;
+    background:
+      conic-gradient(from 45deg at 35% 38%,
+        rgba(204,136,255,0.42) 0deg,
+        transparent 32deg,
+        transparent 88deg,
+        rgba(123,227,255,0.38) 122deg,
+        transparent 182deg,
+        transparent 238deg,
+        rgba(255,120,71,0.40) 272deg,
+        transparent 332deg);
+    mix-blend-mode: screen;
+    animation: ff-poly-rot 38s linear infinite;
+    transform-origin: 35% 38%;
+  }
+  .edition-poly-mock::after {
+    /* Facet layer 2 — counter-rotates from lower-right pivot.
+       Stacked with fracture-line gradients and sparkle vertices. */
+    content: '';
+    position: absolute; inset: -20%;
+    background:
+      conic-gradient(from -30deg at 70% 65%,
+        rgba(245,196,81,0.38) 0deg,
+        transparent 42deg,
+        transparent 128deg,
+        rgba(91,232,164,0.34) 162deg,
+        transparent 222deg,
+        transparent 298deg,
+        rgba(168,140,255,0.40) 338deg),
+      linear-gradient(72deg, transparent 38%, rgba(255,255,255,0.18) 39%, rgba(255,255,255,0.18) 39.6%, transparent 40%),
+      linear-gradient(115deg, transparent 56%, rgba(255,255,255,0.14) 57%, rgba(255,255,255,0.14) 57.5%, transparent 58%),
+      linear-gradient(28deg, transparent 72%, rgba(255,255,255,0.12) 73%, rgba(255,255,255,0.12) 73.4%, transparent 74%);
+    mix-blend-mode: screen;
+    animation: ff-poly-rot-rev 52s linear infinite;
+    transform-origin: 70% 65%;
+  }
+  /* Sparkle vertex layer — bright dots at facet intersections.
+     Rendered via a separate child element so its own pulse cycle
+     runs independent of the rotating facet layers. */
+  .poly-sparkles {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle 4px at 18% 22%, rgba(255,247,224,1), transparent 60%),
+      radial-gradient(circle 3.5px at 78% 28%, rgba(204,136,255,1), transparent 60%),
+      radial-gradient(circle 4px at 22% 78%, rgba(123,227,255,1), transparent 60%),
+      radial-gradient(circle 3.5px at 82% 72%, rgba(255,120,71,1), transparent 60%),
+      radial-gradient(circle 3px at 50% 50%, rgba(255,217,122,1), transparent 60%),
+      radial-gradient(circle 2px at 40% 12%, rgba(255,255,255,0.95), transparent 60%),
+      radial-gradient(circle 2px at 62% 88%, rgba(255,255,255,0.95), transparent 60%),
+      radial-gradient(circle 2px at 12% 50%, rgba(91,232,164,0.92), transparent 60%),
+      radial-gradient(circle 2px at 90% 50%, rgba(245,196,81,0.95), transparent 60%);
+    animation: ff-poly-sparkle 3.4s ease-in-out infinite;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+    pointer-events: none;
+    z-index: 1;
+  }
+  @keyframes ff-poly-rot {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes ff-poly-rot-rev {
+    0%   { transform: rotate(360deg); }
+    100% { transform: rotate(0deg); }
+  }
+  @keyframes ff-poly-sparkle {
+    0%, 100% { opacity: 0.55; filter: brightness(1) drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+    25%      { opacity: 0.9;  filter: brightness(1.25) drop-shadow(0 0 6px rgba(255,255,255,0.6)); }
+    50%      { opacity: 1;    filter: brightness(1.5) drop-shadow(0 0 8px rgba(255,255,255,0.8)); }
+    75%      { opacity: 0.75; filter: brightness(1.15) drop-shadow(0 0 5px rgba(255,255,255,0.55)); }
+  }
+  /* Void — painted hero. Hand-placed starfield + event horizon +
+     gravitational lensing + pulsing aurora bleed. Built from 4
+     stacked layers so each animation runs on its own clock. */
+  .edition-void-mock {
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 50%, rgba(28,18,69,0.5) 0%, transparent 70%),
+      radial-gradient(ellipse 100% 80% at 50% 30%, rgba(20,12,40,0.4) 0%, transparent 75%),
+      linear-gradient(180deg, #040214 0%, #060418 100%);
+  }
+  /* Layer 1: dense static starfield — many sizes + hues */
+  .void-stars {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(0.5px 0.5px at 4% 6%,   rgba(243,240,255,0.75), transparent 60%),
+      radial-gradient(0.5px 0.5px at 13% 11%, rgba(243,240,255,0.6),  transparent 60%),
+      radial-gradient(1px 1px   at 7% 19%,    rgba(243,240,255,0.9),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 23% 8%,  rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(1px 1px   at 31% 16%,   rgba(243,240,255,0.55), transparent 60%),
+      radial-gradient(0.5px 0.5px at 16% 27%, rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 38% 7%,  rgba(243,240,255,0.5),  transparent 60%),
+      radial-gradient(1px 1px   at 47% 12%,   rgba(123,227,255,0.7),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 55% 6%,  rgba(243,240,255,0.65), transparent 60%),
+      radial-gradient(0.5px 0.5px at 64% 14%, rgba(243,240,255,0.5),  transparent 60%),
+      radial-gradient(1px 1px   at 73% 9%,    rgba(243,240,255,0.85), transparent 60%),
+      radial-gradient(0.5px 0.5px at 82% 5%,  rgba(243,240,255,0.6),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 91% 13%, rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(1px 1px   at 96% 24%,   rgba(204,136,255,0.65), transparent 60%),
+      radial-gradient(0.5px 0.5px at 4% 35%,  rgba(243,240,255,0.55), transparent 60%),
+      radial-gradient(0.5px 0.5px at 88% 38%, rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 2% 53%,  rgba(243,240,255,0.55), transparent 60%),
+      radial-gradient(1px 1px   at 12% 62%,   rgba(243,240,255,0.65), transparent 60%),
+      radial-gradient(0.5px 0.5px at 92% 56%, rgba(243,240,255,0.5),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 5% 75%,  rgba(243,240,255,0.6),  transparent 60%),
+      radial-gradient(1px 1px   at 16% 84%,   rgba(243,240,255,0.85), transparent 60%),
+      radial-gradient(0.5px 0.5px at 26% 92%, rgba(243,240,255,0.55), transparent 60%),
+      radial-gradient(0.5px 0.5px at 38% 86%, rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(1px 1px   at 51% 94%,   rgba(123,227,255,0.6),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 64% 87%, rgba(243,240,255,0.6),  transparent 60%),
+      radial-gradient(0.5px 0.5px at 76% 92%, rgba(243,240,255,0.7),  transparent 60%),
+      radial-gradient(1px 1px   at 86% 82%,   rgba(243,240,255,0.85), transparent 60%),
+      radial-gradient(0.5px 0.5px at 95% 76%, rgba(204,136,255,0.55), transparent 60%);
+  }
+  /* Layer 2: gravitational lensing — slow conic sweep around the horizon */
+  .void-lens {
+    position: absolute; inset: 0;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      transparent 0deg,
+      rgba(149,119,255,0.10) 24deg,
+      transparent 48deg,
+      transparent 96deg,
+      rgba(149,119,255,0.12) 120deg,
+      transparent 144deg,
+      transparent 192deg,
+      rgba(149,119,255,0.08) 216deg,
+      transparent 240deg,
+      transparent 288deg,
+      rgba(149,119,255,0.11) 312deg,
+      transparent 336deg);
+    mix-blend-mode: screen;
+    animation: ff-void-lens 28s linear infinite;
+  }
+  /* Layer 3: event horizon — the dark disc with the bright accretion ring */
+  .void-horizon {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 120px; height: 120px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at center,
+        rgba(0,0,0,0)   0%,
+        rgba(0,0,0,0)  20%,
+        rgba(4,2,16,1) 26%,
+        rgba(4,2,16,1) 34%,
+        rgba(149,119,255,0.45) 36%,
+        rgba(149,119,255,0.18) 44%,
+        rgba(149,119,255,0.05) 56%,
+        transparent 72%);
+    filter: blur(1.5px);
+  }
+  /* Layer 4: aurora-violet eye at the center, pulsing */
+  .void-eye {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 28px; height: 28px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at center,
+      rgba(220,200,255,0.9) 0%,
+      rgba(149,119,255,0.85) 20%,
+      rgba(149,119,255,0.45) 45%,
+      rgba(149,119,255,0.15) 70%,
+      transparent 90%);
+    filter: blur(3px);
+    animation: ff-void-eye 3.6s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  /* Layer 5: twinkling stars — 6 painted hot-spots that fade in/out
+     on offset cycles. Each one is its own absolutely-positioned dot. */
+  .void-twinkle {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.5) 40%, transparent 80%);
+    filter: blur(0.5px);
+    box-shadow: 0 0 6px rgba(255,255,255,0.6);
+    animation: ff-void-twinkle 4.2s ease-in-out infinite;
+  }
+  .void-twinkle.t1 { top: 14%; left: 22%; animation-delay: 0s; }
+  .void-twinkle.t2 { top: 19%; left: 76%; animation-delay: 0.7s;
+    background: radial-gradient(circle, rgba(168,200,255,0.95), rgba(123,227,255,0.4) 50%, transparent 80%); }
+  .void-twinkle.t3 { top: 78%; left: 12%; animation-delay: 1.4s;
+    background: radial-gradient(circle, rgba(255,228,180,0.95), rgba(245,196,81,0.4) 50%, transparent 80%); }
+  .void-twinkle.t4 { top: 84%; left: 82%; animation-delay: 2.1s; }
+  .void-twinkle.t5 { top: 42%; left: 8%;  animation-delay: 2.8s;
+    background: radial-gradient(circle, rgba(220,200,255,0.95), rgba(204,136,255,0.4) 50%, transparent 80%); }
+  .void-twinkle.t6 { top: 58%; left: 90%; animation-delay: 3.5s; }
+
+  @keyframes ff-void-eye {
+    0%, 100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.7; }
+    50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  }
+  @keyframes ff-void-lens {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes ff-void-twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.6); }
+    20%      { opacity: 1; transform: scale(1.4); }
+    40%      { opacity: 0.3; transform: scale(1); }
+    60%      { opacity: 0.8; transform: scale(1.2); }
+    80%      { opacity: 0; transform: scale(0.8); }
+  }
+
+  /* Poly card-level treatment — chromatic aberration on the glyph
+     (mirrors CatalystCard.tsx poly branch) + slightly stronger rim. */
+  .card.is-poly {
+    box-shadow:
+      0 0 0 1px rgba(var(--cat-color-rgb), 0.7),
+      0 0 24px rgba(255,120,71,0.35),
+      0 0 50px rgba(123,227,255,0.18),
+      0 14px 30px rgba(0,0,0,0.55);
+  }
+  .card.is-poly .card-glyph-frame svg {
+    filter:
+      drop-shadow(-2px 0 0 rgba(255,120,71,0.7))
+      drop-shadow(2px 0 0 rgba(123,227,255,0.7))
+      drop-shadow(0 0 8px rgba(var(--cat-color-rgb), 0.55));
+  }
+
+  /* Card-level void treatment — the rim glow gets wider, the card
+     breathes, the whole tile reads as "sought-after" at a glance
+     across the shop offer row. */
+  .card.is-void {
+    box-shadow:
+      0 0 0 1px rgba(149,119,255,0.85),
+      0 0 28px rgba(149,119,255,0.55),
+      0 0 60px rgba(149,119,255,0.35),
+      0 0 110px rgba(149,119,255,0.18),
+      0 18px 40px rgba(0,0,0,0.7);
+    animation: ff-void-breathe 5s ease-in-out infinite;
+  }
+  @keyframes ff-void-breathe {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgba(149,119,255,0.85),
+        0 0 26px rgba(149,119,255,0.45),
+        0 0 54px rgba(149,119,255,0.28),
+        0 0 100px rgba(149,119,255,0.14),
+        0 18px 40px rgba(0,0,0,0.7);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(168,140,255,1),
+        0 0 36px rgba(149,119,255,0.75),
+        0 0 80px rgba(149,119,255,0.50),
+        0 0 140px rgba(149,119,255,0.25),
+        0 18px 40px rgba(0,0,0,0.7);
+    }
+  }
+  .reduce-motion .card.is-void,
+  .reduce-motion .void-eye,
+  .reduce-motion .void-lens,
+  .reduce-motion .void-twinkle,
+  .reduce-motion .poly-sparkles,
+  .reduce-motion .edition-poly-mock::before,
+  .reduce-motion .edition-poly-mock::after { animation: none; }
+  .reduce-motion .edition-foil-mock::after,
+  .reduce-motion .edition-holo-mock,
+  .reduce-motion .edition-poly-mock,
+  .reduce-motion .edition-void-mock { animation: none; }
+
+  /* Edition badge (top-left of card) */
+  .ed-badge {
+    position: absolute;
+    top: 6px; left: 6px;
+    z-index: 5;
+    font-family: var(--f-mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    padding: 2px 5px; border-radius: 3px;
+    color: var(--ed-color, var(--gold));
+    background: rgba(15,9,37,0.85);
+    border: 1px solid var(--ed-color, var(--gold));
+    text-transform: uppercase;
+  }
+  .ed-badge.void { font-weight: 700; font-size: 11px; padding: 1px 6px; text-shadow: 0 0 6px var(--ed-color); }
+
+  /* Catalyst color presets — pulled from CATALYST_META */
+  .cat-gold     { --cat-color:#f5c451; --cat-color-rgb:245,196,81; }
+  .cat-violet   { --cat-color:#cc88ff; --cat-color-rgb:204,136,255; }
+  .cat-ember    { --cat-color:#ff7847; --cat-color-rgb:255,120,71; }
+  .cat-cyan     { --cat-color:#7be3ff; --cat-color-rgb:123,227,255; }
+  .cat-green    { --cat-color:#5be8a4; --cat-color-rgb:91,232,164; }
+  .cat-crimson  { --cat-color:#cc2244; --cat-color-rgb:204,34,68; }
+  .cat-aurora   { --cat-color:#9577ff; --cat-color-rgb:149,119,255; }
+  .cat-bone     { --cat-color:#dcd4ff; --cat-color-rgb:220,212,255; }
+  .cat-blue     { --cat-color:#a4d4ff; --cat-color-rgb:164,212,255; }
+  .cat-amber    { --cat-color:#ffd84a; --cat-color-rgb:255,216,74; }
+  .cat-mauve    { --cat-color:#a080c0; --cat-color-rgb:160,128,192; }
+
+  /* ────────────────────────────────────────────────────────────────
+     LAYER ANATOMY — exploded card with labelled layers
+     ──────────────────────────────────────────────────────────────── */
+  .anatomy {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 56px;
+    align-items: start;
+    margin-top: 48px;
+  }
+  .anatomy-card-col { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .anatomy-stack {
+    position: relative;
+    width: 200px; height: 480px;
+    perspective: 1200px;
+  }
+  .anatomy-layer {
+    position: absolute;
+    width: 180px; height: 160px;
+    left: 50%;
+    transform-origin: center;
+    border: 1px solid var(--rule);
+    background: rgba(15,9,37,0.55);
+    transform: translateX(-50%) translateY(var(--ly, 0)) skew(-22deg, 12deg);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    border-radius: 4px;
+  }
+  .anatomy-layer .layer-label {
+    position: absolute; top: 6px; left: 8px;
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--bone);
+    background: rgba(7,5,26,0.85);
+    padding: 2px 6px;
+    border: 1px solid var(--rule-strong);
+  }
+  .anatomy-table {
+    border: 1px solid var(--rule);
+  }
+  .anatomy-table .at-row {
+    display: grid;
+    grid-template-columns: 200px 120px 1fr;
+    gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule);
+    align-items: center;
+  }
+  .anatomy-table .at-row:last-child { border-bottom: none; }
+  .anatomy-table .at-row.head { background: rgba(28,18,69,0.4); }
+  .anatomy-table .at-row.head > * {
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .at-layer { font-family: var(--f-head); color: var(--bone); font-size: 14px; }
+  .at-owner {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .at-owner.artist { color: var(--aurora); }
+  .at-owner.artist::before { content: '◆ '; }
+  .at-owner.engine { color: var(--cosmos-200); }
+  .at-owner.engine::before { content: '◇ '; }
+  .at-note { font-size: 13px; color: var(--cosmos-100); line-height: 1.5; }
+  .at-note code {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone); background: rgba(28,18,69,0.6);
+    padding: 1px 5px; border: 1px solid var(--rule);
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     ARCHETYPE ROWS
+     ──────────────────────────────────────────────────────────────── */
+  .archetypes { margin-top: 48px; }
+  .archetype {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 40px;
+    padding: 36px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .archetype:last-child { border-bottom: 1px solid var(--rule); }
+  .archetype-head h3 {
+    font-family: var(--f-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--bone);
+    margin: 0 0 6px;
+    letter-spacing: 0.02em;
+  }
+  .archetype-head .archetype-tag {
+    font-family: var(--f-mono);
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--aurora);
+  }
+  .archetype-body {
+    color: var(--cosmos-100);
+    font-size: 14.5px;
+    line-height: 1.62;
+  }
+  .archetype-body strong { color: var(--bone); font-weight: 500; }
+  .archetype-body .refs {
+    margin-top: 14px;
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--cosmos-200);
+    letter-spacing: 0.02em;
+    line-height: 1.7;
+  }
+  .archetype-body .refs::before {
+    content: 'refs · ';
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--aurora);
+  }
+  .archetype-card-wrap { display: flex; justify-content: center; }
+
+  /* Risk warning callout */
+  .archetype.risk {
+    background: linear-gradient(180deg, rgba(226,51,74,0.05), transparent);
+  }
+  .archetype.risk .archetype-head h3 { color: #ffd6da; }
+
+  /* ────────────────────────────────────────────────────────────────
+     FRAME + EDITION GRIDS
+     ──────────────────────────────────────────────────────────────── */
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    margin-top: 48px;
+  }
+  .grid-cell {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .grid-cell-h {
+    font-family: var(--f-head);
+    font-size: 18px;
+    color: var(--bone);
+    margin: 0;
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+  .grid-cell-h .gc-tag {
+    display: block;
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--aurora);
+    margin-bottom: 4px;
+  }
+  .grid-cell-body {
+    font-size: 13px; color: var(--cosmos-100);
+    line-height: 1.5;
+    text-align: center;
+    padding: 0 4px;
+  }
+  .grid-cell-spec {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--cosmos-200);
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     LEGENDARY PORTRAIT STRETCH
+     ──────────────────────────────────────────────────────────────── */
+  .portraits {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .portrait {
+    display: flex; flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .portrait-frame {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border: 1px solid rgba(245,196,81,0.6);
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(245,196,81,0.10), transparent 60%),
+      linear-gradient(180deg, rgba(28,18,69,0.4), var(--cosmos-950));
+    position: relative;
+    box-shadow: 0 0 24px rgba(245,196,81,0.15);
+    overflow: hidden;
+  }
+  .portrait-frame::before {
+    content: '';
+    position: absolute; inset: 8px;
+    border: 1px solid rgba(245,196,81,0.4);
+    pointer-events: none;
+  }
+  .portrait-frame .portrait-stripes {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(45deg,
+      transparent 0 18px,
+      rgba(149,119,255,0.06) 18px 19px);
+  }
+  .portrait-frame .portrait-tag {
+    position: absolute;
+    top: 12px; left: 50%; transform: translateX(-50%);
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--gold);
+    padding: 3px 8px;
+    border: 1px solid rgba(245,196,81,0.6);
+    background: rgba(7,5,26,0.7);
+  }
+  .portrait-frame .portrait-caption {
+    position: absolute;
+    bottom: 12px; left: 12px; right: 12px;
+    text-align: center;
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--cosmos-100);
+  }
+  .portrait-frame .portrait-caption strong {
+    display: block;
+    font-family: var(--f-head); font-size: 13px;
+    color: var(--bone); margin-bottom: 4px;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .portrait-frame .portrait-glyph {
+    position: absolute;
+    inset: 0;
+    display: grid; place-items: center;
+    color: rgba(245,196,81,0.4);
+  }
+  .portrait-frame .portrait-glyph svg { width: 40%; height: 40%; opacity: 0.5; }
+  .portrait-body {
+    font-size: 12.5px;
+    color: var(--cosmos-100);
+    line-height: 1.55;
+    text-align: center;
+  }
+  .portrait-body strong { color: var(--bone); font-weight: 500; }
+
+  /* ────────────────────────────────────────────────────────────────
+     ICON RULES + MISSING GLYPHS
+     ──────────────────────────────────────────────────────────────── */
+  .icon-rules {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-top: 40px;
+  }
+  .icon-rule {
+    border: 1px solid var(--rule);
+    padding: 18px 16px;
+    background: rgba(15,9,37,0.4);
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .icon-rule .ir-num {
+    font-family: var(--f-mono); font-size: 22px;
+    color: var(--aurora);
+    letter-spacing: 0.04em;
+  }
+  .icon-rule .ir-title {
+    font-family: var(--f-head); font-size: 14px;
+    color: var(--bone);
+    letter-spacing: 0.04em;
+  }
+  .icon-rule .ir-body {
+    font-size: 12px; color: var(--cosmos-100);
+    line-height: 1.5;
+  }
+  .icon-rule .ir-body code {
+    font-family: var(--f-mono); font-size: 10.5px;
+    color: var(--bone); background: rgba(28,18,69,0.6);
+    padding: 1px 4px; border: 1px solid var(--rule);
+  }
+
+  .missing-glyphs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-top: 32px;
+  }
+  .mg {
+    border: 1px dashed rgba(149,119,255,0.4);
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: rgba(15,9,37,0.4);
+  }
+  .mg-head { display: flex; align-items: center; gap: 12px; }
+  .mg-slot {
+    width: 56px; height: 56px;
+    border: 1px solid var(--rule);
+    background: var(--cosmos-950);
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 18px;
+    color: var(--aurora);
+  }
+  .mg-name {
+    font-family: var(--f-mono); font-size: 12px;
+    color: var(--bone); letter-spacing: 0.04em;
+  }
+  .mg-name code {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--cosmos-100);
+  }
+  .mg-name .mg-status {
+    display: block;
+    font-size: 9px; letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--crimson);
+    margin-top: 4px;
+  }
+  .mg-body { font-size: 12.5px; color: var(--cosmos-100); line-height: 1.5; }
+  .mg-body strong { color: var(--bone); font-weight: 500; }
+
+  /* ────────────────────────────────────────────────────────────────
+     QA MATRIX
+     ──────────────────────────────────────────────────────────────── */
+  .qa-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    margin-top: 48px;
+  }
+  .qa-cell {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .qa-meta {
+    width: 100%;
+    border: 1px solid var(--rule);
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .qa-num {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--aurora);
+  }
+  .qa-line {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone); letter-spacing: 0.04em;
+  }
+  .qa-criteria {
+    margin-top: 40px;
+    padding: 24px 28px;
+    border: 1px solid var(--rule);
+    background: rgba(28,18,69,0.3);
+  }
+  .qa-criteria h4 {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.36em; text-transform: uppercase;
+    color: var(--cosmos-200);
+    margin: 0 0 14px;
+    font-weight: 500;
+  }
+  .qa-criteria ul {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 32px;
+  }
+  .qa-criteria li {
+    padding-left: 18px; position: relative;
+    font-size: 13px; color: var(--cosmos-50);
+    line-height: 1.5;
+  }
+  .qa-criteria li::before {
+    content: '✓';
+    position: absolute; left: 0;
+    color: var(--aurora);
+    font-family: var(--f-mono); font-weight: 600;
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     CHECKLIST
+     ──────────────────────────────────────────────────────────────── */
+  .checklist {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border: 1px solid var(--rule);
+    margin-top: 32px;
+  }
+  .ckrow {
+    display: grid;
+    grid-template-columns: 60px 1fr 220px 200px;
+    gap: 24px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--rule);
+    align-items: center;
+  }
+  .ckrow:last-child { border-bottom: none; }
+  .ckrow.head { background: rgba(28,18,69,0.4); }
+  .ckrow.head > * {
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .ckrow .ck-num {
+    font-family: var(--f-mono); font-size: 14px;
+    color: var(--aurora); letter-spacing: 0.12em;
+  }
+  .ckrow .ck-name {
+    font-family: var(--f-head); font-size: 16px;
+    color: var(--bone); letter-spacing: 0.03em;
+  }
+  .ckrow .ck-name .ck-sub {
+    display: block;
+    font-family: var(--f-body); font-size: 13px;
+    color: var(--cosmos-100); margin-top: 2px;
+    font-style: italic; font-weight: 300;
+  }
+  .ckrow .ck-spec {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone);
+  }
+  .ckrow .ck-spec .ck-spec-sub {
+    display: block;
+    font-size: 9px; color: var(--cosmos-200);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .ckrow .ck-files {
+    font-family: var(--f-mono); font-size: 10.5px;
+    color: var(--cosmos-100);
+  }
+
+  /* Calibration callout */
+  .calibration-note {
+    margin-top: 24px;
+    padding: 22px 28px;
+    border: 1px solid var(--crimson);
+    background: rgba(226,51,74,0.06);
+    display: flex; gap: 20px; align-items: flex-start;
+  }
+  .calibration-note .cn-tag {
+    flex: 0 0 auto;
+    font-family: var(--f-mono);
+    font-size: 10px; letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--crimson);
+    border: 1px solid var(--crimson);
+    padding: 4px 10px;
+  }
+  .calibration-note p { margin: 0; color: var(--cosmos-50); font-size: 14px; line-height: 1.6; }
+  .calibration-note p strong { color: var(--bone); font-weight: 500; }
+
+  /* —— Out of scope —— */
+  .scope-out {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    margin-top: 32px;
+    border: 1px solid var(--rule);
+  }
+  .so-row {
+    padding: 18px 24px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .so-row:nth-child(2n) { border-right: none; }
+  .so-row.last { border-bottom: none; }
+  .so-row.last + .so-row.last { border-bottom: none; }
+  .so-title {
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--crimson);
+    margin-bottom: 8px;
+  }
+  .so-title::before { content: '× '; font-weight: 600; }
+  .so-body { font-size: 13px; color: var(--cosmos-100); line-height: 1.55; }
+  .so-body strong { color: var(--bone); font-weight: 500; }
+
+  /* Toast for copy */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--cosmos-800);
+    border: 1px solid var(--aurora);
+    color: var(--bone);
+    padding: 10px 18px;
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 180ms, transform 180ms;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 24px rgba(149,119,255,0.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Palette swatch */
+  .palette-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .sw {
+    display: flex;
+    flex-direction: column;
+    min-width: 110px;
+    cursor: pointer;
+    border: 1px solid var(--rule);
+    background: rgba(15,9,37,0.4);
+    padding: 0;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+    transition: border-color 150ms, transform 150ms;
+  }
+  .sw:hover { border-color: var(--rule-strong); transform: translateY(-1px); }
+  .sw:active { transform: translateY(0); }
+  .sw .sw-chip {
+    height: 36px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sw, #888);
+    position: relative;
+  }
+  .sw .sw-chip::after {
+    content: 'copy';
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: rgba(7,5,26,0.85);
+    opacity: 0; transition: opacity 150ms;
+  }
+  .sw:hover .sw-chip::after { opacity: 0.7; }
+  .sw.copied .sw-chip::after { content: 'copied'; opacity: 1; color: rgba(7,5,26,0.95); }
+  .sw .sw-meta { padding: 6px 8px 8px; }
+  .sw .sw-role {
+    font-family: var(--f-mono); font-size: 8px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .sw .sw-hex {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone); margin-top: 2px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Footer */
+  footer {
+    padding: 64px 0 96px;
+    border-top: 1px solid var(--rule);
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 48px;
+    color: var(--cosmos-100); font-size: 13px;
+    line-height: 1.6;
+  }
+  footer h4 {
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+    margin: 0 0 12px; font-weight: 500;
+  }
+  footer p { margin: 0 0 8px; }
+  footer code { font-family: var(--f-mono); color: var(--bone); }
+
+  /* Responsive guard */
+  @media (max-width: 1080px) {
+    .wrap { padding: 0 28px; }
+    .nav-row.cols-9 { grid-template-columns: repeat(3, 1fr); }
+    .nav-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .qa-grid { grid-template-columns: repeat(2, 1fr); }
+    .portraits { grid-template-columns: repeat(2, 1fr); }
+    .icon-rules { grid-template-columns: repeat(2, 1fr); }
+    .missing-glyphs { grid-template-columns: repeat(2, 1fr); }
+    .rules { grid-template-columns: 1fr; }
+    .rule, .rule.span-2 { border-right: none; }
+    .archetype { grid-template-columns: 1fr; gap: 24px; }
+    .anatomy { grid-template-columns: 1fr; }
+    .anatomy-table .at-row { grid-template-columns: 1fr; gap: 4px; }
+    .qa-criteria ul { grid-template-columns: 1fr; }
+    .scope-out { grid-template-columns: 1fr; }
+    .so-row { border-right: none; }
+    .ckrow { grid-template-columns: 40px 1fr; }
+    .ckrow .ck-spec, .ckrow .ck-files { grid-column: 2; }
+    .ckrow.head .ck-spec, .ckrow.head .ck-files { display: none; }
+    footer { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ════════════════════════════ COVER ════════════════════════════ -->
+<header class="cover">
+  <div class="cover-top">
+    <div class="mono-eyebrow">◇ system brief · catalyst cards ◇</div>
+    <div class="mono-label">brief no. <span style="color:var(--bone)">B-2026-05-CAT</span></div>
+  </div>
+
+  <div>
+    <h1 class="cover-title">A composable card <em>system</em>, not 1,100 paintings.</h1>
+    <p class="cover-sub">
+      The artist delivers a small set of reusable <strong style="color:var(--bone)">layers</strong>;
+      the engine composites them into ~1,100 unique card states. No per-catalyst paintings — system
+      work first, optional bespoke portraits later, scoped separately. Anti-mystical voice carries
+      from the boss brief: catalysts are <em>instruments</em>, not creatures. The shop is a workshop.
+    </p>
+
+    <div class="cover-formula" aria-label="Composition formula">
+      <span class="cf-term">9 archetypes</span>
+      <span class="cf-op">×</span>
+      <span class="cf-term">4 rarities</span>
+      <span class="cf-op">×</span>
+      <span class="cf-term">4 editions</span>
+      <span class="cf-op">+</span>
+      <span class="cf-term">4 missing glyphs</span>
+      <span class="cf-eq">≈</span>
+      <span class="cf-out">~1,100 composites</span>
+      <span class="cf-from">from</span>
+      <span class="cf-out">21 layer assets</span>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">archetypes · 9</div>
+      <div class="nav-row cols-9">
+        <a class="chip" href="#a-combo"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 6 4 L 12 7 L 12 13 L 6 10 Z"/><path d="M 12 7 L 18 4 L 18 10 L 12 13 Z"/><path d="M 9 14 L 15 17 L 15 21 L 9 18 Z"/></svg></span><span class="chip-name">Combo</span></a>
+        <a class="chip" href="#a-face"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M 12 3 L 12 6"/><path d="M 12 18 L 12 21"/><path d="M 3 12 L 6 12"/><path d="M 18 12 L 21 12"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span><span class="chip-name">Face</span></a>
+        <a class="chip" href="#a-economy"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="5"/><circle cx="16" cy="14" r="5"/><path d="M 4 6 L 20 6"/><path d="M 12 6 L 12 9"/></svg></span><span class="chip-name">Economy</span></a>
+        <a class="chip" href="#a-scaling"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 3 7 L 21 7"/><path d="M 3 12 L 21 12"/><path d="M 3 17 L 21 17"/><path d="M 3 4 L 21 4" opacity=".4"/><path d="M 3 20 L 21 20" opacity=".4"/></svg></span><span class="chip-name">Scaling</span></a>
+        <a class="chip" href="#a-mods"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="1.5" fill="currentColor"/><circle cx="19" cy="6" r="1.5" fill="currentColor"/><circle cx="5" cy="18" r="1.5" fill="currentColor"/><circle cx="19" cy="18" r="1.5" fill="currentColor"/><path d="M 5 6 L 19 18"/><path d="M 19 6 L 5 18"/></svg></span><span class="chip-name">Mods</span></a>
+        <a class="chip" href="#a-timing"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 7 20 L 17 20 L 14 4 L 10 4 Z"/><path d="M 12 20 L 14 8"/><circle cx="14" cy="8" r="1" fill="currentColor"/></svg></span><span class="chip-name">Timing</span></a>
+        <a class="chip" href="#a-utility"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="1"/><path d="M 8 8 L 8 5 L 16 5 L 16 8"/><path d="M 3 13 L 21 13"/></svg></span><span class="chip-name">Utility</span></a>
+        <a class="chip" href="#a-collision"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 3 12 L 14 12"/><path d="M 10 8 L 14 12 L 10 16"/><circle cx="18" cy="12" r="2.5" fill="currentColor"/></svg></span><span class="chip-name">Collision</span></a>
+        <a class="chip" href="#a-risk"><span class="chip-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 5 4 L 9 9 L 7 12 L 11 16 L 9 20"/><path d="M 15 4 L 13 8 L 17 11 L 14 15 L 19 20"/></svg></span><span class="chip-name">Risk</span></a>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">rarities · 4</div>
+      <div class="nav-row cols-4">
+        <a class="chip" href="#rarities" data-acc="common"><span class="chip-swatch" style="--chip-bg:#5a5a6e"></span><span class="chip-name">Common</span><span class="chip-detail">graphite</span></a>
+        <a class="chip" href="#rarities" data-acc="uncommon"><span class="chip-swatch" style="--chip-bg:#b87333"></span><span class="chip-name">Uncommon</span><span class="chip-detail">copper</span></a>
+        <a class="chip" href="#rarities" data-acc="rare"><span class="chip-swatch" style="--chip-bg:#7be3ff"></span><span class="chip-name">Rare</span><span class="chip-detail">aurora</span></a>
+        <a class="chip" href="#rarities" data-acc="legendary"><span class="chip-swatch" style="--chip-bg:#f5c451"></span><span class="chip-name">Legendary</span><span class="chip-detail">gold-leaf</span></a>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">editions · 4</div>
+      <div class="nav-row cols-4">
+        <a class="chip" href="#editions" data-acc="foil"><span class="chip-swatch" style="--chip-bg:#f5c451"></span><span class="chip-name">Foil</span><span class="chip-detail">+ chips</span></a>
+        <a class="chip" href="#editions" data-acc="holo"><span class="chip-swatch" style="background:linear-gradient(115deg,#7be3ff,#cc88ff,#5be8a4,#f5c451)"></span><span class="chip-name">Holo</span><span class="chip-detail">+ mult</span></a>
+        <a class="chip" href="#editions" data-acc="poly"><span class="chip-swatch" style="background:linear-gradient(90deg,#ff7847,#f5c451,#5be8a4,#7be3ff,#cc88ff)"></span><span class="chip-name">Poly</span><span class="chip-detail">× own</span></a>
+        <a class="chip" href="#editions" data-acc="void"><span class="chip-swatch" style="background:radial-gradient(circle at 50% 50%,#9577ff 0%,#07051a 80%)"></span><span class="chip-name">Void</span><span class="chip-detail">zero slot</span></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div class="meta-cell"><div class="meta-label">authored</div><div class="meta-val">2026 · 05 · 16</div></div>
+    <div class="meta-cell"><div class="meta-label">canonical source</div><div class="meta-val"><code>src-next/data/catalysts.ts</code></div></div>
+    <div class="meta-cell"><div class="meta-label">existing glyphs</div><div class="meta-val">67 shipped · 4 missing</div></div>
+    <div class="meta-cell"><div class="meta-label">audience</div><div class="meta-val">Internal · Art Direction</div></div>
+  </div>
+</header>
+
+<!-- ════════════════════════ STYLE BIBLE ════════════════════════ -->
+<section class="section">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">00 · shared style bible</span>
+  </div>
+  <h2 class="section-h">Inherits the boss brief. Card-specific rules layer on top.</h2>
+  <p class="section-lede">
+    These are objects you could hold. <strong style="color:var(--bone)">A lens, a gauge, a calibration weight, a ferromagnetic shard, a sample under glass.</strong>
+    If the artist's gut reach is "what creature personifies this mechanic" — that is the wrong gut.
+  </p>
+
+  <div class="rules">
+    <div class="rule">
+      <div class="rule-num">Rule 01</div>
+      <h3 class="rule-title">Period reference</h3>
+      <div class="rule-body">
+        Scientific-instrument plates × 60s industrial design catalog × Voyager Golden Record.
+        Think the panel diagrams from a 1970s spectrometer manual, redrawn with the gravity of a museum plaque.
+        <strong>No mysticism, no occult symbology, no tarot, no robed figures, no spells.</strong>
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 02</div>
+      <h3 class="rule-title">Instruments, never creatures</h3>
+      <div class="rule-body">
+        Every catalyst is an <strong>instrument or artifact</strong>, never a creature or spell.
+        A lens, a gauge, a coin press, a calibration weight, a phase diagram. The shop is a workshop, not a bestiary.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 03</div>
+      <h3 class="rule-title">Readable at 64×88</h3>
+      <div class="rule-body">
+        Silhouette + frame + edition treatment must hold at strip size.
+        If the player can't tell Common-Common from Legendary-Void at thumbnail, the system has failed.
+        <strong>Test every layer at 64×88 before signing it off at 240×320.</strong>
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 04</div>
+      <h3 class="rule-title">Tint pass · 70 / 20 / 10</h3>
+      <div class="rule-body">
+        Each catalyst ships an identity color in <code>CATALYST_META</code>. The painted layers must accept it as a tint pass.
+        The card is <strong>70% catalyst-color anchored + 20% archetype band tint + 10% rarity/edition accent</strong>.
+        Paint in neutral grayscale; the engine tints.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 05</div>
+      <h3 class="rule-title">Layered, not flat</h3>
+      <div class="rule-body">
+        Every asset ships as a layered PSD with named groups — <code>base</code>, <code>highlight</code>, <code>shadow</code>, <code>animatable-sweep</code> — so the engine can isolate animated parts (foil sweep, poly rotation, void aurora bleed) without re-compositing the whole card.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 06</div>
+      <h3 class="rule-title">Engraved, not flourished</h3>
+      <div class="rule-body">
+        Where ornament IS used — rarity frames, legendary cartouches — it should feel <strong>engraved on instrument metal</strong>. Brass-plate engraving, not calligraphy. Line economy carries over from the boss brief.
+      </div>
+    </div>
+    <div class="rule span-2 last-row">
+      <div class="rule-num">Rule 07</div>
+      <h3 class="rule-title">Aurora-violet underlight at the card edge</h3>
+      <div class="rule-body">
+        The same <code>#9577ff</code> rim glow from the boss brief carries here. Every card sits inside the same cosmos; the rim glow is the visual rhyme between the eight final-trial plates and the seventy-one catalysts that fight them.
+        It's painted into the layer at the card boundary — the engine doesn't add it.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ ANATOMY ════════════════════════ -->
+<section class="section" id="anatomy">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">01 · card anatomy</span>
+  </div>
+  <h2 class="section-h">Five painted layers. Three engine layers. One identity color.</h2>
+  <p class="section-lede">
+    Back-to-front. ◆ = artist owns. ◇ = engine composites. <strong style="color:var(--bone)">Rarity frame and edition overlay are SEPARATE layers.</strong> Every Legendary-frame × any-edition × any-glyph combination must read correctly.
+  </p>
+
+  <div class="anatomy">
+    <div class="anatomy-card-col">
+      <!-- A fully-stacked sample card showing the final composite -->
+      <div class="card cat-violet">
+        <div class="card-band band-combo"></div>
+        <div class="edition edition-holo-mock"></div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge" style="--ed-color:#7be3ff">HOL</div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">three-of-a-kind hands chain rerolls</div>
+        </div>
+      </div>
+      <div class="mono-label" style="color:var(--cosmos-200)">Rare · Combo · Holo · violet</div>
+    </div>
+
+    <div class="anatomy-table">
+      <div class="at-row head">
+        <div>layer</div><div>owner</div><div>notes</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Aurora rim glow</div>
+        <div class="at-owner engine">engine</div>
+        <div class="at-note">CSS box-shadow on the outermost wrapper. Always on. Tinted by <code>CATALYST_META.color</code>.</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Rarity frame</div>
+        <div class="at-owner artist">artist</div>
+        <div class="at-note">9-slice scalable PNG, one per rarity. Painted at 240×320 (Codex size) and tested at 64×88 (strip).</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Archetype band</div>
+        <div class="at-owner artist">artist</div>
+        <div class="at-note">Tileable grayscale background pattern, one per archetype. <strong>Tinted by the engine using the catalyst's identity color.</strong></div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Edition overlay</div>
+        <div class="at-owner artist">artist</div>
+        <div class="at-note">Surface treatment painting, one per edition kind. Replaces the existing CSS in <code>index.css</code> lines 1203–1342.</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Catalyst glyph</div>
+        <div class="at-owner artist">artist</div>
+        <div class="at-note">Line-art SVG, per-catalyst. <strong>67 shipped; 4 missing</strong> (bone_tax · hollow_bishop · witchs_bargain + future).</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Name + description</div>
+        <div class="at-owner engine">engine</div>
+        <div class="at-note">Cinzel head + Exo 2 body, typography already wired in <code>CatalystCard.tsx</code> / <code>OfferCard.tsx</code>.</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Sell button</div>
+        <div class="at-owner engine">engine</div>
+        <div class="at-note">Existing <code>SellButton</code> component, positioned top-left.</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Stack badges</div>
+        <div class="at-owner engine">engine</div>
+        <div class="at-note">Existing <code>CornerBadge</code> (12px gold-glow). Star Chart, Lodestone, Heirloom Locket etc. drive their own counters.</div>
+      </div>
+      <div class="at-row">
+        <div class="at-layer">Pulse · fire animation</div>
+        <div class="at-owner engine">engine</div>
+        <div class="at-note"><strong>Critical:</strong> the painted frame must leave a <strong>4px breathing margin</strong> inside the outer rim glow so the pulse class can scale ~108% without clipping.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ ARCHETYPES ════════════════════════ -->
+<section class="section" id="archetypes">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">02 · archetype visual language</span>
+  </div>
+  <h2 class="section-h">Nine motif vocabularies. One painted plate each, in grayscale.</h2>
+  <p class="section-lede">
+    The artist paints one background plate per archetype in grayscale; per-catalyst identity color tints it at composite time. The card mock at right shows each band tinted by a representative catalyst.
+  </p>
+
+  <div class="archetypes">
+
+    <!-- combo -->
+    <div class="archetype" id="a-combo">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 01</div>
+        <h3>combo</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Interlocking modular geometry</strong> — overlapping hexagons, gear teeth, locking joints. The motif is <em>parts that fit together</em>. Visual reads as "this catalyst keys off a shape." Mid-saturation, balanced composition.</p>
+        <div class="refs">Bauhaus weaving studies · Bridget Riley Op-Art interlocks (the grid pieces, not the hallucinatory bits)</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-violet">
+          <div class="card-band band-combo"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Triplet Engine</div>
+            <div class="card-desc">parts that fit together</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- face -->
+    <div class="archetype" id="a-face">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 02</div>
+        <h3>face</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Calibration plates with engraved numeric scales.</strong> Vernier dials, slide-rule markings, pip-pattern stamps. The motif is <em>number made physical</em>. Tone is precise, instrumental.</p>
+        <div class="refs">Vintage navigation sextant inner mechanisms · scientific micrometer faces</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-amber">
+          <div class="card-band band-face"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 20 7.5 L 20 16.5 L 12 21 L 4 16.5 L 4 7.5 Z"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Iron Six</div>
+            <div class="card-desc">number made physical</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- economy -->
+    <div class="archetype" id="a-economy">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 03</div>
+        <h3>economy</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Burnished brass coins, weighing-scale balance arms, escapement gears</strong> (the metering kind, not clockwork-fantasy). The motif is <em>measured exchange</em>. Tone is warm-metal, mercantile but not opulent.</p>
+        <div class="refs">19th-century apothecary scales · Royal Mint coin-press dies</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-gold">
+          <div class="card-band band-economy"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 21 12 L 12 21 L 3 12 Z"/><path d="M12 7 L 17 12 L 12 17 L 7 12 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Stipend</div>
+            <div class="card-desc">measured exchange</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- scaling -->
+    <div class="archetype" id="a-scaling">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 04</div>
+        <h3>scaling</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Stratified geological layers, sedimentary cross-sections, tree-ring growth bands, glacial ice cores.</strong> The motif is <em>time made visible</em>. Tone is patient, accreted, cool-violet undertone.</p>
+        <div class="refs">Smithsonian rock-stratigraphy plates · Andy Goldsworthy layered-stone earthworks</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-violet">
+          <div class="card-band band-scaling"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 C 6 6, 18 6, 21 12 C 18 18, 6 18, 3 12 Z"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><circle cx="9" cy="8.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="15" cy="8.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="10.5" cy="16" r="0.6" fill="currentColor" stroke="none"/><circle cx="13.5" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Stratifier</div>
+            <div class="card-desc">time made visible</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- mods -->
+    <div class="archetype" id="a-mods">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 05</div>
+        <h3>mods</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Wiring diagrams, signal-routing schematics, ferromagnetic field lines.</strong> The motif is <em>connection paths between dice</em>. Tone is technical-electrical — the <strong>only archetype</strong> allowed a faint phosphor-green undertone.</p>
+        <div class="refs">Vintage telephone-exchange patch-board cards · Schlieren photography of airflow</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-blue">
+          <div class="card-band band-mods"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 5 18 L 5 12 C 5 7, 10 5, 12 5 C 14 5, 19 7, 19 12 L 19 18"/><line x1="5" y1="18" x2="9" y2="18" stroke-width="2.5"/><line x1="15" y1="18" x2="19" y2="18" stroke-width="2.5"/><path d="M 9 13 Q 12 11, 15 13" opacity="0.6"/><path d="M 9 10 Q 12 8, 15 10" opacity="0.4"/></svg>
+            </div>
+            <div class="card-name">Lodestone</div>
+            <div class="card-desc">connection paths</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- timing -->
+    <div class="archetype" id="a-timing">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 06</div>
+        <h3>timing</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Metronome arms, escapement teeth, the literal mechanism of a wound spring.</strong> The motif is <em>the pause between beats</em>. Tone is brass + cool shadow, tightly contained.</p>
+        <div class="refs">Inside view of a mechanical metronome · regulator wheel of a marine chronometer</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-gold">
+          <div class="card-band band-timing"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 7 20 L 17 20 L 14 4 L 10 4 Z"/><path d="M 12 20 L 14 8"/><circle cx="14" cy="8" r="1" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Metronome</div>
+            <div class="card-desc">pause between beats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- utility -->
+    <div class="archetype" id="a-utility">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 07</div>
+        <h3>utility</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Toolbox cross-sections, swiss-army-knife internals, kit roll-outs.</strong> The motif is <em>useful object at hand</em>. Tone is unobtrusive, workshop-neutral, mid-grey.</p>
+        <div class="refs">Cutaway diagrams from vintage Whole Earth Catalog · James May's <em>Toy Stories</em> diagrams</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-bone">
+          <div class="card-band band-utility"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="10" rx="1"/><path d="M 9 9 L 9 6 L 15 6 L 15 9"/><path d="M 4 14 L 20 14"/><circle cx="12" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Kit Roll</div>
+            <div class="card-desc">useful object at hand</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- collision -->
+    <div class="archetype" id="a-collision">
+      <div class="archetype-head">
+        <div class="archetype-tag">archetype · 08</div>
+        <h3>collision</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Impact diagrams, vector arrows, shockwave ripples in solids</strong> (not water). The motif is <em>the moment two objects meet</em>. Tone is high-contrast — bright leading edge, dark trailing.</p>
+        <div class="refs">High-speed photography of bullet impacts in gelatin · Newton's-cradle frame-by-frame</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-ember">
+          <div class="card-band band-collision"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 3 12 L 14 12"/><path d="M 10 8 L 14 12 L 10 16"/><circle cx="18" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Impact Vector</div>
+            <div class="card-desc">two objects meet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- risk -->
+    <div class="archetype risk" id="a-risk">
+      <div class="archetype-head">
+        <div class="archetype-tag" style="color:var(--crimson)">archetype · 09 · the dark one</div>
+        <h3>risk</h3>
+      </div>
+      <div class="archetype-body">
+        <p><strong>Exposed fault lines, structural fissures, jagged crystalline cleavage planes, hairline fractures in obsidian.</strong> The motif is <em>the visible cost</em>. The player should feel the downside <strong>before</strong> reading the description.</p>
+        <p>Tone is darker than the rest of the set. <strong>Risk is the only archetype allowed to dim the catalyst's identity color, not amplify it.</strong></p>
+        <div class="refs">Cleaved feldspar geological samples · structural-failure photography from civil engineering textbooks</div>
+      </div>
+      <div class="archetype-card-wrap">
+        <div class="card cat-crimson">
+          <div class="card-band band-risk"></div>
+          <div class="frame frame-common"></div>
+          <div class="card-inner">
+            <div class="card-eyebrow">catalyst</div>
+            <div class="card-glyph-frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 5 4 L 9 9 L 7 12 L 11 16 L 9 20"/><path d="M 15 4 L 13 8 L 17 11 L 14 15 L 19 20"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="card-name">Fault Line</div>
+            <div class="card-desc">the visible cost</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════ RARITY FRAMES ════════════════════════ -->
+<section class="section" id="rarities">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">03 · rarity frame set</span>
+  </div>
+  <h2 class="section-h">Four frames. Same catalyst, same archetype. Different gravity.</h2>
+  <p class="section-lede">
+    Each is a 9-slice scalable PNG painted at 240×320 (Codex size, largest target) and tested down to 64×88 (strip size). The engine wraps any catalyst in any frame.
+    The visual difference between Rare and Legendary <strong>must be readable at thumbnail</strong> — players will compare them side-by-side in the shop offer row.
+  </p>
+
+  <div class="grid-4">
+    <div class="grid-cell">
+      <div class="card cat-gold">
+        <div class="card-band band-economy"></div>
+        <div class="frame frame-common"></div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 21 12 L 12 21 L 3 12 Z"/><path d="M12 7 L 17 12 L 12 17 L 7 12 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Stipend</div>
+          <div class="card-desc">+2 chips each hand</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">rarity · 01</span>Common</h3>
+      <div class="grid-cell-body">Thin engraved-edge border in muted graphite. Single-pixel inner light + single-pixel outer shadow. <strong style="color:var(--bone)">No corner ornament.</strong></div>
+      <div class="grid-cell-spec">frame ≤ 6px · strip scale</div>
+    </div>
+
+    <div class="grid-cell">
+      <div class="card cat-gold">
+        <div class="card-band band-economy"></div>
+        <div class="frame frame-uncommon"></div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 21 12 L 12 21 L 3 12 Z"/><path d="M12 7 L 17 12 L 12 17 L 7 12 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Usurer</div>
+          <div class="card-desc">interest on stored chips</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">rarity · 02</span>Uncommon</h3>
+      <div class="grid-cell-body">Stepped frame, one inset metallic accent (copper-oxide). Two-tier edge. <strong style="color:var(--bone)">Small notched nameplate at top-center</strong>, like a brass marker.</div>
+      <div class="grid-cell-spec">frame ~8px · strip scale</div>
+    </div>
+
+    <div class="grid-cell">
+      <div class="card cat-violet">
+        <div class="card-band band-combo"></div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">3-of-a-kind chains rerolls</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">rarity · 03</span>Rare</h3>
+      <div class="grid-cell-body">Triple-step ornate frame with corner sigils — <strong style="color:var(--bone)">geometric calibration marks (registration crosshairs)</strong>, not mystical sigils. 2px translucent inner aurora-glow channel for engine color-cycle.</div>
+      <div class="grid-cell-spec">frame ~10px · strip scale</div>
+    </div>
+
+    <div class="grid-cell">
+      <div class="card cat-ember">
+        <div class="card-band band-scaling"></div>
+        <div class="frame frame-legendary">
+          <div class="leg-corner tl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner tr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner bl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner br"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-cartouche"><span class="cart-name">All-Band</span></div>
+        </div>
+        <div class="card-inner" style="padding-bottom:48px">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 4 18 Q 4 6, 10 4"/><path d="M 6 18 Q 6 8, 12 6"/><path d="M 8 18 Q 8 10, 14 8"/><path d="M 14 8 L 18 6 L 18 10 Z" fill="currentColor" stroke="none"/><line x1="15" y1="13" x2="19" y2="13" opacity="0.7"/><line x1="15" y1="16" x2="19" y2="16" opacity="0.6"/></svg>
+          </div>
+          <div class="card-name" style="font-size:0">.</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">rarity · 04</span>Legendary</h3>
+      <div class="grid-cell-body">Continuous gold-leaf trim, <strong style="color:var(--bone)">four bespoke corner pieces (each unique)</strong>, painted bottom cartouche the engine writes the name into. <code>LegendaryFlourish</code> hooks here.</div>
+      <div class="grid-cell-spec">frame ~14px · 6px breathing margin</div>
+    </div>
+  </div>
+
+  <div class="palette-row" style="margin-top:36px">
+    <button class="sw" style="--sw:#5a5a6e" data-hex="#5a5a6e"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">common · graphite</div><div class="sw-hex">#5a5a6e</div></div></button>
+    <button class="sw" style="--sw:#b87333" data-hex="#b87333"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">uncommon · copper</div><div class="sw-hex">#b87333</div></div></button>
+    <button class="sw" style="--sw:#7be3ff" data-hex="#7be3ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">rare · aurora-cyan</div><div class="sw-hex">#7be3ff</div></div></button>
+    <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">legendary · gold</div><div class="sw-hex">#f5c451</div></div></button>
+    <button class="sw" style="--sw:#ff7847" data-hex="#ff7847"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">legendary · ember rim</div><div class="sw-hex">#ff7847</div></div></button>
+    <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · rim glow</div><div class="sw-hex">#9577ff</div></div></button>
+  </div>
+</section>
+
+<!-- ════════════════════════ EDITIONS ════════════════════════ -->
+<section class="section" id="editions">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">04 · edition overlay paintings</span>
+  </div>
+  <h2 class="section-h">Four surface phenomena. Replaces existing CSS in <code style="font-family:var(--f-mono);font-size:0.7em;color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 8px;border:1px solid var(--rule)">index.css 1203–1342</code>.</h2>
+  <p class="section-lede">
+    Each shipped at 360×500 minimum (1.5× offer-card for downsample headroom), layered PSD with animatable elements on named layers.
+    <strong style="color:var(--bone)">No emoji-shiny chrome.</strong> These are <em>worked surfaces</em>.
+  </p>
+
+  <div class="grid-4">
+    <!-- Foil -->
+    <div class="grid-cell">
+      <div class="card cat-violet">
+        <div class="card-band band-combo"></div>
+        <div class="edition edition-foil-mock"></div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge" style="--ed-color:#f5c451">FOI</div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">foil · + chips when fires</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">edition · 01</span>Foil</h3>
+      <div class="grid-cell-body">Brushed-gold metal sheet. <strong style="color:var(--bone)">Worked metal, not chrome.</strong> Static diagonal grain + a separate sweep-highlight layer the engine animates every 4.2s.</div>
+      <div class="grid-cell-spec">+ chips · sweep every 4.2s</div>
+    </div>
+
+    <!-- Holo -->
+    <div class="grid-cell">
+      <div class="card cat-violet">
+        <div class="card-band band-combo"></div>
+        <div class="edition edition-holo-mock"></div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge" style="--ed-color:#7be3ff">HOL</div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">holo · + mult when fires</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">edition · 02</span>Holo</h3>
+      <div class="grid-cell-body">Prismatic refraction grid — <strong style="color:var(--bone)">CD-data-side pattern, not rainbow sticker</strong>. Five curated specular hot-spots anchor the cycling hue underneath.</div>
+      <div class="grid-cell-spec">+ mult · hue cycle continuous</div>
+    </div>
+
+    <!-- Poly -->
+    <div class="grid-cell">
+      <div class="card cat-violet is-poly">
+        <div class="card-band band-combo"></div>
+        <div class="edition edition-poly-mock">
+          <div class="poly-sparkles"></div>
+        </div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge" style="--ed-color:#ff7847">POL</div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">poly · × own contribution</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h"><span class="gc-tag">edition · 03</span>Poly</h3>
+      <div class="grid-cell-body">Faceted crystalline interference. Triangular shard lattice with subtle internal gradient. <strong style="color:var(--bone)">Tileable at 1.5× card size</strong> so engine rotation doesn't expose edges.</div>
+      <div class="grid-cell-spec">× own · 26s rotation</div>
+    </div>
+
+    <!-- Void -->
+    <div class="grid-cell">
+      <div class="card cat-aurora is-void">
+        <div class="card-band band-scaling"></div>
+        <div class="edition edition-void-mock">
+          <div class="void-stars"></div>
+          <div class="void-lens"></div>
+          <div class="void-horizon"></div>
+          <div class="void-eye"></div>
+          <div class="void-twinkle t1"></div>
+          <div class="void-twinkle t2"></div>
+          <div class="void-twinkle t3"></div>
+          <div class="void-twinkle t4"></div>
+          <div class="void-twinkle t5"></div>
+          <div class="void-twinkle t6"></div>
+        </div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge void" style="--ed-color:#9577ff">★</div>
+        <div class="card-inner">
+          <div class="card-eyebrow" style="color:var(--bone)">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name" style="color:var(--bone);text-shadow:0 0 8px var(--aurora)">Triplet Engine</div>
+          <div class="card-desc" style="color:var(--cosmos-100)">void · zero slot cost</div>
+        </div>
+      </div>
+      <h3 class="grid-cell-h" style="color:var(--aurora)"><span class="gc-tag" style="color:var(--gold)">edition · 04 · painted hero</span>Void</h3>
+      <div class="grid-cell-body"><strong style="color:var(--bone)">Hand-placed starfield, not procedural.</strong> Hundreds of stars, deliberate clusters and voids. Central event-horizon shape with aurora-violet bleed. Reads as a window into deep space.</div>
+      <div class="grid-cell-spec">zero slot · build-defining</div>
+    </div>
+  </div>
+
+  <div class="qa-criteria" style="margin-top:48px">
+    <h4>void edition · animatable layers (isolate in PSD)</h4>
+    <ul>
+      <li>The aurora bleed at center — engine pulses 3.6s ease-in-out</li>
+      <li>5–7 designated "twinkling" stars — engine fades in/out</li>
+      <li><strong>Do NOT animate:</strong> the starfield itself — players will notice drift</li>
+      <li><strong>Do NOT animate:</strong> the event-horizon dark zone</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ════════════════════════ LEGENDARY PORTRAITS ════════════════════════ -->
+<section class="section" id="portraits">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">05 · per-catalyst portrait tier — stretch · scoped separately</span>
+  </div>
+  <h2 class="section-h">Five bespoke painted portraits. Behind the glyph, inside the legendary frame.</h2>
+  <p class="section-lede">
+    Optional follow-on deliverable. The portrait reads through the legendary frame's interior — the glyph stays in the foreground.
+    <strong style="color:var(--bone)">Crown</strong> and <strong style="color:var(--bone)">Resonance</strong> were confirmed to be MODS, not catalysts — they ship on a separate brief.
+  </p>
+
+  <div class="portraits">
+    <div class="portrait">
+      <div class="portrait-frame">
+        <div class="portrait-stripes"></div>
+        <div class="portrait-tag">portrait · 01</div>
+        <div class="portrait-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 4 18 Q 4 6, 10 4"/><path d="M 6 18 Q 6 8, 12 6"/><path d="M 8 18 Q 8 10, 14 8"/><line x1="15" y1="13" x2="19" y2="13"/><line x1="15" y1="16" x2="19" y2="16"/></svg>
+        </div>
+        <div class="portrait-caption"><strong>All-Band</strong>nine motifs · one panel</div>
+      </div>
+      <div class="portrait-body">A calibration plate showing all 9 archetype motifs reduced to instrument-panel icons, arranged like a <strong>control board</strong>.</div>
+    </div>
+
+    <div class="portrait">
+      <div class="portrait-frame">
+        <div class="portrait-stripes"></div>
+        <div class="portrait-tag">portrait · 02</div>
+        <div class="portrait-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="10" ry="3"/><ellipse cx="12" cy="12" rx="6" ry="2"/><ellipse cx="12" cy="12" rx="2" ry="0.8"/></svg>
+        </div>
+        <div class="portrait-caption"><strong>Recursion Lens</strong>mise-en-abyme</div>
+      </div>
+      <div class="portrait-body">Lens stack viewed edge-on. The back element shows the front element's reflection showing the back element's reflection. <strong>No ornament.</strong></div>
+    </div>
+
+    <div class="portrait">
+      <div class="portrait-frame">
+        <div class="portrait-stripes"></div>
+        <div class="portrait-tag">portrait · 03</div>
+        <div class="portrait-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/><circle cx="6" cy="12" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="14" cy="12" r="1"/><circle cx="18" cy="12" r="1"/></svg>
+        </div>
+        <div class="portrait-caption"><strong>Royal Flush</strong>aligned markers</div>
+      </div>
+      <div class="portrait-body">A brass straightedge with five aligned markers, the lattice of an interference pattern overlaid.</div>
+    </div>
+
+    <div class="portrait">
+      <div class="portrait-frame">
+        <div class="portrait-stripes"></div>
+        <div class="portrait-tag">portrait · 04 · calibration</div>
+        <div class="portrait-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="14" cy="12" r="6" fill="currentColor" stroke="none" opacity="0.7"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/></svg>
+        </div>
+        <div class="portrait-caption"><strong>Eclipse Pact</strong>corona engraved</div>
+      </div>
+      <div class="portrait-body">Annular eclipse photograph cross-sectioned, showing the corona's structure as <strong>engraved layers</strong>.</div>
+    </div>
+
+    <div class="portrait">
+      <div class="portrait-frame">
+        <div class="portrait-stripes"></div>
+        <div class="portrait-tag">portrait · 05 · calibration</div>
+        <div class="portrait-glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="portrait-caption"><strong>Heirloom Locket</strong>sealed capsule</div>
+      </div>
+      <div class="portrait-body">A sealed metal capsule with a single hairline seam, suggesting something <em>inside</em> but never opened.</div>
+    </div>
+  </div>
+
+  <div class="calibration-note" style="margin-top:32px;border-color:var(--aurora);background:rgba(149,119,255,0.06)">
+    <span class="cn-tag" style="color:var(--aurora);border-color:var(--aurora)">stretch · pricing</span>
+    <p>Each portrait priced individually. Recommend delivering <strong>Eclipse Pact</strong> + <strong>Heirloom Locket</strong> first as the calibration pair — their motifs are most visually distinct from the procedural fallback.</p>
+  </div>
+</section>
+
+<!-- ════════════════════════ ICON STYLE ════════════════════════ -->
+<section class="section" id="icons">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">06 · icon style continuation</span>
+  </div>
+  <h2 class="section-h">Sixty-seven shipped. Four missing. Five rules to keep them coherent.</h2>
+  <p class="section-lede">
+    Existing 67 SVG glyphs at <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">public/brand/catalysts/</code> define the baseline. The <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">KindFrame</code> component sizes off these assumptions.
+  </p>
+
+  <div class="icon-rules">
+    <div class="icon-rule">
+      <div class="ir-num">01</div>
+      <div class="ir-title">viewBox</div>
+      <div class="ir-body"><code>0 0 24 24</code>. No exceptions. The KindFrame component sizes from this assumption.</div>
+    </div>
+    <div class="icon-rule">
+      <div class="ir-num">02</div>
+      <div class="ir-title">Stroke</div>
+      <div class="ir-body">Monoline, weight <code>1.5–2.0</code>. No variable-weight strokes. No gradients.</div>
+    </div>
+    <div class="icon-rule">
+      <div class="ir-num">03</div>
+      <div class="ir-title">Fills</div>
+      <div class="ir-body">Stroke-only by default. One small filled dot/shape allowed as emphasis. No glyph &gt; ~30% filled area.</div>
+    </div>
+    <div class="icon-rule">
+      <div class="ir-num">04</div>
+      <div class="ir-title">Complexity ceiling</div>
+      <div class="ir-body">Max <strong style="color:var(--bone)">6 path elements</strong> per glyph. If a concept needs more, re-frame the concept.</div>
+    </div>
+    <div class="icon-rule">
+      <div class="ir-num">05</div>
+      <div class="ir-title">Color</div>
+      <div class="ir-body">Paths use <code>stroke="currentColor"</code> and <code>fill="currentColor"</code> ONLY. <strong style="color:var(--bone)">Never embed a hex.</strong></div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--f-head);color:var(--bone);font-size:22px;letter-spacing:0.04em;margin:48px 0 16px">Four missing glyphs</h3>
+  <p style="font-size:14px;color:var(--cosmos-100);max-width:64ch">
+    Each ships as a stroke-only SVG following the 5 rules above. Filenames land in <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">public/brand/catalysts/</code> as <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">{catalyst_id}.svg</code>.
+  </p>
+
+  <div class="missing-glyphs">
+    <div class="mg">
+      <div class="mg-head">
+        <div class="mg-slot">?</div>
+        <div class="mg-name">bone_tax<span class="mg-status">missing</span></div>
+      </div>
+      <div class="mg-body">A small balance scale with one pan tipped down. The down-pan contains a single <strong>fractured cube</strong>. Filled emphasis on the fracture line.</div>
+    </div>
+    <div class="mg">
+      <div class="mg-head">
+        <div class="mg-slot">?</div>
+        <div class="mg-name">hollow_bishop<span class="mg-status">missing</span></div>
+      </div>
+      <div class="mg-body">A chess-bishop silhouette in stroke only, with the <strong>upper third hollowed out</strong>. Filled emphasis on a single small dot inside the hollow.</div>
+    </div>
+    <div class="mg">
+      <div class="mg-head">
+        <div class="mg-slot">?</div>
+        <div class="mg-name">witchs_bargain<span class="mg-status">missing</span></div>
+      </div>
+      <div class="mg-body">A transaction-tally symbol — <strong>a brass coin + a notched mark</strong> side-by-side. <strong style="color:var(--crimson)">No witch imagery.</strong> Filled emphasis on the notch.</div>
+    </div>
+    <div class="mg">
+      <div class="mg-head">
+        <div class="mg-slot">+</div>
+        <div class="mg-name">future · open slot<span class="mg-status" style="color:var(--cosmos-200)">authoring rules</span></div>
+      </div>
+      <div class="mg-body">New catalysts ship glyphs against the 5 rules above. <strong>Existing 67 are LOCKED</strong> — do not propose stylistic revisions to glyphs that already shipped.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ QA MATRIX ════════════════════════ -->
+<section class="section" id="qa">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">07 · combinatorics QA matrix</span>
+  </div>
+  <h2 class="section-h">Four composites the artist returns. Layers stack cleanly or they don't.</h2>
+  <p class="section-lede">
+    Before signing off the system, the artist returns 4 flat PNG composites at <strong style="color:var(--bone)">180×250</strong> (offer-card size) proving the layers stack. If any composite fails any criterion, <strong>the underlying layer needs revision, not the composite.</strong>
+  </p>
+
+  <div class="qa-grid">
+    <!-- QA 1 -->
+    <div class="qa-cell">
+      <div class="card cat-gold">
+        <div class="card-band band-economy"></div>
+        <div class="frame frame-common"></div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L 21 12 L 12 21 L 3 12 Z"/><path d="M12 7 L 17 12 L 12 17 L 7 12 Z"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Stipend</div>
+          <div class="card-desc">+2 chips each hand</div>
+        </div>
+      </div>
+      <div class="qa-meta">
+        <div class="qa-num">composite · 01</div>
+        <div class="qa-line">Stipend</div>
+        <div class="qa-line" style="color:var(--cosmos-100)">economy · common · —</div>
+      </div>
+    </div>
+
+    <!-- QA 2 -->
+    <div class="qa-cell">
+      <div class="card cat-violet">
+        <div class="card-band band-combo"></div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="card-inner">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3 L 13.5 6 L 10.5 6 Z"/><path d="M19.8 16.5 L 16.6 16.2 L 18.1 13.6 Z"/><path d="M4.2 16.5 L 5.9 13.6 L 7.4 16.2 Z"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name">Triplet Engine</div>
+          <div class="card-desc">3-of-a-kind chains rerolls</div>
+        </div>
+      </div>
+      <div class="qa-meta">
+        <div class="qa-num">composite · 02</div>
+        <div class="qa-line">Triplet Engine</div>
+        <div class="qa-line" style="color:var(--cosmos-100)">combo · rare · —</div>
+      </div>
+    </div>
+
+    <!-- QA 3 -->
+    <div class="qa-cell">
+      <div class="card cat-ember">
+        <div class="card-band band-scaling"></div>
+        <div class="frame frame-legendary">
+          <div class="leg-corner tl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner tr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner bl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-corner br"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M 2 2 L 12 2 M 2 2 L 2 12 M 2 2 L 8 8 M 6 2 L 10 6 M 2 6 L 6 10"/></svg></div>
+          <div class="leg-cartouche"><span class="cart-name">Heirloom Locket</span></div>
+        </div>
+        <div class="card-inner" style="padding-bottom:48px">
+          <div class="card-eyebrow">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/><path d="M 9 16 L 15 16"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="qa-meta">
+        <div class="qa-num">composite · 03</div>
+        <div class="qa-line">Heirloom Locket</div>
+        <div class="qa-line" style="color:var(--cosmos-100)">scaling · legendary · —</div>
+      </div>
+    </div>
+
+    <!-- QA 4 -->
+    <div class="qa-cell">
+      <div class="card cat-violet is-void">
+        <div class="card-band band-combo"></div>
+        <div class="edition edition-void-mock">
+          <div class="void-stars"></div>
+          <div class="void-lens"></div>
+          <div class="void-horizon"></div>
+          <div class="void-eye"></div>
+          <div class="void-twinkle t1"></div>
+          <div class="void-twinkle t2"></div>
+          <div class="void-twinkle t3"></div>
+          <div class="void-twinkle t4"></div>
+          <div class="void-twinkle t5"></div>
+          <div class="void-twinkle t6"></div>
+        </div>
+        <div class="frame frame-rare">
+          <span class="rare-bot-l"></span><span class="rare-bot-r"></span>
+        </div>
+        <div class="ed-badge void" style="--ed-color:#9577ff">★</div>
+        <div class="card-inner">
+          <div class="card-eyebrow" style="color:var(--bone)">catalyst</div>
+          <div class="card-glyph-frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 C 6 6, 18 6, 21 12 C 18 18, 6 18, 3 12 Z"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><circle cx="9" cy="8.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="15" cy="8.5" r="0.6" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="card-name" style="color:var(--bone);text-shadow:0 0 8px var(--aurora)">Stratifier</div>
+          <div class="card-desc" style="color:var(--cosmos-100)">combo · rare · VOID</div>
+        </div>
+      </div>
+      <div class="qa-meta">
+        <div class="qa-num">composite · 04 · stack test</div>
+        <div class="qa-line">Stratifier</div>
+        <div class="qa-line" style="color:var(--cosmos-100)">combo · rare · void</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qa-criteria">
+    <h4>QA criteria · check every composite</h4>
+    <ul>
+      <li>Catalyst identity color visibly tints the archetype band without overwhelming it</li>
+      <li>The rarity frame reads correctly without the edition overlay (1, 2, 3)</li>
+      <li>The edition overlay reads correctly when stacked with the rarity frame (4)</li>
+      <li>The glyph stays foreground-readable in all 4 compositions</li>
+      <li>The legendary cartouche name renders cleanly (3)</li>
+      <li>The 4px breathing margin holds — no clip under fire pulse at 108% scale</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ════════════════════════ DELIVERY ════════════════════════ -->
+<section class="section" id="delivery">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">08 · delivery checklist</span>
+  </div>
+  <h2 class="section-h">Twenty-one layer assets. Four glyphs. Four composites.</h2>
+  <p class="section-lede">
+    Source files <strong style="color:var(--bone)">always</strong> ship as layered PSD with named layer groups. No flat exports — the engine needs the layered version for the animatable parts.
+  </p>
+
+  <div class="checklist">
+    <div class="ckrow head">
+      <div>idx</div><div>deliverable</div><div>format</div><div>filename pattern</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">01</div>
+      <div class="ck-name">Rarity frames · 4
+        <span class="ck-sub">9-slice scalable PNG. Sidecar .txt documents 9-slice metadata per frame.</span>
+      </div>
+      <div class="ck-spec">240 × 320 px
+        <span class="ck-spec-sub">png · srgb · transparent</span>
+      </div>
+      <div class="ck-files">frame-{common,uncommon,rare,legendary}.{png,psd}</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">02</div>
+      <div class="ck-name">Edition overlays · 4
+        <span class="ck-sub">Layered PSD with animatable elements isolated on named layers.</span>
+      </div>
+      <div class="ck-spec">360 × 500 px
+        <span class="ck-spec-sub">png · srgb · 1.5× headroom</span>
+      </div>
+      <div class="ck-files">edition-{foil,holo,poly,void}.{png,psd}</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">03</div>
+      <div class="ck-name">Archetype bands · 9
+        <span class="ck-sub">Grayscale, tileable. The engine tints each at composite time.</span>
+      </div>
+      <div class="ck-spec">240 × 320 px
+        <span class="ck-spec-sub">png · grayscale · tileable</span>
+      </div>
+      <div class="ck-files">archetype-{combo,face,…,risk}-band.{png,psd}</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">04</div>
+      <div class="ck-name">Missing glyphs · 4
+        <span class="ck-sub">bone_tax · hollow_bishop · witchs_bargain + 1 future slot.</span>
+      </div>
+      <div class="ck-spec">24 × 24 viewBox
+        <span class="ck-spec-sub">svg · currentColor only</span>
+      </div>
+      <div class="ck-files">public/brand/catalysts/{id}.svg</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">05</div>
+      <div class="ck-name">QA composites · 4
+        <span class="ck-sub">Sample stacks proving the layers composite cleanly. See section 07.</span>
+      </div>
+      <div class="ck-spec">180 × 250 px
+        <span class="ck-spec-sub">png · flat composite</span>
+      </div>
+      <div class="ck-files">qa-composite-{1,2,3,4}.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">06</div>
+      <div class="ck-name">Source files
+        <span class="ck-sub">Layered PSD with named layer groups, every asset. <strong>No flat exports.</strong></span>
+      </div>
+      <div class="ck-spec">layered
+        <span class="ck-spec-sub">psd · named groups</span>
+      </div>
+      <div class="ck-files">{asset}.psd</div>
+    </div>
+  </div>
+
+  <div class="calibration-note">
+    <span class="cn-tag">calibration sequence</span>
+    <p>
+      <strong>Ship 1.</strong> Common-Frame + Foil-Overlay + economy-band + QA composite #1 (Stipend / Common / Economy / no edition). Cheapest combo — if these don't composite cleanly, no other pairing will.
+      <strong>Then sign-off</strong> before painting the remaining 3 frames + 3 overlays + 8 bands.
+      <strong>Legendary + Void ship LAST</strong> — most labor, most iteration. Timeline: 1 week calibration pair, 4–6 weeks full system.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════════ OUT OF SCOPE ════════════════════════ -->
+<section class="section" id="scope">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">09 · what this does NOT cover</span>
+  </div>
+  <h2 class="section-h">Out of scope. Locked.</h2>
+  <p class="section-lede">
+    Handled elsewhere or by different roles. Listed explicitly so scope creep doesn't bleed.
+  </p>
+
+  <div class="scope-out">
+    <div class="so-row">
+      <div class="so-title">animation timing</div>
+      <div class="so-body">Engineer's job. The brief specifies <strong>where</strong> in the asset the animation hooks live (foil sweep, poly rotation, void aurora pulse, legendary fire pulse) but the artist does not deliver motion. The painted asset is the frame, not the film.</div>
+    </div>
+    <div class="so-row">
+      <div class="so-title">per-catalyst portraits at scale (71+)</div>
+      <div class="so-body">Explicitly out. Only 5 legendary catalysts get bespoke portraits, and those are stretch deliverables priced separately. <strong>The other 66 inherit identity from (band × frame × edition × glyph). That's the whole point.</strong></div>
+    </div>
+    <div class="so-row">
+      <div class="so-title">cosmetic-shop skin variants</div>
+      <div class="so-body">Separate brief. The cosmetic system (Aurora Sigils palette, Solar Flare particles, Aurora Lyra constellation) handles palette swaps at the cosmetic layer. <strong>Do not paint cosmetic variants here.</strong></div>
+    </div>
+    <div class="so-row">
+      <div class="so-title">mod cards</div>
+      <div class="so-body">Separate brief. Crown · Resonance · Pip Charge · Loaded · Tally Mark etc. share the kind-frame system at the React level but ship their own archetype + rarity treatment after catalyst lands.</div>
+    </div>
+    <div class="so-row">
+      <div class="so-title">voucher · consumable · pack cards</div>
+      <div class="so-body">Out. Different anatomy (no archetype band, no edition system) and ship their own pass.</div>
+    </div>
+    <div class="so-row">
+      <div class="so-title">catalyst icon redesigns</div>
+      <div class="so-body">Only the 4 missing glyphs are in scope. <strong>The existing 67 are LOCKED.</strong> Do not propose stylistic revisions to glyphs that already shipped.</div>
+    </div>
+    <div class="so-row last">
+      <div class="so-title">React-component frame redesigns</div>
+      <div class="so-body">The engine's existing <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:1px 4px;border:1px solid var(--rule)">KindFrame</code> outer hexagonal silhouette stays. The painted rarity frames live INSIDE that hexagonal stroke, <strong>not replacing it</strong>.</div>
+    </div>
+    <div class="so-row last">
+      <div class="so-title">bespoke art for the boss roster</div>
+      <div class="so-body">See <em>Boss Roster Brief</em>. Sibling document; different artist if portfolios don't overlap.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ FOOTER ════════════════════════ -->
+<footer>
+  <div>
+    <h4>routing note</h4>
+    <p>
+      The shop is a workshop. The catalyst is a tool. The card is the tool's data sheet.
+      If the artist's portfolio is fantasy character art or trading-card creature illustration, route to a different artist —
+      this brief is intentionally hostile to anthropomorphic or mystical interpretation.
+    </p>
+  </div>
+  <div>
+    <h4>canonical sources</h4>
+    <p><code>src-next/data/catalysts.ts</code></p>
+    <p><code>src-next/state/slices/run.ts</code> · CatalystEdition</p>
+    <p><code>src-next/app/hud/catalystStrip/CatalystCard.tsx</code></p>
+    <p><code>src-next/app/screens/shop/OfferCard.tsx</code></p>
+    <p><code>src-next/styles/index.css</code> 1203–1342</p>
+    <p><code>public/brand/catalysts/</code> · 67 glyphs</p>
+  </div>
+  <div>
+    <h4>brief metadata</h4>
+    <p>Authored 2026 · 05 · 16</p>
+    <p>FortuneFallacy2 · catalyst card system</p>
+    <p>Internal · Art Direction review</p>
+    <p>Sibling: <em>Boss Roster Brief</em></p>
+  </div>
+</footer>
+
+</div><!-- /.wrap -->
+
+<div class="toast" id="toast" role="status" aria-live="polite">copied</div>
+
+<script>
+  // —— Copy-to-clipboard on palette swatches ——
+  const toast = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+  document.querySelectorAll('.sw').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const hex = btn.getAttribute('data-hex');
+      if (!hex) return;
+      try {
+        await navigator.clipboard.writeText(hex);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = hex; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1000);
+      showToast(hex + ' copied');
+    });
+  });
+
+  // —— Smooth-scroll for nav chips ——
+  document.querySelectorAll('a.chip').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      const target = document.querySelector(href);
+      if (!target) return;
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.pageYOffset - 12;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  });
+</script>
+
+</body>
+</html>

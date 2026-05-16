@@ -17,6 +17,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   SET_PLAYER_NAME: metaHandler,
   TOGGLE_PAUSE: metaHandler,
   BUY_ASTRAL_PERK: metaHandler,
+  BUY_COSMETIC: metaHandler,
   SEE_COACHMARK: metaHandler,
   SKIP_ONBOARDING: metaHandler,
   RESET_ONBOARDING: metaHandler,

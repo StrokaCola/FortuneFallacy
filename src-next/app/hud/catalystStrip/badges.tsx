@@ -89,17 +89,26 @@ export function TideBadge({ color, ebb }: { color: string; ebb: boolean }) {
 // own identity hue. Renamed from the legacy `renderBadge` helper to
 // match React's component-as-function convention even though it
 // returns JSX directly (no internal state).
+//
+// 2026-05-16 polish — bumped from 9→12px and added a colored glow so
+// the accrued stack reads as a satisfying "look what I've built"
+// signal rather than a corner footnote. Strip cards are 64×88, so we
+// can't push the counter past ~12px without crowding the icon, but
+// the glow + weight gives the number presence at any zoom.
 export function CornerBadge({ color, text }: { color: string; text: string }) {
   return (
     <div style={{
-      position: 'absolute', top: 4, right: 4,
-      fontSize: 9, fontFamily: '"JetBrains Mono", monospace',
-      color, fontWeight: 700,
-      background: 'rgba(15,9,37,0.85)',
-      padding: '1px 4px', borderRadius: 4,
-      border: `1px solid ${color}80`,
-      letterSpacing: '0.04em',
+      position: 'absolute', top: 3, right: 3,
+      fontSize: 12, fontFamily: '"JetBrains Mono", monospace',
+      color, fontWeight: 800,
+      background: 'rgba(15,9,37,0.92)',
+      padding: '2px 5px', borderRadius: 5,
+      border: `1px solid ${color}cc`,
+      letterSpacing: '0.03em',
       whiteSpace: 'nowrap',
+      boxShadow: `0 0 8px ${color}66, 0 0 16px ${color}33`,
+      textShadow: `0 0 6px ${color}aa`,
+      lineHeight: 1,
     }}>
       {text}
     </div>

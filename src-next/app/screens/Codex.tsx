@@ -719,13 +719,44 @@ import pkg from '../../../package.json';
 
 function SecretsView({ found }: { found: string[] }) {
   const foundSet = new Set(found);
+  const total = EASTER_EGGS.length;
+  const seenCount = EASTER_EGGS.filter((e) => foundSet.has(e.id)).length;
+  const pct = total > 0 ? Math.round((seenCount / total) * 100) : 0;
   return (
     <div>
       <div className="f-mono" style={{
-        fontSize: 11, color: '#bba8ff', marginBottom: 14, opacity: 0.85,
+        fontSize: 11, color: '#bba8ff', marginBottom: 10, opacity: 0.85,
         textAlign: 'center',
       }}>
         Things half-known. Some you've already done; some are still rumour.
+      </div>
+      {/* Discovery counter — gives the section a collectible spine
+          so a player can SEE they're 2-of-5 instead of guessing how
+          deep the rabbit hole goes. Gold tint matches the seen-card
+          highlight so the meter and the cards belong to one set. */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        marginBottom: 18,
+      }}>
+        <div className="f-mono uc" style={{
+          fontSize: 10, letterSpacing: '0.32em',
+          color: seenCount >= total ? '#f5c451' : '#bba8ff',
+          textShadow: seenCount >= total ? '0 0 10px rgba(245,196,81,0.5)' : undefined,
+        }}>
+          ⋆ whispers heard · {seenCount} / {total}
+        </div>
+        <div style={{
+          width: 'min(360px, 70vw)', height: 4,
+          background: 'rgba(149,119,255,0.15)',
+          borderRadius: 2, overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${pct}%`, height: '100%',
+            background: '#f5c451',
+            boxShadow: '0 0 8px rgba(245,196,81,0.6)',
+            transition: 'width 600ms ease-out',
+          }} />
+        </div>
       </div>
       <div style={{
         display: 'grid',

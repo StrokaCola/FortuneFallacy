@@ -32,6 +32,7 @@ import { encodeSeed } from '../../core/seed/rng';
 import { PortalGate } from '../portal/PortalGate';
 import { computeOneMoreRunHook, HOOK_TONE_COLOR } from './postmortem/oneMoreRunHook';
 import { RunQuestLog } from './postmortem/RunQuestLog';
+import { sfxPlay } from '../../audio/sfx';
 
 const selectRun = (s: GameState) => s.run;
 const selectMeta = (s: GameState) => s.meta;
@@ -47,6 +48,7 @@ const ARCHETYPE_LABELS: Record<string, string> = {
   mods: 'MOD MAESTRO',
   timing: 'METRONOME',
   utility: 'OPPORTUNIST',
+  risk: 'RISK COURTIER',
 };
 
 export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
@@ -57,13 +59,27 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
 
   const constellation = lookupConstellation(run.constellationId);
   const stats = run.runStats ?? { peakHand: 0, peakCombo: null, catalystChips: {}, dustEarned: 0, catalystFires: {} };
-  const hook = computeOneMoreRunHook(meta, run);
+  // Near-miss detection: bust within 10% of target. Drives the falling-tone
+  // sting, a "so close" stamp under the hero, and a higher-priority hook
+  // tone. The ratio guard skips division-by-zero on legacy zero-target saves.
+  const nearMissDeficit = (mode === 'fail' && target > 0 && score < target && score / target >= 0.9)
+    ? target - score
+    : 0;
+  const hook = computeOneMoreRunHook(meta, run, new Date(), nearMissDeficit > 0 ? { deficit: nearMissDeficit } : null);
   const hookColor = HOOK_TONE_COLOR[hook.tone];
 
   // Bust gets a chunky shake; win is celebratory and doesn't need it.
+  // Near-miss bust ALSO plays a falling sting that lands after the shake.
   useEffect(() => {
-    if (mode === 'fail') triggerShake('big');
-  }, [mode]);
+    if (mode !== 'fail') return;
+    triggerShake('big');
+    if (nearMissDeficit > 0) {
+      // Small delay so the sting lands after the screen settles and the
+      // shake transient clears, not on top of either.
+      const t = window.setTimeout(() => sfxPlay('nearMiss'), 220);
+      return () => window.clearTimeout(t);
+    }
+  }, [mode, nearMissDeficit]);
 
   // Enter/Space = Run Again. Wins go to constellation_select; busts do
   // the same. The button row shows the same shape so muscle memory works
@@ -120,6 +136,13 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
     .filter((e): e is NonNullable<typeof e> => e != null);
 
   const buildIdentity = computeBuildIdentity(run.catalysts);
+  // 2026-05-16 — build-identity story sentence. Reuses the top
+  // contributors already sorted above so the line names the catalysts
+  // the player FELT during the run, not the deck order. Skipped when
+  // no archetype is detected (handled by the buildIdentity guard).
+  const buildStory = buildIdentity
+    ? computeBuildStory(buildIdentity.label, topCatalysts.map(([id]) => id))
+    : null;
   const peakComboName = stats.peakCombo
     ? COMBOS.find((c) => c.id === stats.peakCombo)?.name ?? stats.peakCombo
     : null;
@@ -171,6 +194,23 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
         }}>
           ✦ {constellation.name}
         </div>
+
+        {/* Near-miss stamp — only on a bust within 10% of target. Sits
+            directly under the hero so the player reads "you nearly had
+            it" before the stats panels. Coral tint matches the hook's
+            nearMiss tone color for visual continuity. */}
+        {nearMissDeficit > 0 && (
+          <div className="f-display uc" style={{
+            marginTop: 4,
+            fontSize: 'clamp(16px, 3.4vw, 22px)',
+            letterSpacing: '0.32em',
+            color: '#ff8aa8',
+            textShadow: '0 0 18px rgba(255,138,168,0.55), 0 0 4px rgba(255,138,168,0.9)',
+            opacity: 0, animation: 'fadein 700ms ease-out 750ms both',
+          }}>
+            ✦ SO CLOSE — needed {nearMissDeficit.toLocaleString()} more
+          </div>
+        )}
 
         {/* Panel 1 — final score / target / shards. Grid with auto-fit
             so the 4-tile fail variant lands on a single balanced row
@@ -379,15 +419,35 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
         )}
 
         {/* Panel 4 — build identity (only when there are 3+ catalysts so
-            the verdict actually means something). */}
+            the verdict actually means something). Label is the
+            archetype tribe; the story line below names the catalysts
+            the player actually leaned on this run, so the verdict
+            reads as the run's narrative rather than a category tag. */}
         {buildIdentity && (
-          <div className="f-mono uc" style={{
-            fontSize: 10, letterSpacing: '0.4em',
-            color: buildIdentity.color,
-            textShadow: `0 0 14px ${buildIdentity.color}88`,
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
             opacity: 0, animation: 'fadein 800ms ease-out 1100ms both',
+            maxWidth: 460,
           }}>
-            ◆ {buildIdentity.label} ◆
+            <div className="f-mono uc" style={{
+              fontSize: 10, letterSpacing: '0.4em',
+              color: buildIdentity.color,
+              textShadow: `0 0 14px ${buildIdentity.color}88`,
+            }}>
+              ◆ {buildIdentity.label} ◆
+            </div>
+            {buildStory && (
+              <div style={{
+                fontFamily: '"Exo 2", sans-serif',
+                fontSize: 13, lineHeight: 1.5,
+                color: '#f3f0ff', fontStyle: 'italic',
+                opacity: 0.92,
+                textAlign: 'center',
+                padding: '0 12px',
+              }}>
+                {buildStory}
+              </div>
+            )}
           </div>
         )}
 
@@ -674,6 +734,32 @@ function computeBuildIdentity(catalysts: string[]): { label: string; color: stri
     label: ARCHETYPE_LABELS[archetype] ?? archetype.toUpperCase(),
     color: sample?.color ?? '#bba8ff',
   };
+}
+
+// 2026-05-16 — Build-story sentence keyed off archetype label + the
+// player's top chip contributors. Names the catalysts the player FELT
+// during the run, then closes with a one-line "what made the build
+// work" verdict tuned per archetype. Returns null when we can't name
+// at least two contributors (the line would read like a fragment).
+const STORY_CLOSERS: Record<string, string> = {
+  'COMBO TRIBE':     'every higher-tier hand fed the next.',
+  'FACE HUNTER':     'each die that rolled high paid in chips and mult.',
+  'ECONOMIST':       'shards kept rolling into the multiplier.',
+  'INFINITE SCALER': 'each clear made the next one harder to bust.',
+  'MOD MAESTRO':     'every die slot doubled as a multiplier.',
+  'METRONOME':       'pacing turned restraint into payoff.',
+  'OPPORTUNIST':     'each beat hedged the next hand\'s risk.',
+  'RISK COURTIER':   'every tradeoff paid back in mult before the chips bled out.',
+};
+function computeBuildStory(label: string, topIds: string[]): string | null {
+  // Top 3 catalysts by chip contribution, mapped to display names.
+  const names = topIds
+    .slice(0, 3)
+    .map((id) => CATALYST_META.find((c) => c.id === id)?.name)
+    .filter((n): n is string => typeof n === 'string');
+  if (names.length < 2) return null;
+  const closer = STORY_CLOSERS[label] ?? 'the build held together to the end.';
+  return `${names.join(' + ')} — ${closer}`;
 }
 
 // 2026-05-11 polish — per-scaling-catalyst stack → human-readable bonus.

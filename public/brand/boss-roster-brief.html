@@ -1,0 +1,2088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Boss Roster Brief — FortuneFallacy2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --cosmos-50:#f3f0ff; --cosmos-100:#dcd4ff; --cosmos-200:#bba8ff;
+    --cosmos-300:#9577ff; --cosmos-400:#7752f0; --cosmos-500:#5c39c4;
+    --cosmos-600:#432896; --cosmos-700:#2e1d6b; --cosmos-800:#1c1245;
+    --cosmos-900:#0f0925; --cosmos-950:#07051a;
+    --aurora:#9577ff;
+    --gold:#f5c451;
+    --bone:#f3f0ff;
+    --crimson:#e2334a;
+    --rule: rgba(149,119,255,0.18);
+    --rule-strong: rgba(149,119,255,0.42);
+    --f-display: 'Cinzel Decorative', serif;
+    --f-head: 'Cinzel', serif;
+    --f-body: 'Exo 2', system-ui, sans-serif;
+    --f-mono: 'JetBrains Mono', monospace;
+    --boss: var(--aurora);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--cosmos-950); color: var(--bone); }
+  body {
+    font-family: var(--f-body);
+    font-weight: 300;
+    line-height: 1.55;
+    font-size: 15px;
+    background:
+      radial-gradient(ellipse 1200px 800px at 50% -10%, rgba(149,119,255,0.10), transparent 70%),
+      radial-gradient(ellipse 800px 600px at 100% 30%, rgba(122,82,240,0.06), transparent 60%),
+      var(--cosmos-950);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Faint star field — pure CSS, no SVG hand-drawing */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(1px 1px at 17% 22%, rgba(243,240,255,0.45), transparent 60%),
+      radial-gradient(1px 1px at 73% 14%, rgba(243,240,255,0.35), transparent 60%),
+      radial-gradient(1px 1px at 42% 78%, rgba(243,240,255,0.30), transparent 60%),
+      radial-gradient(1px 1px at 88% 64%, rgba(243,240,255,0.40), transparent 60%),
+      radial-gradient(1px 1px at 12% 58%, rgba(243,240,255,0.25), transparent 60%),
+      radial-gradient(1px 1px at 58% 36%, rgba(243,240,255,0.30), transparent 60%),
+      radial-gradient(1px 1px at 28% 92%, rgba(243,240,255,0.35), transparent 60%),
+      radial-gradient(1px 1px at 92% 88%, rgba(243,240,255,0.20), transparent 60%);
+    background-size: 100% 100%;
+    opacity: 0.7;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 56px; }
+
+  /* —— Typography utilities, mirroring src-next/styles/index.css —— */
+  .f-display { font-family: var(--f-display); letter-spacing: 0.02em; }
+  .f-head    { font-family: var(--f-head); letter-spacing: 0.06em; }
+  .f-mono    { font-family: var(--f-mono); }
+  .uc        { text-transform: uppercase; }
+  .mono-label {
+    font-family: var(--f-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.32em;
+    color: var(--cosmos-200);
+  }
+  .mono-eyebrow {
+    font-family: var(--f-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5em;
+    color: var(--crimson);
+  }
+
+  /* —— Cover —— */
+  .cover {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 56px 0 48px;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; }
+  .glyph-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 14px;
+    margin: 64px 0 56px;
+  }
+  .glyph-cell {
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--rule);
+    background: linear-gradient(180deg, rgba(28,18,69,0.45), rgba(7,5,26,0.6));
+    position: relative;
+    display: grid; place-items: center;
+    transition: border-color 200ms, transform 200ms;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+  .glyph-cell:hover { border-color: var(--rule-strong); transform: translateY(-2px); }
+  .glyph-cell svg { width: 56%; height: 56%; }
+  .glyph-cell .glyph-num {
+    position: absolute; top: 6px; left: 8px;
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.2em;
+    color: var(--cosmos-200); opacity: 0.7;
+  }
+  .glyph-cell .glyph-name {
+    position: absolute; bottom: 6px; left: 8px; right: 8px;
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bone); opacity: 0.85;
+  }
+  .glyph-cell .accent-dot {
+    position: absolute; top: 6px; right: 8px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--boss); box-shadow: 0 0 10px var(--boss);
+  }
+
+  .cover-title {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: clamp(48px, 7vw, 96px);
+    line-height: 1.0;
+    letter-spacing: 0.02em;
+    color: var(--bone);
+    max-width: 16ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .cover-title em {
+    font-style: normal;
+    color: var(--aurora);
+    text-shadow: 0 0 24px rgba(149,119,255,0.5);
+  }
+  .cover-sub {
+    font-family: var(--f-body);
+    font-size: 17px;
+    color: var(--cosmos-100);
+    max-width: 60ch;
+    margin-top: 24px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+  }
+  .meta-cell .meta-label {
+    font-family: var(--f-mono); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.32em;
+    color: var(--cosmos-200);
+    margin-bottom: 8px;
+  }
+  .meta-cell .meta-val {
+    font-family: var(--f-head); font-size: 15px;
+    color: var(--bone);
+  }
+  .meta-cell .meta-val code {
+    font-family: var(--f-mono); font-size: 12px;
+    color: var(--cosmos-100);
+    background: rgba(28,18,69,0.6);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+  }
+
+  /* —— Section headers —— */
+  .section {
+    padding: 88px 0 32px;
+    border-top: 1px solid var(--rule);
+  }
+  .section-eyebrow {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .section-eyebrow .dot {
+    width: 6px; height: 6px; background: var(--aurora); border-radius: 50%;
+    box-shadow: 0 0 10px var(--aurora);
+  }
+  .section-h {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(36px, 4.5vw, 58px);
+    line-height: 1.05;
+    margin: 0 0 16px;
+    color: var(--bone);
+    text-wrap: balance;
+  }
+  .section-lede {
+    font-size: 17px;
+    max-width: 62ch;
+    color: var(--cosmos-100);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* —— Style Bible rules —— */
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    margin-top: 48px;
+    border: 1px solid var(--rule);
+  }
+  .rule {
+    padding: 28px 28px 32px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+  }
+  .rule:nth-child(2n) { border-right: none; }
+  .rule:nth-last-child(-n+2) { border-bottom: none; }
+  .rule-num {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.4em;
+    color: var(--aurora);
+    text-transform: uppercase;
+  }
+  .rule-title {
+    font-family: var(--f-head);
+    font-size: 22px;
+    color: var(--bone);
+    margin: 0;
+    letter-spacing: 0.03em;
+  }
+  .rule-body { color: var(--cosmos-100); font-size: 14px; line-height: 1.6; font-weight: 300; }
+  .rule-body strong { color: var(--bone); font-weight: 500; }
+
+  /* —— Boss spread —— */
+  .boss-spread {
+    min-height: 100vh;
+    padding: 88px 0 80px;
+    border-top: 1px solid var(--rule);
+    position: relative;
+  }
+  .boss-spread::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 600px 400px at 12% 30%, var(--boss-glow), transparent 65%);
+    opacity: 0.10;
+    z-index: 0;
+  }
+  .boss-spread > * { position: relative; z-index: 1; }
+
+  .boss-hd {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 40px;
+  }
+  .boss-num-row {
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 18px;
+  }
+  .boss-num {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.5em;
+    color: var(--crimson);
+    text-transform: uppercase;
+  }
+  .boss-num-divider {
+    width: 36px; height: 1px; background: var(--boss); opacity: 0.6;
+  }
+  .boss-anomaly-tag {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.32em;
+    color: var(--boss);
+    text-transform: uppercase;
+  }
+  .boss-name {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: clamp(64px, 8vw, 124px);
+    line-height: 0.92;
+    color: var(--bone);
+    margin: 0;
+    letter-spacing: 0.01em;
+  }
+  .boss-epithet {
+    font-family: var(--f-body);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 24px;
+    color: var(--cosmos-100);
+    margin-top: 12px;
+  }
+  .boss-flavor {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.32em;
+    color: var(--boss);
+    text-transform: uppercase;
+    text-shadow: 0 0 12px var(--boss-glow);
+    text-align: right;
+  }
+  .boss-flavor::before { content: '◇ '; opacity: 0.7; }
+  .boss-flavor::after { content: ' ◇'; opacity: 0.7; }
+
+  /* Two-col body */
+  .boss-body {
+    display: grid;
+    grid-template-columns: minmax(340px, 460px) 1fr;
+    gap: 64px;
+  }
+
+  /* —— Art plate —— */
+  .plate {
+    border: 1px solid var(--rule-strong);
+    position: relative;
+    background: var(--cosmos-950);
+    aspect-ratio: 1024 / 1536;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(149,119,255,0.05),
+      0 30px 80px rgba(0,0,0,0.6),
+      0 0 80px var(--boss-glow);
+  }
+  .plate-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% 110%, var(--boss-glow) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(149,119,255,0.15), transparent 65%),
+      linear-gradient(180deg, rgba(28,18,69,0.6), var(--cosmos-950));
+  }
+  .plate-stripes {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 14px,
+      rgba(149,119,255,0.045) 14px,
+      rgba(149,119,255,0.045) 15px
+    );
+  }
+  .plate-corners {
+    position: absolute; inset: 14px; pointer-events: none;
+  }
+  .plate-corners::before,
+  .plate-corners::after,
+  .plate-corners > span::before,
+  .plate-corners > span::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    border: 1px solid var(--boss);
+    opacity: 0.7;
+  }
+  .plate-corners::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+  .plate-corners::after { top: 0; right: 0; border-left: none; border-bottom: none; }
+  .plate-corners > span::before { bottom: 0; left: 0; border-right: none; border-top: none; }
+  .plate-corners > span::after { bottom: 0; right: 0; border-left: none; border-top: none; }
+  .plate-sigil {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    z-index: 2;
+  }
+  .plate-sigil svg {
+    width: 50%; height: auto;
+    filter: drop-shadow(0 0 20px var(--boss-glow)) drop-shadow(0 0 4px var(--boss));
+  }
+  .plate-silhouette-env {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px dashed rgba(149,119,255,0.25);
+    width: 70%; aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .plate-caption {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 14px 18px;
+    background: linear-gradient(0deg, rgba(7,5,26,0.95), rgba(7,5,26,0.6) 70%, transparent);
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 12px;
+    z-index: 3;
+  }
+  .plate-caption .pc-l {
+    font-family: var(--f-mono);
+    font-size: 10px; letter-spacing: 0.22em;
+    color: var(--bone);
+    text-transform: uppercase;
+  }
+  .plate-caption .pc-r {
+    font-family: var(--f-mono);
+    font-size: 9px; letter-spacing: 0.22em;
+    color: var(--cosmos-200);
+    text-transform: uppercase;
+    text-align: right;
+  }
+  .plate-spec-tag {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 4px 10px;
+    background: rgba(7,5,26,0.7);
+    border: 1px solid var(--boss);
+    font-family: var(--f-mono);
+    font-size: 9px; letter-spacing: 0.36em;
+    text-transform: uppercase;
+    color: var(--boss);
+    text-shadow: 0 0 8px var(--boss-glow);
+  }
+
+  /* Deliverable variant strip under plate */
+  .plate-variants {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .plate-variants.has-phase { grid-template-columns: repeat(5, 1fr); }
+  .pv {
+    border: 1px solid var(--rule);
+    padding: 8px 6px;
+    text-align: center;
+    background: rgba(15,9,37,0.5);
+  }
+  .pv .pv-l {
+    font-family: var(--f-mono); font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .pv .pv-v {
+    font-family: var(--f-mono); font-size: 10px;
+    color: var(--bone); margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* —— Content side —— */
+  .boss-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .block {
+    padding: 22px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .block:first-child { padding-top: 0; }
+  .block-h {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .block-h .blockname {
+    font-family: var(--f-mono);
+    font-size: 10px; letter-spacing: 0.4em;
+    color: var(--boss);
+    text-transform: uppercase;
+  }
+  .block-h .blocknum {
+    font-family: var(--f-mono);
+    font-size: 9px; letter-spacing: 0.3em;
+    color: var(--cosmos-200);
+    opacity: 0.6;
+  }
+  .block p {
+    margin: 0; color: var(--cosmos-50);
+    font-size: 15px; line-height: 1.65;
+    font-weight: 300;
+  }
+  .block p + p { margin-top: 10px; }
+  .block strong { color: var(--bone); font-weight: 500; }
+
+  /* Mechanic phases */
+  .phases {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--rule);
+  }
+  .phase {
+    padding: 16px 18px;
+  }
+  .phase:first-child { border-right: 1px solid var(--rule); }
+  .phase-tag {
+    font-family: var(--f-mono);
+    font-size: 9px; letter-spacing: 0.36em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .phase.p1 .phase-tag { color: var(--cosmos-200); }
+  .phase.p2 .phase-tag { color: var(--crimson); }
+  .phase.p2.relaxes .phase-tag { color: #44bb66; }
+  .phase-rule {
+    font-family: var(--f-body); font-style: italic; font-weight: 300;
+    font-size: 14px; color: var(--bone);
+  }
+  .phase-trigger {
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--cosmos-200);
+    margin-top: 8px;
+  }
+  .phase-trigger code { color: var(--bone); font-size: 10px; }
+
+  /* Palette */
+  .palette-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .sw {
+    display: flex;
+    flex-direction: column;
+    min-width: 110px;
+    cursor: pointer;
+    border: 1px solid var(--rule);
+    background: rgba(15,9,37,0.4);
+    padding: 0;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+    transition: border-color 150ms, transform 150ms;
+  }
+  .sw:hover { border-color: var(--rule-strong); transform: translateY(-1px); }
+  .sw:active { transform: translateY(0); }
+  .sw .sw-chip {
+    height: 36px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sw, #888);
+    position: relative;
+  }
+  .sw .sw-chip::after {
+    content: 'copy';
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: rgba(7,5,26,0.85);
+    opacity: 0; transition: opacity 150ms;
+  }
+  .sw:hover .sw-chip::after { opacity: 0.7; }
+  .sw.copied .sw-chip::after { content: 'copied'; opacity: 1; color: rgba(7,5,26,0.95); }
+  .sw .sw-meta {
+    padding: 6px 8px 8px;
+  }
+  .sw .sw-role {
+    font-family: var(--f-mono); font-size: 8px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .sw .sw-hex {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone); margin-top: 2px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Refs / avoid lists */
+  .twocol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  ul.list {
+    list-style: none; padding: 0; margin: 0;
+  }
+  ul.list li {
+    padding: 6px 0 6px 18px;
+    position: relative;
+    font-size: 14px; color: var(--cosmos-50);
+    line-height: 1.55;
+  }
+  ul.list.refs li::before {
+    content: '+';
+    position: absolute; left: 0;
+    color: var(--boss);
+    font-family: var(--f-mono);
+    font-weight: 600;
+  }
+  ul.list.avoid li::before {
+    content: '×';
+    position: absolute; left: 0;
+    color: var(--crimson);
+    font-family: var(--f-mono);
+    font-weight: 600;
+  }
+
+  /* Checklist */
+  .checklist {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border: 1px solid var(--rule);
+    margin-top: 32px;
+  }
+  .ckrow {
+    display: grid;
+    grid-template-columns: 60px 1fr 200px 180px;
+    gap: 24px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--rule);
+    align-items: center;
+  }
+  .ckrow:last-child { border-bottom: none; }
+  .ckrow.head {
+    background: rgba(28,18,69,0.4);
+  }
+  .ckrow.head > * {
+    font-family: var(--f-mono); font-size: 9px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--cosmos-200);
+  }
+  .ckrow .ck-num {
+    font-family: var(--f-mono); font-size: 14px;
+    color: var(--aurora); letter-spacing: 0.12em;
+  }
+  .ckrow .ck-name {
+    font-family: var(--f-head); font-size: 17px;
+    color: var(--bone); letter-spacing: 0.03em;
+  }
+  .ckrow .ck-name .ck-sub {
+    display: block;
+    font-family: var(--f-body); font-size: 13px;
+    color: var(--cosmos-100); margin-top: 2px;
+    font-style: italic; font-weight: 300;
+    letter-spacing: 0;
+  }
+  .ckrow .ck-spec {
+    font-family: var(--f-mono); font-size: 11px;
+    color: var(--bone); letter-spacing: 0.06em;
+  }
+  .ckrow .ck-spec .ck-spec-sub {
+    display: block;
+    font-size: 9px; color: var(--cosmos-200);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .ckrow .ck-files {
+    font-family: var(--f-mono); font-size: 10px;
+    color: var(--cosmos-100); letter-spacing: 0.04em;
+  }
+
+  /* Footer */
+  footer {
+    padding: 64px 0 96px;
+    border-top: 1px solid var(--rule);
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 48px;
+    color: var(--cosmos-100); font-size: 13px;
+    line-height: 1.6;
+  }
+  footer h4 {
+    font-family: var(--f-mono);
+    font-size: 9px; letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--cosmos-200);
+    margin: 0 0 12px;
+    font-weight: 500;
+  }
+  footer p { margin: 0 0 8px; }
+  footer code { font-family: var(--f-mono); color: var(--bone); }
+
+  /* Final-warning callout under checklist */
+  .calibration-note {
+    margin-top: 24px;
+    padding: 22px 28px;
+    border: 1px solid var(--crimson);
+    background: rgba(226,51,74,0.06);
+    display: flex; gap: 20px; align-items: flex-start;
+  }
+  .calibration-note .cn-tag {
+    flex: 0 0 auto;
+    font-family: var(--f-mono);
+    font-size: 10px; letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--crimson);
+    border: 1px solid var(--crimson);
+    padding: 4px 10px;
+  }
+  .calibration-note p { margin: 0; color: var(--cosmos-50); font-size: 14px; line-height: 1.6; }
+  .calibration-note p strong { color: var(--bone); font-weight: 500; }
+
+  /* Toast for copy */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--cosmos-800);
+    border: 1px solid var(--aurora);
+    color: var(--bone);
+    padding: 10px 18px;
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 180ms, transform 180ms;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 24px rgba(149,119,255,0.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Per-boss palette CSS vars set on spread root */
+  .boss-spread[data-boss="pluto"]    { --boss: #44bb66; --boss-glow: rgba(68,187,102,0.35); }
+  .boss-spread[data-boss="ceres"]    { --boss: #ffaa44; --boss-glow: rgba(255,170,68,0.35); }
+  .boss-spread[data-boss="triton"]   { --boss: #aa6644; --boss-glow: rgba(170,102,68,0.35); }
+  .boss-spread[data-boss="phobos"]   { --boss: #cc2244; --boss-glow: rgba(204,34,68,0.35); }
+  .boss-spread[data-boss="callisto"] { --boss: #aa66ff; --boss-glow: rgba(170,102,255,0.40); }
+  .boss-spread[data-boss="eris"]     { --boss: #ff7847; --boss-glow: rgba(255,120,71,0.35); }
+  .boss-spread[data-boss="charon"]   { --boss: #8a8aaa; --boss-glow: rgba(138,138,170,0.30); }
+  .boss-spread[data-boss="sedna"]    { --boss: #4477cc; --boss-glow: rgba(68,119,204,0.35); }
+
+  /* Cover glyph-cells: same accent var map for the dots */
+  [data-acc="pluto"]    { --boss: #44bb66; }
+  [data-acc="ceres"]    { --boss: #ffaa44; }
+  [data-acc="triton"]   { --boss: #aa6644; }
+  [data-acc="phobos"]   { --boss: #cc2244; }
+  [data-acc="callisto"] { --boss: #aa66ff; }
+  [data-acc="eris"]     { --boss: #ff7847; }
+  [data-acc="charon"]   { --boss: #8a8aaa; }
+  [data-acc="sedna"]    { --boss: #4477cc; }
+
+  /* Sigil base styles, mirror the in-game classes */
+  .sig { stroke: var(--boss); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .sig .orbit-main  { opacity: 0.95; }
+  .sig .orbit-aux   { opacity: 0.45; stroke-dasharray: 3 3; }
+  .sig .body-core   { opacity: 1; }
+  .sig .body-core.filled { fill: var(--boss); stroke: none; }
+  .sig .satellite   { opacity: 0.9; }
+  .sig .satellite.filled { fill: var(--boss); stroke: none; }
+  .sig .mark        { opacity: 0.85; }
+  .sig .mark.filled { fill: var(--boss); stroke: none; }
+
+  /* Responsive guard — single column on narrow */
+  @media (max-width: 980px) {
+    .wrap { padding: 0 28px; }
+    .boss-body { grid-template-columns: 1fr; gap: 40px; }
+    .glyph-grid { grid-template-columns: repeat(4, 1fr); }
+    .rules { grid-template-columns: 1fr; }
+    .rule { border-right: none; }
+    .rule:nth-last-child(-n+2) { border-bottom: 1px solid var(--rule); }
+    .rule:last-child { border-bottom: none; }
+    .ckrow { grid-template-columns: 40px 1fr; gap: 16px; }
+    .ckrow .ck-spec, .ckrow .ck-files { grid-column: 2; }
+    .ckrow.head .ck-spec, .ckrow.head .ck-files { display: none; }
+    footer { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     COVER
+     ═══════════════════════════════════════════════════════════════════ -->
+<header class="cover">
+  <div class="cover-top">
+    <div class="mono-eyebrow">◇ final trial · boss roster ◇</div>
+    <div class="mono-label">
+      brief no. <span style="color:var(--bone)">B-2026-05</span>
+    </div>
+  </div>
+
+  <div>
+    <h1 class="cover-title">Eight Anomalies, <em>One Sky.</em></h1>
+    <p class="cover-sub">
+      Concept-art handoff for the eight Final-Trial boss plates of FortuneFallacy2.
+      Each anomaly is a portrait of a celestial body — not a character. Surface, not skin.
+      Geology, not personification.
+    </p>
+
+    <!-- Boss-glyph navigation grid: click to jump -->
+    <nav class="glyph-grid" aria-label="Boss roster">
+      <a class="glyph-cell" href="#pluto" data-acc="pluto">
+        <span class="glyph-num">01</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-main" d="M 32 50 L 68 50"/>
+          <path class="body-core" d="M 21 50 a 11 11 0 1 0 22 0 a 11 11 0 1 0 -22 0"/>
+          <path class="satellite" d="M 62 50 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0"/>
+          <path class="mark filled" d="M 29.5 50 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+        </svg>
+        <span class="glyph-name">Pluto</span>
+      </a>
+      <a class="glyph-cell" href="#ceres" data-acc="ceres">
+        <span class="glyph-num">02</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-aux" d="M 50 12 a 38 38 0 1 0 0 76 a 38 38 0 1 0 0 -76"/>
+          <path class="body-core filled" d="M 45 50 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+          <path class="mark filled" d="M 47 12 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="mark filled" d="M 9 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="mark filled" d="M 47 88 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="satellite filled" d="M 85 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+        </svg>
+        <span class="glyph-name">Ceres</span>
+      </a>
+      <a class="glyph-cell" href="#triton" data-acc="triton">
+        <span class="glyph-num">03</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-main" d="M 50 14 A 36 36 0 0 0 14 50"/>
+          <path class="orbit-main" d="M 14 50 A 36 36 0 0 0 50 86"/>
+          <path class="orbit-main" d="M 50 86 A 36 36 0 0 0 86 50"/>
+          <path class="body-core" d="M 41 50 a 9 9 0 1 0 18 0 a 9 9 0 1 0 -18 0"/>
+          <path class="body-core filled" d="M 46.5 50 a 3.5 3.5 0 1 0 7 0 a 3.5 3.5 0 1 0 -7 0"/>
+          <path class="mark" stroke-width="2" d="M 86 50 L 80 44"/>
+          <path class="mark" stroke-width="2" d="M 86 50 L 80 56"/>
+        </svg>
+        <span class="glyph-name">Triton</span>
+      </a>
+      <a class="glyph-cell" href="#phobos" data-acc="phobos">
+        <span class="glyph-num">04</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-main" d="M 50 18 a 32 32 0 1 1 -0.01 0"/>
+          <path class="orbit-main" d="M 50 24 a 26 26 0 1 1 -0.01 0"/>
+          <path class="orbit-main" d="M 50 30 a 20 20 0 1 1 -0.01 0"/>
+          <path class="body-core" d="M 39 50 a 11 11 0 1 0 22 0 a 11 11 0 1 0 -22 0"/>
+          <path class="body-core filled" d="M 47 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+        </svg>
+        <span class="glyph-name">Phobos</span>
+      </a>
+      <a class="glyph-cell" href="#callisto" data-acc="callisto">
+        <span class="glyph-num">05</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="body-core" d="M 18 50 a 32 32 0 1 0 64 0 a 32 32 0 1 0 -64 0"/>
+          <path class="mark" stroke-width="1" d="M 33 40 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+          <path class="mark" stroke-width="1" d="M 59 36 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="mark" stroke-width="1" d="M 50 62 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0"/>
+          <path class="mark" stroke-width="1" d="M 31 62 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="mark" stroke-width="1" d="M 65.5 58 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+        </svg>
+        <span class="glyph-name">Callisto</span>
+      </a>
+      <a class="glyph-cell" href="#eris" data-acc="eris">
+        <span class="glyph-num">06</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-main" d="M 50 14 A 38 22 -25 1 0 86 60"/>
+          <path class="orbit-aux" d="M 86 60 A 38 22 -25 0 0 50 14"/>
+          <path class="body-core filled" d="M 45 50 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+          <path class="satellite filled" d="M 83.5 60 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+          <path class="mark" stroke-width="2" d="M 46 10 L 54 18"/>
+          <path class="mark" stroke-width="2" d="M 54 10 L 46 18"/>
+        </svg>
+        <span class="glyph-name">Eris</span>
+      </a>
+      <a class="glyph-cell" href="#charon" data-acc="charon">
+        <span class="glyph-num">07</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-aux" d="M 14 60 a 36 14 0 1 0 72 0 a 36 14 0 1 0 -72 0"/>
+          <path class="body-core" d="M 30 60 L 70 60 L 64 66 L 36 66 Z"/>
+          <path class="mark" stroke-width="2" d="M 50 60 L 50 32"/>
+          <path class="mark" stroke-width="1.5" d="M 50 32 L 64 38 L 50 44 Z"/>
+          <path class="satellite filled" d="M 36 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          <path class="satellite filled" d="M 58 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+        </svg>
+        <span class="glyph-name">Charon</span>
+      </a>
+      <a class="glyph-cell" href="#sedna" data-acc="sedna">
+        <span class="glyph-num">08</span><span class="accent-dot"></span>
+        <svg viewBox="0 0 100 100" class="sig">
+          <path class="orbit-main" d="M 8 50 a 42 14 -15 1 0 84 0 a 42 14 -15 1 0 -84 0"/>
+          <path class="body-core filled" d="M 46 50 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0"/>
+          <path class="satellite filled" d="M 84 40 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0"/>
+          <path class="mark" stroke-width="2.5" d="M 20 50 L 80 50"/>
+        </svg>
+        <span class="glyph-name">Sedna</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="cover-meta">
+    <div class="meta-cell">
+      <div class="meta-label">authored</div>
+      <div class="meta-val">2026 · 05 · 16</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">canonical source</div>
+      <div class="meta-val"><code>src-next/data/blinds.ts</code></div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">audience</div>
+      <div class="meta-val">Internal · Art Direction</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">scope</div>
+      <div class="meta-val">8 plates · 11 deliverables</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     STYLE BIBLE
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">00 · shared style bible</span>
+  </div>
+  <h2 class="section-h">Read this once. Every brief below assumes it.</h2>
+  <p class="section-lede">
+    These are objects, not entities. The brief is intentionally hostile to mystical or
+    anthropomorphic interpretation — if the artist's instinct is to draw a figure, route
+    to a different artist.
+  </p>
+
+  <div class="rules">
+    <div class="rule">
+      <div class="rule-num">Rule 01</div>
+      <h3 class="rule-title">Period reference</h3>
+      <div class="rule-body">
+        Scientific-astronomical illustration × sci-fi paperback × brutalist sculpture.
+        Think Voyager Golden Record scaled up and painted by Chesley Bonestell, photographed under raking light.
+        <strong>No mysticism, no occult symbology, no tarot, no robed figures.</strong>
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 02</div>
+      <h3 class="rule-title">Format · the body is the subject</h3>
+      <div class="rule-body">
+        Each boss is a portrait of a <strong>celestial body</strong> — moon, dwarf planet, fragment.
+        If a humanoid form appears, it is mineral, mechanical, or implied by topography — never a person in robes,
+        never a face under a hood.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 03</div>
+      <h3 class="rule-title">Silhouette test · 32×32</h3>
+      <div class="rule-body">
+        At thumbnail size the outline alone must be identifiable.
+        Pluto, Charon, Phobos all read as "irregular sphere" — differentiation comes from
+        <strong>proportion, surface scarring, orientation</strong>, not pose.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 04</div>
+      <h3 class="rule-title">Palette discipline · 80/20</h3>
+      <div class="rule-body">
+        Each boss owns a primary accent. Plate is 80% palette on that accent + deep cosmic violet
+        <code>#1c1245</code>. Remaining 20% is one secondary metallic — gold leaf, bone white, or oxidized copper.
+        <strong>No third color</strong> unless named.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 05</div>
+      <h3 class="rule-title">Surface, not skin · no faces</h3>
+      <div class="rule-body">
+        Render every boss as terrain. Craters, fault lines, ice fissures, rust, fractured anorthosite.
+        <strong>If a viewer wants an eye, let them find one in a crater shadow.</strong>
+        Never paint one. Never paint a mouth.
+      </div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">Rule 06</div>
+      <h3 class="rule-title">Aurora-violet underlight</h3>
+      <div class="rule-body">
+        Every plate carries a soft <code>#9577ff</code> rim glow from below or behind, mimicking the cosmos backdrop
+        in-engine. <strong>Bake it in</strong> — the plate ships with its own atmospheric anchor.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 01 — PLUTO
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="pluto" id="pluto">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 01 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">jade · methane ice</span>
+      </div>
+      <h2 class="boss-name">Pluto</h2>
+      <div class="boss-epithet">the demoted gambler</div>
+    </div>
+    <div class="boss-flavor">the gambler's bones rattle</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-main" d="M 32 50 L 68 50"/>
+            <path class="body-core" d="M 21 50 a 11 11 0 1 0 22 0 a 11 11 0 1 0 -22 0"/>
+            <path class="satellite" d="M 62 50 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0"/>
+            <path class="mark" opacity="0.7" d="M 64 44 L 60 40"/>
+            <path class="mark" opacity="0.7" d="M 72 44 L 76 40"/>
+            <path class="mark" opacity="0.7" d="M 64 56 L 60 60"/>
+            <path class="mark" opacity="0.7" d="M 72 56 L 76 60"/>
+            <path class="mark filled" d="M 29.5 50 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-pluto-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants has-phase">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv" style="border-color:var(--boss)"><div class="pv-l" style="color:var(--boss)">phase 2</div><div class="pv-v">1024<br>×1536</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">01 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">1s refuse to transform.</div>
+            <div class="phase-trigger">debuff · <code>no_mod_transforms_on_ones</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · hand 2</div>
+            <div class="phase-rule">Only even faces score.</div>
+            <div class="phase-trigger">debuff · <code>only_even_faces</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Asymmetric ovoid. A heart-shape impact basin (Tombaugh Regio) carved into the upper half — but rotated so it reads as a <strong>void</strong> in the body, not a feature. Lower half visibly fractured: a long fault line splits the body roughly into two unequal halves.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>A halo of small angular fragments orbiting the equator — dice-sized chunks, six visible. Each is a different convex polyhedron (d4, d6, d8, d10, d12, d20 silhouettes, but <strong>rough-hewn rock, not engraved with pips</strong>). One fragment is missing from the ring — the absent piece is the missing "1."</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#44bb66" data-hex="#44bb66"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · jade</div><div class="sw-hex">#44bb66</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · gap</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#f3f0ff" data-hex="#f3f0ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">bone white</div><div class="sw-hex">#f3f0ff</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora rim</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>A celestial body that was reclassified and held a grudge about it. The threat is procedural — Pluto enforces a rule the player didn't agree to. The plate is <strong>the table</strong>, not the dealer.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>NASA New Horizons close-up · Tombaugh Regio + Sputnik Planitia</li>
+              <li>Chesley Bonestell, <em>The Conquest of Space</em> · dwarf planet plates</li>
+              <li>Anish Kapoor, <em>Cloud Gate</em> · mirror-polished but cratered surface</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>Anthropomorphic gambler with dice</li>
+              <li>Hands. Hoods. A dealer figure of any kind</li>
+              <li>Dice engraved with pips — fragments are rough rock</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 02 — CERES
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="ceres" id="ceres">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 02 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">harvest orange · iron oxide</span>
+      </div>
+      <h2 class="boss-name">Ceres</h2>
+      <div class="boss-epithet">the belt-bound mother</div>
+    </div>
+    <div class="boss-flavor">the belt closes around you</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env" style="width:50%"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-aux" d="M 50 12 a 38 38 0 1 0 0 76 a 38 38 0 1 0 0 -76"/>
+            <path class="body-core filled" d="M 45 50 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+            <path class="satellite filled" d="M 85 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark filled" d="M 47 12 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark filled" d="M 9 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark filled" d="M 47 88 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-ceres-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">02 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Hand capped at 4.</div>
+            <div class="phase-trigger">debuff · <code>hand_size_cap_4</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · half target</div>
+            <div class="phase-rule">Consumables sealed.</div>
+            <div class="phase-trigger">debuff · <code>consumables_locked</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Compact sphere, smaller than the others — Ceres is the smallest dwarf planet, honor that. Wrapped <strong>horizontally</strong> by a dense band of asteroid fragments at the equator. The band is so packed it nearly doubles the body's apparent width.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>The asteroid belt as a literal <strong>belt of debris</strong>. Five named fragments stand out from the crowd, each a hand-rendered chunk with distinct silhouette. A noticeable gap separates fragment four from where fragment five <em>would</em> be — the gap is the visual key to "capped at 4."</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#ffaa44" data-hex="#ffaa44"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · harvest</div><div class="sw-hex">#ffaa44</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#b87333" data-hex="#b87333"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">copper · oxide</div><div class="sw-hex">#b87333</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · named 5</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora rim</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>A small body that became a fortress. Ceres withholds because it's <strong>surrounded</strong> — there is no malice, only the perimeter. The belt is the mother. The planet is the child.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>NASA Dawn mission · Occator Crater surface imagery</li>
+              <li>Miyazaki, <em>Castle in the Sky</em> · floating debris fields (rock, not magic)</li>
+              <li>Tadao Andō, <em>Church of the Light</em> · brutalist precast aggregate</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>Maternal figure with arms around a planet</li>
+              <li>A woman. Fabric. A robe</li>
+              <li>"Mother" rendered literally — the metaphor is the belt</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 03 — TRITON
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="triton" id="triton">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 03 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">oxidized copper · cryovolcanic</span>
+      </div>
+      <h2 class="boss-name">Triton</h2>
+      <div class="boss-epithet">the single flyby</div>
+    </div>
+    <div class="boss-flavor">the flyby begins</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env" style="width:88%; aspect-ratio:2/1; border-radius:60%"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-main" d="M 50 14 A 36 36 0 0 0 14 50"/>
+            <path class="orbit-main" d="M 14 50 A 36 36 0 0 0 50 86"/>
+            <path class="orbit-main" d="M 50 86 A 36 36 0 0 0 86 50"/>
+            <path class="body-core" d="M 41 50 a 9 9 0 1 0 18 0 a 9 9 0 1 0 -18 0"/>
+            <path class="body-core filled" d="M 46.5 50 a 3.5 3.5 0 1 0 7 0 a 3.5 3.5 0 1 0 -7 0"/>
+            <path class="mark" stroke-width="2" d="M 86 50 L 80 44"/>
+            <path class="mark" stroke-width="2" d="M 86 50 L 80 56"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-triton-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">03 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">No rerolls.</div>
+            <div class="phase-trigger">debuff · <code>no_rerolls</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · half target</div>
+            <div class="phase-rule">Hand capped at 4.</div>
+            <div class="phase-trigger">debuff · <code>hand_size_cap_4</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Horizontally elongated. A moon stretched by motion-blur into a comet-like form — leading edge a hard-rendered hemisphere, trailing edge dissolving into a streak of frozen nitrogen geysers. The silhouette reads as <strong>"a body in transit,"</strong> not "a body at rest."</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>A single tally notch carved into the leading hemisphere — <strong>one mark, gold-leafed</strong>, the only inscribed element on the entire plate. Because Triton passes once. The notch is the player's only window.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#aa6644" data-hex="#aa6644"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · rust</div><div class="sw-hex">#aa6644</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · the notch</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#f3f0ff" data-hex="#f3f0ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">bone · sunlit cap</div><div class="sw-hex">#f3f0ff</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · geysers</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>Pure velocity. No personality — only trajectory. The player feels watched by a <strong>direction</strong>.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>Voyager 2 · Triton south polar terrain, dark streaks from geysers</li>
+              <li>Robert McCall · NASA mission paintings ("spacecraft passing a moon")</li>
+              <li>Aristarkh Lentulov · cubo-futurist comet leading edge</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A god of the sea</li>
+              <li>A trident. Water. A spear</li>
+              <li>Any anthropomorphism — the name is mythological, the moon is not</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 04 — PHOBOS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="phobos" id="phobos">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 04 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">crimson · iron oxide</span>
+      </div>
+      <h2 class="boss-name">Phobos</h2>
+      <div class="boss-epithet">decaying orbit</div>
+    </div>
+    <div class="boss-flavor">orbit decays · the chain rusts</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env" style="width:62%; aspect-ratio:5/4; border-radius:48% 38% 52% 60%; transform:translate(-50%,-50%) rotate(-22deg)"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-main" opacity="0.85" d="M 50 18 a 32 32 0 1 1 -0.01 0"/>
+            <path class="orbit-main" opacity="0.85" d="M 50 24 a 26 26 0 1 1 -0.01 0"/>
+            <path class="orbit-main" opacity="0.85" d="M 50 30 a 20 20 0 1 1 -0.01 0"/>
+            <path class="body-core" d="M 39 50 a 11 11 0 1 0 22 0 a 11 11 0 1 0 -22 0"/>
+            <path class="body-core filled" d="M 47 50 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark" stroke-width="2" d="M 82 50 L 88 44"/>
+            <path class="mark" stroke-width="2" d="M 82 50 L 88 56"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-phobos-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">04 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Locks release on roll.</div>
+            <div class="phase-trigger">debuff · <code>auto_unlock_after_roll</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · hand 2</div>
+            <div class="phase-rule">Consumables sealed.</div>
+            <div class="phase-trigger">debuff · <code>consumables_locked</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Irregular potato — Phobos is famously not spheroidal, honor that. Off-center, tilted at an aggressive angle <strong>as if mid-fall</strong>. The Stickney Crater dominates one face and is rendered nearly half the body's diameter.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>Parallel grooves crossing the body diagonally — each groove rendered as a small chain of <strong>broken links</strong>. Gold leaf at the body's surface, rusting and falling away into the void at the trailing end. <strong>The chain literally rusts as it leaves the moon.</strong></p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#cc2244" data-hex="#cc2244"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · crimson</div><div class="sw-hex">#cc2244</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · chain root</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#7a3a2a" data-hex="#7a3a2a"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">rust · chain tip</div><div class="sw-hex">#7a3a2a</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · stickney</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>Falling toward Mars in slow motion. Phobos is real and is actually decaying — the brief is <strong>reality with the timeline compressed</strong>. The player feels gravity, not menace.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>Mars Reconnaissance Orbiter · Phobos grooves are visible</li>
+              <li>Donald Davis, <em>Phobos and Mars</em> · NASA archive</li>
+              <li>Piranesi, <em>Carceri d'Invenzione</em> · broken architectural ironwork</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A war god in a helmet</li>
+              <li>A face. A helmet. Personification of any kind</li>
+              <li>"Warning red" — this is iron oxide, not a stoplight</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 05 — CALLISTO
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="callisto" id="callisto">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 05 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">deep violet · cratered ice</span>
+      </div>
+      <h2 class="boss-name">Callisto</h2>
+      <div class="boss-epithet">cratered silence</div>
+    </div>
+    <div class="boss-flavor">the cratered silence opens</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="body-core" d="M 18 50 a 32 32 0 1 0 64 0 a 32 32 0 1 0 -64 0"/>
+            <path class="mark" opacity="0.7" stroke-width="1" d="M 33 40 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+            <path class="mark" opacity="0.7" stroke-width="1" d="M 59 36 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark" opacity="0.7" stroke-width="1" d="M 50 62 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0"/>
+            <path class="mark" opacity="0.7" stroke-width="1" d="M 31 62 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="mark" opacity="0.7" stroke-width="1" d="M 65.5 58 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+            <path class="mark" opacity="0.85" stroke-width="2" d="M 42 48 L 58 52"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-callisto-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants has-phase">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv" style="border-color:var(--boss)"><div class="pv-l" style="color:var(--boss)">phase 2</div><div class="pv-v">1024<br>×1536</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">05 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Catalysts inert.</div>
+            <div class="phase-trigger">debuff · <code>disable_catalysts</code></div>
+          </div>
+          <div class="phase p2 relaxes">
+            <div class="phase-tag">phase 2 · relaxes</div>
+            <div class="phase-rule">Silence lifts. Catalysts return.</div>
+            <div class="phase-trigger">trigger · <code>half-target</code> · removes debuff</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Heavily pockmarked sphere. Callisto is the <strong>most cratered body in the solar system</strong> — make the surface noise the silhouette's defining quality. At thumbnail size the body's outline should read "cratered" by silhouette alone (small notches in the visible rim).</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>One enormous crater — <strong>Valhalla, a multi-ring impact basin</strong> — dominates the visible face. Inside the central peak: a single shaft of aurora-violet light emerges in the <em>phase-2 variant only</em>. In the base plate, the central peak is dark.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#aa66ff" data-hex="#aa66ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · violet</div><div class="sw-hex">#aa66ff</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#d8d4e8" data-hex="#d8d4e8"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">ice · graphite</div><div class="sw-hex">#d8d4e8</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · valhalla rim</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · the shaft</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>Watchful geology. Callisto has been hit too many times to register a new impact — the "silence" is <strong>overload, not absence</strong>. When she relaxes, it's because something finally got through.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>Galileo spacecraft · Callisto's actual Valhalla basin</li>
+              <li>Olafur Eliasson, <em>Big Bang Fountain</em> · frozen instant</li>
+              <li>The moon during partial lunar eclipse</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A face on the surface — pareidolia is the enemy</li>
+              <li>Stacked-stone monument or shrine</li>
+              <li>More than one "opening" crater — Valhalla stands alone</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 06 — ERIS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="eris" id="eris">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 06 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">ember · primordial heat</span>
+      </div>
+      <h2 class="boss-name">Eris</h2>
+      <div class="boss-epithet">the unmaker arrives first</div>
+    </div>
+    <div class="boss-flavor">the unmaker arrives first</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-main" d="M 50 14 A 38 22 -25 1 0 86 60"/>
+            <path class="orbit-aux" d="M 86 60 A 38 22 -25 0 0 50 14"/>
+            <path class="body-core filled" d="M 45 50 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0"/>
+            <path class="satellite filled" d="M 83.5 60 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0"/>
+            <path class="mark" stroke-width="2" d="M 46 10 L 54 18"/>
+            <path class="mark" stroke-width="2" d="M 54 10 L 46 18"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-eris-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants has-phase">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv" style="border-color:var(--boss)"><div class="pv-l" style="color:var(--boss)">phase 2</div><div class="pv-v">1024<br>×1536</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">06 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Catalysts inert · first 2 hands.</div>
+            <div class="phase-trigger">debuff · <code>disable_catalysts_first_2_hands</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · half target</div>
+            <div class="phase-rule">Mod slots capped at 1.</div>
+            <div class="phase-trigger">debuff · <code>mod_slots_capped_1</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Sphere, but visibly <strong>cleaved</strong> — a clean cut runs from north pole to south pole, splitting the body into two slightly-misaligned halves. The cut is sharp, geological, <em>not</em> violent.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>The cleave itself. Where the two halves meet, the gap glows faintly aurora-violet. Two small numerical fragments sit embedded in the cleave like wedges holding the body apart — a <strong>"2"</strong> on one side, a <strong>"3"</strong> on the other (Eris Apple easter egg, the all-prime hand). Gold leaf on the numerals only.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#ff7847" data-hex="#ff7847"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · ember</div><div class="sw-hex">#ff7847</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#3a3540" data-hex="#3a3540"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">cold iron</div><div class="sw-hex">#3a3540</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · 2 · 3</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · cleave deep</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>A dwarf planet that <strong>arrived already broken</strong>. The unmaker doesn't act on you — the unmaker <em>is</em> what already happened. The player walks into a system already off its hinges.</p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>Hubble · Eris and its moon Dysnomia</li>
+              <li>Andy Goldsworthy · split-stone earthworks</li>
+              <li>Giant's Causeway · cooling-fracture basalt columns</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A literal apple</li>
+              <li>"Discord" rendered as conflict — this is geology</li>
+              <li>A figure tossing anything anywhere</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 07 — CHARON
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="charon" id="charon">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 07 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">cold grey · most desaturated</span>
+      </div>
+      <h2 class="boss-name">Charon</h2>
+      <div class="boss-epithet">the ferryman's tariff</div>
+    </div>
+    <div class="boss-flavor">the ferryman holds your shards</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-aux" d="M 14 60 a 36 14 0 1 0 72 0 a 36 14 0 1 0 -72 0"/>
+            <path class="body-core" d="M 30 60 L 70 60 L 64 66 L 36 66 Z"/>
+            <path class="mark" stroke-width="2" d="M 50 60 L 50 32"/>
+            <path class="mark" stroke-width="1.5" d="M 50 32 L 64 38 L 50 44 Z"/>
+            <path class="satellite filled" d="M 36 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+            <path class="satellite filled" d="M 58 22 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-charon-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">07 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Consumables sealed in stasis.</div>
+            <div class="phase-trigger">debuff · <code>consumables_locked</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · hand 2</div>
+            <div class="phase-rule">No transforms on 1s.</div>
+            <div class="phase-trigger">debuff · <code>no_mod_transforms_on_ones</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Sphere, but distinctively bisected by a <strong>horizontal canyon</strong> — Charon's real Argo Chasma. Render it as a dark band slicing across the body's middle, three to four times the depth proportionally exaggerated from the real moon.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>Along the canyon's length, at regular intervals, sit small mechanical <strong>safe-deposit boxes</strong> — three to five visible, each padlocked with gold-leaf hardware. They are <em>built into</em> the canyon, not laid on top. The locks are the visual key to "consumables sealed."</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#8a8aaa" data-hex="#8a8aaa"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · cold grey</div><div class="sw-hex">#8a8aaa</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#b87333" data-hex="#b87333"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">copper · 1 box</div><div class="sw-hex">#b87333</div></div></button>
+          <button class="sw" style="--sw:#f5c451" data-hex="#f5c451"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">gold · locks</div><div class="sw-hex">#f5c451</div></div></button>
+          <button class="sw" style="--sw:#f3f0ff" data-hex="#f3f0ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">bone · 1 box</div><div class="sw-hex">#f3f0ff</div></div></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>A moon that became a vault. Charon and Pluto are mutually tidal-locked — they stare at each other forever. Here Charon has decided to hold your things. The vault is older than you. <strong>Bureaucratic patience.</strong></p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>New Horizons · Charon's Serenity + Argo Chasma</li>
+              <li>John Hancock Center · brutalist bank-vault aesthetic</li>
+              <li><em>Annihilation</em> (film) · half-buried machinery in landscape</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A hooded boatman with a pole</li>
+              <li>A boat. An oar. A figure of any kind</li>
+              <li>Coins as currency motif — the locks are the motif</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BOSS 08 — SEDNA
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="boss-spread" data-boss="sedna" id="sedna">
+  <div class="boss-hd">
+    <div>
+      <div class="boss-num-row">
+        <span class="boss-num">anomaly 08 · final trial</span>
+        <span class="boss-num-divider"></span>
+        <span class="boss-anomaly-tag">cold deep blue · distance made physical</span>
+      </div>
+      <h2 class="boss-name">Sedna</h2>
+      <div class="boss-epithet">the widening slot</div>
+    </div>
+    <div class="boss-flavor">the slot is wider than you remember</div>
+  </div>
+
+  <div class="boss-body">
+    <div>
+      <div class="plate">
+        <div class="plate-bg"></div>
+        <div class="plate-stripes"></div>
+        <div class="plate-silhouette-env" style="width:64%; aspect-ratio:1.2/1; opacity:0.5"></div>
+        <div class="plate-spec-tag">hero plate · placeholder</div>
+        <div class="plate-corners"><span></span></div>
+        <div class="plate-sigil">
+          <svg viewBox="0 0 100 100" class="sig">
+            <path class="orbit-main" d="M 8 50 a 42 14 -15 1 0 84 0 a 42 14 -15 1 0 -84 0"/>
+            <path class="body-core filled" d="M 46 50 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0"/>
+            <path class="satellite filled" d="M 84 40 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0"/>
+            <path class="mark" stroke-width="2.5" d="M 20 50 L 80 50"/>
+          </svg>
+        </div>
+        <div class="plate-caption">
+          <div class="pc-l">boss-sedna-hero</div>
+          <div class="pc-r">1024 × 1536 · png<br>art tbd</div>
+        </div>
+      </div>
+      <div class="plate-variants">
+        <div class="pv"><div class="pv-l">hero</div><div class="pv-v">1024<br>×1536</div></div>
+        <div class="pv"><div class="pv-l">reveal</div><div class="pv-v">512<br>×768</div></div>
+        <div class="pv"><div class="pv-l">thumb</div><div class="pv-v">128<br>×128</div></div>
+        <div class="pv"><div class="pv-l">silh.</div><div class="pv-v">128<br>×128</div></div>
+      </div>
+    </div>
+
+    <div class="boss-content">
+      <div class="block">
+        <div class="block-h">
+          <span class="blockname">Mechanic</span>
+          <span class="blocknum">08 · 02</span>
+        </div>
+        <div class="phases">
+          <div class="phase p1">
+            <div class="phase-tag">phase 1</div>
+            <div class="phase-rule">Mod slots capped at 1.</div>
+            <div class="phase-trigger">debuff · <code>mod_slots_capped_1</code></div>
+          </div>
+          <div class="phase p2">
+            <div class="phase-tag">phase 2 · last hand</div>
+            <div class="phase-rule">No transforms on 1s.</div>
+            <div class="phase-trigger">debuff · <code>no_mod_transforms_on_ones</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Silhouette</span></div>
+        <p>Elongated, dim, distant — Sedna is one of the most distant known objects in the solar system. Render it as a body that <strong>recedes</strong> into the frame. Silhouette slightly tapered (far edge less defined than the near), as if seen through depth haze.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Motif</span></div>
+        <p>A single rectangular slot carved into the body's surface — proportionally large, like a <strong>dock opening on the side of an asteroid</strong>. Slot lit faintly from within by aurora-violet. Hairline fractures radiate outward from the slot's edges, suggesting it's widening as you watch. No second slot anywhere on the body.</p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Palette · 80/20</span></div>
+        <div class="palette-row">
+          <button class="sw" style="--sw:#4477cc" data-hex="#4477cc"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">accent · cold blue</div><div class="sw-hex">#4477cc</div></div></button>
+          <button class="sw" style="--sw:#1c1245" data-hex="#1c1245"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">deep cosmos</div><div class="sw-hex">#1c1245</div></div></button>
+          <button class="sw" style="--sw:#2a2a3a" data-hex="#2a2a3a"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">graphite</div><div class="sw-hex">#2a2a3a</div></div></button>
+          <button class="sw" style="--sw:#f3f0ff" data-hex="#f3f0ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">bone · frost lines</div><div class="sw-hex">#f3f0ff</div></div></button>
+          <button class="sw" style="--sw:#9577ff" data-hex="#9577ff"><div class="sw-chip"></div><div class="sw-meta"><div class="sw-role">aurora · slot</div><div class="sw-hex">#9577ff</div></div></button>
+        </div>
+        <p style="margin-top:14px; font-size:13px; color:var(--cosmos-200); font-style:italic;">
+          Lore override: Sedna is reddish in reality. <strong style="color:var(--bone); font-style:normal">Honor the lore</strong> — cold blue owns this plate. No warm colors anywhere.
+        </p>
+      </div>
+
+      <div class="block">
+        <div class="block-h"><span class="blockname">Mood</span></div>
+        <p>Distance made physical. Sedna doesn't approach — she <strong>recedes</strong>, and you can never quite catch up. The slot is your only access point, and it's getting harder to use, not easier. <em>Calm inevitability.</em></p>
+      </div>
+
+      <div class="block">
+        <div class="twocol">
+          <div>
+            <div class="block-h"><span class="blockname">Refs</span></div>
+            <ul class="list refs">
+              <li>Hubble + ALMA composite · the actual Sedna (scale anchor)</li>
+              <li>Roger Dean · <em>Yes</em> album covers · cold blue distant worlds</li>
+              <li>Lem, <em>Solaris</em> (the novel) · empty docking bays</li>
+            </ul>
+          </div>
+          <div>
+            <div class="block-h"><span class="blockname">Avoid</span></div>
+            <ul class="list avoid">
+              <li>A submerged figure. A woman. Hair flowing. Water</li>
+              <li>Any water imagery whatsoever</li>
+              <li>A second slot — the slot is alone</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     DELIVERY CHECKLIST
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section" id="checklist">
+  <div class="section-eyebrow">
+    <span class="dot"></span>
+    <span class="mono-label">09 · delivery checklist</span>
+  </div>
+  <h2 class="section-h">Per boss. Six items. One naming convention.</h2>
+  <p class="section-lede">
+    Filenames: <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">boss-{id}-{variant}.png</code>
+    — e.g. <code style="font-family:var(--f-mono);color:var(--bone);background:rgba(28,18,69,0.6);padding:2px 6px;border:1px solid var(--rule)">boss-pluto-hero.png</code>.
+  </p>
+
+  <div class="checklist">
+    <div class="ckrow head">
+      <div>idx</div>
+      <div>deliverable</div>
+      <div>format</div>
+      <div>filename</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">01</div>
+      <div class="ck-name">Hero plate
+        <span class="ck-sub">Full color, aurora-violet rim baked in. Transparent background.</span>
+      </div>
+      <div class="ck-spec">1024 × 1536 px
+        <span class="ck-spec-sub">png · rgb srgb</span>
+      </div>
+      <div class="ck-files">boss-{id}-hero.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">02</div>
+      <div class="ck-name">Reveal plate
+        <span class="ck-sub">Identical art, anti-aliasing pre-baked. No downsampling artifacts at 180×270 in-engine.</span>
+      </div>
+      <div class="ck-spec">512 × 768 px
+        <span class="ck-spec-sub">png · rgb srgb</span>
+      </div>
+      <div class="ck-files">boss-{id}-reveal.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">03</div>
+      <div class="ck-name">Thumbnail variant
+        <span class="ck-sub">Recomposed so silhouette reads. May crop tighter than hero — favor the focal motif.</span>
+      </div>
+      <div class="ck-spec">128 × 128 px
+        <span class="ck-spec-sub">png · rgb srgb</span>
+      </div>
+      <div class="ck-files">boss-{id}-thumb.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">04</div>
+      <div class="ck-name">Silhouette test
+        <span class="ck-sub">Pure black on transparent. We use this to QA Rule 03 discipline.</span>
+      </div>
+      <div class="ck-spec">128 × 128 px
+        <span class="ck-spec-sub">png · black · transparent</span>
+      </div>
+      <div class="ck-files">boss-{id}-silhouette.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">05</div>
+      <div class="ck-name">Phase-2 variant
+        <span class="ck-sub">Callisto · Pluto · Eris only. Visual change applied — Callisto's Valhalla peak lit, Pluto's even-fragment ring highlighted, Eris's cleave actively venting.</span>
+      </div>
+      <div class="ck-spec">1024 × 1536 px
+        <span class="ck-spec-sub">png · 3 of 8 bosses</span>
+      </div>
+      <div class="ck-files">boss-{id}-phase2.png</div>
+    </div>
+    <div class="ckrow">
+      <div class="ck-num">06</div>
+      <div class="ck-name">Source files
+        <span class="ck-sub">Layered PSD or PROCREATE. Required for future palette swaps when cosmetic skins ship.</span>
+      </div>
+      <div class="ck-spec">layered
+        <span class="ck-spec-sub">psd / procreate</span>
+      </div>
+      <div class="ck-files">{id}-source.{ext}</div>
+    </div>
+  </div>
+
+  <div class="calibration-note">
+    <span class="cn-tag">calibration pair</span>
+    <p>
+      Deliver <strong>Pluto</strong> and <strong>Charon</strong> first as the calibration pair —
+      the palette extremes (jade green vs. cold grey). Get sign-off on those two before producing the remaining six.
+      <strong>Timeline target:</strong> 2 weeks for calibration pair, 4–6 weeks for full set.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════════════════ -->
+<footer>
+  <div>
+    <h4>routing note</h4>
+    <p>
+      This brief is intentionally hostile to mystical or anthropomorphic interpretation.
+      If the artist's background is fantasy or character art, route to a different artist —
+      the brief is for hard-science astronomical illustration × brutalist sculptural form.
+    </p>
+  </div>
+  <div>
+    <h4>canonical sources</h4>
+    <p><code>src-next/data/blinds.ts</code></p>
+    <p><code>BOSS_BLINDS</code> · table</p>
+    <p><code>BOSS_CINEMATIC_FLAVOR</code> · flavor strings</p>
+    <p><code>src-next/app/hud/BossReveal.tsx</code> · in-game styling</p>
+  </div>
+  <div>
+    <h4>brief metadata</h4>
+    <p>Authored 2026 · 05 · 16</p>
+    <p>FortuneFallacy2 · Final-Trial roster</p>
+    <p>Internal · Art Direction review</p>
+  </div>
+</footer>
+
+</div><!-- /.wrap -->
+
+<div class="toast" id="toast" role="status" aria-live="polite">copied</div>
+
+<script>
+  // —— Copy-to-clipboard on palette swatches ——
+  const toast = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+  document.querySelectorAll('.sw').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const hex = btn.getAttribute('data-hex');
+      if (!hex) return;
+      try {
+        await navigator.clipboard.writeText(hex);
+      } catch (e) {
+        // Fallback for non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = hex; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1000);
+      showToast(hex + ' copied');
+    });
+  });
+
+  // —— Smooth-scroll for glyph-grid nav ——
+  document.querySelectorAll('.glyph-cell').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      const target = document.querySelector(href);
+      if (!target) return;
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.pageYOffset - 12;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  });
+</script>
+
+</body>
+</html>
