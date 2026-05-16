@@ -156,6 +156,18 @@ export function TopBar({
   const handsDisplay = useCounterTween(hands, 200);
   const rerollsDisplay = useCounterTween(rerolls, 200);
   const tight = useIsTightStage();
+  // Wave Z2 — shard gain pulse. Detect a positive delta in the source
+  // shard value (not the tweened display) and fire a brief glow on the
+  // digit so a +N gain reads as "look here, you got something" instead
+  // of a quiet number-roll. State drives a keyed remount of the digit
+  // span so the keyframe replays on every gain.
+  const [shardPulseKey, setShardPulseKey] = useState(0);
+  const prevShardsRef = useRef(shards);
+  useEffect(() => {
+    const prev = prevShardsRef.current;
+    if (shards > prev) setShardPulseKey((k) => k + 1);
+    prevShardsRef.current = shards;
+  }, [shards]);
   // The big blind line restates the same word that's already in the
   // small "ante NN · blind" label above it. On a phone where vertical
   // space is precious we drop it; on desktop the redundancy is fine
@@ -299,7 +311,13 @@ export function TopBar({
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
         <div className="has-tip" style={{ display: 'flex', alignItems: 'baseline', gap: 8, position: 'relative' }}>
           <Sigil kind="star" size={tight ? 14 : 20} color="#f5c451" />
-          <div className="f-display num" style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}>{shardsDisplay}</div>
+          <div
+            key={`shards-pulse-${shardPulseKey}`}
+            className={`f-display num${shardPulseKey > 0 ? ' ff-shard-gain-pulse' : ''}`}
+            style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}
+          >
+            {shardsDisplay}
+          </div>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
           <span className="tip">
             <span className="tip-title">Shards ◆</span>
