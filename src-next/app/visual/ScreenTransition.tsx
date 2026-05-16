@@ -141,6 +141,13 @@ export function ScreenTransition({
   // still works after lastKey.current rolls forward mid-swap.
   const portalWarp = phase === 'entering' && screenKey === 'round' && fromKey === 'hub';
 
+  // Wave MM — per-pair transition flavor. Picks ONE bespoke overlay
+  // based on (from → to) so the game doesn't fall back to the same
+  // ConstellationWipe on every navigation. Returns null when the
+  // generic wipe is enough (default). Read during the entering phase
+  // so the overlay paints AS the new screen rises.
+  const flavor = pickTransitionFlavor(fromKey, screenKey, phase);
+
   return (
     <div
       data-screen={renderedKey}
@@ -154,10 +161,15 @@ export function ScreenTransition({
         pointerEvents: phase === 'idle' ? 'auto' : 'none',
       }}
     >
-      <ConstellationWipe phase={phase} />
+      <ConstellationWipe phase={phase} flavor={flavor} />
       {enteringRound && <StellarDive />}
       {portalWarp && <PortalWarp />}
       {exitingRound && <StellarDrift />}
+      {flavor === 'vellum' && <VellumSweep />}
+      {flavor === 'coins' && <CoinShimmer />}
+      {flavor === 'embers' && <ForgeEmbers />}
+      {flavor === 'scrollroll' && <ScrollRoll />}
+      {flavor === 'dustswirl' && <DustSwirl />}
       {renderedChildren}
     </div>
   );
@@ -301,16 +313,23 @@ function StellarDive() {
   );
 }
 
-function ConstellationWipe({ phase }: { phase: Phase }) {
+function ConstellationWipe({ phase, flavor }: { phase: Phase; flavor: TransitionFlavor | null }) {
   if (phase === 'idle') return null;
   const expand = phase === 'exiting' ? 1 : 0.5;
+  // Wave MM — when a per-pair flavor overlay is firing, dim the
+  // generic wipe so the bespoke layer reads as the primary signal.
+  // Setting opacity to 0 entirely on flavored paths would lose the
+  // connective tissue across the swap; the wipe stays as a faint
+  // backdrop unless the flavor explicitly suppresses it.
+  const baseOpacity = phase === 'exiting' ? 0.7 : 0.35;
+  const opacity = flavor && FLAVOR_SUPPRESSES_WIPE.has(flavor) ? baseOpacity * 0.35 : baseOpacity;
   return (
     <svg
       style={{
         position: 'absolute',
         inset: 0,
         pointerEvents: 'none',
-        opacity: phase === 'exiting' ? 0.7 : 0.35,
+        opacity,
         transition: 'opacity var(--savored, 720ms) var(--ease-savor, ease)',
       }}
       viewBox="0 0 100 100"
@@ -335,5 +354,129 @@ function ConstellationWipe({ phase }: { phase: Phase }) {
         );
       })}
     </svg>
+  );
+}
+
+// Wave MM — per-pair transition flavor system. Maps (fromKey, toKey)
+// → a flavor key that selects a bespoke overlay component. The map
+// only covers high-traffic transitions; everything else falls back to
+// the generic ConstellationWipe (which is suppressed slightly when a
+// flavor is active, see FLAVOR_SUPPRESSES_WIPE).
+type TransitionFlavor =
+  | 'vellum'      // Title → Codex: parchment sweep right-to-left
+  | 'coins'       // Round → Shop (after blind clear): gold coin shimmer
+  | 'embers'      // Hub → Forge: orange ember rise
+  | 'scrollroll'  // Title → Challenges: vertical scroll unroll
+  | 'dustswirl';  // Title → AstralForge / Scores / Settings: cosmic dust drift
+
+const FLAVOR_SUPPRESSES_WIPE = new Set<TransitionFlavor>(['vellum', 'embers', 'scrollroll']);
+
+function pickTransitionFlavor(from: string, to: string, phase: Phase): TransitionFlavor | null {
+  if (phase !== 'entering') return null;
+  if (from === 'title' && to === 'codex')         return 'vellum';
+  if (from === 'title' && to === 'challenges')    return 'scrollroll';
+  if (from === 'title' && to === 'astral_forge')  return 'dustswirl';
+  if (from === 'title' && to === 'scores')        return 'dustswirl';
+  if (from === 'title' && to === 'settings')      return 'dustswirl';
+  if (from === 'hub'   && to === 'forge')         return 'embers';
+  if (from === 'round' && to === 'shop')          return 'coins';
+  return null;
+}
+
+// Vellum sweep — parchment-warm gradient bar sweeps right-to-left
+// across the screen during Codex entry. Reads as "opening the codex."
+function VellumSweep() {
+  return (
+    <div
+      className="transition-flavor transition-vellum"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
+    />
+  );
+}
+
+// Coin shimmer — falling gold particles during the Round → Shop swap
+// after a blind clears. Spawns 12 staggered coins drifting downward.
+function CoinShimmer() {
+  return (
+    <div
+      className="transition-flavor transition-coins"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
+    >
+      {Array.from({ length: 12 }).map((_, i) => (
+        <span
+          key={i}
+          className="coin-shimmer-mote"
+          style={{
+            left: `${8 + i * 7.4}%`,
+            animationDelay: `${i * 40}ms`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Forge embers — orange ember particles rise from the bottom edge as
+// the Forge screen arrives. Reads as "the anvil is hot."
+function ForgeEmbers() {
+  return (
+    <div
+      className="transition-flavor transition-embers"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
+    >
+      {Array.from({ length: 10 }).map((_, i) => (
+        <span
+          key={i}
+          className="forge-ember-mote"
+          style={{
+            left: `${5 + i * 9.5}%`,
+            animationDelay: `${i * 55}ms`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Scroll roll — top + bottom bars converge then snap apart, reads as
+// a scroll unfurling for Challenges (constraint-runs as scripture).
+function ScrollRoll() {
+  return (
+    <div
+      className="transition-flavor transition-scrollroll"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
+    >
+      <span className="scroll-bar scroll-bar-top" />
+      <span className="scroll-bar scroll-bar-bot" />
+    </div>
+  );
+}
+
+// Dust swirl — small drifting violet motes sweep diagonally across.
+// Quiet treatment for the Title → meta-screens (Astral Forge / Scores
+// / Settings) so each meta screen feels reached, not jumped to.
+function DustSwirl() {
+  return (
+    <div
+      className="transition-flavor transition-dustswirl"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}
+    >
+      {Array.from({ length: 14 }).map((_, i) => (
+        <span
+          key={i}
+          className="dust-swirl-mote"
+          style={{
+            left: `${5 + (i * 6.7) % 90}%`,
+            top: `${10 + (i * 13.3) % 70}%`,
+            animationDelay: `${i * 35}ms`,
+          }}
+        />
+      ))}
+    </div>
   );
 }

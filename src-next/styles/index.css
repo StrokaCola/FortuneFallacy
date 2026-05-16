@@ -3490,6 +3490,127 @@ html:not(.reduce-motion) .ff-dice-frame-corner.br {
   animation: ff-dice-frame-breath-b 5s ease-in-out infinite;
 }
 
+/* Wave MM — per-pair transition flavor overlays. Each fires only on
+   a specific (from → to) screen pair (see pickTransitionFlavor) so
+   the player sees genuine variety navigating the game instead of
+   the same ConstellationWipe everywhere. Each overlay runs once
+   during the entering phase and removes itself when the parent
+   unmounts at idle. reduce-motion strips animations across the board. */
+.transition-flavor { overflow: hidden; }
+
+/* Vellum sweep — parchment-warm gradient bar travels left-to-right
+   across the screen, like turning a page in the Codex. */
+.transition-vellum::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(245, 230, 190, 0.18) 45%,
+    rgba(255, 245, 220, 0.28) 50%,
+    rgba(245, 230, 190, 0.18) 55%,
+    transparent 70%,
+    transparent 100%);
+  transform: translateX(-100%);
+  animation: vellum-sweep 640ms cubic-bezier(0.32, 0.6, 0.32, 1) forwards;
+  mix-blend-mode: screen;
+}
+@keyframes vellum-sweep {
+  to { transform: translateX(100%); }
+}
+.reduce-motion .transition-vellum::before { animation: none; opacity: 0; }
+
+/* Coin shimmer — gold motes fall from the top. Each mote uses
+   individual position + delay set inline so 12 staggered coins drift
+   down without all stacking on one column. */
+.transition-coins .coin-shimmer-mote {
+  position: absolute;
+  top: -16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff4cc 0%, #f5c451 50%, transparent 75%);
+  box-shadow: 0 0 12px rgba(245, 196, 81, 0.85);
+  opacity: 0;
+  animation: coin-shimmer-fall 820ms cubic-bezier(0.4, 0.2, 0.5, 1) forwards;
+}
+@keyframes coin-shimmer-fall {
+  0%   { opacity: 0;    transform: translateY(0) rotate(0deg) scale(0.8); }
+  18%  { opacity: 1;    transform: translateY(40vh) rotate(180deg) scale(1); }
+  100% { opacity: 0;    transform: translateY(110vh) rotate(540deg) scale(0.6); }
+}
+.reduce-motion .transition-coins .coin-shimmer-mote { animation: none; opacity: 0; }
+
+/* Forge embers — small orange motes rise from the bottom edge. */
+.transition-embers .forge-ember-mote {
+  position: absolute;
+  bottom: -10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #ffd28a 0%, #ff7847 55%, transparent 80%);
+  box-shadow: 0 0 14px rgba(255, 120, 71, 0.85);
+  opacity: 0;
+  animation: forge-ember-rise 760ms cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+}
+@keyframes forge-ember-rise {
+  0%   { opacity: 0;    transform: translateY(0) scale(0.6); }
+  20%  { opacity: 1;    transform: translateY(-25vh) scale(1); }
+  70%  { opacity: 0.7;  transform: translateY(-75vh) scale(0.9); }
+  100% { opacity: 0;    transform: translateY(-105vh) scale(0.4); }
+}
+.reduce-motion .transition-embers .forge-ember-mote { animation: none; opacity: 0; }
+
+/* Scroll roll — two horizontal bars converge to the centerline then
+   snap outward. Reads as a scroll unrolling. */
+.transition-scrollroll .scroll-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(20, 12, 50, 0.85), rgba(15, 9, 37, 0.4));
+  border: 1px solid rgba(245, 196, 81, 0.18);
+}
+.transition-scrollroll .scroll-bar-top {
+  top: 0;
+  transform-origin: top center;
+  animation: scroll-roll-top 520ms cubic-bezier(0.4, 0.7, 0.3, 1) forwards;
+}
+.transition-scrollroll .scroll-bar-bot {
+  bottom: 0;
+  transform-origin: bottom center;
+  animation: scroll-roll-bot 520ms cubic-bezier(0.4, 0.7, 0.3, 1) forwards;
+}
+@keyframes scroll-roll-top {
+  0%   { transform: scaleY(1); }
+  100% { transform: scaleY(0); }
+}
+@keyframes scroll-roll-bot {
+  0%   { transform: scaleY(1); }
+  100% { transform: scaleY(0); }
+}
+.reduce-motion .transition-scrollroll .scroll-bar { animation: none; transform: scaleY(0); }
+
+/* Dust swirl — small violet motes drift diagonally across, quiet
+   meta-screen entry. */
+.transition-dustswirl .dust-swirl-mote {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #dcd4ff 0%, #9577ff 65%, transparent 85%);
+  box-shadow: 0 0 8px rgba(149, 119, 255, 0.7);
+  opacity: 0;
+  animation: dust-swirl-drift 680ms cubic-bezier(0.3, 0.5, 0.4, 1) forwards;
+}
+@keyframes dust-swirl-drift {
+  0%   { opacity: 0;    transform: translate(0, 0) scale(0.5); }
+  25%  { opacity: 0.95; transform: translate(20px, -10px) scale(1); }
+  100% { opacity: 0;    transform: translate(60px, -30px) scale(0.7); }
+}
+.reduce-motion .transition-dustswirl .dust-swirl-mote { animation: none; opacity: 0; }
+
 /* Loading first-paint splash — covers the whole viewport with a
    cosmic ignition before React mounts. The HTML splash lives in
    index.html so it paints BEFORE the JS bundle even loads; React
