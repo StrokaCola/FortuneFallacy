@@ -75,6 +75,28 @@ export function App() {
       for (const c of classes) document.body.classList.remove(c);
     };
   }, [stakeId]);
+  // Wave OO — body class for the active cosmos theme so panels +
+  // chrome can pick up a warmth/cool tint that matches the backdrop
+  // instead of every screen wearing the same violet panel-strong
+  // gradient. CSS rules under `.ff-cosmos-sandstorm .panel` etc. pull
+  // the tint without per-component prop threading.
+  const themeForBody = (
+    screen === 'shop' || screen === 'forge' ? 'sandstorm' :
+    screen === 'scores' ? 'abyssal' :
+    screen === 'title' || screen === 'nameentry' || screen === 'codex' ||
+    screen === 'settings' || screen === 'constellation_select' || screen === 'astral_forge'
+      ? 'midnight'
+      : 'voidlit'
+  );
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const classes = ['ff-cosmos-midnight', 'ff-cosmos-voidlit', 'ff-cosmos-sandstorm', 'ff-cosmos-abyssal'];
+    for (const c of classes) document.body.classList.remove(c);
+    document.body.classList.add(`ff-cosmos-${themeForBody}`);
+    return () => {
+      for (const c of classes) document.body.classList.remove(c);
+    };
+  }, [themeForBody]);
   // Score-progress drives the gold tint + halo aura on the cosmos
   // background — completely orthogonal to tension. >=1.0 = crossed
   // target; >=2.0 = doubled over. Clamped in CosmosBackground.
@@ -149,10 +171,23 @@ export function App() {
     return () => unsub();
   }, []);
 
+  // Wave NN — cosmos theme per screen. The previous picker only swung
+  // between voidlit (default) and sandstorm (shop / forge), leaving
+  // the calm meta screens (Title / Codex / Settings / Scores) sharing
+  // the boss-run backdrop. Each meta screen now picks the tint that
+  // matches its emotional beat:
+  //   midnight  — cool violet, contemplative (Title / NameEntry / Codex
+  //               / Settings / Constellation Select / Astral Forge)
+  //   abyssal   — deep cyan, archival depth (Scores)
+  //   sandstorm — gold/ember, transactional (Shop / Forge)
+  //   voidlit   — magenta/cyan, primary gameplay (Hub / Round / Event)
   const theme: ThemeKey =
     screen === 'shop' || screen === 'forge' ? 'sandstorm' :
-    isBoss && screen === 'round' ? 'voidlit' :
-    'voidlit';
+    screen === 'scores' ? 'abyssal' :
+    screen === 'title' || screen === 'nameentry' || screen === 'codex' ||
+    screen === 'settings' || screen === 'constellation_select' || screen === 'astral_forge'
+      ? 'midnight'
+      : 'voidlit';
 
   // Per-screen cosmos reactivity. Without these overrides the
   // tension + progress signals would read stale Round state on every

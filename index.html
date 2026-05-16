@@ -15,10 +15,17 @@
     position: fixed; inset: 0; z-index: 99999;
     background: radial-gradient(ellipse at 50% 35%, #1c1245 0%, #0f0925 45%, #07051a 100%);
     display: grid; place-items: center;
-    transition: opacity 520ms ease-out;
+    /* Wave T — extended 820ms fade-out so the Title screen's
+       constellation polyline (which starts drawing at 0ms on mount)
+       has visible overlap with the boot polyline's stars. The two
+       constellations bridge across the swap instead of cutting. */
+    transition: opacity 820ms ease-out;
     pointer-events: none;
   }
-  body:not([data-boot]) #boot-splash-inline { opacity: 0; }
+  /* During the boot→app handoff, soften the radial backdrop so the
+     React stars/cosmos backdrop bleeds through earlier — eye reads
+     the title screen rising into view as the boot polyline lingers. */
+  body:not([data-boot]) #boot-splash-inline { opacity: 0; background: transparent; }
   #boot-splash-inline svg { width: min(280px, 60vmin); height: auto; }
   #boot-splash-inline .line {
     stroke: #f5c451; stroke-width: 0.5; fill: none;

@@ -94,7 +94,7 @@ export function PauseMenu() {
       aria-label="Game paused"
     >
       <div
-        className="panel-strong"
+        className="panel-strong ff-pause-panel"
         style={{
           // Cap width to viewport on tight phones so the modal doesn't
           // touch the screen edges, and shrink padding/gap so the whole

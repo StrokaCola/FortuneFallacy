@@ -219,6 +219,131 @@ export const MOD_ICON_SVGS: Record<string, ModIconRenderer> = {
       <path d="M 7 14 Q 7 7, 13 7" opacity="0.5" />
     </svg>
   ),
+
+  // ── Wave Y: backfill 10 high-visibility mods that previously
+  // fell back to a single-codepoint glyph. Each is hand-traced to
+  // sit alongside the existing set at the same 24-unit viewport. ──
+
+  // Amplify — +mult per scoring die (was ⬆). A rising waveform amp
+  // bar — three vertical lines climbing left-to-right with a peak
+  // dot, reads as "this signal is getting louder."
+  amplify: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="5"  y1="18" x2="5"  y2="14" strokeWidth="2.2" />
+      <line x1="10" y1="18" x2="10" y2="10" strokeWidth="2.2" />
+      <line x1="15" y1="18" x2="15" y2="6"  strokeWidth="2.2" />
+      <line x1="20" y1="18" x2="20" y2="3"  strokeWidth="2.2" />
+      <circle cx="20" cy="3" r="1.4" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Snake Eyes — +chips when 1s score (was ①). Two die-pip dots
+  // suspended in a contoured "snake" curve so it reads as the
+  // gambler's-luck pair rather than a bare numeral.
+  snake_eyes: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 4 10 Q 8 4, 12 10 Q 16 16, 20 10" strokeWidth="1.8" />
+      <circle cx="8"  cy="14" r="2"   fill={color} stroke="none" />
+      <circle cx="16" cy="14" r="2"   fill={color} stroke="none" />
+      <circle cx="8"  cy="14" r="0.6" fill="rgba(7,5,26,0.85)" stroke="none" />
+      <circle cx="16" cy="14" r="0.6" fill="rgba(7,5,26,0.85)" stroke="none" />
+    </svg>
+  ),
+
+  // Mirror Pair — +mult per other die in hand sharing this face
+  // (was ⚉). Two die silhouettes joined at the centerline so the
+  // "twin reflection" mechanic reads in one glance.
+  mirror_pair: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <rect x="3"  y="7" width="8"  height="10" rx="1.5" />
+      <rect x="13" y="7" width="8"  height="10" rx="1.5" />
+      <line x1="12" y1="4" x2="12" y2="20" strokeDasharray="1 1.4" opacity="0.6" />
+      <circle cx="7"  cy="12" r="1.2" fill={color} stroke="none" />
+      <circle cx="17" cy="12" r="1.2" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Vanguard — +chips if scored first (was ◀). A pennant flying
+  // forward off a staff — leads the column. Distinct from Capstone
+  // by its sharp leading edge + flag tail.
+  vanguard: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="6" y1="3" x2="6" y2="21" strokeWidth="2.2" />
+      <path d="M 6 5 L 19 9 L 6 13 Z" fill={color} fillOpacity="0.35" />
+    </svg>
+  ),
+
+  // Capstone — +chips if scored last (was ▶). A column block
+  // crowned by a triangular cap — closing piece of the build.
+  capstone: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 6 8 L 18 8 L 12 3 Z" fill={color} fillOpacity="0.45" />
+      <rect x="6" y="9" width="12" height="11" rx="0.5" />
+      <line x1="6" y1="14" x2="18" y2="14" opacity="0.45" />
+    </svg>
+  ),
+
+  // Wide Net — re-rolls 1s and 2s (was ⊞). A casting net silhouette
+  // with mesh grid + a pull line, reads as "catches the low rolls."
+  wide_net: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 4 6 L 20 6 L 17 18 Q 12 22, 7 18 Z" />
+      <line x1="6"  y1="6"  x2="9"  y2="20" opacity="0.55" />
+      <line x1="12" y1="6"  x2="12" y2="21" opacity="0.55" />
+      <line x1="18" y1="6"  x2="15" y2="20" opacity="0.55" />
+      <line x1="5"  y1="11" x2="19" y2="11" opacity="0.55" />
+      <line x1="6"  y1="15" x2="18" y2="15" opacity="0.55" />
+    </svg>
+  ),
+
+  // Tally Mark — +chips for each prior hand (was |). Classic four
+  // upright strokes crossed by a fifth diagonal — universally
+  // legible as "counting."
+  tally_mark: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="5"  y1="5" x2="5"  y2="19" strokeWidth="2.2" />
+      <line x1="9"  y1="5" x2="9"  y2="19" strokeWidth="2.2" />
+      <line x1="13" y1="5" x2="13" y2="19" strokeWidth="2.2" />
+      <line x1="17" y1="5" x2="17" y2="19" strokeWidth="2.2" />
+      <line x1="3"  y1="18" x2="19" y2="6" strokeWidth="2" />
+    </svg>
+  ),
+
+  // Cadence — fires every Nth scoring step (was ♪). An eighth-note
+  // pair with a beat-pulse beneath the stem so it reads as rhythm
+  // rather than generic "music."
+  cadence: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <ellipse cx="8"  cy="17" rx="3" ry="2.2" fill={color} stroke="none" />
+      <ellipse cx="16" cy="17" rx="3" ry="2.2" fill={color} stroke="none" />
+      <line x1="11" y1="17" x2="11" y2="5" strokeWidth="1.8" />
+      <line x1="19" y1="17" x2="19" y2="5" strokeWidth="1.8" />
+      <path d="M 11 5 Q 15 5, 19 7" strokeWidth="1.8" />
+    </svg>
+  ),
+
+  // Pip Charge — accumulates a stack per scoring step (was ⫶).
+  // Three stacked diamonds — a tally column of pips rising.
+  pip_charge: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 3 L 14.5 6 L 12 9 L 9.5 6 Z"   fill={color} fillOpacity="0.6" />
+      <path d="M 12 10 L 14.5 13 L 12 16 L 9.5 13 Z" fill={color} fillOpacity="0.4" />
+      <path d="M 12 17 L 14.5 20 L 12 23 L 9.5 20 Z" fill={color} fillOpacity="0.2" />
+    </svg>
+  ),
+
+  // Even Keel — +chips per even-face scoring die (was ⚖). A
+  // balance beam with two even-weighted plates — symmetry made
+  // literal. Distinct from a generic scale by the level baseline.
+  even_keel: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <line x1="3"  y1="9" x2="21" y2="9" strokeWidth="2" />
+      <line x1="12" y1="9" x2="12" y2="20" strokeWidth="2" />
+      <path d="M 4 9 L 8 14 L 12 9 Z" fill={color} fillOpacity="0.35" />
+      <path d="M 12 9 L 16 14 L 20 9 Z" fill={color} fillOpacity="0.35" />
+      <line x1="9" y1="20" x2="15" y2="20" strokeWidth="2.5" />
+    </svg>
+  ),
 };
 
 /** True iff a hand-authored SVG renderer exists for this mod id. */

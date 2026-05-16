@@ -223,13 +223,11 @@ export function CosmosBackground({
           }} />
         </>
       )}
-      {/* Distant-lightning vignette — fires randomly when tension is
-          high (>0.65), simulating storm clouds rolling across the
-          backdrop. Each flash is a brief warm-white pulse across the
-          top of the screen, ~180ms. Adds atmospheric depth on late-
-          blind / boss tension without competing with the crimson
-          tint or the score-celebration halos. */}
-      <LightningFlash tension={tensionClamped} />
+      {/* Distant-lightning vignette removed (2026-05-16) — playtest
+          flagged the periodic warm-white pulse at the top of the
+          screen as distracting rather than atmospheric. Tension
+          already paints the crimson tint + dark corner vignette;
+          those carry the late-blind mood without a transient flash. */}
     </div>
   );
   return host ? createPortal(tree, host) : tree;
@@ -301,36 +299,5 @@ function MeteorShowerLayer({ enabled }: { enabled: boolean }) {
   );
 }
 
-// Tension-driven random lightning flashes. Schedules itself between
-// 6 and 14 seconds apart once tension crosses 0.65, and re-evaluates
-// on tension change so a falling tension quiets the storm.
-function LightningFlash({ tension }: { tension: number }) {
-  const [pulseKey, setPulseKey] = useState(0);
-  useEffect(() => {
-    if (tension < 0.65) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      const delay = 6000 + Math.random() * 8000;
-      timer = setTimeout(() => {
-        setPulseKey((k) => k + 1);
-        schedule();
-      }, delay);
-    };
-    schedule();
-    return () => { if (timer) clearTimeout(timer); };
-  }, [tension < 0.65]); // re-arm only on threshold cross
-  if (tension < 0.65 || pulseKey === 0) return null;
-  return (
-    <div
-      key={pulseKey}
-      aria-hidden="true"
-      className="cosmos-lightning"
-      style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,240,210,0.55) 0%, transparent 45%)',
-        mixBlendMode: 'screen',
-        opacity: 0,
-      }}
-    />
-  );
-}
+// LightningFlash component removed (2026-05-16). See the comment block
+// above the JSX site for rationale.

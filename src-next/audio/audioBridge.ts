@@ -55,8 +55,11 @@ export function startAudioBridge(): () => void {
       sfxModule.sfxPlay('win');
     }),
     bus.on('onBossRevealed', () => {
+      // Audio engine "fail mode" ducks for the dread vignette; the
+      // bossSting cue itself is now driven by BossReveal.tsx with the
+      // boss-index variant (Wave L), so we DON'T re-fire it here.
+      // Firing twice stacked two brass voices an octave apart.
       audioEngine.enterFail();
-      sfxModule.sfxPlay('bossSting');
       window.setTimeout(() => audioEngine.exitFail(), 800);
     }),
     bus.on('onShopOpened', () => {
@@ -129,6 +132,12 @@ export function startAudioBridge(): () => void {
     if (s.ui.screen !== prev.ui.screen) {
       if (s.ui.screen === 'title') audioEngine.pause();
       else audioEngine.resume();
+      // Wave N — per-screen entry cue. Each screen gets a distinct
+      // signature so the player can identify the screen by sound after
+      // a few sessions, without authoring full ambient beds. Cues are
+      // existing voices played at low gain so they punctuate the screen
+      // arrival without competing with the music crossfade.
+      playScreenEnterCue(s.ui.screen);
     }
     const t = selectTensionFromState(s);
     if (Math.abs(t - lastTension) > 0.005) {
@@ -141,6 +150,28 @@ export function startAudioBridge(): () => void {
       lastProgress = p;
       audioEngine.setProgress(p);
     }
+    // Wave O — color-temperature ramp. Stage-root carries a
+    // data-score-warmth attribute keyed off the current score / target
+    // ratio. CSS layers (see styles/index.css "Wave O score warmth"
+    // block) add a stepped warmth tint to the screen as the player
+    // approaches and crosses the trial target. Bypassed under
+    // .reduce-motion; ring-buffered so we don't thrash setAttribute.
+    if (typeof document !== 'undefined' && s.ui.screen === 'round' && target > 0) {
+      const ratio = s.round.score / target;
+      const next =
+        ratio >= 1.5 ? '4' :
+        ratio >= 1.0 ? '3' :
+        ratio >= 0.7 ? '2' :
+        ratio >= 0.35 ? '1' :
+        '0';
+      const stage = document.getElementById('stage-root');
+      if (stage && stage.getAttribute('data-score-warmth') !== next) {
+        stage.setAttribute('data-score-warmth', next);
+      }
+    } else if (typeof document !== 'undefined' && prev.ui.screen === 'round' && s.ui.screen !== 'round') {
+      const stage = document.getElementById('stage-root');
+      if (stage) stage.removeAttribute('data-score-warmth');
+    }
   });
 
   return () => {
@@ -151,6 +182,38 @@ export function startAudioBridge(): () => void {
 
 export { audioEngine, ensureAudioAfterGesture, sfxSetMaster, sfxGetMaster, sfxBank };
 export const sfxPlay = sfxModule.sfxPlay;
+
+// Wave N — per-screen entry cue. Maps each Screen enum value to an
+// existing SFX voice + gain so the screen arrival has a quiet
+// signature without authoring new audio assets. Returns silently if
+// the screen has no cue assigned (e.g. round, which has its own
+// dedicated entry beats from castSwell). Throttles via the cue's
+// own SPAMMABLE_GAP_MS — rapid back-and-forth navigation between
+// two screens doesn't pile cues.
+type ScreenCue = { id: sfxModule.SfxId; gain?: number; delay?: number };
+const SCREEN_ENTER_CUES: Partial<Record<string, ScreenCue>> = {
+  hub:               { id: 'comboChime', gain: 0.55 },
+  shop:              { id: 'buy',        gain: 0.35 },
+  forge:             { id: 'modAttach',  gain: 0.45 },
+  codex:             { id: 'cardFlip',   gain: 0.8  },
+  astral_forge:      { id: 'sigilDraw',  gain: 0.55 },
+  challenges:        { id: 'cardFlip',   gain: 0.55 },
+  scores:            { id: 'whisperChime', gain: 0.6 },
+  constellation_select: { id: 'sigilDraw', gain: 0.45 },
+  settings:          { id: 'cardFlip',   gain: 0.45 },
+  // title / nameentry / round / win / fail intentionally skipped —
+  // they already have their own arrival beats (boot splash chime,
+  // castSwell on the first roll, win fanfare, bust sting).
+};
+export function playScreenEnterCue(screen: string): void {
+  const cue = SCREEN_ENTER_CUES[screen];
+  if (!cue) return;
+  if (cue.delay && cue.delay > 0) {
+    window.setTimeout(() => sfxModule.sfxPlay(cue.id, { gain: cue.gain }), cue.delay);
+  } else {
+    sfxModule.sfxPlay(cue.id, { gain: cue.gain });
+  }
+}
 
 export function getMaster(): number {
   return audioSettings.getMaster();

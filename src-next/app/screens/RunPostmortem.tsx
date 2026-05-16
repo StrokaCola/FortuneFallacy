@@ -172,10 +172,17 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           ✦ {constellation.name}
         </div>
 
-        {/* Panel 1 — final score / target / shards. */}
+        {/* Panel 1 — final score / target / shards. Grid with auto-fit
+            so the 4-tile fail variant lands on a single balanced row
+            instead of wrapping 3+1 (the Dust tile previously orphaned
+            beneath at common desktop widths). Stacks gracefully on
+            narrow viewports — every tile keeps a 110px floor. */}
         <div className="mat-obsidian" style={{
-          padding: '14px 26px', borderRadius: 12, marginTop: 10,
-          display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center',
+          padding: '14px 18px', borderRadius: 12, marginTop: 10,
+          width: '100%',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))',
+          gap: 14, justifyItems: 'center', alignItems: 'start',
           opacity: 0, animation: 'fadein 800ms ease-out 800ms both',
         }}>
           <Stat color={heroColor} label="final score" value={score.toLocaleString()} />

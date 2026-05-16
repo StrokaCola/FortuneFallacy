@@ -19,6 +19,10 @@ export type SfxId =
   | 'modTwinGlow' | 'modShardClink' | 'modRhythmStack'
   | 'modAppetite' | 'modAwaken'
   | 'modAttach' | 'modDetach' | 'uiClick' | 'uiHover'
+  // Wave K — graded press tier voices. uiHoverSoft is a quieter shimmer
+  // for ghost-tier hover; uiCommit weights destructive presses; uiDenied
+  // confirms a blocked tap so disabled doesn't feel dead.
+  | 'uiHoverSoft' | 'uiCommit' | 'uiDenied'
   // 2026-05-11 polish pass — scaling pack stings. scalingTick fires on every
   // scaling-catalyst contribution (very quiet, throttled). retriggerEcho
   // fires once per retrigger catalyst hit (Polaris/Refrain/etc). whisperChime
@@ -79,6 +83,12 @@ import.meta.hot?.dispose(() => {
 // them deliberately.
 const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
   uiHover: 80,
+  // Wave K — mirror uiHover's throttle so the ghost-tier hover doesn't
+  // stutter on a fast mouse sweep, and gate denied/commit so spam-clicks
+  // on a disabled button don't pile up.
+  uiHoverSoft: 80,
+  uiDenied: 220,
+  uiCommit: 120,
   cardFlip: 90,
   // scalingTick is intentionally throttled aggressively — a 5-die hand with
   // 6 scaling catalysts could otherwise queue dozens of bells. 60ms gap
@@ -151,7 +161,7 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'buy':             v.buy(bank as never); break;
       case 'combo':           v.combo(bank as never, opts); break;
       case 'upgrade':         v.upgrade(bank as never); break;
-      case 'bossSting':       v.bossSting(bank as never); break;
+      case 'bossSting':       v.bossSting(bank as never, opts); break;
       case 'bigScore':        v.bigScore(bank as never); break;
       case 'win':             v.winFanfare(bank as never); break;
       case 'bust':            v.bust(bank as never); break;
@@ -188,6 +198,9 @@ export function sfxPlay(id: SfxId, opts: SfxOpts = {}): void {
       case 'modDetach':       (v as typeof voices).modDetach(bank as never); break;
       case 'uiClick':         (v as typeof voices).uiClick(bank as never); break;
       case 'uiHover':         (v as typeof voices).uiHover(bank as never); break;
+      case 'uiHoverSoft':     (v as typeof voices).uiHoverSoft(bank as never); break;
+      case 'uiCommit':        (v as typeof voices).uiCommit(bank as never); break;
+      case 'uiDenied':        (v as typeof voices).uiDenied(bank as never); break;
       case 'scalingTick':     (v as typeof voices).scalingTick(bank as never, opts); break;
       case 'retriggerEcho':   (v as typeof voices).retriggerEcho(bank as never, opts); break;
       case 'whisperChime':    (v as typeof voices).whisperChime(bank as never, opts); break;

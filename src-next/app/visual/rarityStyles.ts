@@ -37,8 +37,17 @@ export function rarityStrokeWidth(r: Rarity | null | undefined): number {
   return 1;
 }
 
-// CSS class to add to the kind-frame wrapper for legendary's pulsing aura.
-// Empty string for non-legendary so callers can unconditionally append it.
+// CSS class to add to the kind-frame wrapper for the per-rarity ambient
+// flourish. Each tier carries a distinct atmosphere on top of the color
+// hierarchy:
+//   common    → none (clean single ring, reads as "honest")
+//   uncommon  → soft pulsing inner haze (rarity-uncommon-aura)
+//   rare      → slow-rotating twin concentric ring (rarity-rare-aura)
+//   legendary → existing pulsing aura + ember flourishes (legendary-aura)
+// Empty string when no flourish, so callers can unconditionally append it.
 export function rarityClassName(r: Rarity | null | undefined): string {
-  return r === 'legendary' ? 'legendary-aura' : '';
+  if (r === 'legendary') return 'legendary-aura';
+  if (r === 'rare') return 'rarity-rare-aura';
+  if (r === 'uncommon') return 'rarity-uncommon-aura';
+  return '';
 }

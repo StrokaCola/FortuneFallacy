@@ -17,11 +17,47 @@ type Props = {
   variant?: 'badge' | 'inline';
 };
 
+// Wave GG — spawns a transient gold ring + shard ember at the button's
+// center when the sell fires. Lives on document.body so the parent
+// catalyst card can unmount (sell removes the item from state) without
+// clipping the flourish mid-animation. Mirrors the buttonJuice shockwave
+// pattern. Reduce-motion bypasses.
+function spawnSellSparkle(btn: HTMLElement): void {
+  if (document.documentElement.classList.contains('reduce-motion')) return;
+  const rect = btn.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const wave = document.createElement('div');
+  wave.className = 'sell-sparkle-ring';
+  wave.style.left = `${cx}px`;
+  wave.style.top = `${cy}px`;
+  document.body.appendChild(wave);
+  const cleanup = () => {
+    wave.removeEventListener('animationend', cleanup);
+    if (wave.parentNode) wave.parentNode.removeChild(wave);
+  };
+  wave.addEventListener('animationend', cleanup);
+  window.setTimeout(cleanup, 700);
+  // Tiny gold ember dot that floats up + fades, the "sold!" mote.
+  const ember = document.createElement('div');
+  ember.className = 'sell-sparkle-ember';
+  ember.style.left = `${cx}px`;
+  ember.style.top = `${cy}px`;
+  document.body.appendChild(ember);
+  const emberCleanup = () => {
+    ember.removeEventListener('animationend', emberCleanup);
+    if (ember.parentNode) ember.parentNode.removeChild(ember);
+  };
+  ember.addEventListener('animationend', emberCleanup);
+  window.setTimeout(emberCleanup, 900);
+}
+
 export function SellButton({ kind, id, index, disabled, disabledReason, variant = 'inline' }: Props) {
   const refund = sellRefund(kind, id);
   const onClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (disabled) return;
+    spawnSellSparkle(e.currentTarget as HTMLElement);
     dispatch({ type: 'SELL_UPGRADE', kind, index });
     sfxPlay('buy');
   };

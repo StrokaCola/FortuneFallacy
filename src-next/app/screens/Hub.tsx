@@ -114,6 +114,7 @@ export function Hub() {
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
+        catalysts={catalysts}
         accent={accent}
       />
       <PauseButton />
@@ -265,9 +266,23 @@ export function Hub() {
             fits on a 640px landscape phone — drop it on tight. */}
         {!tight && <ConstellationThread blinds={blinds} accent={accent} />}
 
-        <div data-coach="hub-blinds" style={{
+        <div data-coach="hub-blinds" style={tight ? {
+          // Wave V — tight viewport switches to a 2-column grid where
+          // the third (boss) trial spans both columns so the row reads
+          // as "the boss is its own beat" instead of an orphan card
+          // pinned to a single column. Mirrors the desktop hierarchy
+          // (Lesser / Greater / Final) without forcing 3 cards into a
+          // 375-wide portrait viewport where each cell would be ~110px
+          // and illegible.
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 8,
+          justifyItems: 'center',
+          width: '100%',
+          maxWidth: 360,
+        } : {
           display: 'flex',
-          gap: tight ? 8 : CARD_GAP,
+          gap: CARD_GAP,
           flexWrap: 'wrap', justifyContent: 'center',
           maxWidth: '100%',
         }}>
@@ -289,7 +304,7 @@ export function Hub() {
           return (
             <div
               key={i}
-              className="panel-strong has-tip"
+              className={`panel-strong has-tip${cur ? ' ff-hub-current' : ''}`}
               style={{
                 // Tight: shrink width so 3 cards fit a 640px landscape
                 // phone (3*180 + 2*8 = 556 < 640). Wider viewports cap
@@ -297,7 +312,12 @@ export function Hub() {
                 // viewport-minus-padding on portrait phones — on a
                 // 320px phone the bare 240px card used to overflow the
                 // 296px content column.
-                width: tight ? 'clamp(140px, 28vw, 180px)' : `min(${CARD_W}px, calc(100vw - 40px))`,
+                width: tight ? '100%' : `min(${CARD_W}px, calc(100vw - 40px))`,
+                // Wave V — boss (third) trial spans both columns on
+                // the tight 2-col grid so it reads as the climactic
+                // beat instead of a single orphan card pinned left.
+                gridColumn: tight && i === 2 ? '1 / -1' : undefined,
+                maxWidth: tight ? (i === 2 ? 220 : 180) : undefined,
                 // Card height clamps with viewport so on short landscape
                 // phones the three trial cards plus action bar all fit
                 // *and* the inline Begin button stays inside the card.

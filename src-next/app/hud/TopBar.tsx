@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
+import { lookupCatalyst } from '../../data/catalysts';
 import { useStore, type GameState } from '../../state/store';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
@@ -49,6 +50,7 @@ export function TopBar({
   target = 0,
   score = 0,
   catalystSlots,
+  catalysts = [],
   voucherCount = 0,
   vouchers = [],
   accent = '#7be3ff',
@@ -58,6 +60,11 @@ export function TopBar({
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
   target?: number; score?: number;
   catalystSlots?: { used: number; max: number };
+  // Wave FF — owned catalyst ids so the TopBar chip tooltip can show a
+  // per-catalyst breakdown the same way vouchers already do. Optional
+  // and defaults to [] so existing callsites that don't pass it keep
+  // the old generic tooltip text.
+  catalysts?: string[];
   voucherCount?: number;
   vouchers?: string[];
   accent?: string;
@@ -156,6 +163,47 @@ export function TopBar({
   const handsDisplay = useCounterTween(hands, 200);
   const rerollsDisplay = useCounterTween(rerolls, 200);
   const tight = useIsTightStage();
+  // Wave Z2 + CC — shard delta pulse. Detect a positive OR negative
+  // delta and fire a brief glow on the digit. Gold for gains (+N
+  // earned), crimson for spends (-N paid). State drives a keyed
+  // remount of the digit span so the keyframe replays cleanly on
+  // every change, and the direction class picks the tint.
+  const [shardPulseKey, setShardPulseKey] = useState(0);
+  const [shardPulseDir, setShardPulseDir] = useState<'gain' | 'spend' | null>(null);
+  const prevShardsRef = useRef(shards);
+  useEffect(() => {
+    const prev = prevShardsRef.current;
+    if (shards > prev) {
+      setShardPulseDir('gain');
+      setShardPulseKey((k) => k + 1);
+    } else if (shards < prev) {
+      setShardPulseDir('spend');
+      setShardPulseKey((k) => k + 1);
+    }
+    prevShardsRef.current = shards;
+  }, [shards]);
+  // Wave II — score-cross-target pulse. Detect the moment the running
+  // score (tweened) crosses the trial target threshold for the first
+  // time in a hand. Fire a brief gold scale-pulse on the score panel
+  // so the TopBar acknowledges the cross even when the cinematic VFX
+  // (godrays / CA / star ripples) is happening over the dice canvas.
+  // Reset the "crossed" flag whenever target changes (new blind).
+  const [scoreCrossKey, setScoreCrossKey] = useState(0);
+  const crossedThisHandRef = useRef(false);
+  const prevTargetRef = useRef(target);
+  useEffect(() => {
+    if (target !== prevTargetRef.current) {
+      crossedThisHandRef.current = false;
+      prevTargetRef.current = target;
+    }
+    if (!crossedThisHandRef.current && target > 0 && displayedScore >= target) {
+      crossedThisHandRef.current = true;
+      setScoreCrossKey((k) => k + 1);
+    } else if (target > 0 && displayedScore < target) {
+      // Allow re-cross next hand if score dips back (round reset path).
+      crossedThisHandRef.current = false;
+    }
+  }, [displayedScore, target]);
   // The big blind line restates the same word that's already in the
   // small "ante NN · blind" label above it. On a phone where vertical
   // space is precious we drop it; on desktop the redundancy is fine
@@ -194,7 +242,8 @@ export function TopBar({
             <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>score</div>
             <div
               data-score-counter
-              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}`}
+              key={`score-cross-${scoreCrossKey}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
                 color: tense ? '#ff4d6d' : '#f3f0ff',
@@ -299,7 +348,17 @@ export function TopBar({
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
         <div className="has-tip" style={{ display: 'flex', alignItems: 'baseline', gap: 8, position: 'relative' }}>
           <Sigil kind="star" size={tight ? 14 : 20} color="#f5c451" />
-          <div className="f-display num" style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}>{shardsDisplay}</div>
+          <div
+            key={`shards-pulse-${shardPulseKey}`}
+            className={`f-display num${
+              shardPulseKey > 0
+                ? shardPulseDir === 'spend' ? ' ff-shard-spend-pulse' : ' ff-shard-gain-pulse'
+                : ''
+            }`}
+            style={{ fontSize: tight ? 22 : 32, color: '#f5c451', fontWeight: 700 }}
+          >
+            {shardsDisplay}
+          </div>
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
           <span className="tip">
             <span className="tip-title">Shards ◆</span>
@@ -313,9 +372,33 @@ export function TopBar({
               display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               catalysts
               <ConstellationCount filled={catalystSlots.used} total={catalystSlots.max} color="#7be3ff" size={6} />
-              <span className="tip">
+              <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
                 <span className="tip-title">Catalyst slots</span>
-                Catalysts are persistent run-long modifiers. The Bench voucher and some constellations grant extra slots.
+                {catalysts.length === 0 ? (
+                  'Catalysts are persistent run-long modifiers. The Bench voucher and some constellations grant extra slots.'
+                ) : (
+                  // Wave FF — list each owned catalyst inline so the chip
+                  // doubles as a "what's running" preview. Mirrors the
+                  // voucher chip's per-item breakdown. Sorted by acquisition
+                  // order (newest last) so the chip reads like a build log.
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                    {catalysts.map((id, i) => {
+                      const c = lookupCatalyst(id);
+                      if (!c) return null;
+                      return (
+                        <span key={`${id}-${i}`} style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: c.color, fontSize: 11 }}>
+                            <span style={{ opacity: 0.85, marginRight: 6 }}>{c.icon}</span>
+                            {c.name}
+                          </span>
+                          {c.desc && (
+                            <span style={{ color: '#bba8ff', fontSize: 10, lineHeight: 1.35 }}>{c.desc}</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
               </span>
             </span>
           )}

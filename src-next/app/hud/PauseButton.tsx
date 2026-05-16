@@ -1,6 +1,8 @@
 import { dispatch } from '../../actions/dispatch';
 import { Z } from './zLayers';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 // Bespoke pause icon — twin orbital arcs replace the Unicode ⏸
 // glyph. Reads as "two suspended cosmic objects" instead of a
@@ -37,14 +39,34 @@ export function PauseButton() {
   const tight = useIsTightStage();
   return (
     <button
-      onClick={() => dispatch({ type: 'TOGGLE_PAUSE' })}
-      className="f-mono tap"
+      // Wave KK — pause button picks up its own press feedback. It
+      // intentionally doesn't carry a .btn-* tier (the Wave K juice
+      // would override its bespoke icon-square style) so play the
+      // ghost-tier cues manually: uiClick + tap haptic on press.
+      onClick={() => {
+        sfxPlay('uiClick');
+        playHaptic('tap');
+        dispatch({ type: 'TOGGLE_PAUSE' });
+      }}
+      className="f-mono tap ff-pause-btn"
       style={{
         position: 'absolute',
-        top: tight
-          ? 'max(80px, calc(var(--hud-top-h, 110px) + 8px))'
-          : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
-        right: tight ? 96 : 18,
+        // Wave V — tight viewports moved the pause button to the
+        // bottom-right corner of the stage instead of floating
+        // alongside the wrapped TopBar. On mobile portrait the prior
+        // top-anchored placement overlapped the Shop "Celestial Bazaar"
+        // title and the Hub trial card row at narrow widths. Pinning
+        // bottom-right keeps it reachable for the thumb without
+        // colliding with any screen's title row.
+        top: tight ? undefined : 'max(80px, calc(var(--hud-top-h, 110px) - 24px))',
+        // Wave SS — push pause CLEAR of any bottom action bar on tight
+        // viewports. Earlier offset (hud-bottom-h + 12px) wasn't enough
+        // when --hud-bottom-h reported 0 (some screens like Forge don't
+        // self-measure their action row into the var). Use a hard 64px
+        // floor so the 44px icon always sits ≥20px above the action bar
+        // baseline regardless of which screen renders.
+        bottom: tight ? 'max(64px, calc(var(--hud-bottom-h, 60px) + 12px))' : undefined,
+        right: 18,
         zIndex: Z.hudControl,
         width: 44,
         height: 44,
@@ -56,6 +78,9 @@ export function PauseButton() {
         pointerEvents: 'auto',
         display: 'grid',
         placeItems: 'center',
+        // Subtle backdrop blur on tight so the bottom-right placement
+        // still reads clearly over dice/canvas content underneath.
+        backdropFilter: tight ? 'blur(8px)' : undefined,
       }}
       title="Pause (Esc)"
       aria-label="Pause"

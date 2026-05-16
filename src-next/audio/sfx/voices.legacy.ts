@@ -48,12 +48,24 @@ export function upgrade(bank: SynthBank): void {
   bank.upgrade.triggerAttackRelease(notes[Math.floor(Math.random() * notes.length)]!, '8n', nextTime());
 }
 
-export function bossSting(bank: SynthBank): void {
+export function bossSting(bank: SynthBank, opts: VoiceOpts = {}): void {
   const s = bank.bossSting;
   const t = nextTime();
+  // Wave L — per-boss variant lookup keyed by opts.idx. The legacy
+  // bank only has a single monosynth so we vary the frequency drop
+  // pair to give bosses different shapes; the modern bank does more.
+  const tab = [
+    [110, 45],
+    [138, 52],
+    [92,  38],
+    [165, 62],
+    [123, 41],
+    [98,  33],
+  ] as const;
+  const [start, end] = tab[(opts.idx ?? 0) % tab.length]!;
   s.frequency.cancelScheduledValues(t);
-  s.frequency.setValueAtTime(110, t);
-  s.frequency.exponentialRampToValueAtTime(45, t + 0.6);
+  s.frequency.setValueAtTime(start, t);
+  s.frequency.exponentialRampToValueAtTime(end, t + 0.6);
   s.triggerAttackRelease('A1', '2n', t);
 }
 
@@ -111,3 +123,15 @@ export function nodePulse(bank: SynthBank): void {
 export function transitionWipe(bank: SynthBank): void {
   bank.transitionWipe.triggerAttackRelease('4n', nextTime());
 }
+
+// ---- Wave K press-tier voice stubs ----
+// The legacy synth bank never wired uiClick/uiHover, so the new
+// Wave K tiers (uiHoverSoft, uiCommit, uiDenied) stay silent in legacy
+// mode rather than crashing on a missing bank node. Players in legacy
+// mode (?sfx=legacy) keep the original sparse UI sound until they opt
+// back into the modern bank.
+export function uiClick(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiHover(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiHoverSoft(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiCommit(_bank: SynthBank): void { /* legacy no-op */ }
+export function uiDenied(_bank: SynthBank): void { /* legacy no-op */ }

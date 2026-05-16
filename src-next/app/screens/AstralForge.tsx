@@ -63,15 +63,77 @@ export function AstralForge() {
         ))}
       </div>
 
+      <NextUnlockTeaser dust={dust} ownedPerks={ownedPerks} />
+
       <button
         type="button"
         onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-        className="mt-8 px-8 py-2 rounded-lg bg-cosmos-700/80 hover:bg-cosmos-600 text-cosmos-50
+        className="mt-6 px-8 py-2 rounded-lg bg-cosmos-700/80 hover:bg-cosmos-600 text-cosmos-50
                    font-head ring-1 ring-cosmos-300/30 tap"
         style={{ minHeight: 44 }}
       >
         back
       </button>
+    </div>
+  );
+}
+
+// Wave R — closest unowned perk teaser. Fills the dead vertical space
+// between the grid and the back button with a contextual "next goal"
+// nudge, so players know what they're working toward without having
+// to mentally scan all six perk prices.
+function NextUnlockTeaser({ dust, ownedPerks }: { dust: number; ownedPerks: string[] }) {
+  // Find the cheapest unowned perk. If the player owns everything,
+  // surface a "complete" badge instead.
+  const remaining = ASTRAL_PERKS.filter((p) => !ownedPerks.includes(p.id));
+  if (remaining.length === 0) {
+    return (
+      <div className="mt-8 mb-2 f-mono uc" style={{
+        fontSize: 10, letterSpacing: '0.32em', color: '#f5c451',
+        padding: '8px 18px', borderRadius: 999,
+        border: '1px solid rgba(245,196,81,0.45)',
+        background: 'rgba(245,196,81,0.08)',
+        textShadow: '0 0 10px rgba(245,196,81,0.4)',
+      }}>
+        ✦ forge complete · every star settled ✦
+      </div>
+    );
+  }
+  // Sort by remaining-dust cost first (so the closest landing is the
+  // teaser), then by absolute cost as tiebreak.
+  const sorted = [...remaining].sort((a, b) => a.cost - b.cost);
+  const cheapest = sorted[0]!;
+  const gap = Math.max(0, cheapest.cost - dust);
+  const reachable = gap === 0;
+  return (
+    <div className="mt-8 mb-2" style={{
+      maxWidth: 360,
+      padding: '12px 20px', borderRadius: 12,
+      border: `1px solid ${reachable ? 'rgba(123,227,255,0.6)' : 'rgba(149,119,255,0.35)'}`,
+      background: 'rgba(15,9,37,0.65)',
+      textAlign: 'center',
+      boxShadow: reachable ? '0 0 22px rgba(123,227,255,0.18)' : undefined,
+    }}>
+      <div className="f-mono uc" style={{
+        fontSize: 9, letterSpacing: '0.32em',
+        color: reachable ? '#7be3ff' : '#bba8ff',
+      }}>
+        {reachable ? '◇ ready to unlock ◇' : '◇ next within reach ◇'}
+      </div>
+      <div className="f-display" style={{ fontSize: 18, color: '#f3f0ff', marginTop: 4 }}>
+        {cheapest.name}
+      </div>
+      <div className="f-mono" style={{
+        fontSize: 11, color: '#bba8ff', marginTop: 4, lineHeight: 1.35,
+      }}>
+        {cheapest.description}
+      </div>
+      <div className="f-mono uc" style={{
+        fontSize: 10, letterSpacing: '0.28em', marginTop: 8,
+        color: reachable ? '#7be3ff' : '#f5c451',
+      }}>
+        {reachable ? `tap above to spend ◇ ${cheapest.cost}` : `◇ ${gap.toLocaleString()} more to reach`}
+      </div>
     </div>
   );
 }
@@ -98,7 +160,7 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
       // the game's clickable cards (Hub trial, Shop offer). State-
       // specific overlays (owned wash, locked desaturation, accent
       // ring) layer on top via inline style.
-      className="panel-strong text-left tap"
+      className={`panel-strong text-left tap ff-perk-card${owned ? ' ff-perk-owned' : affordable ? ' ff-perk-affordable' : ''}`}
       aria-label={`${perk.name} — ${owned ? 'owned' : `${perk.cost} cosmic dust`}`}
       style={{
         position: 'relative',
@@ -118,10 +180,7 @@ function PerkCard({ perk, owned, affordable }: { perk: AstralPerkDef; owned: boo
         opacity: owned || affordable ? 1 : 0.65,
         minHeight: 130,
         display: 'flex', flexDirection: 'column', gap: 6,
-        transition: 'transform 120ms ease, border-color 120ms ease',
       }}
-      onPointerEnter={(e) => { if (!owned && affordable) (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; }}
-      onPointerLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-display" style={{ fontSize: 18, lineHeight: 1.1 }}>{perk.name}</span>

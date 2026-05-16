@@ -14,6 +14,9 @@ import {
 } from '../perf/perfMode';
 import { sfxPlay } from '../../audio/sfx';
 import { useFocusTrap } from '../hud/useFocusTrap';
+import { ConfirmPress } from '../hud/ConfirmPress';
+import { ScreenWatermark } from '../visual/AstralPrimitives';
+import { Sigil } from '../visual/Sigil';
 
 function useAudio(): { master: number; music: number; sfx: number } {
   const [v, setV] = useState({
@@ -47,7 +50,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ display: 'flex', justifyContent: 'space-between' }}>
         <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>{label}</span>
-        <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}</span>
+        <span className="f-mono num" style={{ fontSize: 12, color: '#7be3ff' }}>{pct}<span style={{ opacity: 0.55, marginLeft: 1 }}>%</span></span>
       </span>
       <input
         className="ff-range"
@@ -83,7 +86,11 @@ function ColorblindToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setColorblindPref(o.id as 'off' | 'high_contrast')}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -119,7 +126,11 @@ function CaptionsToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => audioSettings.setCaptionsEnabled(o.val)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -142,7 +153,7 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>haptics</span>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Haptics preference">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }} role="radiogroup" aria-label="Haptics preference">
         {opts.map((o) => {
           const active = pref === o.id;
           return (
@@ -154,7 +165,11 @@ function HapticsToggle({ pref }: { pref: HapticsPref }) {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setHapticsPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -190,7 +205,11 @@ function OrientationOverrideToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setOrientationOverride(o.val)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -227,7 +246,11 @@ function LongPressToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setLongPressPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -266,7 +289,11 @@ function PerfModeToggle() {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setPerfMode(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -290,7 +317,7 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>motion</span>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} role="radiogroup" aria-label="Motion preference">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }} role="radiogroup" aria-label="Motion preference">
         {opts.map((o) => {
           const active = pref === o.id;
           return (
@@ -302,7 +329,11 @@ function MotionToggle({ pref }: { pref: MotionPref }) {
               className="btn btn-ghost mat-interactive tap"
               onClick={() => setMotionPref(o.id)}
               style={{
-                padding: '8px 14px', fontSize: 11,
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 background: active ? 'rgba(123,227,255,0.18)' : undefined,
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
@@ -336,6 +367,13 @@ export function Settings() {
         padding: 16,
         animation: 'fadein 400ms ease-out both',
       }}>
+      {/* Wave NN — Settings was the only meta screen without a
+          ScreenWatermark sigil. The moon kind reads as "rest /
+          quiet preferences" and tints the bottom-right with a
+          violet that pairs with the cosmos backdrop. */}
+      <ScreenWatermark color="#9577ff" position="bottom-right">
+        <Sigil kind="moon" size={220} color="#9577ff" />
+      </ScreenWatermark>
       <div className="panel-strong ff-panel-settle" style={{
         width: 'min(460px, 100%)', padding: 'clamp(20px, 3vw, 32px)', position: 'relative',
         display: 'flex', flexDirection: 'column', gap: 22,
@@ -388,20 +426,20 @@ export function Settings() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 12, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn btn-ghost mat-interactive tap"
-            onClick={() => {
+          {/* Wave K — two-stage confirm so a misclick can't wipe a
+              carefully-tuned audio mix. First press arms (crimson
+              pulse), second within 2.2s commits. */}
+          <ConfirmPress
+            label="Restore defaults"
+            confirmLabel="Tap again to reset"
+            style={{ fontSize: 11, padding: '8px 14px' }}
+            onConfirm={() => {
               audioSettings.setMaster(1);
               audioSettings.setMusic(1);
               audioSettings.setSfx(1);
               setMotionPref('os');
-              sfxPlay('uiClick');
             }}
-            style={{ fontSize: 11, padding: '8px 14px' }}
-          >
-            Restore defaults
-          </button>
+          />
           <button
             type="button"
             className="btn btn-primary mat-interactive tap"

@@ -97,6 +97,7 @@ export function Round() {
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
+        catalysts={catalysts}
         accent={accent}
         constellationAccent={constellationAccent}
         tense={tense}
@@ -180,6 +181,10 @@ function ActionBar({
   const ref = useRef<HTMLDivElement>(null);
   useReportHudHeight(ref, '--hud-bottom-h', 'bottom');
   const [pulling, setPulling] = useState(false);
+  // Wave HH — spin counter for the Round reroll button. Mirrors the Shop
+  // reroll spin pattern (Wave Z) so the cyclical motion reads consistent
+  // across both reroll surfaces.
+  const [rerollSpin, setRerollSpin] = useState(0);
   const pullTimerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -219,10 +224,21 @@ function ActionBar({
           // window used to fire REROLL_REQUESTED, silently consuming a
           // reroll because the dice couldn't rebound mid-animation.
           disabled={rerolls === 0 || hands === 0 || scoring || handInProgress || !ready}
-          onClick={() => { playHaptic('tap'); dispatch({ type: 'REROLL_REQUESTED' }); }}
+          onClick={() => {
+            playHaptic('tap');
+            dispatch({ type: 'REROLL_REQUESTED' });
+            setRerollSpin((n) => n + 1);
+          }}
           title={scoring ? 'Scoring…' : handInProgress ? 'Rolling…' : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <RerollGlyph color={accent} /> Reroll
+            <span
+              key={`round-reroll-${rerollSpin}`}
+              className={`ff-reroll-glyph${rerollSpin > 0 ? ' ff-reroll-glyph-spinning' : ''}`}
+              style={{ display: 'inline-flex', transformOrigin: 'center' }}
+            >
+              <RerollGlyph color={accent} />
+            </span>
+            Reroll
             <span className="f-mono" style={{ fontSize: 11, opacity: 0.7 }}>({rerolls})</span>
           </span>
         </button>
@@ -242,8 +258,9 @@ function ActionBar({
       <button
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0 || !firstRollDone || !ready}
-        onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}
+        style={{ whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <PlayHandGlyph /> Play Hand
         </span>
       </button>
