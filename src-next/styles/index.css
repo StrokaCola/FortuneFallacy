@@ -2339,6 +2339,47 @@ html:not(.reduce-motion) .rarity-uncommon-aura::before {
 }
 .reduce-motion .ff-shard-spend-pulse { animation: none; }
 
+/* Wave GG — Sell sparkle. Spawned by SellButton.onClick at the
+   button's screen position. Body-mounted so the parent card can
+   unmount (sell removes the item from state) without clipping the
+   animation. Two layers: an expanding gold ring + a rising gold
+   ember mote. Both keyed off the button center via inline left/top. */
+.sell-sparkle-ring {
+  position: fixed;
+  pointer-events: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 196, 81, 0.95);
+  box-shadow:
+    0 0 18px rgba(245, 196, 81, 0.85),
+    0 0 32px rgba(255, 215, 110, 0.4);
+  transform: translate(-50%, -50%) scale(0.5);
+  animation: sell-sparkle-ring 600ms cubic-bezier(0.18, 0.7, 0.25, 1) forwards;
+  z-index: 999;
+}
+@keyframes sell-sparkle-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+}
+.sell-sparkle-ember {
+  position: fixed;
+  pointer-events: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #fff4cc 0%, #f5c451 55%, transparent 80%);
+  box-shadow: 0 0 12px rgba(245, 196, 81, 0.9);
+  transform: translate(-50%, -50%);
+  animation: sell-sparkle-ember 760ms cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+  z-index: 999;
+}
+@keyframes sell-sparkle-ember {
+  0%   { transform: translate(-50%, -50%) scale(0.8);   opacity: 1; }
+  60%  { transform: translate(-50%, -150%) scale(1.05); opacity: 0.85; }
+  100% { transform: translate(-50%, -220%) scale(0.6);  opacity: 0; }
+}
+
 /* Wave BB — Pause panel slide-down entrance. The backdrop already
    fades in via the modal-in keyframe; the panel itself now drops
    from a few px above with a slight overshoot so the dialog lands
