@@ -119,6 +119,7 @@ export function Shop() {
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
+        catalysts={catalysts}
         accent={ACCENT}
       />
       <PauseButton />

@@ -97,6 +97,7 @@ export function Round() {
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
+        catalysts={catalysts}
         accent={accent}
         constellationAccent={constellationAccent}
         tense={tense}

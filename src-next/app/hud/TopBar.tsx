@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
+import { lookupCatalyst } from '../../data/catalysts';
 import { useStore, type GameState } from '../../state/store';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
@@ -49,6 +50,7 @@ export function TopBar({
   target = 0,
   score = 0,
   catalystSlots,
+  catalysts = [],
   voucherCount = 0,
   vouchers = [],
   accent = '#7be3ff',
@@ -58,6 +60,11 @@ export function TopBar({
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
   target?: number; score?: number;
   catalystSlots?: { used: number; max: number };
+  // Wave FF — owned catalyst ids so the TopBar chip tooltip can show a
+  // per-catalyst breakdown the same way vouchers already do. Optional
+  // and defaults to [] so existing callsites that don't pass it keep
+  // the old generic tooltip text.
+  catalysts?: string[];
   voucherCount?: number;
   vouchers?: string[];
   accent?: string;
@@ -342,9 +349,33 @@ export function TopBar({
               display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               catalysts
               <ConstellationCount filled={catalystSlots.used} total={catalystSlots.max} color="#7be3ff" size={6} />
-              <span className="tip">
+              <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
                 <span className="tip-title">Catalyst slots</span>
-                Catalysts are persistent run-long modifiers. The Bench voucher and some constellations grant extra slots.
+                {catalysts.length === 0 ? (
+                  'Catalysts are persistent run-long modifiers. The Bench voucher and some constellations grant extra slots.'
+                ) : (
+                  // Wave FF — list each owned catalyst inline so the chip
+                  // doubles as a "what's running" preview. Mirrors the
+                  // voucher chip's per-item breakdown. Sorted by acquisition
+                  // order (newest last) so the chip reads like a build log.
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                    {catalysts.map((id, i) => {
+                      const c = lookupCatalyst(id);
+                      if (!c) return null;
+                      return (
+                        <span key={`${id}-${i}`} style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: c.color, fontSize: 11 }}>
+                            <span style={{ opacity: 0.85, marginRight: 6 }}>{c.icon}</span>
+                            {c.name}
+                          </span>
+                          {c.desc && (
+                            <span style={{ color: '#bba8ff', fontSize: 10, lineHeight: 1.35 }}>{c.desc}</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
               </span>
             </span>
           )}
