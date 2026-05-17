@@ -333,4 +333,36 @@ export const MOD_MATERIALS: Record<ModMaterialKey, ModMaterialOverride> = {
     transmission: 0.05, rough: 0.20, ior: 1.75, eIntensity: 2.2,
     metalness: 0.65, sheen: 0.55, sheenColor: 0xffd84a,
   },
+  // 2026-05-16 unlock-content roadmap — 5 mods.
+  // 47. Calibrated — Cool cyan-on-bone calibration etching.
+  calibrated: {
+    bodyTint: 0x4a6a8a, bodyDeep: 0x1a2a40,
+    edge: 0x7be3ff, halo: 0x7be3ff,
+    transmission: 0.15, rough: 0.30, eIntensity: 1.6,
+  },
+  // 48. Reckless — Cracked crimson glass with fault lines.
+  reckless: {
+    bodyTint: 0x6a1a2a, bodyDeep: 0x2a0008,
+    edge: 0xff4d6d, halo: 0xff4d6d,
+    transmission: 0.20, rough: 0.55, eIntensity: 2.0,
+  },
+  // 49. Sun-Forged — Heavy gilt with corona ring; the Supernova reward.
+  sun_forged: {
+    bodyTint: 0xf5c451, bodyDeep: 0x8a4a10,
+    edge: 0xffeaa0, halo: 0xffd84a,
+    transmission: 0.08, rough: 0.18, ior: 1.55, eIntensity: 2.4,
+    metalness: 0.7, sheen: 0.45, sheenColor: 0xffd84a,
+  },
+  // 50. Heirbound — Engraved violet with bone-ivory inlay.
+  heirbound: {
+    bodyTint: 0x5a4a6a, bodyDeep: 0x1c1245,
+    edge: 0xbba8ff, halo: 0xbba8ff,
+    transmission: 0.12, rough: 0.40, eIntensity: 1.4,
+  },
+  // 51. Veiled — Muted aurora-violet under a quiet matte veil.
+  veiled: {
+    bodyTint: 0x4a4a6a, bodyDeep: 0x1a1a30,
+    edge: 0x9577ff, halo: 0x9577ff,
+    transmission: 0.10, rough: 0.65, eIntensity: 1.0,
+  },
 };

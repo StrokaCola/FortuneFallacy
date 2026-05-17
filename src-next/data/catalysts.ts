@@ -45,7 +45,7 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'six_bias',       name: 'Six Bias',       icon: '📈',  color: '#b088ff',
     desc: 'Each 6 → +4 Chips',             flavor: 'Instrument loaded. Top of range pays.', rarity: 'common', archetype: 'face' },
   { id: 'twin_sample',    name: 'Twin Sample',    icon: '🔢',  color: '#ff9944',
-    desc: 'Two Pair → Chips ×2',           flavor: 'Both samples agree. Confidence doubled.', rarity: 'uncommon', archetype: 'combo' },
+    desc: 'Hand contains Two Pair → Chips ×2',           flavor: 'Both samples agree. Confidence doubled.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'cold_hand',      name: 'Cold Hand',      icon: '💬',  color: '#c0c8ff',
     desc: 'Chance → +4 Mult',              flavor: "No pattern? The book says you're due. The book is wrong, but you score anyway.", rarity: 'common', archetype: 'combo' },
   { id: 'entropy_index',  name: 'Entropy Index',  icon: '◈',   color: '#a080c0',
@@ -105,10 +105,10 @@ export const CATALYST_META: CatalystMeta[] = [
   // system: a Whirlpool / triplet_engine / levels_levy spike now has a
   // complete deck-building lane.
   { id: 'pair_dynamo', name: 'Pair Dynamo', icon: '⚊', color: '#7be3ff',
-    desc: 'One Pair → +5 Mult.',
+    desc: 'Hand contains a Pair → +5 Mult.',
     flavor: 'The simplest match still spins the wheel.', rarity: 'common', archetype: 'combo' },
   { id: 'triplet_engine', name: 'Triplet Engine', icon: '⚙', color: '#cc88ff',
-    desc: 'Three of a Kind → Mult ×1.75.',
+    desc: 'Hand contains Three of a Kind → Mult ×1.75.',
     flavor: 'Three sealed prongs, one current.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'magnitude', name: 'Magnitude', icon: '✺', color: '#ffd84a',
     desc: 'Large Straight → Chips ×2 and Mult ×1.5.',
@@ -145,10 +145,10 @@ export const CATALYST_META: CatalystMeta[] = [
   // Phase 5 additions — completes the combo-tribal lane (one catalyst per
   // hand-type) and rounds out the math/scaling band.
   { id: 'straight_signal', name: 'Straight Signal', icon: '↗', color: '#5be8a4',
-    desc: 'Small Straight → +6 Mult.',
+    desc: 'Hand contains a Small Straight → +6 Mult.',
     flavor: 'Four steps in tune. The fifth lifts.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'tetrad', name: 'Tetrad', icon: '⊞', color: '#ff7847',
-    desc: 'Four of a Kind → Chips ×3.',
+    desc: 'Hand contains Four of a Kind → Chips ×3.',
     flavor: 'Four corners, one frequency.', rarity: 'rare', archetype: 'combo' },
   { id: 'apex', name: 'Apex', icon: '✦', color: '#ffd84a',
     desc: 'Five of a Kind → Mult ×3, plus +1 Mult per matching scoring die.',
@@ -416,6 +416,48 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'Mult ×1.4 every hand. Each scoring die: -8 chips before the multiplier.',
     flavor: 'The price is named. Pay it once, pay it every time.',
     rarity: 'uncommon', archetype: 'risk' },
+  // 2026-05-16 unlock-content roadmap (10 catalysts).
+  // See docs/unlock-gated-content-roadmap.md for unlock conditions.
+  { id: 'cosmic_compass', name: 'Cosmic Compass', icon: '✦', color: '#7be3ff',
+    desc: 'Each cleared blind: +0.05× mult permanent (cap +0.5× per ante).',
+    flavor: 'Three skies remembered. The fourth points itself.',
+    rarity: 'rare', archetype: 'scaling' },
+  { id: 'voidwalker', name: 'Voidwalker', icon: '⊘', color: '#aa66ff',
+    desc: 'While in Cosmic Lap N: +N mult per owned catalyst, per hand.',
+    flavor: 'The fourth orbit. The fifth. The horizon stops mattering.',
+    rarity: 'legendary', archetype: 'scaling' },
+  { id: 'crown_of_skulls', name: 'Crown of Skulls', icon: '☠', color: '#ff4d6d',
+    desc: 'Mult ×3 every hand. Lose 1 hand at blind start.',
+    flavor: 'Worn by the patient. Earned by the willing.',
+    rarity: 'legendary', archetype: 'risk' },
+  { id: 'the_patient', name: 'The Patient', icon: '⌛', color: '#cc88ff',
+    desc: 'Every 3rd hand of the run: +50 chips and +3 mult.',
+    flavor: 'The waiting catalyst that learned from the master.',
+    rarity: 'rare', archetype: 'timing' },
+  { id: 'salt_of_earth', name: 'Salt of the Earth', icon: '◆', color: '#f5c451',
+    desc: 'Each hand: +1 shard if shards < 5. Otherwise no effect.',
+    flavor: 'The pantry catalyst. Fills until full.',
+    rarity: 'uncommon', archetype: 'economy' },
+  { id: 'stargazer', name: 'Stargazer', icon: '⋆', color: '#bba8ff',
+    desc: '+1 mult per distinct face value seen this run (uncapped).',
+    flavor: 'Every face logged. Every face counts.',
+    rarity: 'rare', archetype: 'face' },
+  { id: 'bloodied_coin', name: 'Bloodied Coin', icon: '◉', color: '#ff7847',
+    desc: 'Each owned Risk catalyst (Bone Tax, Hollow Bishop, etc.): +6 mult per hand.',
+    flavor: 'Pay the tax twice, keep the savings thrice.',
+    rarity: 'rare', archetype: 'risk' },
+  { id: 'the_confessor', name: 'The Confessor', icon: '⫶', color: '#bba8ff',
+    desc: 'Each die with 3+ mod slots filled: +3 mult per hand.',
+    flavor: 'A heavy die speaks twice.',
+    rarity: 'uncommon', archetype: 'mods' },
+  { id: 'hourglass', name: 'Hourglass', icon: '⧗', color: '#f5c451',
+    desc: '+1 hand per blind. Blind target +10%.',
+    flavor: 'More breath, more weight.',
+    rarity: 'rare', archetype: 'timing' },
+  { id: 'the_reckoning', name: 'The Reckoning', icon: '✦', color: '#ff7847',
+    desc: 'First hand of every blind: Mult ×2 and +50 chips.',
+    flavor: 'The cosmos remembers what you found.',
+    rarity: 'legendary', archetype: 'combo' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {
@@ -434,6 +476,10 @@ export const SCALING_CATALYST_IDS: ReadonlySet<string> = new Set([
   // Existing scaling catalysts that pre-date the 2026-05-11 pack but
   // share the same "permanent stack accrued over the run" feel.
   'compounding_bias', 'momentum',
+  // 2026-05-16 unlock-content roadmap — Cosmic Compass + Stargazer
+  // both accumulate per-run state via the catalystStacks slot, so they
+  // pick up the scaling visual treatment (pulse kind + audio voice).
+  'cosmic_compass', 'stargazer',
 ]);
 
 export const RETRIGGER_CATALYST_IDS: ReadonlySet<string> = new Set([

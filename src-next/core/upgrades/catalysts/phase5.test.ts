@@ -47,13 +47,20 @@ function makeCtx(opts: CtxOpts = {}): PipelineCtx {
 
 const findCat = (id: string) => getAll().find((u) => u.id === id)!;
 
-describe('straight_signal (Small Straight → +6 mult)', () => {
+describe('straight_signal (Hand contains a Small Straight → +6 mult)', () => {
   it('adds +6 mult on sm_straight', () => {
     const ctx = makeCtx({ combo: { id: 'sm_straight', tier: 4, baseChips: 30, baseMult: 5, scoringFaces: [] }, mult: 5 });
     expect(findCat('straight_signal').apply(ctx).mult).toBe(11);
   });
-  it('no-op on Large Straight', () => {
+  // 2026-05-16 — "contains" semantics. Large Straight is 5 consecutive
+  // values, which always contains a 4-consecutive small straight as a
+  // substructure. So the catalyst now fires on lg_straight too.
+  it('also fires on Large Straight (contains sm_straight)', () => {
     const ctx = makeCtx({ combo: { id: 'lg_straight', tier: 6, baseChips: 40, baseMult: 7, scoringFaces: [] }, mult: 5 });
+    expect(findCat('straight_signal').apply(ctx).mult).toBe(11); // 5 + 6
+  });
+  it('no-op on non-straight combos', () => {
+    const ctx = makeCtx({ combo: { id: 'three_kind', tier: 3, baseChips: 30, baseMult: 5, scoringFaces: [] }, mult: 5 });
     expect(findCat('straight_signal').apply(ctx).mult).toBe(5);
   });
 });

@@ -10,6 +10,22 @@ export function isLegendaryUnlocked(meta: CatalystMeta, unlocks: readonly string
   return unlocks.includes(`${LEGENDARY_UNLOCK_PREFIX}${meta.id}`);
 }
 
+// 2026-05-16 unlock-content roadmap — non-legendary catalysts can also
+// be gated behind player accomplishments. Each gated id stores its
+// unlock flag in `meta.unlocks` under the `unlock:` prefix.
+// See docs/unlock-gated-content-roadmap.md and the
+// `checkRoadmapUnlocks` helper in core/round/transitions.ts.
+export const UNLOCK_PREFIX = 'unlock:';
+const ROADMAP_GATED_CATALYST_IDS: ReadonlySet<string> = new Set([
+  'cosmic_compass', 'voidwalker', 'crown_of_skulls', 'the_patient',
+  'salt_of_earth', 'stargazer', 'bloodied_coin', 'the_confessor',
+  'hourglass', 'the_reckoning',
+]);
+export function isRoadmapCatalystUnlocked(catalystId: string, unlocks: readonly string[]): boolean {
+  if (!ROADMAP_GATED_CATALYST_IDS.has(catalystId)) return true;
+  return unlocks.includes(`${UNLOCK_PREFIX}${catalystId}`);
+}
+
 type RarityWeights = { common: number; uncommon: number; rare: number; legendary: number };
 
 // Per-ante drift. At Ante 1-2 the shop leans heavily common to teach
@@ -81,6 +97,10 @@ function pickFromRarity(
         m.rarity === tier &&
         !excluded.has(m.id) &&
         isLegendaryUnlocked(m, unlocks) &&
+        // 2026-05-16 — roadmap-gated catalysts (Cosmic Compass etc) only
+        // appear in the shop once the player has earned the matching
+        // unlock flag. Non-roadmap catalysts pass through unchanged.
+        isRoadmapCatalystUnlocked(m.id, unlocks) &&
         // Constellation-locked catalysts only spawn when the active
         // constellation matches their requirement. Catalysts without a
         // requirement are universally available.
