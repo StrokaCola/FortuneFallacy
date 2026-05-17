@@ -96,6 +96,15 @@ export type MetaSlice = {
   // mechanical perks are owned. Optional for back-compat; selectors
   // default to [] when missing on older saves.
   cosmeticsUnlocked?: string[];
+  // 2026-05-16 unlock-content roadmap — cross-run accumulators that
+  // drive new unlock conditions (see docs/unlock-gated-content-roadmap.md).
+  // All optional for back-compat with older saves.
+  //
+  // Cosmic Compass + Reckless: per-constellation clear / bust history.
+  constellationClears?: string[];
+  bustCountByConstellation?: Record<string, number>;
+  // Crown of Skulls: bust count keyed by stake id, used by Beacon+ gate.
+  bustCountByStake?: Record<string, number>;
 };
 
 // Import maneuvers up-front so the seed lists below can both reference
@@ -177,4 +186,7 @@ export const initialMetaSlice = (): MetaSlice => ({
   easterEggs: [],
   endlessHighwater: {},
   cosmeticsUnlocked: [],
+  constellationClears: [],
+  bustCountByConstellation: {},
+  bustCountByStake: {},
 });

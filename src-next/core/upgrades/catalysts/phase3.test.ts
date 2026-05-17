@@ -53,15 +53,29 @@ function makeCtx(opts: CtxOpts = {}): PipelineCtx {
 
 const findCat = (id: string) => getAll().find((u) => u.id === id)!;
 
-describe('pair_dynamo (One Pair → +5 mult)', () => {
+describe('pair_dynamo (Hand contains a Pair → +5 mult)', () => {
   it('adds +5 mult on one_pair', () => {
     const ctx = makeCtx({ combo: { id: 'one_pair', tier: 1, baseChips: 10, baseMult: 2, scoringFaces: [3, 3] }, mult: 2 });
     expect(findCat('pair_dynamo').apply(ctx).mult).toBe(7);
   });
 
-  it('no-op on other combos', () => {
-    const ctx = makeCtx({ combo: { id: 'two_pair', tier: 2, baseChips: 20, baseMult: 3, scoringFaces: [] }, mult: 3 });
-    expect(findCat('pair_dynamo').apply(ctx).mult).toBe(3);
+  // 2026-05-16 — "contains" semantics. Pair Dynamo now fires on every
+  // hand that includes a pair as a substructure: 2-pair, 3oak, FH,
+  // 4oak, 5oak. Test the snowball-friendly behavior explicitly.
+  it('also fires on combos that contain a pair (two_pair, three_kind, full_house, four_kind, five_kind)', () => {
+    const combos = ['two_pair', 'three_kind', 'full_house', 'four_kind', 'five_kind'] as const;
+    for (const id of combos) {
+      const ctx = makeCtx({ combo: { id, tier: 2, baseChips: 20, baseMult: 3, scoringFaces: [] }, mult: 3 });
+      expect(findCat('pair_dynamo').apply(ctx).mult).toBe(8); // 3 base + 5
+    }
+  });
+
+  it('no-op on combos that do NOT contain a pair (chance, sm_straight, lg_straight)', () => {
+    const combos = ['chance', 'sm_straight', 'lg_straight'] as const;
+    for (const id of combos) {
+      const ctx = makeCtx({ combo: { id, tier: 0, baseChips: 0, baseMult: 1, scoringFaces: [] }, mult: 3 });
+      expect(findCat('pair_dynamo').apply(ctx).mult).toBe(3);
+    }
   });
 });
 

@@ -146,6 +146,15 @@ export function accrueBlindCleared(args: {
     mutated = true;
   }
 
+  // 2026-05-16 unlock-content roadmap — Cosmic Compass: +1 stack per
+  // cleared blind. Per-ante cap is enforced at apply time (not here),
+  // so the raw stack count keeps climbing while the player still sees
+  // the headroom in the catalyst tooltip.
+  if (owned.has('cosmic_compass')) {
+    stacks['cosmic_compass'] = (stacks['cosmic_compass'] ?? 0) + 1;
+    mutated = true;
+  }
+
   return mutated ? { run: { catalystStacks: stacks } } : { run: {} };
 }
 

@@ -90,6 +90,18 @@ import './kindredClatter';
 import './boneTax';
 import './hollowBishop';
 import './witchsBargain';
+// 2026-05-16 unlock-content roadmap (10 catalysts). Each gated behind
+// a player-earned condition; see docs/unlock-gated-content-roadmap.md.
+import './cosmicCompass';
+import './voidwalker';
+import './crownOfSkulls';
+import './thePatient';
+import './saltOfEarth';
+import './stargazer';
+import './bloodiedCoin';
+import './theConfessor';
+import './hourglass';
+import './theReckoning';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -133,5 +145,9 @@ export const CATALYST_IDS = [
   'kinetic_charge', 'chain_reaction', 'kindred_clatter',
   // 2026-05-16 risk pack
   'bone_tax', 'hollow_bishop', 'witchs_bargain',
+  // 2026-05-16 unlock-content roadmap
+  'cosmic_compass', 'voidwalker', 'crown_of_skulls', 'the_patient',
+  'salt_of_earth', 'stargazer', 'bloodied_coin', 'the_confessor',
+  'hourglass', 'the_reckoning',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

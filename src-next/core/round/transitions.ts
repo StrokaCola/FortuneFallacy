@@ -14,7 +14,7 @@ import { firstBlindExtraHands } from '../run/applyAstralPerks';
 import { getVoidstormForBlind, lookupVoidstorm } from './voidstorms';
 import { lookupCosmicAffliction, pickAfflictionForLap } from '../../data/cosmicAfflictions';
 import { accrueBlindCleared, isPalindrome } from './scalingHooks';
-import { lookupCatalyst } from '../../data/catalysts';
+import { lookupCatalyst, CATALYST_META } from '../../data/catalysts';
 import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
 
 // Legendary unlock conditions tied to per-blind progression. Run from inside
@@ -37,6 +37,146 @@ function clearBlindLegendaryUnlocks(
     add.push(`${LEGENDARY_UNLOCK_PREFIX}heirloom_locket`);
   }
   return add.length === 0 ? unlocks : [...unlocks, ...add];
+}
+
+// 2026-05-16 unlock-content roadmap — checks every unlock condition
+// for the new catalysts + mods and returns any newly-earned unlock
+// flags to add to meta.unlocks. Called on every blind clear/bust so
+// in-run conditions (Salt of the Earth's 50-shard ledger, Hourglass's
+// hand-budget) fire the moment they're earned without waiting for the
+// run to end.
+//
+// Unlock flag format: `unlock:<catalyst_or_mod_id>` for non-legendary
+// gated content. Legendary catalysts keep the existing
+// `legendary_unlocked:` prefix for back-compat with the shop draw.
+const UNLOCK_PREFIX = 'unlock:';
+function checkRoadmapUnlocks(args: {
+  unlocks: string[];
+  run: GameState['run'];
+  meta: GameState['meta'];
+  trigger: 'clear' | 'bust' | 'run-end-win' | 'run-end-bust';
+  // For Reckless: which constellation just busted (if trigger === bust).
+  // For Crown of Skulls: which stake just busted.
+  bustConstellationId?: string;
+  bustStakeId?: string;
+}): string[] {
+  const { unlocks, run, meta, trigger } = args;
+  const add: string[] = [];
+  const have = new Set(unlocks);
+  const grant = (id: string) => {
+    const flag = `${UNLOCK_PREFIX}${id}`;
+    if (have.has(flag)) return;
+    add.push(flag);
+    have.add(flag);
+  };
+
+  // Salt of the Earth — end any run with 50+ shards in hand. Fires
+  // on either run-end branch.
+  if ((trigger === 'run-end-win' || trigger === 'run-end-bust') && run.shards >= 50) {
+    grant('salt_of_earth');
+  }
+
+  // Hourglass — clear Ante 4 in ≤30 hands total this run.
+  if (trigger === 'run-end-win' && run.handsPlayed <= 30) {
+    grant('hourglass');
+  }
+
+  // The Patient — 5+ Patience Counter ×3 fires in a single run.
+  if (trigger === 'clear' && (run.patienceCounterFires ?? 0) >= 5) {
+    grant('the_patient');
+  }
+
+  // The Confessor — equip 4 mods on any single die.
+  if (run.diceMods.some((slots) => slots.length >= 4)) {
+    grant('the_confessor');
+  }
+
+  // Bloodied Coin — clear any blind with 3+ risk-archetype catalysts.
+  // Read archetype from catalyst meta; counted at clear time so the
+  // unlock fires the moment a player commits to a risk-tribal build.
+  if (trigger === 'clear') {
+    const riskCount = run.catalysts.filter((cid) => lookupCatalyst(cid)?.archetype === 'risk').length;
+    if (riskCount >= 3) grant('bloodied_coin');
+  }
+
+  // Voidwalker — reach Cosmic Lap 3 (endless mode).
+  if ((run.endlessLap ?? 0) >= 3) {
+    grant('voidwalker');
+  }
+
+  // The Reckoning — own all 5 easter-egg discovery flags.
+  const allEggs = ['answer', 'pi', 'lucky_seven', 'eris_apple', 'mirrored_hand'];
+  if (allEggs.every((id) => (meta.easterEggs ?? []).includes(id))) {
+    grant('the_reckoning');
+  }
+
+  // Stargazer — Codex 100% on catalysts.
+  // 92 catalysts shipped; the count check uses the actual lookup count
+  // to avoid hardcoding. Defensive on `meta.discovered` — test fixtures
+  // may pass a partial meta without the `discovered` field populated.
+  const allCatalystIds = new Set([...lookupAllCatalystIds()]);
+  const discoveredCatalysts = new Set(meta.discovered?.catalysts ?? []);
+  if (allCatalystIds.size > 0 && allCatalystIds.size <= discoveredCatalysts.size) {
+    grant('stargazer');
+  }
+
+  // Cosmic Compass — clear final trial on 3 different constellations.
+  // Check the cross-run accumulator.
+  if (trigger === 'run-end-win') {
+    const clears = new Set(meta.constellationClears ?? []);
+    clears.add(run.constellationId);
+    if (clears.size >= 3) grant('cosmic_compass');
+  }
+
+  // Sun-Forged — clear Supernova stake on any constellation.
+  if (trigger === 'run-end-win' && run.stakeId === 'supernova') {
+    grant('sun_forged');
+  }
+
+  // Crown of Skulls — 10 cumulative busts on Beacon+ stake.
+  {
+    const stakeIdsBeaconPlus = ['beacon', 'nova', 'supernova'];
+    const byStake = meta.bustCountByStake ?? {};
+    const beaconPlusBusts = stakeIdsBeaconPlus.reduce((sum, id) => sum + (byStake[id] ?? 0), 0);
+    if (beaconPlusBusts >= 10) grant('crown_of_skulls');
+  }
+
+  // Reckless mod — 5+ busts on a single constellation.
+  {
+    const byConstellation = meta.bustCountByConstellation ?? {};
+    if (Object.values(byConstellation).some((n) => n >= 5)) grant('reckless');
+  }
+
+  // Calibrated mod — clear without using any Pin consumable this run.
+  if (trigger === 'run-end-win' && (run.pinConsumablesUsed ?? 0) === 0) {
+    grant('calibrated');
+  }
+
+  // Veiled mod — 3+ consecutive locked-hand streak in a single run.
+  if ((run.consecutiveLockedHands ?? 0) >= 3) {
+    grant('veiled');
+  }
+
+  // Heirbound mod — carried a mod from blind 1 to blind 12 of a run.
+  // Use the simple proxy: if the player completed the run AND any
+  // single die still has at least one mod attached, count it as
+  // satisfied. This is a soft proxy because we don't snapshot mod
+  // ownership per-blind; the strict implementation would track
+  // mod-age per die. Lightweight approximation for v1 ship.
+  if (trigger === 'run-end-win' && run.diceMods.some((slots) => slots.length > 0)) {
+    grant('heirbound');
+  }
+
+  return add.length === 0 ? unlocks : [...unlocks, ...add];
+}
+
+// Tiny helper to enumerate every shipped catalyst id without importing
+// the entire data table eagerly into the unlock check (keeps the hot
+// path lean).
+function lookupAllCatalystIds(): string[] {
+  // CATALYST_META is already imported via lookupCatalyst's module — we
+  // just need its keys. The export uses an array; map to ids.
+  return CATALYST_META.map((c) => c.id);
 }
 
 // Brittle: any mod with `loseOnBust` is removed when the hand fails to clear
@@ -107,8 +247,12 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     // lap is at 1x and it compounds from there.
     afflictionTargetMul = 1 + affliction.effect.perBlindMul * s.run.goalIdx;
   }
+  // 2026-05-16 unlock-content roadmap — Hourglass: +10% target. Multiplies
+  // into the existing target stack so stake / affliction multipliers
+  // still apply on top. Crown of Skulls has no target impact.
+  const hourglassMul = s.run.catalysts.includes('hourglass') ? 1.1 : 1;
   const target = Math.ceil(
-    targetForBlind(ante, blindIndex, lap) * ctx.targetMult * afflictionTargetMul,
+    targetForBlind(ante, blindIndex, lap) * ctx.targetMult * afflictionTargetMul * hourglassMul,
   );
   const isBoss = def.isBoss;
   // Boss id: prefer the value locked in by NEW_RUN / the previous
@@ -138,9 +282,14 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // (goalIdx === 0). Stacks with vouchers and stake hands deltas.
   const firstBlindBonus = s.run.goalIdx === 0 ? firstBlindExtraHands(s) : 0;
   const afflictionHandsDelta = affliction?.effect.kind === 'hands-delta' ? affliction.effect.delta : 0;
+  // 2026-05-16 unlock-content roadmap — Hourglass: +1 hand per blind.
+  // Crown of Skulls: -1 hand per blind. They stack mathematically;
+  // owning both nets to zero (and a +10% target — that's intentional).
+  const hourglassHandsDelta = s.run.catalysts.includes('hourglass') ? 1 : 0;
+  const crownHandsDelta = s.run.catalysts.includes('crown_of_skulls') ? -1 : 0;
   const handsMax = Math.max(
     1,
-    baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus + (stormBlindStart.handsDelta ?? 0) + afflictionHandsDelta,
+    baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus + (stormBlindStart.handsDelta ?? 0) + afflictionHandsDelta + hourglassHandsDelta + crownHandsDelta,
   );
   // Build the dice array sized to whatever the active constellation declares.
   // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
@@ -298,13 +447,29 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
       },
     });
   }
-  const baseMeta = won ? { ...s.meta, highScores, stakeProgress, challengeWins } : s.meta;
+  // Cross-run accumulator update: when this clear ends the run on the
+  // win branch, record the constellation in `constellationClears` so
+  // Cosmic Compass can fire at 3+ distinct entries.
+  const nextConstellationClears = won
+    ? Array.from(new Set([...(s.meta.constellationClears ?? []), s.run.constellationId]))
+    : s.meta.constellationClears;
+  const baseMeta = won
+    ? { ...s.meta, highScores, stakeProgress, challengeWins, constellationClears: nextConstellationClears }
+    : s.meta;
   const newDustLifetime = (s.meta.cosmicDustLifetime ?? 0) + dustGained;
-  const unlocksAfterClear = clearBlindLegendaryUnlocks(
+  let unlocksAfterClear = clearBlindLegendaryUnlocks(
     baseMeta.unlocks ?? [],
     s.run.constellationId,
     newDustLifetime,
   );
+  // 2026-05-16 roadmap unlocks — chain on top of the legendary-only
+  // check above so new unlocks land in the same meta write.
+  unlocksAfterClear = checkRoadmapUnlocks({
+    unlocks: unlocksAfterClear,
+    run: s.run,
+    meta: baseMeta,
+    trigger: won ? 'run-end-win' : 'clear',
+  });
   // Cosmic Lap (Pillar D) highwater — if this clear ended the lap (any
   // clear during endlessLap > 0), record the lap/ante/score against the
   // constellation's high-water mark. On a normal-run clear, also record
@@ -469,6 +634,26 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
   // player got: 1 dust + 1 per cleared goal.
   const dustGained = 1 + s.run.goalIdx;
   const newDustTotal = (s.meta.cosmicDust ?? 0) + dustGained;
+  // 2026-05-16 unlock roadmap — bust-by-stake / bust-by-constellation
+  // counters drive Crown of Skulls (10 Beacon+ busts) and Reckless
+  // mod (5 busts on one constellation).
+  const bustCountByStake = {
+    ...(s.meta.bustCountByStake ?? {}),
+    [s.run.stakeId]: ((s.meta.bustCountByStake ?? {})[s.run.stakeId] ?? 0) + 1,
+  };
+  const bustCountByConstellation = {
+    ...(s.meta.bustCountByConstellation ?? {}),
+    [s.run.constellationId]: ((s.meta.bustCountByConstellation ?? {})[s.run.constellationId] ?? 0) + 1,
+  };
+  const baseUnlocks = s.meta.unlocks ?? [];
+  const unlocksAfterBust = checkRoadmapUnlocks({
+    unlocks: baseUnlocks,
+    run: s.run,
+    meta: { ...s.meta, bustCountByStake, bustCountByConstellation },
+    trigger: 'run-end-bust',
+    bustStakeId: s.run.stakeId,
+    bustConstellationId: s.run.constellationId,
+  });
   return {
     state: {
       ...s,
@@ -502,6 +687,9 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         highScores,
         cosmicDust: newDustTotal,
         cosmicDustLifetime: (s.meta.cosmicDustLifetime ?? 0) + dustGained,
+        unlocks: unlocksAfterBust,
+        bustCountByStake,
+        bustCountByConstellation,
         // Daily bust: record the attempt so the Title shows "today done"
         // even if the player didn't clear. Best-score-of-day semantics.
         dailyHistory: s.run.dailyDate

@@ -90,12 +90,16 @@ describe('upgrades phase — catalyst editions', () => {
   });
 
   it('edition does not fire when the catalyst gates and returns ctx unchanged', () => {
-    // pair_dynamo gates on one_pair. Playing Full House → the catalyst
-    // returns ctx unchanged → the foil edition should also no-op.
+    // 2026-05-16 — pair_dynamo now uses "contains" semantics (it fires
+    // on any hand that contains a pair, including Full House). Switch
+    // the negative-test combo to Small Straight, which does NOT
+    // contain a pair, so the catalyst genuinely gates and the foil
+    // edition no-ops. The original "Full House gates pair_dynamo"
+    // expectation no longer holds — that's the intended new behavior.
     const ctx = makeCtx({
       catalysts: ['pair_dynamo'],
       catalystEditions: { pair_dynamo: 'foil' },
-      combo: fullHouse,
+      combo: { id: 'sm_straight', tier: 4, baseChips: 30, baseMult: 5, scoringFaces: [1, 2, 3, 4] },
     });
     const out = upgrades(ctx);
     expect(out.chips).toBe(50); // unchanged — no foil bonus

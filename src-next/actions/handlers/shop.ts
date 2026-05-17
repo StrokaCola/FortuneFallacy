@@ -141,7 +141,15 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
   const modsOff = areModsDisabled(s);
 
   if (!modsOff) {
-    const eligible = gateModsByFaceUniverse([...MOD_IDS], s);
+    // 2026-05-16 unlock-content roadmap — filter out roadmap-gated mods
+    // until the player has earned the matching unlock flag. Same
+    // `unlock:<id>` prefix as gated catalysts (see catalystDraw.ts).
+    const ROADMAP_GATED_MOD_IDS = new Set(['calibrated', 'reckless', 'sun_forged', 'heirbound', 'veiled']);
+    const unlocks = s.meta.unlocks ?? [];
+    const unlockable = (MOD_IDS as readonly string[]).filter((id) =>
+      !ROADMAP_GATED_MOD_IDS.has(id) || unlocks.includes(`unlock:${id}`),
+    );
+    const eligible = gateModsByFaceUniverse(unlockable, s);
     const modIds = shuffle(eligible, rng).slice(0, 2);
     for (const id of modIds) {
       // Mod editions roll independently, same drop weights as catalysts:

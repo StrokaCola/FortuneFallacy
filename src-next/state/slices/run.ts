@@ -148,6 +148,19 @@ export type RunSlice = {
   // for ALL three so a great run can be shared back. Legacy saves
   // default to 'random'.
   seedSource?: 'random' | 'player' | 'daily';
+  // 2026-05-16 unlock-content roadmap — in-run accumulators that
+  // drive new unlock conditions (see docs/unlock-gated-content-roadmap.md).
+  // All optional for back-compat with older saves.
+  //
+  // The Patient: count of Patience Counter ×3 fires this run.
+  patienceCounterFires?: number;
+  // Veiled mod: tracks consecutive hands where the player didn't reroll
+  // (locked all dice between scoring and the next hand). Reset on any
+  // REROLL_REQUESTED.
+  consecutiveLockedHands?: number;
+  // Calibrated mod: count of Pin consumables used this run. Pin Six,
+  // Pin One, Pin Three — bumped on consumable apply.
+  pinConsumablesUsed?: number;
   // Monotonic counter of shop rolls (OPEN_SHOP + REROLL_SHOP). Used as
   // the scope discriminator for the seeded shop RNG so a refresh
   // mid-shop produces the same offers and a deterministic reroll
@@ -227,4 +240,7 @@ export const initialRunSlice = (): RunSlice => ({
   upcomingBossId: null,
   seedSource: 'random',
   shopSeq: 0,
+  patienceCounterFires: 0,
+  consecutiveLockedHands: 0,
+  pinConsumablesUsed: 0,
 });

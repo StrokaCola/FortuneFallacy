@@ -56,6 +56,12 @@ export const MOD_IDS = [
   'pyre_pact',
   'three_banished',
   'voidlock',
+  // 2026-05-16 unlock-content roadmap.
+  'calibrated',
+  'reckless',
+  'sun_forged',
+  'heirbound',
+  'veiled',
 ] as const;
 
 export type ModId = typeof MOD_IDS[number];
@@ -590,6 +596,56 @@ export const MODS: ModDef[] = [
       return faceUniverse.filter((f) => f !== max);
     },
     visual: { materialKey: 'voidlock', accentColor: '#ffd84a', triggerFx: 'pulse', geometricVariant: 'haloed-theatrical' },
+  },
+
+  // 2026-05-16 unlock-content roadmap (5 mods). Each gated behind a
+  // player-earned condition; see docs/unlock-gated-content-roadmap.md.
+
+  // Calibrated — clear a run without using any Pin consumable. Rewards
+  // raw dice-discipline play. Uses the existing `firstBonus` field so
+  // only the first scoring die picks up the +15 chip stamp.
+  {
+    id: 'calibrated', name: 'Calibrated', icon: '⊹',
+    desc: 'First scoring die: +15 chips.', firstBonus: 15, rarity: 'rare',
+    visual: { materialKey: 'calibrated', accentColor: '#7be3ff', triggerFx: 'pulse', geometricVariant: 'etched' },
+  },
+
+  // Reckless — gates on 5 busts on a single constellation. High-fire
+  // payoff with the brittle penalty: destroyed on bust.
+  {
+    id: 'reckless', name: 'Reckless', icon: '✕',
+    desc: '+3 mult per scoring die. Destroyed when the hand busts.',
+    multBonus: 3, loseOnBust: true, rarity: 'uncommon',
+    visual: { materialKey: 'reckless', accentColor: '#ff4d6d', triggerFx: 'pulse', geometricVariant: 'spiked' },
+  },
+
+  // Sun-Forged — Supernova-clear reward. Flat +5 mult for the die in
+  // standard scoring modes; the captain-crew Argo bonus is a follow-up
+  // pass since it requires touching the captain-crew scoring path.
+  {
+    id: 'sun_forged', name: 'Sun-Forged', icon: '☀',
+    desc: '+5 mult per scoring die.', multBonus: 5, rarity: 'legendary',
+    visual: { materialKey: 'sun_forged', accentColor: '#f5c451', triggerFx: 'crown', geometricVariant: 'gilded' },
+  },
+
+  // Heirbound — carry a mod through a full run. Reuses the existing
+  // `engraved` flag so the die's mods (including this one) survive bust.
+  // Modest +1 mult contribution so it's not purely defensive.
+  {
+    id: 'heirbound', name: 'Heirbound', icon: '◈',
+    desc: 'Survives bust. +1 mult per scoring die.',
+    multBonus: 1, engraved: true, rarity: 'rare',
+    visual: { materialKey: 'heirbound', accentColor: '#bba8ff', triggerFx: 'pulse', geometricVariant: 'plated' },
+  },
+
+  // Veiled — calm-play reward. Flat +5 chip bonus stands in for the
+  // "locked-carry" condition in v1 (the lock-streak gate is a flavor
+  // overlay; a strict lock-carry check is a follow-up pass).
+  {
+    id: 'veiled', name: 'Veiled', icon: '◐',
+    desc: '+5 chips per scoring die. Whispers when locked.',
+    scoreBonus: 5, rarity: 'uncommon',
+    visual: { materialKey: 'veiled', accentColor: '#9577ff', triggerFx: 'pulse', geometricVariant: 'recessed' },
   },
 ];
 
