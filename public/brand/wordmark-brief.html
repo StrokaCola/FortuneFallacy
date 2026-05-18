@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fortune Fallacy — Wordmark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:wght@500;600;700&family=Cormorant+SC:wght@500;600;700&family=EB+Garamond:wght@600;700;800&family=Marcellus&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cosmos-deep:#07051a;
+    --cosmos-violet:#1c1245;
+    --aurora:#9577ff;
+    --gold:#f5c451;
+    --gold-deep:#c79730;
+    --bone:#f3f0ff;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:#0a0817; color:var(--bone); font-family:var(--mono); }
+  body{ padding: 56px 48px 120px; }
+
+  header{
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:48px;
+  }
+  header h1{
+    margin:0;
+    font-family:'Cinzel',serif; font-weight:700;
+    font-size: 22px; letter-spacing: 0.32em; text-transform:uppercase;
+    color:var(--gold);
+  }
+  header .meta{
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:rgba(243,240,255,0.5); text-align:right; line-height:1.7;
+  }
+
+  .specimen{
+    max-width: 1200px;
+    margin: 0 auto 64px;
+  }
+  .specimen h2{
+    margin: 0 0 14px;
+    font-family:var(--mono); font-weight:500;
+    font-size: 11px; letter-spacing: 0.22em; text-transform:uppercase;
+    color: rgba(243,240,255,0.55);
+    display:flex; align-items:center; gap:12px;
+  }
+  .specimen h2::before{
+    content:""; width:18px; height:1px; background:var(--gold); display:inline-block;
+  }
+  .specimen .controls{
+    margin: 0 0 16px;
+    display:flex; gap:8px; flex-wrap:wrap;
+    font-size: 11px;
+  }
+  .specimen .controls button{
+    background:transparent;
+    color: rgba(243,240,255,0.75);
+    border:1px solid rgba(243,240,255,0.18);
+    padding: 7px 14px;
+    font-family:var(--mono); font-size:10px; letter-spacing:0.16em; text-transform:uppercase;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  .specimen .controls button:hover{
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .specimen .controls .sep{
+    width:1px; background:rgba(243,240,255,0.12); margin: 0 4px;
+  }
+
+  .stage{
+    position: relative;
+    border: 1px solid rgba(243,240,255,0.08);
+    overflow: hidden;
+    background:
+      linear-gradient(transparent 0 calc(50% - 0.5px), rgba(243,240,255,0.04) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px) 100%),
+      linear-gradient(90deg, transparent 0 calc(50% - 0.5px), rgba(243,240,255,0.04) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px) 100%),
+      repeating-conic-gradient(from 0 at 50% 50%, #0a0817 0 25%, #0c0a1c 0 50%);
+    background-size: 100% 100%, 100% 100%, 28px 28px;
+  }
+  .stage.transparent{
+    background:
+      linear-gradient(45deg, #15121f 25%, transparent 25%) -16px 0/32px 32px,
+      linear-gradient(-45deg, #15121f 25%, transparent 25%) -16px 0/32px 32px,
+      linear-gradient(45deg, transparent 75%, #15121f 75%) 0 0/32px 32px,
+      linear-gradient(-45deg, transparent 75%, #15121f 75%) 0 0/32px 32px,
+      #1d1a28;
+  }
+  .stage svg{ display:block; width:100%; height:auto; }
+
+  /* On-screen size cap for the square stage — keep it readable */
+  .stage.square{ aspect-ratio: 1/1; }
+  .stage.horizontal{ aspect-ratio: 2048/768; }
+
+  /* Color swatches strip */
+  .palette{
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    display:flex; gap: 12px; flex-wrap:wrap;
+    padding: 18px 20px;
+    border: 1px solid rgba(243,240,255,0.08);
+  }
+  .palette .swatch{ display:flex; align-items:center; gap:10px; font-size:10px; letter-spacing:0.12em; color: rgba(243,240,255,0.65);}
+  .palette .chip{ width:18px; height:18px; border:1px solid rgba(243,240,255,0.15);}
+
+  .footnote{
+    max-width: 1200px;
+    margin: 24px auto 0;
+    font-size: 11px; line-height: 1.7; color: rgba(243,240,255,0.45);
+    border-top: 1px solid rgba(243,240,255,0.08); padding-top: 18px;
+  }
+  .footnote b{ color: var(--gold); font-weight:500; letter-spacing:0.12em; }
+
+  /* Hidden render canvas for PNG export */
+  #render-canvas{ display:none; }
+
+  /* ─────────────────── TWEAKS PANEL ─────────────────── */
+  #tweaks{
+    position: fixed;
+    top: 24px; right: 24px;
+    width: 320px; max-height: calc(100vh - 48px);
+    background: #0c0a1f;
+    border: 1px solid rgba(245,196,81,0.25);
+    color: var(--bone);
+    font-family: var(--mono);
+    font-size: 11px;
+    z-index: 999;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+  #tweaks.open{ display:flex; }
+  #tweaks header.tw-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(243,240,255,0.08);
+    background: rgba(149,119,255,0.06);
+    margin: 0; max-width:none; gap:0;
+  }
+  #tweaks header.tw-head .tw-title{
+    font-family:'Cinzel',serif; font-weight:700;
+    font-size:13px; letter-spacing:0.28em; color:var(--gold);
+  }
+  #tweaks header.tw-head button{
+    background: transparent; border: 1px solid rgba(243,240,255,0.18);
+    color: rgba(243,240,255,0.7);
+    width: 24px; height: 24px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #tweaks header.tw-head button:hover{ color:var(--gold); border-color: var(--gold); }
+  #tweaks .tw-body{ overflow-y: auto; padding: 12px 16px 18px; }
+  #tweaks .tw-section{
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed rgba(243,240,255,0.10);
+  }
+  #tweaks .tw-section:first-child{ margin-top: 0; padding-top: 0; border-top: none; }
+  #tweaks .tw-section h3{
+    margin: 0 0 10px;
+    font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase;
+    color: rgba(245,196,81,0.7);
+    font-weight: 500;
+  }
+  #tweaks .tw-row{
+    display:grid; grid-template-columns: 110px 1fr 36px;
+    gap: 8px; align-items:center; padding: 4px 0;
+  }
+  #tweaks .tw-row.full{ grid-template-columns: 1fr; }
+  #tweaks .tw-row label{
+    font-size: 10px; letter-spacing: 0.08em;
+    color: rgba(243,240,255,0.75);
+  }
+  #tweaks .tw-row .val{
+    font-size: 9px; color: rgba(243,240,255,0.45);
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  #tweaks input[type=range]{
+    width: 100%;
+    -webkit-appearance: none; appearance: none;
+    background: transparent; margin: 0;
+  }
+  #tweaks input[type=range]::-webkit-slider-runnable-track{
+    height:1px; background: rgba(243,240,255,0.25);
+  }
+  #tweaks input[type=range]::-moz-range-track{
+    height:1px; background: rgba(243,240,255,0.25);
+  }
+  #tweaks input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:12px; height:12px; background: var(--gold);
+    border:none; margin-top:-6px; cursor:pointer;
+  }
+  #tweaks input[type=range]::-moz-range-thumb{
+    width:12px; height:12px; background: var(--gold); border:none; cursor:pointer; border-radius:0;
+  }
+  #tweaks input[type=text]{
+    width: 100%; background: rgba(243,240,255,0.04);
+    border: 1px solid rgba(243,240,255,0.12); color: var(--bone);
+    padding: 6px 8px; font-family: var(--mono); font-size: 11px;
+    outline: none;
+  }
+  #tweaks input[type=text]:focus{ border-color: var(--gold); }
+  #tweaks input[type=color]{
+    -webkit-appearance:none; appearance:none;
+    border: 1px solid rgba(243,240,255,0.18);
+    background: transparent;
+    width: 36px; height: 22px; padding: 0; cursor:pointer;
+  }
+  #tweaks input[type=color]::-webkit-color-swatch-wrapper{ padding:0; }
+  #tweaks input[type=color]::-webkit-color-swatch{ border:none; }
+  #tweaks select{
+    width: 100%; background: rgba(243,240,255,0.04);
+    border: 1px solid rgba(243,240,255,0.12); color: var(--bone);
+    padding: 5px 6px; font-family: var(--mono); font-size: 11px;
+    outline: none; cursor: pointer;
+  }
+  #tweaks select:focus{ border-color: var(--gold); }
+  #tweaks .tw-toggle{
+    display:flex; gap:4px;
+  }
+  #tweaks .tw-toggle button{
+    flex:1; background: transparent;
+    border: 1px solid rgba(243,240,255,0.12); color: rgba(243,240,255,0.55);
+    padding: 5px 0; font-family: var(--mono); font-size: 10px;
+    cursor:pointer; letter-spacing:0.08em;
+  }
+  #tweaks .tw-toggle button.on{
+    border-color: var(--gold); color: var(--gold); background: rgba(245,196,81,0.08);
+  }
+  #tweaks-fab{
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--gold); color: #07051a;
+    border: none;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 10px 16px;
+    cursor: pointer; z-index: 998;
+    box-shadow: 0 10px 30px rgba(245,196,81,0.25);
+  }
+  #tweaks-fab.hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fortune · Fallacy</h1>
+  <div class="meta">
+    Wordmark / Logotype lockup<br>
+    Square 2048 × 2048  ·  Horizontal 2048 × 768<br>
+    Cinzel 900 · #f5c451 on #07051a
+  </div>
+</header>
+
+<div class="palette">
+  <div class="swatch"><span class="chip" style="background:#07051a"></span>#07051a · cosmos deep</div>
+  <div class="swatch"><span class="chip" style="background:#1c1245"></span>#1c1245 · cosmic violet</div>
+  <div class="swatch"><span class="chip" style="background:#9577ff"></span>#9577ff · aurora-violet</div>
+  <div class="swatch"><span class="chip" style="background:#f5c451"></span>#f5c451 · gold leaf</div>
+  <div class="swatch"><span class="chip" style="background:#f3f0ff"></span>#f3f0ff · bone white</div>
+</div>
+
+<!-- ───────────────────────────── SQUARE ───────────────────────────── -->
+<section class="specimen">
+  <h2>01 · Square title lockup — 2048 × 2048</h2>
+  <div class="controls">
+    <button data-act="bg" data-target="square">Toggle cosmos / transparent</button>
+    <div class="sep"></div>
+    <button data-act="png" data-target="square" data-size="2048">Export PNG @ 2048</button>
+    <button data-act="png" data-target="square" data-size="1024">Export PNG @ 1024</button>
+    <button data-act="svg" data-target="square">Download SVG</button>
+  </div>
+  <div class="stage square" id="stage-square">
+    <!-- SVG injected at load -->
+  </div>
+</section>
+
+<!-- ───────────────────────────── HORIZONTAL ───────────────────────────── -->
+<section class="specimen">
+  <h2>02 · Horizontal header lockup — 2048 × 768</h2>
+  <div class="controls">
+    <button data-act="bg" data-target="horizontal">Toggle cosmos / transparent</button>
+    <div class="sep"></div>
+    <button data-act="png" data-target="horizontal" data-size="2048">Export PNG @ 2048w</button>
+    <button data-act="png" data-target="horizontal" data-size="1024">Export PNG @ 1024w</button>
+    <button data-act="svg" data-target="horizontal">Download SVG</button>
+  </div>
+  <div class="stage horizontal" id="stage-horizontal">
+    <!-- SVG injected at load -->
+  </div>
+</section>
+
+<div class="footnote">
+  <b>NOTES</b><br>
+  Letterforms are Cinzel 900 with +180 (square) / +220 (horizontal) tracking, hand-set to feel etched into a brass instrument plate. The aurora glow behind the wordmark is a soft Gaussian wash, not a drop shadow — read as backlight, not bevel. The 5-star polyline is a fabricated asterism (no real catalogued constellation) drawn in chart-style: bone-white discs at measured radii, gold hairlines between. The gold hairline beneath the wordmark is 1.5px at native resolution. Transparent variants strip the cosmos field and the aurora wash so the lockup composites onto any backdrop — the brief specifies transparent PNG, so the cosmos field is treated as a recommended backdrop, not part of the mark.
+</div>
+
+<canvas id="render-canvas"></canvas>
+
+<!-- ───────────────────────────── TWEAKS PANEL ───────────────────────────── -->
+<button id="tweaks-fab" class="hidden">Tweaks</button>
+
+<aside id="tweaks" aria-label="Tweaks">
+  <header class="tw-head">
+    <div class="tw-title">TWEAKS</div>
+    <button id="tweaks-close" aria-label="Close">×</button>
+  </header>
+  <div class="tw-body">
+
+    <div class="tw-section">
+      <h3>· Typography</h3>
+      <div class="tw-row">
+        <label>Font</label>
+        <select data-tw="fontFamily">
+          <option value="Cinzel">Cinzel (industrial)</option>
+          <option value="Cinzel Decorative">Cinzel Decorative</option>
+          <option value="Cormorant Garamond">Cormorant Garamond</option>
+          <option value="Cormorant SC">Cormorant SC</option>
+          <option value="EB Garamond">EB Garamond</option>
+          <option value="Marcellus">Marcellus</option>
+        </select>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Weight</label>
+        <input type="range" data-tw="fontWeight" min="500" max="900" step="100">
+        <span class="val" data-val="fontWeight"></span>
+      </div>
+      <div class="tw-row">
+        <label>Square size</label>
+        <input type="range" data-tw="squareSize" min="140" max="320" step="2">
+        <span class="val" data-val="squareSize"></span>
+      </div>
+      <div class="tw-row">
+        <label>Square tracking</label>
+        <input type="range" data-tw="squareTracking" min="0" max="60" step="1">
+        <span class="val" data-val="squareTracking"></span>
+      </div>
+      <div class="tw-row">
+        <label>Horiz. size</label>
+        <input type="range" data-tw="horizontalSize" min="100" max="220" step="2">
+        <span class="val" data-val="horizontalSize"></span>
+      </div>
+      <div class="tw-row">
+        <label>Horiz. tracking</label>
+        <input type="range" data-tw="horizontalTracking" min="0" max="60" step="1">
+        <span class="val" data-val="horizontalTracking"></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Wordmark text</h3>
+      <div class="tw-row">
+        <label>Line one</label>
+        <input type="text" data-tw="lineOne">
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Line two</label>
+        <input type="text" data-tw="lineTwo">
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Tagline</label>
+        <input type="text" data-tw="tagline">
+        <span></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Palette</h3>
+      <div class="tw-row">
+        <label>Gold</label>
+        <span></span>
+        <input type="color" data-tw="colorGold">
+      </div>
+      <div class="tw-row">
+        <label>Gold (deep)</label>
+        <span></span>
+        <input type="color" data-tw="colorGoldDp">
+      </div>
+      <div class="tw-row">
+        <label>Aurora</label>
+        <span></span>
+        <input type="color" data-tw="colorAurora">
+      </div>
+      <div class="tw-row">
+        <label>Cosmos deep</label>
+        <span></span>
+        <input type="color" data-tw="colorDeep">
+      </div>
+      <div class="tw-row">
+        <label>Cosmic violet</label>
+        <span></span>
+        <input type="color" data-tw="colorViolet">
+      </div>
+      <div class="tw-row">
+        <label>Bone white</label>
+        <span></span>
+        <input type="color" data-tw="colorBone">
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Atmosphere</h3>
+      <div class="tw-row">
+        <label>Aurora glow</label>
+        <input type="range" data-tw="auroraIntensity" min="0" max="1" step="0.05">
+        <span class="val" data-val="auroraIntensity"></span>
+      </div>
+      <div class="tw-row">
+        <label>Rim glow</label>
+        <input type="range" data-tw="rimGlowStrength" min="0" max="20" step="0.5">
+        <span class="val" data-val="rimGlowStrength"></span>
+      </div>
+      <div class="tw-row">
+        <label>Stars (sparse)</label>
+        <input type="range" data-tw="starfieldDensity" min="6000" max="60000" step="1000">
+        <span class="val" data-val="starfieldDensity"></span>
+      </div>
+      <div class="tw-row">
+        <label>Starfield</label>
+        <div class="tw-toggle" data-tw-toggle="showStarfield">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Film grain</label>
+        <div class="tw-toggle" data-tw-toggle="showGrain">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Constellation &amp; rule</h3>
+      <div class="tw-row">
+        <label>Shape</label>
+        <select data-tw="constellationShape">
+          <option value="cassiopeia">Cassiopeia W</option>
+          <option value="arc">Gentle arc</option>
+          <option value="line">Measured line</option>
+          <option value="dipper">Dipper</option>
+          <option value="zigzag">Zigzag</option>
+        </select>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Constellation</label>
+        <div class="tw-toggle" data-tw-toggle="showConstellation">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Gold hairline</label>
+        <div class="tw-toggle" data-tw-toggle="showHairline">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Tagline</label>
+        <div class="tw-toggle" data-tw-toggle="showTagline">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<script>
+  /* ------------------------------------------------------------------ */
+  /*  WORDMARK CONSTRUCTION                                              */
+  /* ------------------------------------------------------------------ */
+
+  // Both variants share visual DNA. The square stacks FORTUNE / FALLACY;
+  // the horizontal sets them on one line with a thin gold rule between.
+
+  const TWEAKS = /*EDITMODE-BEGIN*/{
+    "fontFamily": "Cinzel Decorative",
+    "fontWeight": 900,
+    "squareSize": 248,
+    "squareTracking": 22,
+    "horizontalSize": 168,
+    "horizontalTracking": 18,
+    "lineOne": "FORTUNE",
+    "lineTwo": "FALLACY",
+    "tagline": "A DICE ROGUELIKE",
+    "showTagline": true,
+    "showHairline": true,
+    "showConstellation": true,
+    "showStarfield": true,
+    "showGrain": true,
+    "constellationShape": "cassiopeia",
+    "auroraIntensity": 0.45,
+    "rimGlowStrength": 8.5,
+    "starfieldDensity": 6000,
+    "colorGold": "#f5c451",
+    "colorGoldDp": "#8a6005",
+    "colorAurora": "#802aa7",
+    "colorDeep": "#07000f",
+    "colorViolet": "#1c1245",
+    "colorBone": "#f3f0ff"
+  }/*EDITMODE-END*/;
+
+  const COLORS = {
+    get deep()   { return TWEAKS.colorDeep;   },
+    get violet() { return TWEAKS.colorViolet; },
+    get aurora() { return TWEAKS.colorAurora; },
+    get gold()   { return TWEAKS.colorGold;   },
+    get goldDp() { return TWEAKS.colorGoldDp; },
+    get bone()   { return TWEAKS.colorBone;   },
+  };
+
+  // 5-star constellation patterns — measured coordinates in a 1000×120
+  // normalized space, transformed per layout. All chart-style asterisms,
+  // not real catalogued constellations.
+  const CONSTELLATION_PATTERNS = {
+    cassiopeia: [   // shallow W
+      { x:  60, y: 90, r: 7 },
+      { x: 280, y: 30, r: 9 },
+      { x: 500, y: 70, r: 11 },
+      { x: 720, y: 18, r: 8 },
+      { x: 940, y: 80, r: 6 },
+    ],
+    arc: [          // gentle arc, brightest center
+      { x:  60, y: 80, r: 6 },
+      { x: 280, y: 40, r: 8 },
+      { x: 500, y: 22, r: 11 },
+      { x: 720, y: 40, r: 8 },
+      { x: 940, y: 80, r: 6 },
+    ],
+    line: [         // measured horizontal line
+      { x:  60, y: 60, r: 6 },
+      { x: 280, y: 60, r: 8 },
+      { x: 500, y: 60, r: 11 },
+      { x: 720, y: 60, r: 8 },
+      { x: 940, y: 60, r: 6 },
+    ],
+    dipper: [       // four-handle + bowl
+      { x:  60, y: 78, r: 6 },
+      { x: 260, y: 48, r: 8 },
+      { x: 480, y: 30, r: 10 },
+      { x: 700, y: 60, r: 9 },
+      { x: 880, y: 92, r: 7 },
+    ],
+    zigzag: [       // sharper alternation
+      { x:  60, y: 20, r: 6 },
+      { x: 280, y: 90, r: 8 },
+      { x: 500, y: 28, r: 11 },
+      { x: 720, y: 92, r: 8 },
+      { x: 940, y: 22, r: 6 },
+    ],
+  };
+
+  /** Produce the square SVG as an outer string. */
+  function buildSquare(transparentBg){
+    const W = 2048, H = 2048;
+    return svgShell(W, H, transparentBg, `
+      ${transparentBg ? '' : `
+        <!-- aurora wash behind wordmark, not a drop shadow -->
+        <ellipse cx="${W/2}" cy="${H*0.55}" rx="${W*0.40}" ry="${H*0.14}"
+                 fill="url(#aurora-wash)" opacity="${TWEAKS.auroraIntensity}"/>
+        <ellipse cx="${W/2}" cy="${H*0.55}" rx="${W*0.24}" ry="${H*0.07}"
+                 fill="url(#aurora-wash)" opacity="${(TWEAKS.auroraIntensity * 0.76).toFixed(2)}"/>
+      `}
+
+      <!-- 5-star constellation polyline, top area -->
+      ${TWEAKS.showConstellation ? constellationGroup(W*0.5 - 540, H*0.30, 1080/1000) : ''}
+
+      <!-- FORTUNE -->
+      <g class="fit" data-cx="${W/2}" data-cy="${H*0.495}" data-fit="${W*0.88}"
+         transform="translate(${W/2} ${H*0.495})">
+        ${etchedText(TWEAKS.lineOne, TWEAKS.squareSize, TWEAKS.squareTracking)}
+      </g>
+
+      <!-- FALLACY -->
+      <g class="fit" data-cx="${W/2}" data-cy="${H*0.625}" data-fit="${W*0.88}"
+         transform="translate(${W/2} ${H*0.625})">
+        ${etchedText(TWEAKS.lineTwo, TWEAKS.squareSize, TWEAKS.squareTracking)}
+      </g>
+
+      <!-- gold hairline beneath wordmark -->
+      ${TWEAKS.showHairline ? `
+      <g transform="translate(${W/2} ${H*0.71})">
+        <line x1="-360" y1="0" x2="360" y2="0"
+              stroke="${COLORS.gold}" stroke-width="2"
+              stroke-linecap="round" opacity="0.85"/>
+        <circle cx="-360" cy="0" r="3" fill="${COLORS.gold}" opacity="0.85"/>
+        <circle cx="360" cy="0" r="3" fill="${COLORS.gold}" opacity="0.85"/>
+      </g>` : ''}
+
+      <!-- ledger tick marks, very subtle, sit beneath the hairline as
+           if measured on a star chart plate -->
+      ${TWEAKS.showTagline ? `
+      <g transform="translate(${W/2} ${H*0.74})"
+         font-family="'JetBrains Mono', monospace"
+         font-size="22" letter-spacing="14"
+         fill="${COLORS.gold}" opacity="0.55" text-anchor="middle">
+        <text>· ${escapeXml(TWEAKS.tagline)} ·</text>
+      </g>` : ''}
+    `);
+  }
+
+  /** Produce the horizontal SVG. */
+  function buildHorizontal(transparentBg){
+    const W = 2048, H = 768;
+    return svgShell(W, H, transparentBg, `
+      ${transparentBg ? '' : `
+        <ellipse cx="${W/2}" cy="${H*0.55}" rx="${W*0.38}" ry="${H*0.32}"
+                 fill="url(#aurora-wash)" opacity="${TWEAKS.auroraIntensity}"/>
+      `}
+
+      <!-- 5-star constellation polyline, top -->
+      ${TWEAKS.showConstellation ? constellationGroup(W*0.5 - 560, H*0.18, 1120/1000) : ''}
+
+      <!-- FORTUNE  ·  FALLACY (single line, separated by a tick) -->
+      <g transform="translate(${W/2} ${H*0.56})">
+        ${etchedText(`${TWEAKS.lineOne} \u00B7 ${TWEAKS.lineTwo}`, TWEAKS.horizontalSize, TWEAKS.horizontalTracking)}
+      </g>
+
+      <!-- gold hairline beneath wordmark -->
+      ${TWEAKS.showHairline ? `
+      <g transform="translate(${W/2} ${H*0.79})">
+        <line x1="-520" y1="0" x2="520" y2="0"
+              stroke="${COLORS.gold}" stroke-width="2"
+              stroke-linecap="round" opacity="0.85"/>
+        <circle cx="-520" cy="0" r="3" fill="${COLORS.gold}" opacity="0.85"/>
+        <circle cx="520" cy="0" r="3" fill="${COLORS.gold}" opacity="0.85"/>
+      </g>` : ''}
+
+      ${TWEAKS.showTagline ? `
+      <g transform="translate(${W/2} ${H*0.91})"
+         font-family="'JetBrains Mono', monospace"
+         font-size="18" letter-spacing="14"
+         fill="${COLORS.gold}" opacity="0.55" text-anchor="middle">
+        <text>· ${escapeXml(TWEAKS.tagline)} ·</text>
+      </g>` : ''}
+    `);
+  }
+
+  /** Shared SVG outer wrapper with gradient defs and (optional) cosmos field. */
+  function svgShell(W, H, transparentBg, inner){
+    return `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"
+     width="${W}" height="${H}"
+     role="img" aria-label="Fortune Fallacy">
+  <defs>
+    <radialGradient id="cosmos-field" cx="50%" cy="55%" r="78%">
+      <stop offset="0%"  stop-color="${COLORS.violet}"/>
+      <stop offset="55%" stop-color="#100a30"/>
+      <stop offset="100%" stop-color="${COLORS.deep}"/>
+    </radialGradient>
+    <radialGradient id="aurora-wash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="${COLORS.aurora}" stop-opacity="0.9"/>
+      <stop offset="55%" stop-color="${COLORS.aurora}" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="${COLORS.aurora}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#fde29a"/>
+      <stop offset="40%" stop-color="${COLORS.gold}"/>
+      <stop offset="100%" stop-color="${COLORS.goldDp}"/>
+    </linearGradient>
+    <filter id="rim-glow" x="-25%" y="-50%" width="150%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="${TWEAKS.rimGlowStrength}" result="b"/>
+      <feFlood flood-color="${COLORS.aurora}" flood-opacity="0.85"/>
+      <feComposite in2="b" operator="in"/>
+      <feComponentTransfer><feFuncA type="linear" slope="1.6"/></feComponentTransfer>
+    </filter>
+    <filter id="film-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0.95
+                             0 0 0 0 0.94
+                             0 0 0 0 1
+                             0 0 0 0.06 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+    </filter>
+  </defs>
+
+  ${transparentBg ? '' : `<rect width="${W}" height="${H}" fill="url(#cosmos-field)"/>`}
+  ${transparentBg || !TWEAKS.showStarfield ? '' : starfield(W, H)}
+
+  ${inner}
+
+  ${transparentBg || !TWEAKS.showGrain ? '' : `<rect width="${W}" height="${H}" filter="url(#film-grain)" pointer-events="none"/>`}
+</svg>`.trim();
+  }
+
+  /** Etched-brass text. No bevel, no drop shadow — just an aurora rim
+   *  glow underneath and the brass gradient on top. */
+  function etchedText(label, size, tracking){
+    const ff = `'${TWEAKS.fontFamily}', serif`;
+    const fw = TWEAKS.fontWeight;
+    const safe = escapeXml(label);
+    // Aurora rim sits on its own layer behind the brass face.
+    return `
+      <text text-anchor="middle" dominant-baseline="central"
+            font-family="${ff}" font-weight="${fw}"
+            font-size="${size}" letter-spacing="${tracking}"
+            fill="${COLORS.aurora}" opacity="0.55"
+            filter="url(#rim-glow)">${safe}</text>
+      <text text-anchor="middle" dominant-baseline="central"
+            font-family="${ff}" font-weight="${fw}"
+            font-size="${size}" letter-spacing="${tracking}"
+            fill="url(#brass)">${safe}</text>
+      <text text-anchor="middle" dominant-baseline="central"
+            font-family="${ff}" font-weight="${fw}"
+            font-size="${size}" letter-spacing="${tracking}"
+            fill="none" stroke="${COLORS.goldDp}" stroke-width="1"
+            opacity="0.55">${safe}</text>
+    `;
+  }
+
+  function escapeXml(s){
+    return String(s).replace(/[<>&'"]/g, c => ({
+      '<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'
+    }[c]));
+  }
+
+  /** 5-star polyline at (x,y) origin. Coordinates from the selected
+   *  CONSTELLATION_PATTERNS entry, scaled by `scale`. */
+  function constellationGroup(x, y, scale){
+    const pattern = CONSTELLATION_PATTERNS[TWEAKS.constellationShape]
+                 || CONSTELLATION_PATTERNS.cassiopeia;
+    const pts = pattern.map(p => ({
+      x: p.x * scale, y: p.y * scale, r: p.r * scale
+    }));
+    const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const ticks = pts.map(p =>
+      `<line x1="${p.x}" y1="${p.y - p.r - 6}" x2="${p.x}" y2="${p.y - p.r - 14}"
+             stroke="${COLORS.gold}" stroke-width="1" opacity="0.55"/>`
+    ).join('');
+    const stars = pts.map((p,i) => `
+      <circle cx="${p.x}" cy="${p.y}" r="${p.r}"
+              fill="${COLORS.bone}"/>
+      <circle cx="${p.x}" cy="${p.y}" r="${p.r + 4}"
+              fill="none" stroke="${COLORS.bone}" stroke-width="0.7" opacity="0.35"/>
+    `).join('');
+
+    return `
+      <g transform="translate(${x} ${y})">
+        <polyline points="${poly}"
+                  fill="none" stroke="${COLORS.gold}" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.8"/>
+        ${ticks}
+        ${stars}
+      </g>
+    `;
+  }
+
+  /** Scattered background starfield, very faint, deterministic. */
+  function starfield(W, H){
+    // Deterministic PRNG (mulberry32)
+    let s = 0x9c2f1d;
+    const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    let out = '';
+    const N = Math.round(W * H / Math.max(2000, TWEAKS.starfieldDensity));
+    for(let i=0;i<N;i++){
+      const x = rnd()*W, y = rnd()*H;
+      const r = rnd() < 0.92 ? rnd()*1.2 + 0.3 : rnd()*2.4 + 1.5;
+      const op = rnd() < 0.92 ? (0.15 + rnd()*0.35) : (0.55 + rnd()*0.35);
+      const tint = rnd() < 0.85 ? COLORS.bone : COLORS.aurora;
+      out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="${tint}" opacity="${op.toFixed(2)}"/>`;
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  RENDER / CONTROLS                                                  */
+  /* ------------------------------------------------------------------ */
+
+  const STATE = {
+    square:     { transparent: false },
+    horizontal: { transparent: false },
+  };
+
+  function renderAll(){
+    document.getElementById('stage-square').innerHTML =
+      buildSquare(STATE.square.transparent);
+    document.getElementById('stage-horizontal').innerHTML =
+      buildHorizontal(STATE.horizontal.transparent);
+
+    document.getElementById('stage-square').classList
+      .toggle('transparent', STATE.square.transparent);
+    document.getElementById('stage-horizontal').classList
+      .toggle('transparent', STATE.horizontal.transparent);
+
+    // Auto-fit any oversized wordmark groups so the lockup never spills
+    // past the viewBox edges, regardless of font / size / tracking.
+    requestAnimationFrame(autoFitAll);
+  }
+
+  /** Find every <g class="fit"> in any stage; if its rendered width
+   *  exceeds data-fit, scale it down around (data-cx, data-cy). */
+  function autoFitAll(){
+    document.querySelectorAll('svg g.fit').forEach(g => {
+      const cx = +g.dataset.cx;
+      const cy = +g.dataset.cy;
+      const max = +g.dataset.fit;
+      // Reset to identity-translate so getBBox reflects intrinsic width.
+      g.setAttribute('transform', `translate(${cx} ${cy})`);
+      let bbox;
+      try { bbox = g.getBBox(); }
+      catch(err){ return; }
+      if(!bbox || bbox.width <= max){ return; }
+      const s = max / bbox.width;
+      // Scale around the group's own origin (already centered).
+      g.setAttribute('transform', `translate(${cx} ${cy}) scale(${s.toFixed(5)})`);
+    });
+  }
+
+  function svgString(which){
+    // Pull the live SVG straight from the DOM so the export reflects
+    // whatever autoFit / state changes are currently rendered.
+    const stage = document.getElementById(`stage-${which}`);
+    const svg = stage && stage.querySelector('svg');
+    return svg ? new XMLSerializer().serializeToString(svg) : '';
+  }
+
+  async function exportPNG(which, sizePx){
+    const transparent = STATE[which].transparent;
+    const raw = svgString(which);
+    const isSquare = which === 'square';
+    const nativeW = 2048;
+    const nativeH = isSquare ? 2048 : 768;
+    const scale = sizePx / nativeW;
+    const outW = sizePx;
+    const outH = Math.round(nativeH * scale);
+
+    const blob = new Blob([raw], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = url;
+    });
+
+    const canvas = document.getElementById('render-canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,outW,outH);
+    ctx.drawImage(img, 0, 0, outW, outH);
+
+    const pngUrl = canvas.toDataURL('image/png');
+    URL.revokeObjectURL(url);
+
+    const a = document.createElement('a');
+    a.href = pngUrl;
+    a.download = `fortune-fallacy-${which}-${transparent ? 'transparent' : 'cosmos'}-${outW}x${outH}.png`;
+    a.click();
+  }
+
+  function exportSVG(which){
+    const transparent = STATE[which].transparent;
+    const raw = svgString(which);
+    const blob = new Blob([raw], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fortune-fallacy-${which}-${transparent ? 'transparent' : 'cosmos'}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  document.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const act = btn.dataset.act;
+      const target = btn.dataset.target;
+      if(act === 'bg'){
+        STATE[target].transparent = !STATE[target].transparent;
+        renderAll();
+      } else if(act === 'png'){
+        const size = parseInt(btn.dataset.size, 10) || 2048;
+        exportPNG(target, size);
+      } else if(act === 'svg'){
+        exportSVG(target);
+      }
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  TWEAKS PANEL — protocol + wiring                                   */
+  /* ------------------------------------------------------------------ */
+
+  const panel  = document.getElementById('tweaks');
+  const fab    = document.getElementById('tweaks-fab');
+  const closeB = document.getElementById('tweaks-close');
+
+  function showPanel(){ panel.classList.add('open'); fab.classList.add('hidden'); }
+  function hidePanel(){ panel.classList.remove('open'); fab.classList.remove('hidden'); }
+
+  // Register listener BEFORE announcing availability.
+  window.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if(d.type === '__activate_edit_mode'){ showPanel(); }
+    if(d.type === '__deactivate_edit_mode'){ hidePanel(); }
+  });
+  // Host toolbar toggle
+  window.parent.postMessage({type:'__edit_mode_available'}, '*');
+
+  closeB.addEventListener('click', () => {
+    hidePanel();
+    window.parent.postMessage({type:'__edit_mode_dismissed'}, '*');
+  });
+  fab.addEventListener('click', showPanel);
+
+  // Sync the UI from the current TWEAKS values
+  function syncUI(){
+    panel.querySelectorAll('[data-tw]').forEach(el => {
+      const k = el.dataset.tw;
+      if(!(k in TWEAKS)) return;
+      const v = TWEAKS[k];
+      if(el.type === 'checkbox') el.checked = !!v;
+      else el.value = v;
+    });
+    panel.querySelectorAll('.val[data-val]').forEach(el => {
+      const k = el.dataset.val;
+      const v = TWEAKS[k];
+      el.textContent = (typeof v === 'number')
+        ? (Number.isInteger(v) ? v : v.toFixed(2))
+        : v;
+    });
+    panel.querySelectorAll('[data-tw-toggle]').forEach(grp => {
+      const k = grp.dataset.twToggle;
+      const v = !!TWEAKS[k];
+      grp.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('on', (b.dataset.v === 'true') === v);
+      });
+    });
+  }
+
+  // Apply a tweak update and re-render
+  function applyTweak(key, value){
+    if(typeof TWEAKS[key] === 'number') value = +value;
+    TWEAKS[key] = value;
+    syncUI();
+    renderAll();
+    window.parent.postMessage({
+      type: '__edit_mode_set_keys',
+      edits: { [key]: value },
+    }, '*');
+  }
+
+  // Wire inputs (range/text/color/select)
+  panel.querySelectorAll('[data-tw]').forEach(el => {
+    const k = el.dataset.tw;
+    const ev = (el.tagName === 'SELECT' || el.type === 'color' || el.type === 'text')
+      ? 'input' : 'input';
+    el.addEventListener(ev, () => applyTweak(k, el.value));
+  });
+
+  // Wire toggle button groups
+  panel.querySelectorAll('[data-tw-toggle]').forEach(grp => {
+    const k = grp.dataset.twToggle;
+    grp.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyTweak(k, btn.dataset.v === 'true');
+      });
+    });
+  });
+
+  syncUI();
+
+  /* ------------------------------------------------------------------ */
+  /*  BOOT                                                               */
+  /* ------------------------------------------------------------------ */
+
+  // Wait for Cinzel before first paint so the SVG measures the right glyphs.
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(renderAll);
+  } else {
+    window.addEventListener('load', renderAll);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Horizon Backdrop — Embed</title>
+<style>
+  /* Slim embed wrapper for in-game iframe. Strips the design tool's
+     dev panel + header + HUD overlay so only the painter canvas
+     paints. The painter's ResizeObserver tracks the wrap element's
+     dimensions, so the canvas adapts to whatever size the parent
+     iframe gives us. Stub elements keep the painter's getElementById
+     calls non-null. */
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; height: 100%; }
+  #wrap { position: fixed; inset: 0; }
+  canvas#stage { display: block; width: 100%; height: 100%; }
+  #tweaks, #tweaks-fab, #tweaks-close, #hud, #wrap > header {
+    position: absolute; left: -9999px; width: 1px; height: 1px;
+    opacity: 0; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-wrap" id="wrap">
+  <canvas id="stage"></canvas>
+  <!-- Painter looks these up by id; keep them present + hidden so the
+       querySelector / classList calls inside horizon-backdrop.js
+       don't throw on null. -->
+  <div id="tweaks"></div>
+  <div id="tweaks-fab"></div>
+  <button id="tweaks-close"></button>
+  <div id="hud"></div>
+</div>
+
+<script>
+  // Read ?scene=X (and optional ?seed=NN) from the parent's iframe src.
+  // Fetch the painter source, patch the TWEAKS.scene + TWEAKS.seed
+  // values before evaluating so the painter's `const TWEAKS = {...}`
+  // boot uses our values. Avoids modifying the painter itself.
+  const params = new URLSearchParams(window.location.search);
+  const scene = (params.get('scene') || 'hub').replace(/[^a-zA-Z_]/g, '');
+  const seedRaw = parseInt(params.get('seed') || '137', 10);
+  const seed = Number.isFinite(seedRaw) && seedRaw > 0 ? seedRaw : 137;
+
+  // Capture painter init errors so we can see them in parent console.
+  window.addEventListener('error', (e) => {
+    console.error('[backdrop-embed] painter runtime error:', e.message, 'at', e.filename + ':' + e.lineno + ':' + e.colno);
+  });
+
+  fetch('./horizon-backdrop.js')
+    .then((r) => r.text())
+    .then((src) => {
+      let patched = src.replace(/"scene":\s*"\w+"/, `"scene": "${scene}"`);
+      patched = patched.replace(/"seed":\s*\d+/, `"seed": ${seed}`);
+      const script = document.createElement('script');
+      script.textContent = patched;
+      document.body.appendChild(script);
+      // After script eval, if the painter didn't auto-start its rAF loop
+      // (some browsers throttle inline-injected script execution under
+      // background tabs, or the embed strips the dev-panel elements that
+      // the painter expects), force a synchronous render so the static
+      // composition is visible. The painter's render() function is
+      // idempotent — if startLoop already kicked, this is a no-op.
+      try {
+        if (typeof window.render === 'function') window.render();
+      } catch (e) {
+        console.error('[backdrop-embed] forced render failed:', e);
+      }
+    })
+    .catch((e) => console.error('[backdrop-embed] painter load failed:', e));
+</script>
+
+</body>
+</html>

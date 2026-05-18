@@ -914,6 +914,128 @@ export const CATALYST_ICON_SVGS: Record<string, CatalystIconRenderer> = {
       <circle cx="17.5" cy="13" r="0.9" fill={color} stroke="none" />
     </svg>
   ),
+
+  // 2026-05-17 — Designer-authored SVG glyphs for the 10 unlock-roadmap
+  // catalysts. Replaces the previous Unicode emoji fallbacks (☠ ⊘ ⌛
+  // ⋆ etc) that rendered inconsistently across OSes. Sourced from
+  // public/brand/catalysts/*.svg via the Glyph Contact Sheet handoff
+  // bundle (Claude Design, 2026-05-17). Stroke width 1.6 (bumped from
+  // the 1.5 default on the existing catalysts) matches the designer's
+  // chosen weight; baseSvgProps still passes 1.5 globally, so each
+  // path inside these renderers carries the explicit strokeWidth=1.6.
+
+  // Bloodied Coin — a coin with a triangular cut marking the bite.
+  bloodied_coin: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="12" r="7.5" strokeWidth={1.6} />
+      <circle cx="12" cy="12" r="4" strokeWidth={1.6} />
+      <path d="M 16.5 4.5 L 20 5 L 18.5 8.5 Z" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Cosmic Compass — four-point compass rose with a single offset
+  // star marking the discovered constellation.
+  cosmic_compass: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 3 L 13.5 12 L 12 21 L 10.5 12 Z" strokeWidth={1.6} />
+      <path d="M 3 12 L 12 13.5 L 21 12 L 12 10.5 Z" strokeWidth={1.6} />
+      <path d="M 12 5 L 12 6 M 12 18 L 12 19 M 5 12 L 6 12 M 18 12 L 19 12" strokeWidth={1.6} />
+      <circle cx="17" cy="6" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Crown of Skulls — jagged crown band with three skull-pip emphasis
+  // dots evenly spaced along the inner row.
+  crown_of_skulls: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 4 17 L 4 11 L 7 13.5 L 9 9 L 12 12 L 15 9 L 17 13.5 L 20 11 L 20 17 Z" strokeWidth={1.6} />
+      <path d="M 4 20 L 20 20" strokeWidth={1.6} />
+      <circle cx="9" cy="14.5" r="0.9" fill={color} stroke="none" />
+      <circle cx="12" cy="14.5" r="0.9" fill={color} stroke="none" />
+      <circle cx="15" cy="14.5" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Hourglass — classical hourglass with the bulb mass implied by
+  // horizontal lines stacking inside the lower half.
+  hourglass: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 6 4 L 18 4" strokeWidth={1.6} />
+      <path d="M 6 20 L 18 20" strokeWidth={1.6} />
+      <path d="M 6 4 L 12 12 L 6 20" strokeWidth={1.6} />
+      <path d="M 18 4 L 12 12 L 18 20" strokeWidth={1.6} />
+      <path d="M 9 8 L 15 8" strokeWidth={1.6} />
+      <path d="M 7.5 17 L 16.5 17 M 8.5 15 L 15.5 15" strokeWidth={1.6} />
+    </svg>
+  ),
+
+  // Salt of the Earth — pantry vessel with stacked fill lines and a
+  // single emphasis dot at the bottom (the reserve grain).
+  salt_of_earth: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 8 4 L 16 4 L 16 7 L 18 9 L 18 20 L 6 20 L 6 9 L 8 7 Z" strokeWidth={1.6} />
+      <path d="M 6 12 L 18 12" strokeWidth={1.6} />
+      <path d="M 6 15 L 18 15" strokeWidth={1.6} />
+      <path d="M 6 17.5 L 18 17.5" strokeWidth={1.6} />
+      <circle cx="12" cy="18.7" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Stargazer — single eye looking upward at a 4-point constellation
+  // polyline overhead; brightest star is the filled emphasis dot.
+  stargazer: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 4 18 C 7 14, 17 14, 20 18 C 17 22, 7 22, 4 18 Z" strokeWidth={1.6} />
+      <circle cx="12" cy="18" r="1.8" strokeWidth={1.6} />
+      <path d="M 4 6 L 9 9 L 14 4 L 19 7" strokeWidth={1.6} />
+      <circle cx="14" cy="4" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // The Confessor — three stacked weighted bars (heavy die motif)
+  // with a single emphasis dot at the central bar.
+  the_confessor: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 5 5.5 L 19 5.5 L 19 8.5 L 5 8.5 Z" strokeWidth={1.6} />
+      <path d="M 5 10.5 L 19 10.5 L 19 13.5 L 5 13.5 Z" strokeWidth={1.6} />
+      <path d="M 5 15.5 L 19 15.5 L 19 18.5 L 5 18.5 Z" strokeWidth={1.6} />
+      <circle cx="12" cy="12" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // The Patient — hourglass variant with a single grain (emphasis
+  // dot) suspended mid-fall.
+  the_patient: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 6 4 L 18 4" strokeWidth={1.6} />
+      <path d="M 6 20 L 18 20" strokeWidth={1.6} />
+      <path d="M 6 4 L 12 12 L 6 20" strokeWidth={1.6} />
+      <path d="M 18 4 L 12 12 L 18 20" strokeWidth={1.6} />
+      <path d="M 9.5 7 L 14.5 7" strokeWidth={1.6} />
+      <circle cx="12" cy="15" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // The Reckoning — eight-point starburst with a single filled
+  // central disc (emphasis dot bumped to r=1.4 for hero presence).
+  the_reckoning: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <path d="M 12 3 L 12 9 M 12 15 L 12 21 M 3 12 L 9 12 M 15 12 L 21 12" strokeWidth={1.6} />
+      <path d="M 5.5 5.5 L 9 9 M 15 15 L 18.5 18.5 M 18.5 5.5 L 15 9 M 9 15 L 5.5 18.5" strokeWidth={1.6} />
+      <circle cx="12" cy="12" r="1.4" fill={color} stroke="none" />
+    </svg>
+  ),
+
+  // Voidwalker — figure stepping through an event-horizon ring; only
+  // the legs past the ring are visible, with one foot emphasized.
+  voidwalker: (color, size) => (
+    <svg {...baseSvgProps(color, size)}>
+      <circle cx="12" cy="10" r="6.5" strokeWidth={1.6} />
+      <path d="M 10 16 L 10 20 L 7 20" strokeWidth={1.6} />
+      <path d="M 14 16 L 14 21 L 17.5 21" strokeWidth={1.6} />
+      <circle cx="10" cy="20" r="0.9" fill={color} stroke="none" />
+    </svg>
+  ),
 };
 
 /** True iff a hand-authored SVG renderer exists for this catalyst id. */

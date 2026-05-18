@@ -73,8 +73,13 @@ export const selectEffectiveCatalystSlotsUsed = (s: GameState) => effectiveCatal
 export const selectVouchers   = (s: GameState) => s.run.vouchers;
 export const selectPlayerName = (s: GameState) => s.meta.playerName;
 export const selectUnlocks    = (s: GameState) => s.meta.unlocks;
+// 2026-05-17 — Lyra is the canonical starter constellation and is ALWAYS
+// unlocked regardless of meta.unlocks state. SEEDED_UNLOCKS already
+// includes 'lyra' for new saves, but legacy saves or any state-reset
+// path could leave it missing; hard-gate Lyra so the entry surface
+// never strands a player without a playable constellation.
 export const selectIsConstellationUnlocked = (id: string) => (s: GameState) =>
-  s.meta.unlocks.includes(id);
+  id === 'lyra' || s.meta.unlocks.includes(id);
 
 export const selectTensionFromState = (s: GameState): number => {
   const inputs: TensionInputs = {
