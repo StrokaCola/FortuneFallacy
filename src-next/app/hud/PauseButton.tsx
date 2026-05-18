@@ -37,6 +37,12 @@ function PauseIcon() {
 
 export function PauseButton() {
   const tight = useIsTightStage();
+  // 2026-05-17 — desktop hides the floating pause button entirely; the
+  // Escape key handler in App.tsx already routes to TOGGLE_PAUSE so the
+  // affordance is preserved without the persistent on-screen widget
+  // (which was overlapping the ConsumableTray right rail). Touch /
+  // tight viewports keep the button since there's no keyboard there.
+  if (!tight) return null;
   return (
     <button
       // Wave KK — pause button picks up its own press feedback. It

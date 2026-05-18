@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fortune Fallacy — Horizon Backdrop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep:#07051a;
+    --violet:#1c1245;
+    --aurora:#9577ff;
+    --gold:#f5c451;
+    --bone:#f3f0ff;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:#0a0817;color:var(--bone);font-family:var(--mono);}
+  body{padding:48px 32px 96px;}
+
+  header{
+    max-width:1280px;margin:0 auto 24px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:32px;
+  }
+  header h1{margin:0;font-family:'Cinzel',serif;font-weight:700;
+    font-size:22px;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);}
+  header .meta{font-size:11px;letter-spacing:0.16em;color:rgba(243,240,255,0.5);text-align:right;line-height:1.7;}
+
+  /* Stage — canvas adapts to its container; the wrap has a controlled
+     aspect ratio so the same backdrop renders crisply at any viewport. */
+  .stage-wrap{
+    max-width:1280px;margin:0 auto;
+    aspect-ratio:16/10;
+    position:relative;
+    border:1px solid rgba(243,240,255,0.08);
+    /* Default = simulated in-game cosmos field, so transparent fade reads correctly */
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 30%, rgba(149,119,255,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 100% 100% at 50% 100%, #1c1245 0%, #07051a 70%);
+    transition:none;
+  }
+  /* Aspect-ratio preset chips — swap the canvas to a different shape
+     to verify the scene scales gracefully. */
+  .stage-wrap.ar-21x9 { aspect-ratio:21/9; }
+  .stage-wrap.ar-16x9 { aspect-ratio:16/9; }
+  .stage-wrap.ar-4x3  { aspect-ratio:4/3;  }
+  .stage-wrap.ar-1x1  { aspect-ratio:1/1;  }
+  .stage-wrap.ar-9x16 { aspect-ratio:9/16; max-width:480px; }
+  /* Fullscreen preview — covers viewport so you can see it as the actual
+     game background, behind a foreground HUD. */
+  .stage-wrap.fullscreen{
+    position:fixed;inset:0;
+    max-width:none;width:100vw;height:100vh;
+    aspect-ratio:auto;
+    border:none;
+    z-index:500;
+  }
+  .stage-wrap.checker{
+    /* shows the alpha gradient honestly */
+    background:
+      linear-gradient(45deg, #15121f 25%, transparent 25%) -16px 0/32px 32px,
+      linear-gradient(-45deg, #15121f 25%, transparent 25%) -16px 0/32px 32px,
+      linear-gradient(45deg, transparent 75%, #15121f 75%) 0 0/32px 32px,
+      linear-gradient(-45deg, transparent 75%, #15121f 75%) 0 0/32px 32px,
+      #1d1a28;
+  }
+  .stage-wrap canvas{display:block;width:100%;height:100%;}
+
+  /* HUD overlay — shows what the backdrop will look like with foreground game content sitting on top */
+  .hud-overlay{
+    position:absolute;inset:0;
+    pointer-events:none;
+    display:none;
+    flex-direction:column;justify-content:space-between;
+    padding:6%;
+  }
+  .hud-overlay.on{display:flex;}
+  .hud-overlay .row{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;}
+  .hud-overlay .pill{
+    border:1px solid rgba(245,196,81,0.4);
+    color:var(--gold);
+    padding:6px 14px;
+    font-size:10px;letter-spacing:0.22em;text-transform:uppercase;
+    background:rgba(7,5,26,0.55);
+    backdrop-filter:blur(6px);
+  }
+  .hud-overlay h2{
+    margin:0;font-family:'Cinzel',serif;font-weight:700;
+    font-size:46px;letter-spacing:0.18em;color:var(--bone);text-transform:uppercase;
+    text-align:center;
+  }
+  .hud-overlay .lo{
+    display:flex;gap:14px;justify-content:center;flex-wrap:wrap;
+  }
+  .hud-overlay .card{
+    width:148px;height:208px;
+    border:1px solid rgba(243,240,255,0.18);
+    background:rgba(7,5,26,0.55);
+    backdrop-filter:blur(4px);
+    display:flex;align-items:flex-end;justify-content:center;
+    padding-bottom:14px;
+    color:rgba(243,240,255,0.7);
+    font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
+  }
+
+  /* Controls strip */
+  .controls{
+    max-width:1280px;margin:18px auto 0;
+    display:flex;gap:8px;flex-wrap:wrap;font-size:11px;
+  }
+  .controls button{
+    background:transparent;color:rgba(243,240,255,0.75);
+    border:1px solid rgba(243,240,255,0.18);
+    padding:7px 14px;font-family:inherit;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;
+    transition:all .15s ease;
+  }
+  .controls button:hover,.controls button.on{border-color:var(--gold);color:var(--gold);}
+  .controls .sep{width:1px;background:rgba(243,240,255,0.12);margin:0 4px;}
+  .controls .label{font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(243,240,255,0.45);align-self:center;padding:0 4px;}
+
+  /* Exit-fullscreen pill — only visible in fullscreen mode */
+  .exit-fs{
+    position:absolute;top:18px;right:18px;
+    background:rgba(7,5,26,0.55);color:var(--gold);
+    border:1px solid rgba(245,196,81,0.4);
+    padding:8px 14px;font-family:var(--mono);
+    font-size:10px;letter-spacing:0.22em;text-transform:uppercase;
+    cursor:pointer;display:none;z-index:600;
+    backdrop-filter:blur(6px);
+  }
+  .stage-wrap.fullscreen .exit-fs{display:inline-block;}
+
+  footer{
+    max-width:1280px;margin:24px auto 0;
+    padding-top:18px;border-top:1px solid rgba(243,240,255,0.08);
+    font-size:11px;line-height:1.7;color:rgba(243,240,255,0.45);
+  }
+  footer b{color:var(--gold);font-weight:500;letter-spacing:0.12em;}
+
+  /* ─────────────────── TWEAKS PANEL ─────────────────── */
+  #tweaks{
+    position:fixed;top:24px;right:24px;
+    width:320px;max-height:calc(100vh - 48px);
+    background:#0c0a1f;
+    border:1px solid rgba(245,196,81,0.25);
+    color:var(--bone);font-family:var(--mono);font-size:11px;
+    z-index:999;display:none;flex-direction:column;
+    box-shadow:0 30px 80px rgba(0,0,0,0.6);
+  }
+  #tweaks.open{display:flex;}
+  #tweaks header.tw-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;border-bottom:1px solid rgba(243,240,255,0.08);
+    background:rgba(149,119,255,0.06);
+    margin:0;max-width:none;gap:0;
+  }
+  #tweaks .tw-title{font-family:'Cinzel',serif;font-weight:700;font-size:13px;letter-spacing:0.28em;color:var(--gold);}
+  #tweaks .tw-head button{
+    background:transparent;border:1px solid rgba(243,240,255,0.18);
+    color:rgba(243,240,255,0.7);width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #tweaks .tw-head button:hover{color:var(--gold);border-color:var(--gold);}
+  #tweaks .tw-body{overflow-y:auto;padding:12px 16px 18px;}
+  #tweaks .tw-section{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(243,240,255,0.10);}
+  #tweaks .tw-section:first-child{margin-top:0;padding-top:0;border-top:none;}
+  #tweaks .tw-section h3{
+    margin:0 0 10px;font-size:9px;letter-spacing:0.24em;text-transform:uppercase;
+    color:rgba(245,196,81,0.7);font-weight:500;
+  }
+  #tweaks .tw-row{display:grid;grid-template-columns:110px 1fr 36px;gap:8px;align-items:center;padding:4px 0;}
+  #tweaks .tw-row label{font-size:10px;letter-spacing:0.08em;color:rgba(243,240,255,0.75);}
+  #tweaks .tw-row .val{font-size:9px;color:rgba(243,240,255,0.45);text-align:right;font-variant-numeric:tabular-nums;}
+  #tweaks input[type=range]{
+    width:100%;-webkit-appearance:none;appearance:none;background:transparent;margin:0;
+  }
+  #tweaks input[type=range]::-webkit-slider-runnable-track{height:1px;background:rgba(243,240,255,0.25);}
+  #tweaks input[type=range]::-moz-range-track{height:1px;background:rgba(243,240,255,0.25);}
+  #tweaks input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--gold);border:none;margin-top:-6px;cursor:pointer;}
+  #tweaks input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--gold);border:none;cursor:pointer;border-radius:0;}
+  #tweaks input[type=color]{
+    -webkit-appearance:none;border:1px solid rgba(243,240,255,0.18);background:transparent;
+    width:36px;height:22px;padding:0;cursor:pointer;
+  }
+  #tweaks input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  #tweaks input[type=color]::-webkit-color-swatch{border:none;}
+  #tweaks select{
+    width:100%;background:rgba(243,240,255,0.04);
+    border:1px solid rgba(243,240,255,0.12);color:var(--bone);
+    padding:5px 6px;font-family:var(--mono);font-size:11px;outline:none;cursor:pointer;
+  }
+  #tweaks select:focus{border-color:var(--gold);}
+  #tweaks .tw-toggle{display:flex;gap:4px;}
+  #tweaks .tw-toggle button{
+    flex:1;background:transparent;border:1px solid rgba(243,240,255,0.12);
+    color:rgba(243,240,255,0.55);padding:5px 0;
+    font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:0.08em;
+  }
+  #tweaks .tw-toggle button.on{border-color:var(--gold);color:var(--gold);background:rgba(245,196,81,0.08);}
+  #tweaks-fab{
+    position:fixed;bottom:24px;right:24px;
+    background:var(--gold);color:#07051a;border:none;
+    font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;
+    padding:10px 16px;cursor:pointer;z-index:998;
+    box-shadow:0 10px 30px rgba(245,196,81,0.25);
+  }
+  #tweaks-fab.hidden{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Horizon Backdrop</h1>
+  <div class="meta">
+    2048 × 1280 · 16:10<br>
+    Painterly silhouette, painted bottom 38%<br>
+    Transparent top half · 6 scene presets
+  </div>
+</header>
+
+<div class="stage-wrap" id="wrap">
+  <canvas id="stage" width="2048" height="1280"></canvas>
+  <button class="exit-fs" id="exit-fs" type="button">Exit fullscreen · esc</button>
+  <div class="hud-overlay" id="hud">
+    <div class="row">
+      <div class="pill">ACT III · CALLISTO</div>
+      <div class="pill">⨉  3</div>
+    </div>
+    <h2>CHOOSE YOUR CATALYST</h2>
+    <div class="lo">
+      <div class="card">Stargazer</div>
+      <div class="card">Hourglass</div>
+      <div class="card">Hollow Bishop</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button data-act="checker">Toggle checker / opaque preview</button>
+  <button data-act="hud">Toggle HUD mock</button>
+  <button data-act="fullscreen">Fullscreen preview</button>
+  <div class="sep"></div>
+  <span class="label">Aspect</span>
+  <button data-ar=""       class="ar on">16:10</button>
+  <button data-ar="ar-21x9" class="ar">21:9</button>
+  <button data-ar="ar-16x9" class="ar">16:9</button>
+  <button data-ar="ar-4x3"  class="ar">4:3</button>
+  <button data-ar="ar-1x1"  class="ar">1:1</button>
+  <button data-ar="ar-9x16" class="ar">9:16</button>
+  <div class="sep"></div>
+  <button data-act="png" data-size="2048">Export PNG @ 2048</button>
+  <button data-act="png" data-size="1024">Export PNG @ 1024</button>
+  <button data-act="reseed">Reseed</button>
+</div>
+
+<footer>
+  <b>NOTES</b> — Painted on a 2048×1280 canvas with an alpha gradient that fades the upper half to transparent so the cosmos-violet HUD background shows through. Toggle the HUD mock to preview foreground readability. The painterly texture is built from layered scattered ellipses with slight hue jitter — matches the matte-paint references rather than reading airbrush-digital. Each scene is procedurally generated from a seed; hit <b>Reseed</b> to roll a fresh layout. 2-3 twinkle sparks anchor near the silhouette's high points. Use the Tweaks panel (toolbar or gold fab) to switch scenes, dial the aurora rim, retint palette, or push painterly grain.
+</footer>
+
+<!-- ───────────────────────────── TWEAKS PANEL ───────────────────────────── -->
+<button id="tweaks-fab" class="hidden">Tweaks</button>
+
+<aside id="tweaks" aria-label="Tweaks">
+  <header class="tw-head">
+    <div class="tw-title">TWEAKS</div>
+    <button id="tweaks-close" aria-label="Close">×</button>
+  </header>
+  <div class="tw-body">
+
+    <div class="tw-section">
+      <h3>· Scene</h3>
+      <div class="tw-row">
+        <label>Preset</label>
+        <select data-tw="scene">
+          <option value="hub">Hub · Observatory</option>
+          <option value="shop">Shop · Night market</option>
+          <option value="forge">Forge · Anvil + bellows</option>
+          <option value="astralForge">Astral Forge · Altar + crystal</option>
+        </select>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Seed</label>
+        <input type="range" data-tw="seed" min="1" max="999" step="1">
+        <span class="val" data-val="seed"></span>
+      </div>
+      <div class="tw-row">
+        <label>Horizon height</label>
+        <input type="range" data-tw="horizonFrac" min="0.18" max="0.50" step="0.01">
+        <span class="val" data-val="horizonFrac"></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Atmosphere</h3>
+      <div class="tw-row">
+        <label>Fade start</label>
+        <input type="range" data-tw="fadeStart" min="0" max="0.6" step="0.02">
+        <span class="val" data-val="fadeStart"></span>
+      </div>
+      <div class="tw-row">
+        <label>Aurora rim</label>
+        <input type="range" data-tw="auroraIntensity" min="0" max="1" step="0.05">
+        <span class="val" data-val="auroraIntensity"></span>
+      </div>
+      <div class="tw-row">
+        <label>Haze</label>
+        <input type="range" data-tw="haze" min="0" max="1" step="0.05">
+        <span class="val" data-val="haze"></span>
+      </div>
+      <div class="tw-row">
+        <label>Stars</label>
+        <input type="range" data-tw="starDensity" min="0" max="400" step="10">
+        <span class="val" data-val="starDensity"></span>
+      </div>
+      <div class="tw-row">
+        <label>Sparks</label>
+        <input type="range" data-tw="sparkCount" min="0" max="6" step="1">
+        <span class="val" data-val="sparkCount"></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Deep cosmos</h3>
+      <div class="tw-row">
+        <label>Nebula</label>
+        <input type="range" data-tw="nebula" min="0" max="1" step="0.05">
+        <span class="val" data-val="nebula"></span>
+      </div>
+      <div class="tw-row">
+        <label>Milky way</label>
+        <input type="range" data-tw="milkyway" min="0" max="1" step="0.05">
+        <span class="val" data-val="milkyway"></span>
+      </div>
+      <div class="tw-row">
+        <label>Cosmic fog</label>
+        <input type="range" data-tw="cosmicFog" min="0" max="1.5" step="0.05">
+        <span class="val" data-val="cosmicFog"></span>
+      </div>
+      <div class="tw-row">
+        <label>Bright stars</label>
+        <input type="range" data-tw="brightStars" min="0" max="12" step="1">
+        <span class="val" data-val="brightStars"></span>
+      </div>
+      <div class="tw-row">
+        <label>Constellation</label>
+        <div class="tw-toggle" data-tw-toggle="skyConstellation">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Surface</h3>
+      <div class="tw-row">
+        <label>Painterly</label>
+        <input type="range" data-tw="painterly" min="0" max="1" step="0.05">
+        <span class="val" data-val="painterly"></span>
+      </div>
+      <div class="tw-row">
+        <label>Grain</label>
+        <input type="range" data-tw="grain" min="0" max="1" step="0.05">
+        <span class="val" data-val="grain"></span>
+      </div>
+      <div class="tw-row">
+        <label>Layers</label>
+        <input type="range" data-tw="layers" min="1" max="4" step="1">
+        <span class="val" data-val="layers"></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Animation</h3>
+      <div class="tw-row">
+        <label>Animate</label>
+        <div class="tw-toggle" data-tw-toggle="animate">
+          <button data-v="true">On</button><button data-v="false">Off</button>
+        </div>
+        <span></span>
+      </div>
+      <div class="tw-row">
+        <label>Speed</label>
+        <input type="range" data-tw="animSpeed" min="0" max="2" step="0.05">
+        <span class="val" data-val="animSpeed"></span>
+      </div>
+      <div class="tw-row">
+        <label>Twinkle</label>
+        <input type="range" data-tw="twinkleAmount" min="0" max="1" step="0.05">
+        <span class="val" data-val="twinkleAmount"></span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <h3>· Palette</h3>
+      <div class="tw-row">
+        <label>Cosmos deep</label><span></span>
+        <input type="color" data-tw="colorDeep">
+      </div>
+      <div class="tw-row">
+        <label>Cosmic violet</label><span></span>
+        <input type="color" data-tw="colorViolet">
+      </div>
+      <div class="tw-row">
+        <label>Aurora</label><span></span>
+        <input type="color" data-tw="colorAurora">
+      </div>
+      <div class="tw-row">
+        <label>Gold</label><span></span>
+        <input type="color" data-tw="colorGold">
+      </div>
+      <div class="tw-row">
+        <label>Bone</label><span></span>
+        <input type="color" data-tw="colorBone">
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<script src="horizon-backdrop.js"></script>
+</body>
+</html>

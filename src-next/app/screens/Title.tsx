@@ -8,6 +8,7 @@ import { getDailyChallenge } from '../../online/dailyChallenge';
 import { lookupStake } from '../../data/stakes';
 import { getTipOfTheDay } from '../../data/tips';
 import { currentPrestigeTier } from '../../data/prestigeTiers';
+import { FortuneFallacyWordmark } from '../visual/FortuneFallacyWordmark';
 
 const selectCosmicDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime ?? 0;
 
@@ -122,44 +123,24 @@ export function Title() {
         }}>
           ◇ the gambler's fallacy, weaponized ◇
         </div>
-        <div className="f-display" style={{ fontSize: titleFontSize, lineHeight: 1, color: '#f3f0ff',
-          textShadow: '0 0 40px rgba(123,227,255,0.5), 0 0 80px rgba(149,119,255,0.4)' }}>
-          Fortune
+        {/* 2026-05-17 — Custom Fortune Fallacy wordmark replaces the
+            previous Cinzel-text + constellation-polyline lockup. The
+            wordmark composites brass-gradient Cinzel Decorative 900
+            letterforms over an aurora-violet backlight wash, with the
+            5-star Cassiopeia asterism above + gold hairline + tagline
+            below. See public/brand/wordmark-brief.html for the source
+            design and src-next/app/visual/FortuneFallacyWordmark.tsx
+            for the React render. The container caps the wordmark's
+            width so the lockup scales with viewport while keeping
+            its internal proportions baked-in. */}
+        <div style={{
+          width: tight ? 'min(420px, 92vw)' : 'min(640px, 70vw)',
+          margin: '0 auto',
+          opacity: 0,
+          animation: 'fadein 1100ms ease-out 300ms forwards',
+        }}>
+          <FortuneFallacyWordmark />
         </div>
-        <div className="f-display" style={{ fontSize: titleFontSize, lineHeight: 1, color: '#7be3ff',
-          textShadow: '0 0 40px rgba(123,227,255,0.6)', fontStyle: 'italic' }}>
-          Fallacy
-        </div>
-
-        <svg viewBox="0 0 240 60" width={ornamentW} height={ornamentH} style={{ display: 'block', margin: ornamentMargin }}>
-          {[
-            { x: 30,  y: 30 },
-            { x: 80,  y: 18 },
-            { x: 120, y: 42 },
-            { x: 160, y: 22 },
-            { x: 210, y: 36 },
-          ].map((p, i, arr) => (
-            <g key={i}>
-              {i < arr.length - 1 && (
-                <line
-                  x1={p.x} y1={p.y} x2={arr[i + 1]!.x} y2={arr[i + 1]!.y}
-                  stroke="#7be3ff" strokeWidth="0.6" strokeDasharray="2 3"
-                  style={{
-                    strokeDashoffset: 60,
-                    animation: 'titleConstDraw 2.4s ease-out forwards',
-                    animationDelay: `${i * 200}ms`,
-                  }} />
-              )}
-              <circle cx={p.x} cy={p.y} r="2.5" fill="#f5c451"
-                style={{
-                  filter: 'drop-shadow(0 0 4px #f5c451)',
-                  opacity: 0,
-                  animation: 'fadein 600ms ease-out forwards',
-                  animationDelay: `${i * 220}ms`,
-                }} />
-            </g>
-          ))}
-        </svg>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: buttonsGap, marginTop: buttonsMarginTop, alignItems: 'center' }}>
           <button
