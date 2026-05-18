@@ -10,7 +10,6 @@ import { CatalystStrip } from '../hud/CatalystStrip';
 import { LegendaryFire } from '../hud/LegendaryFire';
 import { HotStreakBanner } from '../hud/HotStreakBanner';
 import { HeatMeter } from '../hud/HeatMeter';
-import { VoidstormBadge } from '../hud/VoidstormBadge';
 import { PatternDetectedBanner } from '../hud/PatternDetectedBanner';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
@@ -33,12 +32,8 @@ import {
   selectTarget, selectShards, selectAnte,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectAccent, selectConstellationAccent, selectEffectiveCatalystSlotsUsed,
-  selectMaxSlots,
 } from '../../state/selectors';
-import type { GameState } from '../../state/store';
 import { BLIND_DEFS } from '../../data/blinds';
-
-const selectConsumablesRun = (s: GameState) => s.run.consumables;
 
 export function Round() {
   const hands    = useStore(selectHandsLeft);
@@ -50,8 +45,6 @@ export function Round() {
   const catalysts = useStore(selectCatalysts);
   const maxCatalysts = useStore(selectMaxCatalystSlots);
   const usedCatalystSlots = useStore(selectEffectiveCatalystSlotsUsed);
-  const consumables = useStore(selectConsumablesRun);
-  const [, maxConsumables] = useStore(selectMaxSlots);
   const vouchers = useStore(selectVouchers);
   const blindIndex = useStore((s) => s.round.blindIndex);
   const firstRollDone = useStore((s) => s.round.firstRollDone);
@@ -102,8 +95,6 @@ export function Round() {
         target={target}
         score={score}
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
-        consumableSlots={{ used: consumables.length, max: maxConsumables }}
-        consumables={consumables}
         voucherCount={vouchers.length}
         vouchers={vouchers}
         catalysts={catalysts}
@@ -117,7 +108,6 @@ export function Round() {
       <LegendaryFire />
       <HotStreakBanner />
       <HeatMeter />
-      <VoidstormBadge />
       <PatternDetectedBanner />
       <ShardDeductToast />
       <ShardGainToast />
