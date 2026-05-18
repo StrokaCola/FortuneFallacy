@@ -7,6 +7,7 @@ import { BossReveal } from './hud/BossReveal';
 import { BossPhaseBanner } from './hud/BossPhaseBanner';
 import { ArrivalToast } from './hud/ArrivalToast';
 import { AchievementToast } from './hud/AchievementToast';
+import { DiscoveryFeed } from './hud/DiscoveryFeed';
 import { VoucherToast } from './hud/VoucherToast';
 import { WhisperToast } from './hud/WhisperToast';
 import { EventFlash } from './hud/EventFlash';
@@ -266,6 +267,7 @@ export function App() {
           <SoundCaptions />
           <AuditEvent />
           <SellTriggerToast />
+          <DiscoveryFeed />
           <Particles />
         </div>
 

@@ -6,6 +6,7 @@
 // tooltip (with edition bonus + sell refund), card-wobble + chipPop
 // entry animation, tight-portrait full-width vs desktop 180×250.
 
+import { useRef } from 'react';
 import { dispatch } from '../../../actions/dispatch';
 import { sfxPlay } from '../../../audio/sfx';
 import { sellRefund } from '../../../core/shop/sellRefund';
@@ -19,6 +20,9 @@ import type { CatalystEdition } from '../../../state/slices/run';
 import { offerMeta, editionBonusDescription } from './offerMeta';
 import { EditionBadge } from './EditionBadge';
 import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
+import { RevealAnimation } from './RevealAnimation';
+import { store } from '../../../state/store';
+import { bus } from '../../../events/bus';
 
 const ACCENT = '#7be3ff';
 
@@ -52,6 +56,48 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
   const refundIfBought = sellRefund(o.kind, o.id);
   const isLegendary = m.rarity === 'legendary';
   const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;
+
+  // Aliveness pass (2026-05-18). First-encounter discovery moment.
+  // Snapshot the discovered set at mount via useRef so the reveal
+  // only fires once per offer, even if the discovery dispatch
+  // updates meta.discovered before the next render. Catalyst kind
+  // only — mods/vouchers/consumables have their own codex paths
+  // (DiscoveryBridge covers them on shop open).
+  const revealRef = useRef<{ catalyst: boolean; edition: 'foil' | 'holo' | 'poly' | 'void' | null } | null>(null);
+  if (revealRef.current === null) {
+    if (o.kind === 'catalyst') {
+      const meta = store.getState().meta;
+      const known = new Set(meta.discovered.catalysts ?? []);
+      const knownEditions = new Set(meta.discovered.editions ?? []);
+      const isNewCatalyst = !known.has(o.id);
+      const ed = o.edition ?? null;
+      const isNewEdition = ed != null && !knownEditions.has(ed);
+      revealRef.current = {
+        catalyst: isNewCatalyst,
+        edition: isNewEdition ? ed : null,
+      };
+      // Defer the dispatch a frame so the parent's mount cycle
+      // completes before any listener re-renders the shop. Without
+      // the rAF the bridge synchronously updates meta.discovered
+      // during render, which React warns about under StrictMode.
+      if (isNewCatalyst || isNewEdition) {
+        const fire = () => {
+          if (isNewCatalyst) {
+            const total = (CATALYST_META.length) | 0;
+            bus.emit('onCatalystDiscovered', { catalystId: o.id, total });
+          }
+          if (isNewEdition && ed) {
+            bus.emit('onEditionDiscovered', { edition: ed, catalystId: o.id });
+          }
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fire);
+        else fire();
+      }
+    } else {
+      revealRef.current = { catalyst: false, edition: null };
+    }
+  }
+  const showReveal = revealRef.current.catalyst || revealRef.current.edition != null;
   const cardBorder = isLegendary
     ? `1.5px solid ${ringColor}cc`
     : m.rarity === 'rare'
@@ -137,6 +183,12 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
             <LegendaryFlourish catalystId={o.id} />
             <LegendaryEmbers />
           </>
+        )}
+        {/* Aliveness first-encounter reveal — only renders on the
+            first time the player sees this catalyst (or this edition).
+            Self-destructs after ~1.2s (or ~2s for rare editions). */}
+        {showReveal && (
+          <RevealAnimation name={m.name} edition={revealRef.current.edition ?? undefined} />
         )}
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>

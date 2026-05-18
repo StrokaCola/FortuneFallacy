@@ -4,6 +4,10 @@ import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
 import { lookupCatalyst } from '../../data/catalysts';
 import { useStore, type GameState } from '../../state/store';
+import { selectProjectedScore } from '../../state/selectors';
+import {
+  getScorePreviewPref, subscribeScorePreviewPref,
+} from '../settings/scorePreview';
 import { lookupStake } from '../../data/stakes';
 import { lookupChallenge } from '../../data/challenges';
 import { BOSS_BLINDS } from '../../data/blinds';
@@ -155,6 +159,25 @@ export function TopBar({
   const scoreFmt = formatScore(displayedScore);
   const targetFmt = target ? formatScore(target) : null;
   const isCompactScore = scoreFmt.display !== scoreFmt.full;
+  // 2026-05-18 P5.2: score kinetic typography. Scale + colour-shift
+  // the score readout at magnitude thresholds (vs the current trial
+  // target). 1× cross → existing ff-score-cross-pulse handles it;
+  // we layer additional tiers for "wow" hands.
+  //   ratio >= 10   → 1.10× scale, deeper gold
+  //   ratio >= 100  → 1.25× scale, golden shimmer
+  //   ratio >= 1000 → 1.40× scale, full kinetic
+  const scoreRatio = target > 0 ? displayedScore / target : 0;
+  const kineticTier = scoreRatio >= 1000 ? 3 : scoreRatio >= 100 ? 2 : scoreRatio >= 10 ? 1 : 0;
+  const kineticScale = kineticTier === 0 ? 1 : kineticTier === 1 ? 1.10 : kineticTier === 2 ? 1.25 : 1.40;
+  const kineticColor = kineticTier === 0 ? undefined : '#ffd97a';
+  // 2026-05-18 P1 — score projection chip. Subscribed only while the
+  // setting is enabled; flipping the toggle re-renders via the
+  // subscribe hook below. Null hides the chip entirely.
+  const [previewOn, setPreviewOn] = useState(getScorePreviewPref() === 'on');
+  useEffect(() => subscribeScorePreviewPref(() => setPreviewOn(getScorePreviewPref() === 'on')), []);
+  const projected = useStore(selectProjectedScore);
+  const showProjection = previewOn && projected != null && projected > 0;
+  const projectedFmt = showProjection ? formatScore(projected) : null;
   // Smooth count-ups / count-downs on the three secondary counters.
   // Shards gets the longest tween because deltas are biggest (clear
   // rewards can drop +20 in a single frame); hands / rerolls deltas
@@ -243,12 +266,23 @@ export function TopBar({
             <div
               data-score-counter
               key={`score-cross-${scoreCrossKey}`}
-              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}${kineticTier > 0 ? ` ff-score-kinetic-tier${kineticTier}` : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
-                color: tense ? '#ff4d6d' : '#f3f0ff',
+                color: tense ? '#ff4d6d' : (kineticColor ?? '#f3f0ff'),
                 fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                textShadow: tense ? '0 0 18px rgba(255,77,109,0.65)' : undefined,
+                textShadow: tense
+                  ? '0 0 18px rgba(255,77,109,0.65)'
+                  : kineticTier > 0
+                    ? `0 0 ${10 + kineticTier * 6}px rgba(255,217,122,${0.4 + kineticTier * 0.15})`
+                    : undefined,
+                // 2026-05-18 P5.2 kinetic typography. Scale rises in
+                // discrete tiers — smooth animation would jitter on
+                // count-up frames; stepping locks in a visible "beat"
+                // at each threshold crossing.
+                transform: kineticTier > 0 ? `scale(${kineticScale})` : undefined,
+                transformOrigin: 'left center',
+                transition: 'transform 220ms cubic-bezier(0.2, 1.6, 0.4, 1), color 180ms ease-out, text-shadow 180ms ease-out',
               }}
               aria-live="polite"
               aria-atomic="true"
@@ -258,6 +292,21 @@ export function TopBar({
             </div>
             <div className="f-mono num" style={{ fontSize: 12, color: accent, marginTop: 2, whiteSpace: 'nowrap' }}>
               / {targetFmt ? targetFmt.display : '—'}
+              {showProjection && projectedFmt && (
+                <span
+                  className="f-mono num"
+                  title={`If you commit now, you'd score ~${projectedFmt.full}. Projection ignores catalysts, mods, chain.`}
+                  style={{
+                    marginLeft: 10,
+                    fontSize: 11,
+                    opacity: 0.62,
+                    color: '#b7a5ff',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  → ~{projectedFmt.display}
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -469,13 +469,11 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (a.kind === 'catalyst') {
         const id = s.run.catalysts[a.index];
         if (!id) return { state: s, events: [] };
-        const baseRefund = sellRefund('catalyst', id);
-        // Dust-Off: any owned dust_off catalyst boosts catalyst sell-back
-        // refunds by 50%. Doesn't apply to the dust_off itself if it's the
-        // one being sold — read the OTHER owned catalysts.
-        const otherCatalysts = s.run.catalysts.filter((_, i) => i !== a.index);
-        const dustOffOwned = otherCatalysts.includes('dust_off');
-        const refund = dustOffOwned ? Math.floor(baseRefund * 1.5) : baseRefund;
+        const refund = sellRefund('catalyst', id);
+        // 2026-05-18 audit: Dust-Off no longer boosts sell refunds — it
+        // now grants a per-reroll shard discount (see rerollDiscount).
+        // Pre-audit sell boost almost never fired (players rarely sell)
+        // and made the common a trap pick.
         // Drop the edition stamp (if any) so a re-bought catalyst with
         // the same id doesn't inherit the prior edition.
         const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};

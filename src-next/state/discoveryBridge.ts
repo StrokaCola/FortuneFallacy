@@ -41,12 +41,17 @@ export function startDiscoveryBridge(): () => void {
   const subs = [
     bus.on('onShopOpened', ({ offers }) => {
       setStateRaw((s) => {
+        // 2026-05-18 Aliveness pass — catalysts are NOT marked
+        // discovered on shop open anymore. OfferCard handles the
+        // first-encounter moment and dispatches `onCatalystDiscovered`
+        // once the reveal has played, which feeds the union below.
+        // Other kinds keep the old eager-mark semantics — they have
+        // no reveal layer.
         const buckets: Record<DiscoveryKey, string[]> = {
           catalysts: [], mods: [], vouchers: [], bosses: [], consumables: [],
         };
         for (const o of offers) {
-          if (o.kind === 'catalyst') buckets.catalysts.push(o.id);
-          else if (o.kind === 'mod') buckets.mods.push(o.id);
+          if (o.kind === 'mod') buckets.mods.push(o.id);
           else if (o.kind === 'voucher') buckets.vouchers.push(o.id);
           else if (o.kind === 'consumable') buckets.consumables.push(o.id);
         }
@@ -55,6 +60,29 @@ export function startDiscoveryBridge(): () => void {
           next = unionInto(next, k, buckets[k]);
         }
         return next;
+      });
+    }),
+    // 2026-05-18 — first-encounter discovery moment for catalysts.
+    // OfferCard fires this on mount when the catalyst id is not in
+    // meta.discovered.catalysts. Union here so the dispatch lands
+    // before the next shop open.
+    bus.on('onCatalystDiscovered', ({ catalystId }) => {
+      setStateRaw((s) => unionInto(s, 'catalysts', [catalystId]));
+    }),
+    // 2026-05-18 — rare-edition first-encounter. Editions live in
+    // a separate set under meta.discovered.editions. Optional field
+    // on older saves; default to [].
+    bus.on('onEditionDiscovered', ({ edition }) => {
+      setStateRaw((s) => {
+        const cur = s.meta.discovered.editions ?? [];
+        if (cur.includes(edition)) return s;
+        return {
+          ...s,
+          meta: {
+            ...s.meta,
+            discovered: { ...s.meta.discovered, editions: [...cur, edition] },
+          },
+        };
       });
     }),
     bus.on('onBossRevealed', ({ blindId }) => {

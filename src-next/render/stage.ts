@@ -147,3 +147,22 @@ export function mapEventToStage(ev: { clientX: number; clientY: number }, el: HT
   const r = el.getBoundingClientRect();
   return mapClientToStage(ev.clientX, ev.clientY, r);
 }
+
+// 2026-05-18 P5.4: clutch camera nudge. CSS transform on the
+// three-next canvas applies a small zoom (~4%) when the player is on
+// the cusp roll. Cheaper than re-jigging the OrthographicCamera in
+// Dice3D.ts; the transform composites identically on the GPU.
+//
+// Idempotent — repeated calls with the same flag value no-op. Pure
+// DOM mutation; no React, no state.
+let _clutchActive = false;
+export function setStageClutch(active: boolean): void {
+  if (active === _clutchActive) return;
+  _clutchActive = active;
+  if (typeof document === 'undefined') return;
+  const canvas = document.getElementById('three-next');
+  if (!canvas) return;
+  canvas.style.transition = 'transform 280ms cubic-bezier(0.2, 1.6, 0.4, 1)';
+  canvas.style.transform = active ? 'scale(1.04)' : 'scale(1.0)';
+  canvas.style.transformOrigin = 'center center';
+}

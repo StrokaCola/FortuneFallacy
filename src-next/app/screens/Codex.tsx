@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dispatch } from '../../actions/dispatch';
 import { ScreenHeader, ScreenWatermark } from '../visual/AstralPrimitives';
 import { Sigil } from '../visual/Sigil';
@@ -34,6 +34,25 @@ const TABS: { id: Tab; label: string }[] = [
 
 const selectDiscovered = (s: GameState) => s.meta.discovered;
 const selectStakeProgress = (s: GameState) => s.meta.stakeProgress;
+
+// 2026-05-18 Codex pagination. PAGE_SIZE × tab determines the per-page
+// item count. Auto-fill grid is `repeat(auto-fill, minmax(220px, 1fr))`
+// which yields 5 columns at 1100px content width — 3 rows × 5 = 15
+// items per page fits comfortably above the paginator on a 1280×800
+// desktop. Achievements/Secrets/About skip pagination (own layouts).
+const PAGE_SIZE = 15;
+
+// Source-array sizes per paginated tab. Computed once at module load
+// since the constants don't change at runtime.
+const TAB_TOTALS: Record<string, number> = {
+  catalysts:      CATALYST_META.length,
+  mods:           MODS.length,
+  vouchers:       VOUCHERS.length,
+  consumables:    CONSUMABLES.length,
+  constellations: CONSTELLATIONS.length,
+  bosses:         BOSS_BLINDS.length,
+  resonances:     RESONANCES.length,
+};
 const EMPTY_ACHIEVEMENTS = { unlocked: [] as string[], unlockedAt: {} as Record<string, number> };
 const selectAchievements = (s: GameState) => s.meta.achievements ?? EMPTY_ACHIEVEMENTS;
 const EMPTY_EGGS: string[] = [];
@@ -43,23 +62,55 @@ const selectEasterEggs = (s: GameState) => s.meta.easterEggs ?? EMPTY_EGGS;
 
 export function Codex() {
   const [tab, setTab] = useState<Tab>('catalysts');
+  const [page, setPage] = useState(0);
   const discovered = useStore(selectDiscovered);
   const stakeProgress = useStore(selectStakeProgress);
   const achievements = useStore(selectAchievements);
   const easterEggs = useStore(selectEasterEggs);
 
+  // Reset page on tab change so prev-tab page index doesn't leak into
+  // the new tab's bounds.
+  useEffect(() => { setPage(0); }, [tab]);
+
+  // 2026-05-18 pagination. Compute slice bounds for the active tab.
+  // Achievements/Secrets/About handle their own layouts and skip these
+  // bounds entirely.
+  const total = TAB_TOTALS[tab] ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pageEnd = Math.min(total, pageStart + PAGE_SIZE);
+
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      overflow: 'auto', padding: '32px 24px',
+      // 2026-05-18 desktop-no-scroll: tightened vertical rhythm so the
+      // header + tabs + grid + paginator + back-button stack fits a
+      // 1280×800 viewport without scrolling. Horizontal padding kept
+      // for the watermark; vertical halved.
+      padding: '16px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      // Ensure the inner column never overflows its slot. minHeight: 0
+      // lets the grid flex-shrink instead of forcing the parent to
+      // size to its scrollHeight.
+      minHeight: 0,
     }}>
       <ScreenWatermark color="#cc88ff" position="bottom-right">
         <Sigil kind="priestess" size={220} color="#cc88ff" />
       </ScreenWatermark>
-      <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+      <div style={{
+        maxWidth: 1100, width: '100%', margin: '0 auto', position: 'relative', zIndex: 1,
+        // Inner column is a flex parent so the grid section can flex:1
+        // and the header/tabs/paginator/back stay as fixed-height bands.
+        // minHeight: 0 prevents the column from forcing the screen to
+        // size to its scrollHeight.
+        display: 'flex', flexDirection: 'column',
+        flex: 1, minHeight: 0,
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <ScreenHeader title="Codex" subtitle="◇ catalogue ◇" />
-          <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 4, opacity: 0.85 }}>
+          <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 2, opacity: 0.85 }}>
             Items you've encountered. The unseen are silhouetted.
           </div>
         </div>
@@ -70,7 +121,8 @@ export function Codex() {
         <div className="scroll-x-fade" style={{
           display: 'flex', gap: 6,
           justifyContent: 'flex-start',
-          marginBottom: 18,
+          marginBottom: 10,
+          flexShrink: 0,
         }}>
           {TABS.map((t) => (
             <button
@@ -103,36 +155,52 @@ export function Codex() {
             <CodexProgressHeader tab={tab} discovered={discovered} stakeProgress={stakeProgress} />
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-              gap: 10,
-              marginBottom: 24,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: 8,
+              marginBottom: 8,
+              flex: 1,
+              minHeight: 0,
+              alignContent: 'start',
+              // If a tab's PAGE_SIZE×row-height still exceeds the
+              // available band (very narrow viewports, tall cells from
+              // long descriptions), allow internal scroll so the
+              // paginator + back button stay anchored at the bottom.
+              overflowY: 'auto',
             }}>
               {tab === 'catalysts' && (
-                <CatalystGrid discovered={discovered.catalysts} />
+                <CatalystGrid discovered={discovered.catalysts} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'mods' && (
-                <ModGrid discovered={discovered.mods} />
+                <ModGrid discovered={discovered.mods} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'vouchers' && (
-                <VoucherGrid discovered={discovered.vouchers} />
+                <VoucherGrid discovered={discovered.vouchers} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'consumables' && (
-                <ConsumableGrid discovered={discovered.consumables} />
+                <ConsumableGrid discovered={discovered.consumables} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'constellations' && (
-                <ConstellationGrid stakeProgress={stakeProgress} />
+                <ConstellationGrid stakeProgress={stakeProgress} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'bosses' && (
-                <BossGrid discovered={discovered.bosses} />
+                <BossGrid discovered={discovered.bosses} pageStart={pageStart} pageEnd={pageEnd} />
               )}
               {tab === 'resonances' && (
-                <ResonanceGrid discovered={discovered.resonances ?? []} />
+                <ResonanceGrid discovered={discovered.resonances ?? []} pageStart={pageStart} pageEnd={pageEnd} />
               )}
             </div>
+            <CodexPaginator
+              page={safePage}
+              totalPages={totalPages}
+              total={total}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              onPage={setPage}
+            />
           </>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: 18 }}>
+        <div style={{ textAlign: 'center', marginTop: 8, flexShrink: 0 }}>
           <button
             className="btn btn-ghost mat-interactive"
             style={{ width: 200 }}
@@ -244,7 +312,7 @@ function Cell({
         background: locked ? 'rgba(15,9,37,0.55)' : 'rgba(15,9,37,0.7)',
         filter: locked ? 'grayscale(0.85)' : undefined,
         opacity: locked ? 0.55 : 1,
-        minHeight: 110,
+        minHeight: 88,
         position: 'relative',
         cursor: hasTip ? 'help' : undefined,
       }}>
@@ -272,10 +340,80 @@ function LockedTitle() {
   );
 }
 
-function CatalystGrid({ discovered }: { discovered: string[] }) {
+// 2026-05-18 pagination. Codex now slices each tab's source array into
+// PAGE_SIZE chunks. Each *Grid accepts pageStart / pageEnd bounds so
+// the parent owns the page math; the grids just render their slice.
+// Defaults preserve the legacy "render everything" shape for any future
+// caller that wants the un-paginated view.
+
+function CodexPaginator({
+  page, totalPages, total, pageStart, pageEnd, onPage,
+}: {
+  page: number; totalPages: number; total: number;
+  pageStart: number; pageEnd: number;
+  onPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const prev = () => onPage(Math.max(0, page - 1));
+  const next = () => onPage(Math.min(totalPages - 1, page + 1));
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 12, marginBottom: 12,
+      borderTop: '1px solid rgba(149,119,255,0.15)', paddingTop: 12,
+    }}>
+      <button
+        className="btn btn-ghost mat-interactive"
+        onClick={prev}
+        disabled={page === 0}
+        style={{ minWidth: 92, padding: '6px 14px', fontSize: 11, opacity: page === 0 ? 0.4 : 1 }}
+      >
+        ← prev
+      </button>
+      <div className="f-mono uc" style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        fontSize: 10, letterSpacing: '0.22em', color: '#bba8ff',
+      }}>
+        <span>
+          {pageStart + 1}–{pageEnd} <span style={{ opacity: 0.55 }}>/ {total}</span>
+        </span>
+        <span style={{ display: 'flex', gap: 4 }} aria-label="page indicator">
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Page ${i + 1}`}
+              onClick={() => onPage(i)}
+              style={{
+                width: 8, height: 8, borderRadius: '50%',
+                border: 'none',
+                background: i === page ? '#7be3ff' : 'rgba(123,227,255,0.25)',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            />
+          ))}
+        </span>
+        <span>
+          page <span style={{ color: '#7be3ff' }}>{page + 1}</span> / {totalPages}
+        </span>
+      </div>
+      <button
+        className="btn btn-ghost mat-interactive"
+        onClick={next}
+        disabled={page === totalPages - 1}
+        style={{ minWidth: 92, padding: '6px 14px', fontSize: 11, opacity: page === totalPages - 1 ? 0.4 : 1 }}
+      >
+        next →
+      </button>
+    </div>
+  );
+}
+
+function CatalystGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {CATALYST_META.map((c) => {
+      {CATALYST_META.slice(pageStart, pageEnd).map((c) => {
         const seen = discovered.includes(c.id);
         const accent = RARITY_COLORS[c.rarity] ?? c.color;
         return (
@@ -325,10 +463,10 @@ function CatalystGrid({ discovered }: { discovered: string[] }) {
   );
 }
 
-function ModGrid({ discovered }: { discovered: string[] }) {
+function ModGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {MODS.map((m) => {
+      {MODS.slice(pageStart, pageEnd).map((m) => {
         const seen = discovered.includes(m.id);
         const accent = m.visual?.accentColor ?? '#bba8ff';
         // Banish-face family badge (2026-05-13) — surface the
@@ -381,10 +519,10 @@ function ModGrid({ discovered }: { discovered: string[] }) {
   );
 }
 
-function VoucherGrid({ discovered }: { discovered: string[] }) {
+function VoucherGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {VOUCHERS.map((v) => {
+      {VOUCHERS.slice(pageStart, pageEnd).map((v) => {
         const seen = discovered.includes(v.id);
         const accent = RARITY_COLORS[v.rarity];
         return (
@@ -420,10 +558,10 @@ function VoucherGrid({ discovered }: { discovered: string[] }) {
   );
 }
 
-function ConsumableGrid({ discovered }: { discovered: string[] }) {
+function ConsumableGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {CONSUMABLES.map((c) => {
+      {CONSUMABLES.slice(pageStart, pageEnd).map((c) => {
         const seen = discovered.includes(c.id);
         const tint = c.type === 'galaxy' ? '#cc88ff'
           : c.type === 'spectral' ? '#ff7adf'
@@ -462,10 +600,10 @@ function ConsumableGrid({ discovered }: { discovered: string[] }) {
   );
 }
 
-function ConstellationGrid({ stakeProgress }: { stakeProgress: Record<string, string> }) {
+function ConstellationGrid({ stakeProgress, pageStart = 0, pageEnd = Infinity }: { stakeProgress: Record<string, string>; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {CONSTELLATIONS.map((c) => {
+      {CONSTELLATIONS.slice(pageStart, pageEnd).map((c) => {
         const cleared = stakeProgress[c.id];
         const stakeIdx = cleared ? stakeIndex(cleared) : -1;
         return (
@@ -492,14 +630,14 @@ function ConstellationGrid({ stakeProgress }: { stakeProgress: Record<string, st
   );
 }
 
-function ResonanceGrid({ discovered }: { discovered: string[] }) {
+function ResonanceGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   // Locked: the resonance hasn't fired yet. We still show the pair's
   // halves (the two catalyst ids) and a "??? — fires when both are owned"
   // teaser, so players can chase the discovery. Once fired, the name +
   // flavor + effect reveal in full.
   return (
     <>
-      {RESONANCES.map((r) => {
+      {RESONANCES.slice(pageStart, pageEnd).map((r) => {
         const seen = discovered.includes(r.id);
         const accent = '#7be3ff';
         const effectStr =
@@ -542,10 +680,10 @@ function ResonanceGrid({ discovered }: { discovered: string[] }) {
   );
 }
 
-function BossGrid({ discovered }: { discovered: string[] }) {
+function BossGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered: string[]; pageStart?: number; pageEnd?: number }) {
   return (
     <>
-      {BOSS_BLINDS.map((b) => {
+      {BOSS_BLINDS.slice(pageStart, pageEnd).map((b) => {
         const seen = discovered.includes(b.id);
         return (
           <Cell key={b.id} locked={!seen} accent={b.color}>

@@ -67,6 +67,11 @@ export function Hub() {
   const next = nextPrestigeTier(lifetimeDust);
   const compact = useIsCompactStage();
   const tight = useIsTightStage();
+  // 2026-05-18 desktop-no-scroll: `short` triggers on desktop viewports
+  // ≤800px tall. Compresses the decorative copy + tightens gaps so the
+  // 3 trial cards + action bar (Begin/Forge/Skip/Title/Travel) all
+  // land above the fold.
+  const short = !tight && typeof window !== 'undefined' && window.innerHeight <= 800;
 
   const accent = '#7be3ff';
   const blindIdx = goalIdx % 3;
@@ -97,10 +102,11 @@ export function Hub() {
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      // Tight viewports allow scroll as a safety net — the layout below
-      // shrinks aggressively, but the Begin button must always be
-      // reachable even on the shortest phone landscape browsers.
-      overflowY: 'auto',
+      // 2026-05-18 desktop-no-scroll: tight (phone) viewports keep
+      // overflow:auto so the Begin button stays reachable. Desktop
+      // locks scroll — the layout below shrinks enough to fit a
+      // 1280×800 design without scrolling.
+      overflowY: tight ? 'auto' : 'hidden',
       overflowX: 'hidden',
     }}>
       <TopBar
@@ -127,19 +133,25 @@ export function Hub() {
       <div style={{
         minHeight: '100%',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: tight ? 8 : 20,
+        gap: tight ? 8 : short ? 10 : 20,
         // Pad past the TopBar at every size; on tight, hug it close so
         // the cards still fit. Falls back to the original clamp if the
-        // CSS var isn't set yet.
+        // CSS var isn't set yet. Short desktop windows use the TopBar
+        // height var so the trial cards start right under the HUD.
         paddingTop: tight
           ? 'calc(var(--hud-top-h, 96px) + 8px)'
-          : 'clamp(96px, 22vh, 170px)',
-        paddingBottom: tight ? 12 : 28, paddingInline: tight ? 12 : 20,
+          : short
+            ? 'calc(var(--hud-top-h, 96px) + 12px)'
+            : 'clamp(96px, 22vh, 170px)',
+        paddingBottom: tight ? 12 : short ? 14 : 28,
+        paddingInline: tight ? 12 : 20,
         textAlign: 'center',
       }}>
         {/* Decorative copy is dropped on tight viewports — landscape
-            phones can't fit it alongside the trial cards and action row. */}
-        {!tight && (
+            phones can't fit it alongside the trial cards and action row.
+            Also dropped on short desktop windows (≤800px tall) for
+            the same reason. */}
+        {!tight && !short && (
           <>
             <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
               ◇ choose your trial ◇
@@ -195,8 +207,9 @@ export function Hub() {
         {/* Prestige badge — derived from meta.cosmicDustLifetime. Surfaces
             the player's lifetime ascension tier and the gap to the next.
             Wanderer tier (everyone's starting state) renders muted so it
-            doesn't draw the eye for new players. */}
-        {!tight && (
+            doesn't draw the eye for new players. Dropped on short
+            desktop windows alongside the decorative copy. */}
+        {!tight && !short && (
           <div className="f-mono uc has-tip" style={{
             position: 'relative',
             display: 'inline-flex',

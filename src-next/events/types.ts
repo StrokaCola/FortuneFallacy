@@ -182,6 +182,24 @@ export type GameEventMap = {
   // ~200ms later. App.tsx mounts an `<AfterglowOverlay>` listener
   // outside any screen so the glow persists across the transition.
   onCelebrationAfterglow: { durationMs: number };
+  // Aliveness pass (2026-05-18). Death's-edge ambience — the
+  // aliveness listener computes a derived "one bad roll from
+  // bust" intensity from round state and emits onNearBust when
+  // it crosses a threshold, onSafe when it falls back below.
+  // `tension` is the raw 0..1 intensity; consumers (heartbeat
+  // haptic, audio stems, vignette) ramp on top of that envelope.
+  onNearBust: { tension: number };
+  onSafe: Record<string, never>;
+  // Voidstorm telegraph — emitted one blind before a voidstorm
+  // is scheduled to land. `stormId` is the id that will spawn;
+  // listeners drive the background shimmer + low rumble bed.
+  onStormIncoming: { stormId: string; bindIdx: number };
+  // First-encounter discovery moments. Fired by OfferCard the
+  // first time a catalyst or edition is rendered before being
+  // marked into meta.discovered. discoveryBridge marks meta on
+  // these events; DiscoveryFeed renders the toast.
+  onCatalystDiscovered: { catalystId: string; total: number };
+  onEditionDiscovered: { edition: 'foil' | 'holo' | 'poly' | 'void'; catalystId: string };
 };
 
 export type GameEventEmission = {

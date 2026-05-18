@@ -24,16 +24,25 @@ export function AstralForge() {
   const ownedCosmetics = useStore(selectOwnedCosmetics);
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center pointer-events-auto px-4 py-6 overflow-y-auto">
+    <div
+      className="absolute inset-0 flex flex-col items-center pointer-events-auto px-4 py-3"
+      style={{
+        // 2026-05-18 desktop-no-scroll: AstralForge perks + cosmetics
+        // fit the 1280×800 design via the compressed `py-3` rhythm
+        // and tightened margins below. Phone-size viewports keep the
+        // auto-scroll safety net.
+        overflowY: typeof window !== 'undefined' && window.innerWidth < 900 ? 'auto' : 'hidden',
+      }}
+    >
       <ScreenWatermark color="#f5c451" position="bottom-right">
         <Sigil kind="sun" size={220} color="#f5c451" />
       </ScreenWatermark>
       <ScreenHeader title="Astral Forge" subtitle="⟡ between the rolls, the stars settle ⟡" />
 
       <div
-        className="flex items-baseline gap-4 mb-6"
+        className="flex items-baseline gap-4 mb-3"
         style={{
-          padding: '10px 22px',
+          padding: '6px 18px',
           borderRadius: 999,
           background: 'rgba(245,196,81,0.08)',
           border: '1px solid rgba(245,196,81,0.35)',
@@ -41,7 +50,7 @@ export function AstralForge() {
       >
         <div>
           <span className="f-mono uc text-cosmos-300" style={{ fontSize: 9, letterSpacing: '0.3em' }}>cosmic dust</span>
-          <div className="font-mono text-gold" style={{ fontSize: 28, fontWeight: 600, lineHeight: 1 }}>
+          <div className="font-mono text-gold" style={{ fontSize: 22, fontWeight: 600, lineHeight: 1 }}>
             ◇ {dust.toLocaleString()}
           </div>
         </div>
@@ -72,11 +81,16 @@ export function AstralForge() {
       {/* Cosmetic Dust Shop — pure-vanity unlocks bought with the same
           dust pool. Surfaces only after the player has unlocked at
           least one mechanical perk so the section never lands first
-          for new players still chasing the bread-and-butter ladder. */}
-      {ownedPerks.length > 0 && (
+          for new players still chasing the bread-and-butter ladder.
+          2026-05-18: top/bottom margins halved so the perk + cosmetic
+          rows + back button fit a 1280×800 desktop. Cosmetic shelf
+          hidden on short desktop windows (≤800px tall) — purely
+          decorative content, reachable via the existing perk-only
+          path until viewport allows. */}
+      {ownedPerks.length > 0 && !(typeof window !== 'undefined' && window.innerHeight <= 800) && (
         <>
           <div className="f-mono uc" style={{
-            marginTop: 32, marginBottom: 12,
+            marginTop: 16, marginBottom: 6,
             fontSize: 10, letterSpacing: '0.4em',
             color: '#cc88ff',
             textShadow: '0 0 12px rgba(204,136,255,0.4)',
@@ -101,9 +115,9 @@ export function AstralForge() {
       <button
         type="button"
         onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}
-        className="mt-6 px-8 py-2 rounded-lg bg-cosmos-700/80 hover:bg-cosmos-600 text-cosmos-50
+        className="mt-3 px-8 py-2 rounded-lg bg-cosmos-700/80 hover:bg-cosmos-600 text-cosmos-50
                    font-head ring-1 ring-cosmos-300/30 tap"
-        style={{ minHeight: 44 }}
+        style={{ minHeight: 36 }}
       >
         back
       </button>

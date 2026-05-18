@@ -155,7 +155,14 @@ export function Forge() {
   }, []);
 
   return (
-    <div data-forge-scroll style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div data-forge-scroll style={{
+      position: 'absolute', inset: 0, pointerEvents: 'auto',
+      // 2026-05-18 desktop-no-scroll: forge layout fits a 1280×800
+      // design via the nested mod-inventory scroller. Root locks
+      // scroll on desktop; tight keeps the safety net.
+      overflowY: tight ? 'auto' : 'hidden',
+      overflowX: 'hidden',
+    }}>
       <ForgeVFX anchorRef={dieAnchorRef} />
       {/* Debug overlay only mounts when the ?dbg=forge query flag is
           set. Previously it always rendered a fixed-position DBG ON/OFF

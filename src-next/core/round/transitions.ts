@@ -301,9 +301,19 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   }));
   const scoringOrder = spec.map((_, i) => i);
   // Shard Lung (catalyst): when this blind starts, the player gains shards
-  // equal to the current ante. Pure round-start grant; the score-time spend
+  // equal to ceil(ante/2). Pure round-start grant; the score-time spend
   // half is handled by the catalyst's apply in core/upgrades/catalysts/shardLung.ts.
-  const shardLungBonus = s.run.catalysts.includes('shard_lung') ? ante : 0;
+  //
+  // 2026-05-18 balance audit nerf: pre-audit grant was full `ante` shards
+  // (Ante 4 → +4). +173% impact made Shard Lung the single must-buy
+  // uncommon that sustained the entire mid-late economy. ceil(ante/2)
+  // halves the curve (Ante 4 → +2) — still useful, no longer compulsory.
+  const shardLungBonus = s.run.catalysts.includes('shard_lung') ? Math.ceil(ante / 2) : 0;
+  // Audit (catalyst, 2026-05-18 audit buff): +1 shard per blind start so
+  // the catalyst contributes value DURING the run, not only on bust.
+  // The 50% refund-on-bust path stays in bustBlind() — this just gives
+  // the player a small steady incentive to keep it around.
+  const auditBonus = s.run.catalysts.includes('audit') ? 1 : 0;
   // Mirrored Hand easter egg — set true for the upcoming blind iff the
   // player owns 2+ catalysts whose display names are palindromes
   // (ignoring case/spaces/punctuation). The retrigger only fires on the
@@ -320,7 +330,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // Shards clamp at zero — a Singularity tithe on an empty wallet just
   // sets the player to 0 rather than rolling negative.
   const stormShardsDelta = stormBlindStart.shardsDelta ?? 0;
-  const runShards = Math.max(0, s.run.shards + shardLungBonus + stormShardsDelta);
+  const runShards = Math.max(0, s.run.shards + shardLungBonus + auditBonus + stormShardsDelta);
   return {
     state: {
       ...s,

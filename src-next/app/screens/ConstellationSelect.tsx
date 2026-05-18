@@ -14,6 +14,10 @@ const selectUnlocks = (s: GameState) => s.meta.unlocks;
 export function ConstellationSelect() {
   const compact = useIsCompactStage();
   const tight = useIsTightStage();
+  // 2026-05-18 desktop-no-scroll: short desktop windows (≤800px tall)
+  // compress like `compact` so the 8 constellation cards fit a
+  // 1280×800 design without scrolling.
+  const short = !tight && typeof window !== 'undefined' && window.innerHeight <= 800;
   const stakeProgress = useStore(selectStakeProgress);
   const unlocks = useStore(selectUnlocks);
   // Optional seed entry. Empty → fresh random seed (default UX). A valid
@@ -31,15 +35,18 @@ export function ConstellationSelect() {
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      // Tight viewports lock vertical scroll — the layout below shrinks
-      // to fit. Wider viewports keep auto-scroll for the (rare) case
-      // where a tall card description still overflows.
-      overflow: tight ? 'hidden auto' : 'auto',
-      padding: tight ? '6px 8px' : compact ? '20px 12px' : '36px 24px',
+      // 2026-05-18 desktop-no-scroll: tight (phone) keeps the
+      // hidden-x / auto-y safety net so the picker grid wraps and
+      // scrolls. Desktop locks both axes — 8 constellations fit
+      // comfortably above the fold at 1280×800 via the `short`
+      // compression path below.
+      overflow: tight ? 'hidden auto' : 'hidden',
+      padding: tight ? '6px 8px' : compact ? '20px 12px' : short ? '18px 24px' : '36px 24px',
     }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-        {/* Decorative header subtitle drops on tight to free vertical space. */}
-        {!tight && (
+        {/* Decorative header subtitle drops on tight + short to free
+            vertical space for the constellation grid. */}
+        {!tight && !short && (
           <div className="f-mono uc" style={{
             fontSize: compact ? 12 : 11, color: '#7be3ff', letterSpacing: '0.5em', marginBottom: 8,
           }}>
@@ -47,15 +54,15 @@ export function ConstellationSelect() {
           </div>
         )}
         <div className="f-display" style={{
-          fontSize: tight ? 18 : compact ? 32 : 44,
+          fontSize: tight ? 18 : short ? 24 : compact ? 32 : 44,
           color: '#f3f0ff',
-          marginBottom: tight ? 2 : 4,
+          marginBottom: tight ? 2 : short ? 2 : 4,
           textShadow: '0 0 30px rgba(123,227,255,0.4)',
         }}>
           Pick your dice
         </div>
-        {/* Subtitle drops on tight. */}
-        {!tight && (
+        {/* Subtitle drops on tight + short. */}
+        {!tight && !short && (
           <div className="f-mono" style={{ fontSize: compact ? 13 : 12, color: '#bba8ff', marginBottom: compact ? 8 : 14, opacity: 0.8 }}>
             Each constellation rolls a different set of dice for the entire run.
           </div>
@@ -102,7 +109,7 @@ export function ConstellationSelect() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          marginBottom: tight ? 8 : compact ? 14 : 18,
+          marginBottom: tight ? 8 : compact ? 8 : 18,
           flexWrap: 'wrap',
         }}>
           <label className="f-mono uc" style={{
@@ -142,15 +149,15 @@ export function ConstellationSelect() {
             display: 'grid',
             // Use min(target, 100%) so a single card on a 320px viewport
             // collapses to viewport width instead of overflowing.
-            gridTemplateColumns: `repeat(auto-fit, minmax(min(${tight ? 180 : compact ? 220 : 260}px, 100%), 1fr))`,
-            gap: tight ? 6 : compact ? 10 : 14,
-            marginBottom: tight ? 8 : compact ? 16 : 28,
+            gridTemplateColumns: `repeat(auto-fit, minmax(min(${tight ? 180 : compact ? 220 : short ? 220 : 260}px, 100%), 1fr))`,
+            gap: tight ? 6 : compact ? 10 : short ? 10 : 14,
+            marginBottom: tight ? 8 : compact ? 16 : short ? 12 : 28,
           }}>
           {CONSTELLATIONS.map((c) => (
             <Card
               key={c.id}
               c={c}
-              compact={compact}
+              compact={compact || short}
               tight={tight}
               progressId={stakeProgress[c.id] ?? null}
               unlocked={unlocks.includes(c.id)}
@@ -187,18 +194,20 @@ function Card({ c, compact, tight, progressId, unlocked, enteredSeed, seedBlocke
       className="panel mat-interactive"
       style={{
         textAlign: 'left',
-        padding: tight ? 8 : compact ? 12 : 16,
+        padding: tight ? 8 : compact ? 8 : 16,
         background: 'rgba(15,9,37,0.6)',
         border: `1px solid ${unlocked ? 'rgba(149,119,255,0.25)' : 'rgba(149,119,255,0.12)'}`,
         borderRadius: 12,
-        display: 'flex', flexDirection: 'column', gap: tight ? 4 : compact ? 6 : 10,
-        minHeight: tight ? 190 : compact ? 240 : 320,
+        display: 'flex', flexDirection: 'column', gap: tight ? 4 : compact ? 4 : 10,
+        // 2026-05-18 desktop-no-scroll: drop compact minHeight from
+        // 240→200 so the 2-row grid of 8 cards fits a 1280×800 viewport.
+        minHeight: tight ? 190 : compact ? 200 : 320,
         // Whole card desaturates when locked. Glyph + text stay legible enough
         // to telegraph "this is real content you'll unlock", not a placeholder.
         opacity: unlocked ? 1 : 0.55,
         filter: unlocked ? undefined : 'grayscale(0.6)',
       }}>
-      <Glyph points={c.glyph} accent={accent} tight={tight} />
+      <Glyph points={c.glyph} accent={accent} tight={tight || compact} />
       <div className="f-display" style={{
         fontSize: tight ? 16 : compact ? 22 : 18,
         color: '#f3f0ff', lineHeight: 1.1,
@@ -214,18 +223,23 @@ function Card({ c, compact, tight, progressId, unlocked, enteredSeed, seedBlocke
       </div>
       {/* Flavor stays on tight — it's the one-line pitch ("The classic
           five-string sky.") that helps the player choose. The bullet
-          rules list still drops on tight since it's longer mechanical
-          detail that fights for vertical space. */}
-      <div style={{
-        fontSize: tight ? 11 : compact ? 13 : 11,
-        color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3,
-      }}>
-        {c.flavor}
-      </div>
-      {!tight && (
+          rules list still drops on tight/compact since it's longer
+          mechanical detail that fights for vertical space.
+          2026-05-18 desktop-no-scroll: flavor also drops on compact
+          (which now includes short desktop windows ≤800px tall) so
+          the 2-row grid of 8 cards fits without scrolling. */}
+      {!compact && (
+        <div style={{
+          fontSize: tight ? 11 : 11,
+          color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.3,
+        }}>
+          {c.flavor}
+        </div>
+      )}
+      {!tight && !compact && (
         <ul style={{
           marginTop: 4, paddingLeft: 18, marginBottom: 0,
-          fontSize: compact ? 12 : 10, color: '#dcd4ff', lineHeight: compact ? 1.3 : 1.4,
+          fontSize: 10, color: '#dcd4ff', lineHeight: 1.4,
         }}>
           {c.rules.map((r, i) => <li key={i}>{r}</li>)}
         </ul>
@@ -257,9 +271,14 @@ function Card({ c, compact, tight, progressId, unlocked, enteredSeed, seedBlocke
           marginBottom: 8, gap: 2,
         }}>
           <span className="f-head" style={{ fontSize: 12, color: stake.color }}>{stake.name}</span>
-          <span className="f-mono" style={{ fontSize: 9, color: '#9577ff' }}>
-            {stake.rules.join(' · ')}
-          </span>
+          {/* Stake rules text hidden on compact (short desktop ≤800px)
+              so the picker squares + Begin button fit without spilling
+              under the fold. The active stake's name still shows. */}
+          {!compact && (
+            <span className="f-mono" style={{ fontSize: 9, color: '#9577ff' }}>
+              {stake.rules.join(' · ')}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {STAKES.map((s, i) => {

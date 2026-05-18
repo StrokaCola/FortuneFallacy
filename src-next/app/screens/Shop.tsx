@@ -95,7 +95,10 @@ export function Shop() {
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      overflowY: 'auto', overflowX: 'hidden',
+      // 2026-05-18 desktop-no-scroll: offers are absolutely positioned
+      // on desktop so root never needs to scroll. Tight (phone) keeps
+      // overflow:auto so the inline-flow layout can still scroll.
+      overflowY: tight ? 'auto' : 'hidden', overflowX: 'hidden',
       // On tight portrait the hero/offers/action bar all flow inline below
       // the TopBar instead of being absolute. Top padding clears the TopBar;
       // bottom padding clears the safe-area inset.

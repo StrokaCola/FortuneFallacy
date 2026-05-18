@@ -49,7 +49,7 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'cold_hand',      name: 'Cold Hand',      icon: '💬',  color: '#c0c8ff',
     desc: 'Chance → +4 Mult',              flavor: "No pattern? The book says you're due. The book is wrong, but you score anyway.", rarity: 'common', archetype: 'combo' },
   { id: 'entropy_index',  name: 'Entropy Index',  icon: '◈',   color: '#a080c0',
-    desc: 'Each unique face → ×1.25 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare', archetype: 'face' },
+    desc: 'Each unique face → ×1.20 Mult', flavor: 'Variety paid in compounding interest.', rarity: 'rare', archetype: 'face' },
   // Shipped value: +0.10×/clear. The 2026-05-07 perf-balance audit modeled
   // this catalyst at +0.05×/clear as a conservative under-count in the
   // sim's build-multiplier abstraction. The game itself has always paid
@@ -83,7 +83,7 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'Mirror Pair, Conduit, Crescendo, Pip Charge each gain +1 per instance.',
     flavor: 'Tilt the lattice; the threads sing one note louder.', rarity: 'uncommon', archetype: 'mods' },
   { id: 'iron_six', name: 'Iron Six', icon: '⬢', color: '#ffd84a',
-    desc: 'Each scoring 6 also grants +1 mult.',
+    desc: 'Each scoring 6 also grants +2 mult.',
     flavor: 'Heavy at the top of the range.', rarity: 'common', archetype: 'face' },
   { id: 'solar_flare', name: 'Solar Flare', icon: '☀', color: '#ff7847',
     desc: '3+ scoring dice show 5 or 6 → ×1.5 mult.',
@@ -92,7 +92,7 @@ export const CATALYST_META: CatalystMeta[] = [
   // Mirrored Hand easter egg has a reachable pair (zero palindromic names
   // existed before). ID stays `tempo` so save data and tests are intact.
   { id: 'tempo', name: 'Solos', icon: '♪', color: '#5be8a4',
-    desc: 'Each consecutive higher-tier hand: +0.5× mult, capping at ×3.0.',
+    desc: 'Each consecutive higher-tier hand: +0.4× mult, capping at ×3.5.',
     flavor: 'Each measure climbs. Don\'t miss the beat.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'conductor', name: 'Conductor', icon: '⌘', color: '#bba8ff',
     desc: 'Full hand scores: +20 chips × distinct mods across scoring dice.',
@@ -166,7 +166,7 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'Odd hand → Chips ×1.5. Even hand → Mult ×1.5.',
     flavor: 'Tick. Tock. Both pay.', rarity: 'rare', archetype: 'timing' },
   { id: 'prime_resonance', name: 'Prime Resonance', icon: 'ℜ', color: '#a080c0',
-    desc: 'Mult raised to the power 1.05 per scoring die.',
+    desc: 'Mult raised to the power 1.10 per scoring die.',
     flavor: 'Exponentials wear thin clothing.', rarity: 'rare', archetype: 'scaling' },
 
   // Phase 5d — non-pipeline catalysts: their effects fire in lifecycle
@@ -175,20 +175,20 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'When you skip a blind, gain 2 random consumables.',
     flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon', archetype: 'utility' },
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
-    desc: 'Sell value of catalysts +50%.',
-    flavor: 'A clean uninstall pays out.', rarity: 'common', archetype: 'utility' },
+    desc: 'Shop reroll cost −1 shard (min 0).',
+    flavor: 'A quick scrub for the bazaar dust.', rarity: 'common', archetype: 'utility' },
 
   // Phase 5e — lifecycle catalysts (need round-state counters or hooks).
   { id: 'crescendo_run', name: 'Crescendo Run', icon: '↗', color: '#5be8a4',
     desc: '×2 Mult after 3+ rolls in a round without locking a die.',
     flavor: 'The pace builds. Don\'t hold back.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'shard_lung', name: 'Shard Lung', icon: '⛁', color: '#f5c451',
-    desc: 'Round start: +shards equal to ante. Score: spend half shards for +Mult.',
+    desc: 'Round start: +ceil(ante/2) shards. Score: spend half shards for +Mult.',
     flavor: 'Inhale. Exhale. The vault pays the breath.', rarity: 'uncommon', archetype: 'economy' },
 
   // Phase 5f — bust-hook + mod-density catalysts.
   { id: 'audit', name: 'Audit', icon: '☷', color: '#a4d4ff',
-    desc: 'On bust: refund 50% of shards spent on catalysts this run. Self-destructs.',
+    desc: 'Round start: +1 shard. On bust: refund 50% of catalyst spend, self-destructs.',
     flavor: 'The ledger closes. Some debts unwind.', rarity: 'uncommon', archetype: 'utility' },
   { id: 'gilding_press', name: 'Gilding Press', icon: '⊟', color: '#f5c451',
     desc: 'The first mod on each scoring die fires twice for chips.',
@@ -196,7 +196,7 @@ export const CATALYST_META: CatalystMeta[] = [
 
   // Phase 5g — wide-hand bonus.
   { id: 'mod_gravity', name: 'Mod Gravity', icon: '◐', color: '#cc88ff',
-    desc: '+5 Mult when 4 or more dice score this hand.',
+    desc: '+10 Mult when 4 or more dice score this hand.',
     flavor: 'Mass attracts mass. The crowd tilts.', rarity: 'uncommon', archetype: 'mods' },
 
   // 2026-05-08 balance pack — 12 deliberately strong catalysts added to
@@ -358,7 +358,7 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'A skip in the record makes a chorus.',
     rarity: 'uncommon', archetype: 'mods' },
   { id: 'recursion_lens', name: 'Recursion Lens', icon: '◉', color: '#a080c0',
-    desc: 'The first retrigger this hand triggers a second time.',
+    desc: 'All retriggers fire twice this hand.',
     flavor: 'A lens that points back at itself.',
     rarity: 'legendary', archetype: 'mods' },
   { id: 'cardinal_compass', name: 'Cardinal Compass', icon: '✛', color: '#88ddff',
@@ -409,7 +409,7 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'The table eats first. What\'s left, you keep.',
     rarity: 'uncommon', archetype: 'risk' },
   { id: 'hollow_bishop', name: 'Hollow Bishop', icon: '♟', color: '#cc88ff',
-    desc: 'Full House and above: +12 mult. One Pair and Two Pair score zero chips.',
+    desc: 'Full House and above: +12 mult. One Pair and Two Pair: chips ×0.5.',
     flavor: 'A bishop only moves diagonal. Stop crawling sideways.',
     rarity: 'rare', archetype: 'risk' },
   { id: 'witchs_bargain', name: 'Witch\'s Bargain', icon: '🜍', color: '#a080c0',
@@ -458,6 +458,30 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'First hand of every blind: Mult ×2 and +50 chips.',
     flavor: 'The cosmos remembers what you found.',
     rarity: 'legendary', archetype: 'combo' },
+
+  // 2026-05-18 audit additions — fill design gaps surfaced by the
+  // 2026-05-16 balance audit.
+  { id: 'piggy_bank', name: 'Piggy Bank', icon: '◆', color: '#5be8a4',
+    desc: 'Each hand: bank 10% of chips as shards (cap +5/hand).',
+    flavor: 'Every coin saved is a coin earned tomorrow.',
+    rarity: 'uncommon', archetype: 'economy' },
+  { id: 'runaway', name: 'Runaway', icon: '➹', color: '#c0c8ff',
+    desc: 'Each scored straight: +1 stack. Each stack: +0.10× Mult.',
+    flavor: 'A line that builds on itself.',
+    rarity: 'uncommon', archetype: 'scaling' },
+  { id: 'double_or_nothing', name: 'Double or Nothing', icon: '⚄', color: '#e2334a',
+    desc: '50% chance: Mult ×2. Otherwise: Mult ×0.5. (EV ×1.25)',
+    flavor: "The house's favorite game.",
+    rarity: 'rare', archetype: 'risk' },
+  { id: 'resonance_cascade', name: 'Resonance Cascade', icon: '∿', color: '#7be3ff',
+    desc: 'Each collision: +1 stack. Each stack: +0.05× Mult. Cap +20.',
+    flavor: 'Small taps echo louder together.',
+    rarity: 'rare', archetype: 'collision' },
+  { id: 'leveling', name: 'Leveling', icon: '☰', color: '#bba8ff',
+    desc: 'Three of a Kind and below count as one tier higher.',
+    flavor: 'Three stones build as high as four.',
+    rarity: 'uncommon', archetype: 'combo',
+    requiresConstellation: 'triumvirate' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

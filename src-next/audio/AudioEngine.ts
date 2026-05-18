@@ -33,6 +33,27 @@ type ActualLayers = { base: number; combo: number; peak: number; fail: number };
 
 const BASE_PATH = '/FortuneFallacy/audio';
 
+// 2026-05-18 P2 audio slim. Feature-detect Opus playback support so the
+// Howl src arrays can drop the .wav fallback entirely on modern browsers.
+// `'probably'` is the strongest assertion the MediaElement API gives us;
+// `'maybe'` (or empty) means the browser is uncertain, so we keep the
+// wav fallback for safety. Result cached at module load — the result
+// never changes within a session.
+//
+// Returns true on:  Chrome/Edge/Firefox/Brave (all), Safari ≥ 17 (macOS
+// Sonoma+, iOS 17+). Returns false on: legacy Safari (< 17), niche
+// embedded webviews. The legacy path still ships .wav.
+const supportsOpus: boolean = (() => {
+  try {
+    if (typeof Audio === 'undefined') return false;
+    const a = new Audio();
+    const probe = a.canPlayType('audio/ogg; codecs="opus"');
+    return probe === 'probably' || probe === 'maybe';
+  } catch {
+    return false;
+  }
+})();
+
 class AudioEngineImpl {
   private layers: Layers | null = null;
   private state: State;
@@ -80,15 +101,27 @@ class AudioEngineImpl {
     // shed ~100MB of resident PCM on devices that load all four loops at
     // once. SFX still use html5:false elsewhere for sample-accurate timing.
     //
-    // Source array prefers .opus when present, falling back to .wav for
-    // browsers that lack Opus support (Safari < 17 on macOS). Run
-    // `scripts/encode-audio.sh` to generate the .opus files; until then,
-    // the .wav fallback ships the game without a regression.
+    // 2026-05-18 P2 audio slim: feature-detect Opus support and build a
+    // single-source array (opus-only) on modern browsers. Howler's
+    // built-in fallback chain still tries the next src on load-error, but
+    // for the modern-Chrome/Firefox/Edge/Safari-17+ path we skip listing
+    // the .wav entirely so even a transient load-failure doesn't fall
+    // through to fetching 8-15MB of PCM. Safari < 17 (no Opus) keeps the
+    // wav fallback for compatibility.
+    //
+    // The opus files (~7MB total) live in /public/audio/. The wav files
+    // (~98MB total) are retained in /public/audio/ for the legacy-Safari
+    // fallback path; modern browsers never request them.
+    const srcsFor = (stem: string): string[] => {
+      const opus = `${BASE_PATH}/${stem}.opus`;
+      const wav  = `${BASE_PATH}/${stem}.wav`;
+      return supportsOpus ? [opus] : [opus, wav];
+    };
     this.layers = {
-      base:  new Howl({ src: [`${BASE_PATH}/base-loop.opus`,  `${BASE_PATH}/base-loop.wav`],  loop: true, volume: 0, html5: true }),
-      combo: new Howl({ src: [`${BASE_PATH}/combo-loop.opus`, `${BASE_PATH}/combo-loop.wav`], loop: true, volume: 0, html5: true }),
-      peak:  new Howl({ src: [`${BASE_PATH}/peak-loop.opus`,  `${BASE_PATH}/peak-loop.wav`],  loop: true, volume: 0, html5: true }),
-      fail:  new Howl({ src: [`${BASE_PATH}/fail-loop.opus`,  `${BASE_PATH}/fail-loop.wav`],  loop: true, volume: 0, html5: true }),
+      base:  new Howl({ src: srcsFor('base-loop'),  loop: true, volume: 0, html5: true }),
+      combo: new Howl({ src: srcsFor('combo-loop'), loop: true, volume: 0, html5: true }),
+      peak:  new Howl({ src: srcsFor('peak-loop'),  loop: true, volume: 0, html5: true }),
+      fail:  new Howl({ src: srcsFor('fail-loop'),  loop: true, volume: 0, html5: true }),
     };
 
     this.layers.base.play();

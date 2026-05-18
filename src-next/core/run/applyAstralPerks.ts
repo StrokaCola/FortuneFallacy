@@ -53,6 +53,10 @@ export function rerollDiscount(s: GameState): number {
     const e = lookupAstralPerk(id)?.effect;
     if (e?.kind === 'reroll_discount') n += e.amount;
   }
+  // Dust-Off catalyst (2026-05-18 audit repurpose): shop rerolls cost
+  // 1 less shard while owned. Replaces the prior "+50% sell refund"
+  // effect, which almost never triggered (players rarely sell mid-run).
+  if (s.run?.catalysts?.includes('dust_off')) n += 1;
   return n;
 }
 

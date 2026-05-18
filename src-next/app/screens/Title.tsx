@@ -72,27 +72,36 @@ export function Title() {
   // FORTUNE at the top + SETTINGS at the bottom under placeItems:center.
   // Adding a vh-aware ceiling (8vh = 64px on an 800-tall window) keeps
   // the wide-but-short desktop viewport from blowing out vertically.
+  // 2026-05-18 desktop-no-scroll compression. `short` triggers below
+  // ~800px viewport height — the desktop short-window case where the
+  // full-rhythm layout (tagline + wordmark + 2 primary + daily +
+  // 5-button secondary nav + Travel + version) would clip Travel and
+  // half the secondary nav under the fold. `short` halves the margins
+  // and shrinks the wordmark so everything stacks above the fold.
+  const short = typeof window !== 'undefined' && window.innerHeight <= 800 && !tight;
   const titleFontSize = landscapeTight
     ? 'clamp(22px, 9vh, 38px)'
     : tight
       ? 'clamp(28px, 6vw, 56px)'
-      : 'min(clamp(44px, 10vw, 84px), 9vh)';
-  const taglineMarginBottom = tight ? 12 : 18;
-  const ornamentMargin = tight ? '16px auto 0' : '24px auto 0';
-  const ornamentW = tight ? 160 : 220;
-  const ornamentH = tight ? 40 : 50;
-  const buttonsMarginTop = tight ? 14 : 24;
-  const buttonsGap = tight ? 8 : 10;
+      : short
+        ? 'min(clamp(34px, 7vw, 60px), 7vh)'
+        : 'min(clamp(44px, 10vw, 84px), 9vh)';
+  const taglineMarginBottom = tight ? 12 : short ? 8 : 18;
+  const ornamentMargin = tight ? '16px auto 0' : short ? '10px auto 0' : '24px auto 0';
+  const ornamentW = tight ? 160 : short ? 180 : 220;
+  const ornamentH = tight ? 40 : short ? 42 : 50;
+  const buttonsMarginTop = tight ? 14 : short ? 8 : 24;
+  const buttonsGap = tight ? 8 : short ? 4 : 10;
   const primaryBtnWidth = tight ? 180 : 240;
   // 2026-05-16 mobile polish — drop the ghost button width on very-narrow
   // viewports so the 5-button secondary nav grid fits in a 320px-wide
   // window (iPhone SE / older small phones). Falls back to 160 on
   // standard tight (480px phone) and 200 on desktop.
   const ultraNarrow = typeof window !== 'undefined' && window.innerWidth < 400;
-  const ghostBtnWidth = ultraNarrow ? 132 : tight ? 160 : 200;
-  const portalSize = tight ? 48 : 60;
-  const portalMarginTop = tight ? 8 : 14;
-  const versionMarginTop = tight ? 18 : 36;
+  const ghostBtnWidth = ultraNarrow ? 132 : tight ? 160 : short ? 170 : 200;
+  const portalSize = tight ? 48 : short ? 44 : 60;
+  const portalMarginTop = tight ? 8 : short ? 6 : 14;
+  const versionMarginTop = tight ? 18 : short ? 10 : 36;
   // Wave V — drop the multi-line Tip-of-the-Day on shorter desktop
   // viewports (≤900 tall) so the Begin/Continue/Daily/secondary nav
   // stack fits above the fold without scrolling. Phones already hide
@@ -104,10 +113,12 @@ export function Title() {
       position: 'absolute', inset: 0,
       display: 'grid', placeItems: 'center',
       textAlign: 'center', pointerEvents: 'auto',
-      // Tight viewports lock scrolling — the layout below shrinks
-      // enough to fit. Wider viewports keep the auto-scroll fallback
-      // for the (rare) case where decorative copy still overflows.
-      overflowY: tight ? 'hidden' : 'auto',
+      // 2026-05-18 desktop-no-scroll: all viewports lock vertical
+      // scroll at the screen root. Tip-of-the-day already hides on
+      // ≤900 height; menu rhythm shrinks via `tight` branches. Any
+      // overflow that remains is intentionally clipped rather than
+      // surfaced as a scrollbar.
+      overflowY: 'hidden',
       overflowX: 'hidden',
       padding: tight ? 8 : 16,
     }}>
@@ -134,7 +145,11 @@ export function Title() {
             width so the lockup scales with viewport while keeping
             its internal proportions baked-in. */}
         <div style={{
-          width: tight ? 'min(420px, 92vw)' : 'min(640px, 70vw)',
+          width: tight
+            ? 'min(420px, 92vw)'
+            : short
+              ? 'min(460px, 48vw)'
+              : 'min(640px, 70vw)',
           margin: '0 auto',
           opacity: 0,
           animation: 'fadein 1100ms ease-out 300ms forwards',
@@ -275,9 +290,11 @@ export function Title() {
               Settings
             </button>
           </div>
-          {/* Decorative portal gate is hidden on tight viewports —
-              players can still travel via the Hub or pause menu. */}
-          {!tight && (
+          {/* Decorative portal gate is hidden on tight viewports and on
+              short desktop windows (≤800px height) — the secondary nav
+              already covers every destination, and Travel is reachable
+              from Hub/Pause anyway. */}
+          {!tight && !short && (
             <div style={{ marginTop: portalMarginTop }}>
               <PortalGate size={portalSize} label="Travel" />
             </div>

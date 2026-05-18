@@ -205,12 +205,16 @@ export const COACHMARKS: CoachmarkDef[] = [
   },
 
   // ── Shop ────────────────────────────────────────────────────────────
+  // 2026-05-18 P3: text rewritten to explicitly bridge the hub→shop
+  // transition. Pre-audit copy assumed the player knew they'd arrived
+  // at a new screen; new copy names the screen + the loop ("clear a
+  // trial → shop opens → spend shards → next trial").
   {
     id: 'shop_offers',
     screen: 'shop',
     anchor: 'shop-offers',
     side: 'above',
-    text: 'Spend shards on catalysts and mods. They alter how your dice score for the rest of the run.',
+    text: 'Trial cleared — welcome to the shop. Spend shards on catalysts, mods, and consumables. They reshape how your dice score for the rest of the run. Hit Continue to head into the next trial.',
   },
 
   // ── Scaling-pack onboarding (2026-05-11) ────────────────────────────

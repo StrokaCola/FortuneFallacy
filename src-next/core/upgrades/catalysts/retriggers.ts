@@ -8,9 +8,13 @@
 //
 // Each retrigger contributes additively on top of one another — Encore
 // can stack with Polaris if both fire on the same die. Recursion Lens
-// reads as a meta-modifier: it doubles ONLY the very first retrigger
-// that fires this hand (one re-doubling at most, even with multiple
-// retrigger catalysts owned).
+// is a meta-modifier: when owned, EVERY retrigger fires twice this
+// hand (chips + mult deltas doubled). 2026-05-18 balance audit rewrite
+// — pre-audit Recursion Lens doubled only the first retrigger, which
+// gave it zero solo value (without another retrigger catalyst, the
+// "first retrigger" never existed). The all-retriggers-double rewrite
+// keeps the multiplicative scaling with other retrigger catalysts AND
+// gives Recursion Lens a clear identity as the "retrigger amplifier".
 //
 // Stutter randomness: derived from ctx.rng (seeded), so a given seed
 // produces identical stutter outcomes on replay. Prime guarantee
@@ -133,17 +137,16 @@ function emitFire(
 }
 
 // Polaris — single retrigger on the highest-face scoring die.
-function polaris(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function polaris(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   const maxFace = Math.max(...rCtx.scoringFaces);
   const targetPos = rCtx.scoringFaces.indexOf(maxFace);
   if (targetPos < 0) return ctx;
   const dieIdx = rCtx.scoringDice[targetPos]!;
   const fire = fireDie(ctx, rCtx, dieIdx, 'polaris');
   let { chips, mult } = fire;
-  if (!recursionPending.used && chips + mult !== 0 && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((chips !== 0 || mult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     chips *= 2;
     mult *= 2;
-    recursionPending.used = true;
   }
   const stacks = new Map<number, number[]>();
   if (fire.stackDeltas) stacks.set(dieIdx, fire.stackDeltas);
@@ -157,7 +160,7 @@ function polaris(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
 }
 
 // Refrain — when this hand's combo tier matches previous, every scoring die retriggers.
-function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   const cur = ctx.combo?.tier ?? -1;
   const prev = ctx.state.run.tempoLastTier ?? -1;
   if (cur < 0 || cur !== prev) return ctx;
@@ -170,10 +173,9 @@ function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
     totalMult += fire.mult;
     if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
-  if (!recursionPending.used && (totalChips + totalMult) !== 0 && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
-    recursionPending.used = true;
   }
   const folded = withFoldedStacks(ctx, stacks);
   return {
@@ -185,7 +187,7 @@ function refrain(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
 }
 
 // Mirror Edge — dice that were locked at score time retrigger.
-function mirrorEdge(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function mirrorEdge(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   let totalChips = 0;
   let totalMult = 0;
   const stacks = new Map<number, number[]>();
@@ -198,10 +200,9 @@ function mirrorEdge(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { us
     if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
   if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
-  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
-    recursionPending.used = true;
   }
   const folded = withFoldedStacks(ctx, stacks);
   return {
@@ -216,7 +217,7 @@ function mirrorEdge(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { us
 // handsLeft has already been decremented in SCORE_HAND prep? Actually no:
 // the pipeline reads state from BEFORE the SCORE_HAND scoring tick. We look
 // at handsLeft === 1 (one hand remaining → this IS that final hand).
-function curtainCall(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function curtainCall(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   const handsLeft = ctx.state.round.handsLeft ?? 0;
   if (handsLeft > 1) return ctx;
   let totalChips = 0;
@@ -229,10 +230,9 @@ function curtainCall(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { u
     if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
   if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
-  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
-    recursionPending.used = true;
   }
   const folded = withFoldedStacks(ctx, stacks);
   return {
@@ -244,7 +244,7 @@ function curtainCall(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { u
 }
 
 // Stutter — 25% per scoring die. Guaranteed (100%) if scoring count is prime.
-function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   const n = rCtx.scoringDice.length;
   const isPrime = n === 2 || n === 3 || n === 5 || n === 7;
   let totalChips = 0;
@@ -259,10 +259,9 @@ function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
     if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
   if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
-  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
-    recursionPending.used = true;
   }
   const folded = withFoldedStacks(ctx, stacks);
   return {
@@ -274,7 +273,7 @@ function stutter(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used:
 }
 
 // Cardinal Compass — every scoring die showing 4 retriggers once.
-function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   let totalChips = 0;
   let totalMult = 0;
   const stacks = new Map<number, number[]>();
@@ -286,10 +285,9 @@ function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending:
     if (fire.stackDeltas) stacks.set(idx, fire.stackDeltas);
   }
   if (totalChips === 0 && totalMult === 0 && stacks.size === 0) return ctx;
-  if (!recursionPending.used && (totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((totalChips !== 0 || totalMult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     totalChips *= 2;
     totalMult *= 2;
-    recursionPending.used = true;
   }
   const folded = withFoldedStacks(ctx, stacks);
   return {
@@ -301,17 +299,16 @@ function cardinalCompass(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending:
 }
 
 // Echo Chamber — when 4+ dice score, the first scoring die's mods fire twice.
-function echoChamber(ctx: PipelineCtx, rCtx: RetriggerCtx, recursionPending: { used: boolean }): PipelineCtx {
+function echoChamber(ctx: PipelineCtx, rCtx: RetriggerCtx): PipelineCtx {
   if (rCtx.scoringDice.length < 4) return ctx;
   const firstIdx = rCtx.scoringDice[0]!;
   const fire = fireDie(ctx, rCtx, firstIdx, 'echo_chamber');
   let { chips, mult } = fire;
   const hasStacks = !!fire.stackDeltas && fire.stackDeltas.some((d) => d !== 0);
   if (chips === 0 && mult === 0 && !hasStacks) return ctx;
-  if (!recursionPending.used && (chips !== 0 || mult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
+  if ((chips !== 0 || mult !== 0) && ctx.state.run.catalysts.includes('recursion_lens')) {
     chips *= 2;
     mult *= 2;
-    recursionPending.used = true;
   }
   const stacks = new Map<number, number[]>();
   if (fire.stackDeltas) stacks.set(firstIdx, fire.stackDeltas);
@@ -354,19 +351,18 @@ export const applyRetriggers: PhaseFn = (ctx: PipelineCtx) => {
   if (!rCtx) return ctx;
   const owned = new Set(ctx.state.run.catalysts);
   let next = ctx;
-  // Recursion Lens is a meta-modifier — it only doubles the FIRST retrigger
-  // that contributes. Mutable flag threaded through each retrigger call.
-  const recursionPending = { used: false };
 
   // Deterministic ordering for replays: Polaris → Refrain → Mirror Edge →
   // Curtain Call → Stutter → Cardinal Compass → Echo Chamber → Mirrored Hand.
-  if (owned.has('polaris'))          next = polaris(next, rCtx, recursionPending);
-  if (owned.has('refrain'))          next = refrain(next, rCtx, recursionPending);
-  if (owned.has('mirror_edge'))      next = mirrorEdge(next, rCtx, recursionPending);
-  if (owned.has('curtain_call'))     next = curtainCall(next, rCtx, recursionPending);
-  if (owned.has('stutter'))          next = stutter(next, rCtx, recursionPending);
-  if (owned.has('cardinal_compass')) next = cardinalCompass(next, rCtx, recursionPending);
-  if (owned.has('echo_chamber'))     next = echoChamber(next, rCtx, recursionPending);
+  // Recursion Lens (when owned) doubles every retrigger's chip/mult deltas
+  // — applied inline in each function via the catalyst-owned check.
+  if (owned.has('polaris'))          next = polaris(next, rCtx);
+  if (owned.has('refrain'))          next = refrain(next, rCtx);
+  if (owned.has('mirror_edge'))      next = mirrorEdge(next, rCtx);
+  if (owned.has('curtain_call'))     next = curtainCall(next, rCtx);
+  if (owned.has('stutter'))          next = stutter(next, rCtx);
+  if (owned.has('cardinal_compass')) next = cardinalCompass(next, rCtx);
+  if (owned.has('echo_chamber'))     next = echoChamber(next, rCtx);
   // Mirrored Hand is the easter-egg retrigger — runs last so it stacks on top.
   next = mirroredHandEgg(next, rCtx);
   return next;

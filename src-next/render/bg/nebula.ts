@@ -11,6 +11,7 @@ uniform float u_time;
 uniform float u_mode;
 uniform float u_flash;
 uniform float u_vig;
+uniform float u_progress;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 float noise(vec2 p) {
@@ -49,13 +50,22 @@ void main() {
   float star = hash(floor(sUV));
   star = pow(max(0.0, star - 0.965) / 0.035, 3.0);
   float twinkle = 0.6 + 0.4 * sin(u_time * 1.4 + hash(floor(sUV)) * 6.28);
-  col += star * twinkle * vec3(0.85, 0.90, 1.00) * 0.55;
+  // 2026-05-18 P5.1: u_progress (0..1) brightens stars incrementally as
+  // the player clears blinds. Only ~40% of stars (selected by their
+  // hash) participate so the field doesn't go from "calm" to "blazing"
+  // — the constellation gradually fills in over a run.
+  float starHash = hash(floor(sUV));
+  float starGate = step(0.6, starHash); // 40% of stars are "progress stars"
+  float starBoost = 1.0 + u_progress * starGate * 0.9;
+  col += star * twinkle * vec3(0.85, 0.90, 1.00) * 0.55 * starBoost;
 
   vec2 hUV = uv * vec2(55.0, 31.0);
   float hStar = hash(floor(hUV));
   hStar = pow(max(0.0, hStar - 0.96) / 0.04, 4.0);
   float hTwinkle = 0.5 + 0.5 * sin(u_time * 0.9 + hash(floor(hUV)) * 6.28);
-  col += hStar * hTwinkle * vec3(0.90, 0.88, 1.00) * 0.80;
+  // Hero stars also lift with progress, slightly more aggressively.
+  float hStarBoost = 1.0 + u_progress * 0.6;
+  col += hStar * hTwinkle * vec3(0.90, 0.88, 1.00) * 0.80 * hStarBoost;
 
   // u_vig in [0,1]: at 0 the original soft vignette, at 1 oppressive corners.
   // Inner radius pulls in (0.25 -> 0.10), edge floor drops (0.08 -> 0.02),
@@ -88,7 +98,7 @@ const SCREEN_MODES: Record<Screen, number> = {
 
 let gl: WebGLRenderingContext | null = null;
 let program: WebGLProgram | null = null;
-let uniforms: { res: WebGLUniformLocation | null; time: WebGLUniformLocation | null; mode: WebGLUniformLocation | null; flash: WebGLUniformLocation | null; vig: WebGLUniformLocation | null } = { res: null, time: null, mode: null, flash: null, vig: null };
+let uniforms: { res: WebGLUniformLocation | null; time: WebGLUniformLocation | null; mode: WebGLUniformLocation | null; flash: WebGLUniformLocation | null; vig: WebGLUniformLocation | null; progress: WebGLUniformLocation | null } = { res: null, time: null, mode: null, flash: null, vig: null, progress: null };
 let vbo: WebGLBuffer | null = null;
 let _canvas: HTMLCanvasElement | null = null;
 let _active = false;
@@ -96,6 +106,8 @@ let _flash = 0;
 let _intensity = 0;
 let _vig = 0;
 let _vigTarget = 0;
+let _progress = 0;
+let _progressTarget = 0;
 let _screen: Screen = 'title';
 
 function compile(type: number, src: string): WebGLShader | null {
@@ -137,6 +149,7 @@ export function initNebula(canvas: HTMLCanvasElement): boolean {
     mode: gl.getUniformLocation(program, 'u_mode'),
     flash: gl.getUniformLocation(program, 'u_flash'),
     vig: gl.getUniformLocation(program, 'u_vig'),
+    progress: gl.getUniformLocation(program, 'u_progress'),
   };
   _active = true;
   resizeCanvas();
@@ -159,6 +172,14 @@ export function flashNebula(amount = 0.7): void { _flash = Math.min(1, _flash + 
 export function setNebulaTension(t: number): void {
   const clamped = Math.max(0, Math.min(1, t));
   _vigTarget = clamped < 0.6 ? 0 : (clamped - 0.6) / 0.4;
+}
+
+// 2026-05-18 P5.1: constellation progression. Drives the u_progress
+// uniform that brightens a subset of the starfield as the player clears
+// blinds in a run. Caller passes 0..1 (e.g. clearedBlinds / totalBlinds);
+// the shader handles the per-star gating + smoothing.
+export function setNebulaProgress(p: number): void {
+  _progressTarget = Math.max(0, Math.min(1, p));
 }
 
 // Cap the nebula at 30fps normally, 20fps when Performance Mode is on. The
@@ -209,6 +230,10 @@ function startLoop() {
     // Smooth-approach the vignette target so changes don't snap. Time-based
     // exponential approach so the curve is identical at any cap.
     _vig += (_vigTarget - _vig) * (1 - Math.exp(-VIG_RATE_PER_SEC * dt));
+    // 2026-05-18 P5.1: smooth-approach progress target. Slower curve than
+    // vignette (PROGRESS_RATE_PER_SEC = 1.0) so blind-clear bumps feel
+    // ceremonial rather than instant.
+    _progress += (_progressTarget - _progress) * (1 - Math.exp(-1.0 * dt));
 
     const time = (now - start) / 1000;
     const baseMode = SCREEN_MODES[_screen] ?? 0;
@@ -226,6 +251,7 @@ function startLoop() {
     gl.uniform1f(uniforms.mode, mode);
     gl.uniform1f(uniforms.flash, _flash);
     gl.uniform1f(uniforms.vig, _vig);
+    gl.uniform1f(uniforms.progress, _progress);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
   rafHandle = requestAnimationFrame(loop);

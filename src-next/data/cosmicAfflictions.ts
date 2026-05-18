@@ -78,6 +78,39 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
     lapTrigger: 5,
     effect: { kind: 'compounding-tax', perBlindMul: 0.15 },
   },
+  // 2026-05-18 P4 long-tail laps. Pre-audit pool capped escalation at
+  // lap 5 (heat_death repeated forever). The lap-6+ entries below give
+  // veterans a real difficulty curve into deep endless. Each step
+  // intensifies an existing levers, not new mechanics, so the pacing
+  // stays predictable for the player.
+  {
+    id: 'gravity_well_redux',
+    name: 'Gravity Redux',
+    flavor: 'The pull doubles. Targets bend further with each blind.',
+    lapTrigger: 6,
+    effect: { kind: 'target-tax', multiplier: 1.35 },
+  },
+  {
+    id: 'frozen_choir',
+    name: 'Frozen Choir',
+    flavor: 'Two hands taken. The sky stops singing back.',
+    lapTrigger: 7,
+    effect: { kind: 'hands-delta', delta: -2 },
+  },
+  {
+    id: 'event_horizon',
+    name: 'Event Horizon',
+    flavor: 'Past this point every step is heavier than the last.',
+    lapTrigger: 8,
+    effect: { kind: 'compounding-tax', perBlindMul: 0.25 },
+  },
+  {
+    id: 'final_dark',
+    name: 'The Final Dark',
+    flavor: 'Targets +50%. Welcome to the deep cosmos.',
+    lapTrigger: 10,
+    effect: { kind: 'target-tax', multiplier: 1.50 },
+  },
 ];
 
 export function lookupCosmicAffliction(id: string | null | undefined): CosmicAfflictionDef | undefined {
