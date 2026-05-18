@@ -3,6 +3,7 @@ import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
 import { lookupCatalyst } from '../../data/catalysts';
+import { lookupConsumable } from '../../core/consumables';
 import { useStore, type GameState } from '../../state/store';
 import { selectProjectedScore } from '../../state/selectors';
 import {
@@ -55,6 +56,8 @@ export function TopBar({
   score = 0,
   catalystSlots,
   catalysts = [],
+  consumableSlots,
+  consumables = [],
   voucherCount = 0,
   vouchers = [],
   accent = '#7be3ff',
@@ -69,6 +72,11 @@ export function TopBar({
   // and defaults to [] so existing callsites that don't pass it keep
   // the old generic tooltip text.
   catalysts?: string[];
+  // Consumables slot chip — mirrors the catalysts chip so an empty
+  // tray on tight viewports shows its ◇ slot dots in TopBar rather
+  // than dangling a 64×88 ghost card next to the dice board.
+  consumableSlots?: { used: number; max: number };
+  consumables?: string[];
   voucherCount?: number;
   vouchers?: string[];
   accent?: string;
@@ -442,6 +450,39 @@ export function TopBar({
                           </span>
                           {c.desc && (
                             <span style={{ color: '#bba8ff', fontSize: 10, lineHeight: 1.35 }}>{c.desc}</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
+              </span>
+            </span>
+          )}
+          {consumableSlots && (
+            <span className="f-mono has-tip" style={{ fontSize: 10, color: '#bba8ff', padding: '2px 6px',
+              border: '1px solid rgba(187,168,255,0.4)', borderRadius: 4, position: 'relative', cursor: 'help',
+              display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              consumables
+              <ConstellationCount filled={consumableSlots.used} total={consumableSlots.max} color="#bba8ff" size={6} />
+              <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
+                <span className="tip-title">Consumable slots</span>
+                {consumables.length === 0 ? (
+                  'Consumables are single-use. Galaxies level up a hand type for the rest of the run; spectrals are one-shot powerups.'
+                ) : (
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                    {consumables.map((id, i) => {
+                      const c = lookupConsumable(id);
+                      if (!c) return null;
+                      const tint = c.type === 'calibration' ? '#bba8ff' : '#7be3ff';
+                      return (
+                        <span key={`${id}-${i}`} style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: tint, fontSize: 11 }}>
+                            <span style={{ opacity: 0.85, marginRight: 6 }}>{c.icon}</span>
+                            {c.name}
+                          </span>
+                          {c.description && (
+                            <span style={{ color: '#bba8ff', fontSize: 10, lineHeight: 1.35 }}>{c.description}</span>
                           )}
                         </span>
                       );

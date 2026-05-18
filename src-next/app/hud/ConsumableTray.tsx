@@ -67,15 +67,13 @@ export function ConsumableTray() {
     <>
       <div data-coach="consumable-tray" style={{
         position: 'absolute',
-        // Mirrors the CatalystStrip on the opposite side; stack from
-        // TopBar's bottom edge so the row never collides with a wrapped TopBar.
-        //
-        // 2026-05-16 fix — bumped from +8px to +32px so the desktop
-        // PauseButton (which lives at top:max(80, --hud-top-h - 24)
-        // and shares the right:18 column) no longer overlaps the
-        // first consumable tile. Tight viewport pause is bottom-right
-        // so the extra offset is cheap there too.
-        top: 'calc(var(--hud-top-h, 134px) + 32px)',
+        // Mirrors the CatalystStrip on the opposite side at the same
+        // top offset (--hud-top-h + 8px) so the two rails sit at the
+        // exact same height across the board. The +32px offset was
+        // legacy protection for a desktop PauseButton that no longer
+        // shares this column — pause hides on desktop entirely now
+        // (see PauseButton.tsx) and anchors bottom-right on tight.
+        top: 'calc(var(--hud-top-h, 134px) + 8px)',
         right: 18,
         // Wide-mode: vertical right rail to mirror the catalyst left rail.
         display: 'flex',
@@ -94,7 +92,12 @@ export function ConsumableTray() {
             consumables
           </div>
         )}
-        {items.length === 0 && <EmptySlot kind="consumable" />}
+        {/* Empty-state ghost only on wide-mode where the rail header
+            labels "consumables" as a named vessel. On tight portrait
+            the TopBar TREASURY chip carries the empty-state signal
+            (consumables ○○○○) so the dice board isn't crowded by a
+            64×88 placeholder when the tray is empty. */}
+        {wide && items.length === 0 && <EmptySlot kind="consumable" />}
         {items.map((id, i) => {
           const def = lookupConsumable(id);
           if (!def) return null;
