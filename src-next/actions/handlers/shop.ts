@@ -304,7 +304,11 @@ export const shopHandler: ActionHandler = (a, s) => {
       const seq = s.run.shopSeq ?? 0;
       const rng = makeSeedRng(s.run.seed, `shop:seq=${seq}`);
       const offers = rollOffers(s, rng);
-      const nextCost = freeShopReroll(s) ? 0 : cost + 1;
+      // Free Refresh voucher only makes the FIRST shop reroll free (initial
+      // cost 0 via initialRerollCost). After spending that free reroll the
+      // cost climbs by 1 each time, same escalation cadence as the base
+      // track — voucher buys you the entry, not infinite refreshes.
+      const nextCost = cost + 1;
       return {
         state: {
           ...s,
@@ -339,7 +343,9 @@ export const shopHandler: ActionHandler = (a, s) => {
         };
       }
 
-      const catalysts = offer.kind === 'catalyst' ? [...s.run.catalysts, offer.id] : s.run.catalysts;
+      const catalysts = offer.kind === 'catalyst' && s.run.catalysts.length < maxCatalystSlots(s)
+        ? [...s.run.catalysts, offer.id]
+        : s.run.catalysts;
       const consumables = offer.kind === 'consumable' && s.run.consumables.length < maxConsumableSlots(s)
         ? [...s.run.consumables, offer.id]
         : s.run.consumables;

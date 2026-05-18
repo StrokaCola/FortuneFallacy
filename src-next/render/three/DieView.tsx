@@ -90,7 +90,8 @@ export function DieView(props: Props) {
       // Forge as "still asleep" — the awakened halo is wired by Round
       // when the stack reaches threshold. Tracked for follow-up.
     }
-    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape, faceValues);
+    const modIds = props.mods?.map((m) => m.id).filter((id): id is NonNullable<typeof id> => !!id);
+    const built = buildDieMod.buildDie(0.85, style, modOverride, geometricVariant, shape, faceValues, modIds);
     // Snap to canonical face rotation so the requested face is up. For
     // non-canonical face arrays (Fibonacci/Eclipse/Ophiuchus) the stored
     // `face` is the VALUE — translate to spatial index by finding which

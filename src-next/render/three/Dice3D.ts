@@ -1213,7 +1213,7 @@ export class Dice3D {
     const modKey = primary?.visual?.materialKey;
     const modOverride = modKey ? MOD_MATERIALS[modKey] : undefined;
     const geometricVariant = primary?.visual?.geometricVariant;
-    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant, shape, faceValues);
+    const built = buildDie(DIE_SIZE, 'celestial', modOverride, geometricVariant, shape, faceValues, modIds);
 
     const secondary = modIds[1] ? lookupMod(modIds[1]) : undefined;
     const tertiary = modIds[2] ? lookupMod(modIds[2]) : undefined;

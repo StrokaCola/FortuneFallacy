@@ -45,14 +45,16 @@ export type OfferCardProps = {
   index: number;
   shards: number;
   catalysts: string[];
+  catalystsFull: boolean;
   offerVersion: string;
   tight: boolean;
 };
 
-export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion, tight }: OfferCardProps) {
+export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull, offerVersion, tight }: OfferCardProps) {
   const m = offerMeta(o.kind, o.id);
   const c = m.color;
-  const affordable = shards >= o.price;
+  const slotBlocked = o.kind === 'catalyst' && catalystsFull;
+  const affordable = shards >= o.price && !slotBlocked;
   const refundIfBought = sellRefund(o.kind, o.id);
   const isLegendary = m.rarity === 'legendary';
   const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;
@@ -285,7 +287,7 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, offerVersion,
             <span className="f-mono uc" style={{
               fontSize: 9, color: affordable ? (isLegendary ? ringColor : ACCENT) : '#e2334a', letterSpacing: '0.2em',
             }}>
-              {affordable ? 'buy' : 'low'}
+              {affordable ? 'buy' : slotBlocked ? 'full' : 'low'}
             </span>
           </div>
         </div>
