@@ -2,6 +2,7 @@ import type { GameState } from './store';
 import { selectTension, type TensionInputs } from '../audio/heat';
 import { maxCatalystSlots, effectiveCatalystSlotsUsed, maxConsumableSlots, maxModSlots } from '../core/vouchers';
 import { lookupConstellation } from '../data/constellations';
+import { projectScore } from '../core/scoring/projection';
 
 export const selectScreen      = (s: GameState) => s.ui.screen;
 export const selectScore       = (s: GameState) => s.round.score;
@@ -91,6 +92,12 @@ export const selectTensionFromState = (s: GameState): number => {
   };
   return selectTension(inputs);
 };
+
+// 2026-05-18 P1: score projection chip selector. Wraps the pure
+// projectScore() helper so the TopBar can subscribe directly. Returns
+// null when projection is unavailable (round inactive / no locked dice)
+// so the chip hides gracefully rather than rendering "0".
+export const selectProjectedScore = (s: GameState): number | null => projectScore(s);
 
 // Per-Shop "fake-state" tuple used by the preview chips that render
 // "if you didn't have this voucher, your cap would be N-1". The Shop

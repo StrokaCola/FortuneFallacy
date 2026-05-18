@@ -4,6 +4,13 @@ import * as audioSettings from '../../audio/audioSettings';
 import { ScreenHeader } from '../visual/AstralPrimitives';
 import { getMotionPref, setMotionPref, subscribeMotionPref, type MotionPref } from '../hooks/useMotion';
 import { getHapticsPref, setHapticsPref, subscribeHapticsPref, type HapticsPref } from '../haptics/haptics';
+import {
+  getAmbientReactions, setAmbientReactions, subscribeAmbientReactions,
+  type AmbientReactionsLevel,
+} from '../settings/aliveness';
+import {
+  getScorePreviewPref, setScorePreviewPref, subscribeScorePreviewPref,
+} from '../settings/scorePreview';
 import { getColorblindPref, setColorblindPref, subscribeColorblind } from '../visual/colorblind';
 import {
   getOrientationOverride, setOrientationOverride, subscribeOrientationOverride,
@@ -135,6 +142,85 @@ function CaptionsToggle() {
                 boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
                 color: active ? '#7be3ff' : '#dcd4ff',
               }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ScorePreviewToggle() {
+  const [pref, setPref] = useState<'on' | 'off'>(getScorePreviewPref);
+  useEffect(() => subscribeScorePreviewPref(() => setPref(getScorePreviewPref())), []);
+  const opts: { id: 'on' | 'off'; label: string; hint: string; glyph: string }[] = [
+    { id: 'on',  label: 'On',  hint: 'Show "~N" projection chip next to score',         glyph: '→' },
+    { id: 'off', label: 'Off', hint: 'Hide the projection. Score only shows on commit.', glyph: '·' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>score preview</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }} role="radiogroup" aria-label="Score preview preference">
+        {opts.map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setScorePreviewPref(o.id)}
+              style={{
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AmbientReactionsToggle() {
+  const [pref, setPref] = useState<AmbientReactionsLevel>(getAmbientReactions);
+  useEffect(() => subscribeAmbientReactions(() => setPref(getAmbientReactions())), []);
+  const opts: { id: AmbientReactionsLevel; label: string; hint: string; glyph: string }[] = [
+    { id: 'on',     label: 'Full',   hint: 'Vignette, audio cutoff, heartbeat haptic on near-bust', glyph: '✦' },
+    { id: 'subtle', label: 'Subtle', hint: 'Half intensity; no heartbeat haptic',                   glyph: '◐' },
+    { id: 'off',    label: 'Off',    hint: 'Disable death\'s-edge ambient layer entirely',          glyph: '·' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="f-mono uc" style={{ fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff' }}>ambient reactions</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }} role="radiogroup" aria-label="Ambient reactions preference">
+        {opts.map((o) => {
+          const active = pref === o.id;
+          return (
+            <button key={o.id}
+              type="button" role="radio" aria-checked={active}
+              title={o.hint}
+              className="btn btn-ghost mat-interactive tap"
+              onClick={() => setAmbientReactions(o.id)}
+              style={{
+                padding: '8px 6px', fontSize: 11,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                background: active ? 'rgba(123,227,255,0.18)' : undefined,
+                boxShadow: active ? '0 0 0 1px rgba(123,227,255,0.65)' : undefined,
+                color: active ? '#7be3ff' : '#dcd4ff',
+              }}>
+              <span className="ff-option-glyph" aria-hidden="true">{o.glyph}</span>
               {o.label}
             </button>
           );
@@ -397,6 +483,10 @@ export function Settings() {
         <MotionToggle pref={pref} />
 
         <HapticsToggle pref={hapticsPref} />
+
+        <AmbientReactionsToggle />
+
+        <ScorePreviewToggle />
 
         <CaptionsToggle />
 

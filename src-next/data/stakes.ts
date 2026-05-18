@@ -62,16 +62,22 @@ export const STAKES: Stake[] = [
   // any-clear dropping 51% (Pyre) → 15% (Beacon) → 12% → 9%. Beacon now
   // keeps 3 hands (was 2) so the top three stakes feel like a graded ramp
   // instead of a single brick wall after Pyre.
+  //
+  // 2026-05-18 balance audit: shop tax further softened (1.25 → 1.15).
+  // The Pyre→Beacon transition stacked three penalties at once
+  // (+10% target, +25% shop, no recovery levers vs. Pyre's two). Dropping
+  // the shop tax to 1.15 keeps Beacon distinct from Pyre via the target
+  // bump but unblocks economy-driven builds.
   {
     id: 'beacon',
     name: 'Beacon',
     color: '#7be3ff',
     flavor: 'The bazaar grows greedy.',
-    rules: ['Targets +30%', '−1 reroll', 'Shop +25%'],
+    rules: ['Targets +30%', '−1 reroll', 'Shop +15%'],
     targetMult: 1.30,
     handsDelta: 0,
     rerollsDelta: -1,
-    shopPriceMult: 1.25,
+    shopPriceMult: 1.15,
   },
   {
     id: 'nova',

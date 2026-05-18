@@ -43,8 +43,26 @@ describe('pickAfflictionForLap', () => {
   });
 
   it('caps at the highest-tier affliction on very high laps', () => {
+    // 2026-05-18 P4 long-tail laps: pool extended past lap 5 (heat_death)
+    // up to lap 10 (final_dark). Any lap >= 10 picks final_dark.
     const a = pickAfflictionForLap(99);
-    expect(a?.id).toBe('heat_death');
+    expect(a?.id).toBe('final_dark');
+  });
+
+  it('lap 5 still picks heat_death (boundary above lap-5 entries)', () => {
+    expect(pickAfflictionForLap(5)?.id).toBe('heat_death');
+  });
+
+  it('lap 6 picks gravity_well_redux (first lap-6+ entry)', () => {
+    expect(pickAfflictionForLap(6)?.id).toBe('gravity_well_redux');
+  });
+
+  it('lap 8 picks event_horizon', () => {
+    expect(pickAfflictionForLap(8)?.id).toBe('event_horizon');
+  });
+
+  it('lap 10 picks final_dark', () => {
+    expect(pickAfflictionForLap(10)?.id).toBe('final_dark');
   });
 });
 

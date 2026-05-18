@@ -42,6 +42,15 @@ export function accrueScalingStacks(args: {
     mutated = true;
   }
 
+  // Runaway (2026-05-18 audit add) — +1 stack per scored straight
+  // (small or large). Each stack adds +0.10× mult permanent until
+  // bust. Mirrors Star Chart's gate; the catalyst's apply handler
+  // reads run.catalystStacks['runaway'].
+  if (owned.has('runaway') && (comboId === 'sm_straight' || comboId === 'lg_straight')) {
+    stacks['runaway'] = (stacks['runaway'] ?? 0) + 1;
+    mutated = true;
+  }
+
   // Lodestone — +1 stack per scored Pair (one_pair only; two_pair is a
   // distinct higher tier and pays the higher catalysts instead).
   if (owned.has('lodestone') && comboId === 'one_pair') {

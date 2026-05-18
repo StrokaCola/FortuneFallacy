@@ -178,16 +178,17 @@ describe('metronome (alternating odd/even hand)', () => {
   });
 });
 
-describe('prime_resonance (mult^(1.05^scoringDice))', () => {
-  it('5 scoring dice: mult^1.276... → roughly 6.5 from base 4', () => {
+describe('prime_resonance (mult^(1.10^scoringDice))', () => {
+  it('5 scoring dice: mult^1.61... → roughly 9.7 from base 4', () => {
     const ctx = makeCtx({
       combo: { id: 'one_pair', tier: 1, baseChips: 10, baseMult: 2, scoringFaces: [3, 3, 1, 4, 5] },
       mult: 4,
     });
     const out = findCat('prime_resonance').apply(ctx);
-    // 4^(1.05^5) = 4^1.276 ≈ 5.94.
-    expect(out.mult).toBeGreaterThan(5);
-    expect(out.mult).toBeLessThan(7);
+    // 2026-05-18 audit retune: per-die exponent 1.05 → 1.10
+    // 4^(1.10^5) = 4^1.61 ≈ 9.7
+    expect(out.mult).toBeGreaterThan(8);
+    expect(out.mult).toBeLessThan(11);
   });
   it('no-op when mult <= 1', () => {
     const ctx = makeCtx({

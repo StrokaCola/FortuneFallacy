@@ -86,7 +86,7 @@ describe('gilding_press catalyst (first mod on each die fires twice for chips)',
   });
 });
 
-describe('mod_gravity catalyst (+5 mult on 4+ scoring dice)', () => {
+describe('mod_gravity catalyst (+10 mult on 4+ scoring dice — post-audit buff)', () => {
   function makeMultCtx(scoringFaces: number[]): PipelineCtx {
     const state = {
       run: { ...initialRunSlice(), catalysts: ['mod_gravity'] },
@@ -106,12 +106,12 @@ describe('mod_gravity catalyst (+5 mult on 4+ scoring dice)', () => {
 
   it('fires at exactly 4 scoring dice', () => {
     const ctx = makeMultCtx([1, 2, 3, 4]);
-    expect(upgrades(ctx).mult).toBe(6); // 1 base + 5
+    expect(upgrades(ctx).mult).toBe(11); // 1 base + 10
   });
 
   it('fires at 5 scoring dice', () => {
     const ctx = makeMultCtx([1, 2, 3, 4, 5]);
-    expect(upgrades(ctx).mult).toBe(6);
+    expect(upgrades(ctx).mult).toBe(11);
   });
 
   it('does not fire at 3 scoring dice', () => {

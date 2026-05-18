@@ -5,6 +5,7 @@ import { Sigil } from '../visual/Sigil';
 import { CHALLENGES } from '../../data/challenges';
 import { lookupConstellation } from '../../data/constellations';
 import { lookupStake } from '../../data/stakes';
+import { useIsTightStage } from '../hooks/useIsCompactStage';
 
 // Wave M — per-challenge glyph + accent. Each challenge id maps to a
 // unicode glyph + tint so the row of cards differentiates at a glance
@@ -23,28 +24,39 @@ const selectChallengeWins = (s: GameState) => s.meta.challengeWins;
 
 export function ChallengeSelect() {
   const wins = useStore(selectChallengeWins);
+  const tight = useIsTightStage();
+  // 2026-05-18 desktop-no-scroll: `short` triggers below 800px height.
+  // Hides the description copy + bullet-rules list inside each card
+  // so the 5-card grid + progress strip + back button fit above fold.
+  const short = !tight && typeof window !== 'undefined' && window.innerHeight <= 800;
 
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'auto',
-      overflow: 'auto', padding: '32px 24px',
+      // 2026-05-18 desktop-no-scroll: ~5 challenge cards fit a 1280×800
+      // viewport. Tight (phone) keeps auto-scroll for the inline-flow
+      // layout.
+      overflow: tight ? 'auto' : 'hidden',
+      padding: short ? '10px 24px' : '18px 24px',
     }}>
       <ScreenWatermark color="#ff4d6d" position="bottom-right">
         <Sigil kind="comet" size={220} color="#ff4d6d" />
       </ScreenWatermark>
       <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ textAlign: 'center', marginBottom: 22 }}>
+        <div style={{ textAlign: 'center', marginBottom: short ? 6 : 12 }}>
           <ScreenHeader title="Challenges" subtitle="◇ constraint runs ◇" />
-          <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 4, opacity: 0.85 }}>
-            Curated runs with handcrafted restrictions. Beat one to earn its badge.
-          </div>
+          {!short && (
+            <div className="f-mono" style={{ fontSize: 11, color: '#bba8ff', marginTop: 2, opacity: 0.85 }}>
+              Curated runs with handcrafted restrictions. Beat one to earn its badge.
+            </div>
+          )}
         </div>
 
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: 14,
-          marginBottom: 22,
+          gap: 10,
+          marginBottom: 12,
         }}>
           {CHALLENGES.map((ch) => {
             const won = wins.includes(ch.id);
@@ -93,14 +105,16 @@ export function ChallengeSelect() {
                 <div className="f-mono uc" style={{ fontSize: 9, letterSpacing: '0.22em', color: '#bba8ff' }}>
                   {constellation.name} · {stake.name}
                 </div>
-                <div style={{ fontSize: 12, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.4 }}>
-                  {ch.flavor}
-                </div>
+                {!short && (
+                  <div style={{ fontSize: 12, color: '#bba8ff', fontStyle: 'italic', lineHeight: 1.4 }}>
+                    {ch.flavor}
+                  </div>
+                )}
                 <ul style={{
                   margin: 0, paddingLeft: 18,
-                  fontSize: 11, color: '#dcd4ff', lineHeight: 1.5,
+                  fontSize: 11, color: '#dcd4ff', lineHeight: 1.4,
                 }}>
-                  {ch.rules.map((r, i) => <li key={i}>{r}</li>)}
+                  {ch.rules.slice(0, short ? 2 : ch.rules.length).map((r, i) => <li key={i}>{r}</li>)}
                 </ul>
                 <div className="f-mono uc" style={{
                   fontSize: 9, letterSpacing: '0.24em', color: '#f5c451',
@@ -132,7 +146,7 @@ export function ChallengeSelect() {
             space. Clean clear-all triggers a celebratory variant. */}
         <ChallengeProgressStrip won={wins.length} total={CHALLENGES.length} />
 
-        <div style={{ textAlign: 'center', marginTop: 18 }}>
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
           <button
             type="button"
             className="btn btn-ghost mat-interactive tap"
@@ -151,8 +165,8 @@ function ChallengeProgressStrip({ won, total }: { won: number; total: number }) 
   const ratio = total > 0 ? won / total : 0;
   return (
     <div style={{
-      maxWidth: 420, margin: '24px auto 0',
-      padding: '12px 22px', borderRadius: 12,
+      maxWidth: 420, margin: '8px auto 0',
+      padding: '8px 22px', borderRadius: 12,
       border: `1px solid ${all ? 'rgba(245,196,81,0.55)' : 'rgba(149,119,255,0.3)'}`,
       background: 'rgba(15,9,37,0.6)',
       textAlign: 'center',

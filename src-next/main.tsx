@@ -10,6 +10,7 @@ import { startAudioBridge, ensureAudioAfterGesture, audioEngine, sfxBank } from 
 import { startHapticsBridge } from './app/haptics/hapticsBridge';
 import { sfxInit, sfxPlay } from './audio/sfx';
 import { startScalingSfxListener } from './audio/listeners/scalingSfx';
+import { startAlivenessListener } from './app/listeners/aliveness';
 import { installButtonJuice } from './app/hud/buttonJuice';
 import { startLeaderboard } from './online/leaderboard';
 import { startFrameBudgetWatcher, installPerfBodyClass } from './app/perf/perfMode';
@@ -63,6 +64,7 @@ installPerfBodyClass();
 startAchievementListener();
 startConstellationUnlockListener();
 startScalingSfxListener();
+startAlivenessListener();
 startDiceLandShake();
 applyColorblindClass();
 ensureAudioAfterGesture();

@@ -81,9 +81,10 @@ export async function fetchOnlineScores(force = false): Promise<OnlineScore[]> {
 
 // Mode partitions the leaderboard. 'run' is the default standard run.
 // 'daily-YYYY-MM-DD' is a daily-challenge entry; 'endless' is reserved for
-// post-win endless mode. The Scores screen filters by mode prefix to show
-// the right cohort.
-export type LeaderboardMode = 'run' | 'endless' | `daily-${string}`;
+// post-win endless mode; 'lap-N' partitions endless runs by lap so deep
+// runs aren't drowned in shallow-endless noise. The Scores screen
+// filters by mode prefix to show the right cohort.
+export type LeaderboardMode = 'run' | 'endless' | `daily-${string}` | `lap-${number}`;
 
 export async function submitOnlineScore(
   name: string,
@@ -122,10 +123,17 @@ export function startLeaderboard(): () => void {
     const name = s.meta.playerName || 'Wanderer';
     // Daily runs submit under their dated mode so the global daily ladder
     // and the all-time ladder don't collide. One run can only land in one
-    // bucket - daily wins the partition when both apply.
+    // bucket — daily wins the partition when both apply, otherwise:
+    //   * endlessLap > 0 → lap-N partition (Cosmic Lap leaderboards)
+    //   * standard run → 'run'
+    // 2026-05-18 P4: lap-N partition added so deep endless runs get
+    // their own cohort. Without this, a lap-7 score competes against
+    // lap-1 scores on the global 'run' ladder, drowning the long-tail
+    // achievement.
+    const lapNow = s.run.endlessLap ?? 0;
     const mode: LeaderboardMode = s.run.dailyDate
       ? `daily-${s.run.dailyDate}`
-      : 'run';
+      : (lapNow > 0 ? `lap-${lapNow}` : 'run');
     void submitOnlineScore(name, score, constellation, mode);
   });
 }

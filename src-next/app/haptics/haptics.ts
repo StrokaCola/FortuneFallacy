@@ -15,7 +15,7 @@
 const KEY = 'ff_haptics_pref';
 export type HapticsPref = 'on' | 'off' | 'os';
 
-export type HapticName = 'tap' | 'tick' | 'clear';
+export type HapticName = 'tap' | 'tick' | 'clear' | 'heartbeat';
 
 const PATTERNS: Record<HapticName, number | number[]> = {
   // Lock toggle: a single short pulse so the player knows the tap landed
@@ -26,6 +26,12 @@ const PATTERNS: Record<HapticName, number | number[]> = {
   tick: 5,
   // Blind cleared: doublet with a small gap, doesn't try to be a fanfare.
   clear: [40, 60, 40],
+  // Death's-edge ambience (2026-05-18) — paired low-low double pulse
+  // that reads as a heartbeat through a phone. Repeats while the
+  // bridge keeps the player in near-bust; one full pattern ≈ 480ms
+  // (~125 bpm equivalent on a single beat including the gap before
+  // the next dispatch).
+  heartbeat: [50, 80, 30],
 };
 
 const listeners = new Set<() => void>();

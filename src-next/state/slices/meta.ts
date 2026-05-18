@@ -23,6 +23,11 @@ export type MetaSlice = {
     // Optional for back-compat with pre-Pillar-E saves; selectors and
     // bridges default to []. Always written as an array going forward.
     resonances?: string[];
+    // 2026-05-18 Aliveness pass — set of edition keys the player has
+    // seen at least once (e.g. 'foil', 'holo', 'poly', 'void'). Drives
+    // the rare-edition slo-mo reveal in OfferCard. Optional for
+    // back-compat with older saves; the bridge defaults to [].
+    editions?: string[];
   };
   // 2026-05-11 easter egg discovery log. Each entry is a stable id from
   // EASTER_EGGS in data/easterEggs.ts. Persisted across runs so the codex
@@ -175,6 +180,7 @@ export const initialMetaSlice = (): MetaSlice => ({
     bosses: [],
     consumables: [...SEEDED_DISCOVERED_CONSUMABLES],
     resonances: [],
+    editions: [],
   },
   cosmicDust: 0,
   cosmicDustLifetime: 0,

@@ -102,6 +102,14 @@ import './bloodiedCoin';
 import './theConfessor';
 import './hourglass';
 import './theReckoning';
+// 2026-05-18 audit additions — fill design gaps surfaced by the
+// 2026-05-16 balance audit. See docs/balance-audit-2026-05-16.md
+// "New Catalysts (5 Proposals)".
+import './piggyBank';
+import './runaway';
+import './doubleOrNothing';
+import './resonanceCascade';
+import './leveling';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -149,5 +157,7 @@ export const CATALYST_IDS = [
   'cosmic_compass', 'voidwalker', 'crown_of_skulls', 'the_patient',
   'salt_of_earth', 'stargazer', 'bloodied_coin', 'the_confessor',
   'hourglass', 'the_reckoning',
+  // 2026-05-18 audit additions
+  'piggy_bank', 'runaway', 'double_or_nothing', 'resonance_cascade', 'leveling',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

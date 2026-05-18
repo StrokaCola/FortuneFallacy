@@ -12,7 +12,12 @@ import { Phase } from '../../pipeline/types';
 import { emitUpgrade } from './_helpers';
 
 const MIN_SCORING = 4;
-const MULT_BONUS = 5;
+// 2026-05-18 balance audit buff: flat bonus 5 → 10. The 4-die scoring
+// gate is easy to meet (any straight / four-kind / wide combo) but the
+// +5 reward was dwarfed by other late-pipe scaling, so the catalyst
+// never made it into winning builds. 10 makes the trigger feel worth
+// holding the slot.
+const MULT_BONUS = 10;
 
 register({
   id: 'mod_gravity',

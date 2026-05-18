@@ -167,10 +167,12 @@ describe('bustBlind', () => {
 });
 
 describe('startBlind — shard_lung round-start grant', () => {
-  it('grants +ante shards when shard_lung is owned', () => {
+  // 2026-05-18 balance audit: pre-audit grant was +ante shards. Nerfed
+  // to +ceil(ante/2) — Ante 2 → +1, Ante 4 → +2, Ante 3 → +2.
+  it('grants +ceil(ante/2) shards when shard_lung is owned (ante 2 → +1)', () => {
     const s = makeState({ goalIdx: 3, ante: 2, shards: 0, catalysts: ['shard_lung'] });
     const result = startBlind(s);
-    expect(result.state.run.shards).toBe(2);
+    expect(result.state.run.shards).toBe(1);
   });
 
   it('does not grant when shard_lung is not owned', () => {
@@ -179,10 +181,16 @@ describe('startBlind — shard_lung round-start grant', () => {
     expect(result.state.run.shards).toBe(0);
   });
 
-  it('grant scales with ante', () => {
+  it('grant scales with ante (ante 4 → +2)', () => {
     const s = makeState({ ante: 4, shards: 5, catalysts: ['shard_lung'] });
     const result = startBlind(s);
-    expect(result.state.run.shards).toBe(9); // 5 + 4
+    expect(result.state.run.shards).toBe(7); // 5 + ceil(4/2) = 5 + 2
+  });
+
+  it('odd antes round up (ante 3 → +2)', () => {
+    const s = makeState({ ante: 3, shards: 0, catalysts: ['shard_lung'] });
+    const result = startBlind(s);
+    expect(result.state.run.shards).toBe(2);
   });
 });
 

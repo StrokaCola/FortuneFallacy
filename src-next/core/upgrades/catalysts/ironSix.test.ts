@@ -27,14 +27,15 @@ describe('iron_six catalyst', () => {
     expect(def.apply(makeCtx([1, 2, 3, 4, 5], undefined, 4)).mult).toBe(4);
   });
 
-  it('adds +1 mult per scoring 6', () => {
+  it('adds +2 mult per scoring 6 (post-audit buff: was +1)', () => {
     const def = getAll().find((u) => u.id === 'iron_six')!;
-    expect(def.apply(makeCtx([6, 6, 6, 1, 1], undefined, 4)).mult).toBe(7);
+    // 3 sixes × 2 mult each = +6, on base 4 → 10.
+    expect(def.apply(makeCtx([6, 6, 6, 1, 1], undefined, 4)).mult).toBe(10);
   });
 
   it('only counts 6s in the scoring set (respects scoringOrder)', () => {
     const def = getAll().find((u) => u.id === 'iron_six')!;
-    // Two 6s exist, but only one is in scoringOrder.
-    expect(def.apply(makeCtx([6, 6, 1, 1, 1], [0, 2, 3], 4)).mult).toBe(5);
+    // Two 6s exist, but only one is in scoringOrder. 1 × 2 = +2, base 4 → 6.
+    expect(def.apply(makeCtx([6, 6, 1, 1, 1], [0, 2, 3], 4)).mult).toBe(6);
   });
 });
