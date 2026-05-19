@@ -67,14 +67,19 @@ export function ConsumableTray() {
     <>
       <div data-coach="consumable-tray" style={{
         position: 'absolute',
-        // Stacked DIRECTLY UNDER the CatalystStrip on the left rail.
-        // CatalystStrip anchors at (--hud-top-h + 8px), and a single
-        // catalyst card is 88px tall, so + 8 + 88 + 8 = +104px puts the
-        // consumable row 8px below the catalyst row's bottom edge.
-        // This keeps both trays on the same side ("treasury" column)
-        // and clears the dice board entirely on tight portrait.
-        top: 'calc(var(--hud-top-h, 134px) + 104px)',
-        left: 18,
+        // Tight portrait: anchor to the TOP-RIGHT at the same vertical
+        // band as the CatalystStrip (which sits at + 24px on tight),
+        // so the two trays read as a mirrored pair flanking the dice
+        // board. Items flow left-from-the-right-edge as more
+        // consumables are added.
+        // Non-tight (medium / wide rail): stacked DIRECTLY UNDER the
+        // CatalystStrip on the LEFT rail. CatalystStrip anchors at
+        // (--hud-top-h + 8px) here, and a single catalyst card is
+        // 88px tall, so + 8 + 88 + 8 = +104px puts the consumable
+        // row 8px below the catalyst row's bottom edge.
+        top: tight ? 'calc(var(--hud-top-h, 134px) + 24px)' : 'calc(var(--hud-top-h, 134px) + 104px)',
+        left: tight ? 'auto' : 18,
+        right: tight ? 18 : 'auto',
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
