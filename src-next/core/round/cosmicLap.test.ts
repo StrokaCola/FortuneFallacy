@@ -45,7 +45,30 @@ describe('startCosmicLap (Pillar D)', () => {
 
   it('assigns the lap-1 cosmic affliction', () => {
     const r = startCosmicLap(mkState({ endlessLap: 0 }));
-    expect(r.state.run.cosmicAfflictionId).toBe('gravity');
+    // 2026-05-19 stacking afflictions — the field is now an array; lap 1
+    // has exactly one entry (gravity is the only lapTrigger <= 1).
+    expect(r.state.run.cosmicAfflictionIds).toEqual(['gravity']);
+  });
+
+  it('stacks every eligible affliction for the lap', () => {
+    // 2026-05-19 stacking afflictions — lap 5 picks up gravity (1),
+    // echoing_void (2), cold_constellation (3), shattered_sky (4), and
+    // heat_death (5). Order is ascending by lapTrigger.
+    const r = startCosmicLap(mkState({ endlessLap: 4 }));
+    expect(r.state.run.cosmicAfflictionIds).toEqual([
+      'gravity',
+      'echoing_void',
+      'cold_constellation',
+      'shattered_sky',
+      'heat_death',
+    ]);
+  });
+
+  it('includes the new lap-15 singularity entry at very high laps', () => {
+    const r = startCosmicLap(mkState({ endlessLap: 14 }));
+    expect(r.state.run.cosmicAfflictionIds).toContain('singularity');
+    expect(r.state.run.cosmicAfflictionIds).toContain('oblivion_pull');
+    expect(r.state.run.cosmicAfflictionIds).toContain('void_tithe');
   });
 
   it('preserves run-state (catalysts, vouchers, mods, shards)', () => {

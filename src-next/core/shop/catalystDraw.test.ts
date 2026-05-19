@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   drawWeightedCatalysts,
   isLegendaryUnlocked,
+  isMythicUnlocked,
   rarityWeightsForAnte,
   rollRarity,
   LEGENDARY_UNLOCK_PREFIX,
+  MYTHIC_UNLOCK_PREFIX,
 } from './catalystDraw';
 import { CATALYST_META } from '../../data/catalysts';
 
@@ -18,7 +20,26 @@ describe('rarityWeightsForAnte', () => {
     const w = rarityWeightsForAnte(3);
     expect(w.common).toBeLessThan(0.55);
     expect(w.rare).toBeGreaterThanOrEqual(0.20);
-    expect(w.legendary).toBeGreaterThanOrEqual(0.04);
+    // 2026-05-19: legendary weight rebalanced slightly to make room for
+    // mythic. Ante 3 keeps legendary at 0.02 (was 0.04); ante 4 keeps 0.04.
+    expect(w.legendary).toBeGreaterThanOrEqual(0.02);
+  });
+
+  it('mythic is 0% at ante 1-2 (gated by ante > 2)', () => {
+    expect(rarityWeightsForAnte(1).mythic).toBe(0);
+    expect(rarityWeightsForAnte(2).mythic).toBe(0);
+  });
+
+  it('mythic appears from ante 3 (2%) and grows at ante 4 (4%)', () => {
+    expect(rarityWeightsForAnte(3).mythic).toBeCloseTo(0.02);
+    expect(rarityWeightsForAnte(4).mythic).toBeCloseTo(0.04);
+  });
+
+  it('Cosmic Lap depth boosts mythic rate by +1%/lap up to +4%', () => {
+    expect(rarityWeightsForAnte(4, 1).mythic).toBeCloseTo(0.05);
+    expect(rarityWeightsForAnte(4, 4).mythic).toBeCloseTo(0.08);
+    // Cap at +4% — lap 10 doesn't keep climbing.
+    expect(rarityWeightsForAnte(4, 10).mythic).toBeCloseTo(0.08);
   });
 });
 
@@ -27,8 +48,62 @@ describe('rollRarity', () => {
     expect(rollRarity(rarityWeightsForAnte(1), () => 0)).toBe('common');
   });
 
-  it('rolling 0.999 always returns legendary', () => {
-    expect(rollRarity(rarityWeightsForAnte(3), () => 0.999)).toBe('legendary');
+  it('rolling 0.999 at ante 3+ returns mythic (top of the band)', () => {
+    // 2026-05-19: mythic sits above legendary in the weight chain, so the
+    // very top of the rng range now lands on mythic, not legendary.
+    expect(rollRarity(rarityWeightsForAnte(3), () => 0.999)).toBe('mythic');
+  });
+
+  it('rolling 0.999 at ante 1-2 returns legendary (mythic weight is 0)', () => {
+    expect(rollRarity(rarityWeightsForAnte(1), () => 0.999)).toBe('legendary');
+  });
+});
+
+describe('isMythicUnlocked', () => {
+  it('non-mythic catalysts are always considered unlocked', () => {
+    const common = CATALYST_META.find((c) => c.rarity === 'common')!;
+    expect(isMythicUnlocked(common, [])).toBe(true);
+  });
+
+  it('mythic is locked when unlock id absent', () => {
+    const mythic = CATALYST_META.find((c) => c.rarity === 'mythic')!;
+    expect(isMythicUnlocked(mythic, [])).toBe(false);
+  });
+
+  it('mythic is unlocked when prefixed id is present', () => {
+    const mythic = CATALYST_META.find((c) => c.rarity === 'mythic')!;
+    expect(isMythicUnlocked(mythic, [`${MYTHIC_UNLOCK_PREFIX}${mythic.id}`])).toBe(true);
+  });
+});
+
+describe('drawWeightedCatalysts — mythic gating', () => {
+  it('mythics never surface without unlocks even when mythic tier rolls', () => {
+    // Draw at ante 4 with high-end rolls (so mythic tier is rolled), no
+    // unlocks — every mythic id should fall through to legendary/rare/etc.
+    const mythicIds = new Set(CATALYST_META.filter((c) => c.rarity === 'mythic').map((c) => c.id));
+    let mythicHits = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offers = drawWeightedCatalysts(3, 4, [], rng);
+      for (const id of offers) if (mythicIds.has(id)) mythicHits++;
+    }
+    expect(mythicHits).toBe(0);
+  });
+
+  it('unlocked mythics surface when the mythic tier rolls at ante 3+', () => {
+    const allMythicUnlocks = CATALYST_META
+      .filter((c) => c.rarity === 'mythic')
+      .map((c) => `${MYTHIC_UNLOCK_PREFIX}${c.id}`);
+    const mythicIds = new Set(CATALYST_META.filter((c) => c.rarity === 'mythic').map((c) => c.id));
+    let mythicHits = 0;
+    for (let seed = 1; seed <= 500; seed++) {
+      const rng = (() => { let x = seed; return () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; })();
+      const offers = drawWeightedCatalysts(3, 4, allMythicUnlocks, rng, [], undefined, undefined, 4);
+      for (const id of offers) if (mythicIds.has(id)) mythicHits++;
+    }
+    // With 8% mythic at lap 4 ante 4 and 3 offers per draw × 500 seeds,
+    // expected mythic hits ≈ 120. Use a wide floor for stability.
+    expect(mythicHits).toBeGreaterThan(20);
   });
 });
 

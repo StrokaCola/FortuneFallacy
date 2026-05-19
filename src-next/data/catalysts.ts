@@ -29,7 +29,11 @@ export type CatalystMeta = {
   color: string;
   desc: string;
   flavor?: string;
-  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
+  // 2026-05-19 — 'mythic' is a new tier above legendary. Mythics are
+  // unlock-gated per-id (mythic_<id> in meta.unlocks), priced at 20
+  // shards in the shop, and only appear from ante 3+ (weight = 0 at
+  // ante 1-2). See core/shop/catalystDraw.ts and actions/handlers/shop.ts.
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'mythic';
   archetype?: CatalystArchetype;
   // Constellation-locked: when set, this catalyst only spawns in the
   // shop pool when the active constellation matches. Drives build
@@ -482,6 +486,48 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'Three stones build as high as four.',
     rarity: 'uncommon', archetype: 'combo',
     requiresConstellation: 'triumvirate' },
+
+  // 2026-05-19 shard-scaling pack — three lower-rarity catalysts whose
+  // power scales with the player's live shard balance. Fills out the
+  // shard-hoarder build at every rarity below the mythic Hoarder's Crown.
+  // No unlock gate; appear in the standard shop draw.
+  { id: 'counter_purse', name: "Counter's Purse", icon: '⛁', color: '#f5c451',
+    desc: 'Each 3 shards held: +1 Chip per scored die this hand.',
+    flavor: 'Coins counted twice. The hand pays accordingly.',
+    rarity: 'common', archetype: 'economy' },
+  { id: 'magpie', name: 'Magpie', icon: '◆', color: '#f5c451',
+    desc: 'Each 5 shards held: +1 Mult.',
+    flavor: 'Bright in the nest. Brighter on the table.',
+    rarity: 'uncommon', archetype: 'scaling' },
+  { id: 'vault_heart', name: 'Vault Heart', icon: '◈', color: '#f5c451',
+    desc: 'Each 10 shards held: ×1.10 Mult (compounds — 30 shards = ×1.33).',
+    flavor: 'Locked weight. Each threshold turns the dial.',
+    rarity: 'rare', archetype: 'scaling' },
+
+  // 2026-05-19 mythic tier — 5 build-defining catalysts gated behind
+  // per-id unlock conditions (see checkMythicUnlocks in transitions.ts).
+  // Price: 20 shards (vs 5 for every other rarity). Only appear from
+  // ante 3+; rate boosted in Cosmic Laps to reward endless play.
+  { id: 'singularity_engine', name: 'Singularity Engine', icon: '✸', color: '#ff7847',
+    desc: 'Each shard you hold: +0.5 Mult AND +5 Chips this hand.',
+    flavor: 'Compress every coin to a single point. The point screams.',
+    rarity: 'mythic', archetype: 'scaling' },
+  { id: 'cosmic_anchor', name: 'Cosmic Anchor', icon: '⚓', color: '#7be3ff',
+    desc: 'Cosmic affliction target taxes halved; compounding-tax accrues 50% slower.',
+    flavor: 'Drop weight against the pull. The current still moves you.',
+    rarity: 'mythic', archetype: 'mods' },
+  { id: 'voidforge', name: 'Voidforge', icon: '✦', color: '#cc88ff',
+    desc: 'Each blind cleared: +1 permanent Mult to every hand. Resets on bust.',
+    flavor: 'Hammer the dark until it remembers your shape.',
+    rarity: 'mythic', archetype: 'scaling' },
+  { id: 'hoarders_crown', name: "Hoarder's Crown", icon: '♛', color: '#ffd84a',
+    desc: 'Per shard above 10: +0.2 Mult. Above 20: also +1 Chip. Above 30: also ×1.10 Mult (compounds).',
+    flavor: 'Wear the pile. The pile wears you.',
+    rarity: 'mythic', archetype: 'economy' },
+  { id: 'eclipse_heart', name: 'Eclipse Heart', icon: '◐', color: '#a080c0',
+    desc: 'Permanent: +2 Hands per blind, +1 catalyst slot.',
+    flavor: 'A second beat under the first. The dark keeps time.',
+    rarity: 'mythic', archetype: 'risk' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {
@@ -504,6 +550,11 @@ export const SCALING_CATALYST_IDS: ReadonlySet<string> = new Set([
   // both accumulate per-run state via the catalystStacks slot, so they
   // pick up the scaling visual treatment (pulse kind + audio voice).
   'cosmic_compass', 'stargazer',
+  // 2026-05-19 shard-scaling + mythic pack — these scale with shards
+  // held or per-blind stacks. Mythic Voidforge accrues in catalystStacks
+  // like the 2026-05-11 pack; the rest scale off live shard balance.
+  'magpie', 'vault_heart', 'counter_purse',
+  'singularity_engine', 'hoarders_crown', 'voidforge',
 ]);
 
 export const RETRIGGER_CATALYST_IDS: ReadonlySet<string> = new Set([

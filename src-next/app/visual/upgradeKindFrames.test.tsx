@@ -4,7 +4,7 @@ import { KindFrame, type UpgradeKind } from './upgradeKindFrames';
 import { RARITY_COLORS, type Rarity } from './rarityStyles';
 
 const KINDS: UpgradeKind[] = ['catalyst', 'mod', 'voucher', 'consumable', 'pack'];
-const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'legendary'];
+const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'legendary', 'mythic'];
 
 describe('KindFrame', () => {
   it('renders one path for every (kind × rarity) without throwing', () => {

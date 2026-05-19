@@ -49,11 +49,11 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
     id: 'echoing_void',
     name: 'Echoing Void',
     flavor: 'A second curse follows the first. Every blind a small darkness.',
-    // 2026-05-13: target-tax is the deliverable for this affliction in
-    // the v1 lap pass. The "boss debuffs on all blinds" design is a
-    // follow-up (requires a debuff layer that doesn't gate on isBoss).
+    // 2026-05-19 rebalance: 1.15 → 1.20 in concert with the stacking-
+    // afflictions change (afflictions now compound; floor lifts so the
+    // step-up at each lap stays meaningful).
     lapTrigger: 2,
-    effect: { kind: 'target-tax', multiplier: 1.15 },
+    effect: { kind: 'target-tax', multiplier: 1.20 },
   },
   {
     id: 'cold_constellation',
@@ -66,17 +66,19 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
     id: 'shattered_sky',
     name: 'Shattered Sky',
     flavor: 'Every wind a storm. Every storm a wind.',
-    // Currently mapped to target-tax; the "two voidstorms per blind"
-    // design lands in a later pass (requires a multi-storm picker).
+    // 2026-05-19 rebalance: 1.25 → 1.40. Stacks with echoing_void (lap-2+),
+    // so the player feels a real step-up entering lap 4.
     lapTrigger: 4,
-    effect: { kind: 'target-tax', multiplier: 1.25 },
+    effect: { kind: 'target-tax', multiplier: 1.40 },
   },
   {
     id: 'heat_death',
     name: 'Heat Death',
     flavor: 'The cosmos cools. Each blind cleared, the next steps deeper.',
+    // 2026-05-19 rebalance: 0.15 → 0.20 per blind. With stacking now in,
+    // event_horizon (lap-8+) sums into this for a true endless wall.
     lapTrigger: 5,
-    effect: { kind: 'compounding-tax', perBlindMul: 0.15 },
+    effect: { kind: 'compounding-tax', perBlindMul: 0.20 },
   },
   // 2026-05-18 P4 long-tail laps. Pre-audit pool capped escalation at
   // lap 5 (heat_death repeated forever). The lap-6+ entries below give
@@ -87,8 +89,9 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
     id: 'gravity_well_redux',
     name: 'Gravity Redux',
     flavor: 'The pull doubles. Targets bend further with each blind.',
+    // 2026-05-19 rebalance: 1.35 → 1.50.
     lapTrigger: 6,
-    effect: { kind: 'target-tax', multiplier: 1.35 },
+    effect: { kind: 'target-tax', multiplier: 1.50 },
   },
   {
     id: 'frozen_choir',
@@ -101,15 +104,45 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
     id: 'event_horizon',
     name: 'Event Horizon',
     flavor: 'Past this point every step is heavier than the last.',
+    // 2026-05-19 rebalance: 0.25 → 0.30 per blind. Sums with heat_death
+    // (lap-5+, now 0.20), so a lap-8 player sees +0.50/blind compounding.
     lapTrigger: 8,
-    effect: { kind: 'compounding-tax', perBlindMul: 0.25 },
+    effect: { kind: 'compounding-tax', perBlindMul: 0.30 },
+  },
+  // 2026-05-19 lap-9 extension. Pairs naturally with frozen_choir (lap-7
+  // −2 hands) for a hand-and-target double-tax beat. Gives lap 9 its own
+  // identity instead of just inheriting lap 8's wall.
+  {
+    id: 'void_tithe',
+    name: 'Void Tithe',
+    flavor: 'Every blind taxes hand and target both.',
+    lapTrigger: 9,
+    effect: { kind: 'target-tax', multiplier: 1.20 },
   },
   {
     id: 'final_dark',
     name: 'The Final Dark',
-    flavor: 'Targets +50%. Welcome to the deep cosmos.',
+    flavor: 'Targets bend. Welcome to the deep cosmos.',
+    // 2026-05-19 rebalance: 1.50 → 1.75.
     lapTrigger: 10,
-    effect: { kind: 'target-tax', multiplier: 1.50 },
+    effect: { kind: 'target-tax', multiplier: 1.75 },
+  },
+  // 2026-05-19 long-tail laps 12 / 15. Top end of the affliction ladder
+  // for veterans who've broken the lap-10 wall. Singularity is run-ending
+  // by design — at +0.50/blind it doubles the target every 2 blinds.
+  {
+    id: 'oblivion_pull',
+    name: 'Oblivion',
+    flavor: 'Targets double. The pull is the law now.',
+    lapTrigger: 12,
+    effect: { kind: 'target-tax', multiplier: 2.00 },
+  },
+  {
+    id: 'singularity',
+    name: 'Singularity',
+    flavor: 'Each blind cleared deepens the gravity well. Run while you can.',
+    lapTrigger: 15,
+    effect: { kind: 'compounding-tax', perBlindMul: 0.50 },
   },
 ];
 
@@ -118,14 +151,27 @@ export function lookupCosmicAffliction(id: string | null | undefined): CosmicAff
   return COSMIC_AFFLICTIONS.find((a) => a.id === id);
 }
 
-// Picks the active affliction for a given lap index. Returns the
-// affliction with the highest lapTrigger <= lap, falling back to the
-// lap-1 entry. Returns undefined when lap is 0 (normal run).
+// Picks the SINGLE active affliction for a given lap index — the
+// affliction with the highest lapTrigger <= lap. Kept for back-compat
+// callers and UI that want "the headline affliction". The lap resolver
+// in core/round/transitions.ts uses pickAfflictionsForLap (plural) so
+// multiple eligible afflictions compound.
 export function pickAfflictionForLap(lap: number): CosmicAfflictionDef | undefined {
   if (lap < 1) return undefined;
   const eligible = COSMIC_AFFLICTIONS.filter((a) => a.lapTrigger <= lap);
   if (eligible.length === 0) return undefined;
-  // Highest trigger wins (escalation).
   eligible.sort((a, b) => b.lapTrigger - a.lapTrigger);
   return eligible[0];
+}
+
+// 2026-05-19 stacking afflictions — returns EVERY eligible affliction
+// for the given lap (lapTrigger <= lap), sorted ascending by lapTrigger
+// for stable resolution order. The startBlind resolver applies all of
+// them: target-tax effects multiply, compounding-tax perBlindMul sums,
+// hands-delta sums, voidstorm-force picks the lowest-trigger entry.
+export function pickAfflictionsForLap(lap: number): CosmicAfflictionDef[] {
+  if (lap < 1) return [];
+  return COSMIC_AFFLICTIONS
+    .filter((a) => a.lapTrigger <= lap)
+    .sort((a, b) => a.lapTrigger - b.lapTrigger);
 }

@@ -164,6 +164,16 @@ export function accrueBlindCleared(args: {
     mutated = true;
   }
 
+  // 2026-05-19 mythic — Voidforge: +1 stack per cleared blind. The
+  // catalyst's UPGRADES apply reads this and adds +N permanent mult
+  // to every hand. Resets on bust via the catalystStacks wipe in
+  // bustBlind, matching the "first time each blind clears" reset
+  // social contract.
+  if (owned.has('voidforge')) {
+    stacks['voidforge'] = (stacks['voidforge'] ?? 0) + 1;
+    mutated = true;
+  }
+
   return mutated ? { run: { catalystStacks: stacks } } : { run: {} };
 }
 

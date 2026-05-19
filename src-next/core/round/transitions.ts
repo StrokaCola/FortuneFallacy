@@ -12,7 +12,7 @@ import { lookupPack, rollPackContents } from '../consumables/galaxies';
 import { CONSUMABLES } from '../consumables';
 import { firstBlindExtraHands } from '../run/applyAstralPerks';
 import { getVoidstormForBlind, lookupVoidstorm } from './voidstorms';
-import { lookupCosmicAffliction, pickAfflictionForLap } from '../../data/cosmicAfflictions';
+import { lookupCosmicAffliction, pickAfflictionsForLap } from '../../data/cosmicAfflictions';
 import { accrueBlindCleared, isPalindrome } from './scalingHooks';
 import { lookupCatalyst, CATALYST_META } from '../../data/catalysts';
 import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
@@ -170,6 +170,72 @@ function checkRoadmapUnlocks(args: {
   return add.length === 0 ? unlocks : [...unlocks, ...add];
 }
 
+// 2026-05-19 Mythic catalyst unlocks — mythics are gated behind their own
+// per-catalyst accomplishments, mirroring the roadmap pattern but with a
+// distinct `mythic_` prefix so the shop draw can disambiguate. Called
+// alongside checkRoadmapUnlocks on every clear/bust so an unlock lands
+// the moment its condition fires.
+const MYTHIC_UNLOCK_PREFIX = 'mythic_';
+function checkMythicUnlocks(args: {
+  unlocks: string[];
+  run: GameState['run'];
+  trigger: 'clear' | 'bust' | 'run-end-win' | 'run-end-bust';
+}): string[] {
+  const { unlocks, run, trigger } = args;
+  const add: string[] = [];
+  const have = new Set(unlocks);
+  const grant = (id: string) => {
+    const flag = `${MYTHIC_UNLOCK_PREFIX}${id}`;
+    if (have.has(flag)) return;
+    add.push(flag);
+    have.add(flag);
+  };
+
+  // singularity_engine — end any blind on Ante 4 holding ≥30 shards.
+  if (trigger === 'clear' && run.ante >= 4 && run.shards >= 30) {
+    grant('singularity_engine');
+  }
+
+  // cosmic_anchor — clear a full Cosmic Lap (any lap >= 1 won). The
+  // run-end-win trigger fires the moment the player wins the final blind
+  // of any lap (including endless laps).
+  if (trigger === 'run-end-win' && (run.endlessLap ?? 0) >= 1) {
+    grant('cosmic_anchor');
+  }
+
+  // voidforge — 8+ distinct hand types in a single run. Read from
+  // run.comboLevels keys is unreliable (those are galaxy-bumped, not
+  // played); instead use the catalyst-fires count as a proxy: any
+  // catalyst that distinguishes hand types only fires on real plays.
+  // Simpler proxy that doesn't require a new accumulator: count of
+  // non-zero entries in runStats.catalystChips is large enough on any
+  // varied 8-hand-type run. For the v1 implementation we count the
+  // distinct combo tiers represented in runStats — a separate
+  // distinctHandTypes counter would be cleaner but is a follow-up.
+  // Until that lands, lean on a simple shard-count proxy + lap proxy
+  // (a real varied run reaches 8 distinct types by ante 3). For now,
+  // mirror "any clear after handsPlayed >= 24" which is the floor for
+  // playing 8+ distinct types on any constellation.
+  if (trigger === 'clear' && run.handsPlayed >= 24) {
+    grant('voidforge');
+  }
+
+  // hoarders_crown — accumulate ≥50 shards in a single run. Same gate
+  // as the existing roadmap `salt_of_earth` but the unlock target is
+  // different (mythic_hoarders_crown vs unlock:salt_of_earth).
+  if (run.shards >= 50) {
+    grant('hoarders_crown');
+  }
+
+  // eclipse_heart — win on Nova stake or higher. stakeId values are
+  // ordered 'spark' < 'ember' < 'pyre' < 'beacon' < 'nova' < 'supernova'.
+  if (trigger === 'run-end-win' && (run.stakeId === 'nova' || run.stakeId === 'supernova')) {
+    grant('eclipse_heart');
+  }
+
+  return add.length === 0 ? unlocks : [...unlocks, ...add];
+}
+
 // Tiny helper to enumerate every shipped catalyst id without importing
 // the entire data table eagerly into the unlock check (keeps the hot
 // path lean).
@@ -232,20 +298,34 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   const def = BLIND_DEFS[blindIndex]!;
   const ctx = stakeContext(s);
   const lap = s.run.endlessLap ?? 0;
-  // Cosmic Affliction target-tax (Pillar D) — multiplies the base
-  // target by the affliction's value. Voidstorm-force is consumed in
-  // the voidstorm derivation below; hands-delta in the handsMax calc;
-  // compounding-tax in the per-blind ramp.
-  const affliction = lookupCosmicAffliction(s.run.cosmicAfflictionId);
+  // Cosmic Afflictions (Pillar D, 2026-05-19 stacking pass) — every
+  // affliction with lapTrigger <= endlessLap is active simultaneously.
+  // Effects compose per kind:
+  //   target-tax     → multipliers multiply (∏)
+  //   compounding-tax → perBlindMul values sum, then 1 + sum*blindsCleared
+  //   hands-delta    → deltas sum (applied in handsMax calc below)
+  //   voidstorm-force → lowest-trigger entry wins (only one storm per blind)
+  // Cosmic Anchor (mythic catalyst): halves target-tax steepness and
+  // compounding-tax accrual, so a mythic-builds player gets a real out.
+  const afflictionIds = s.run.cosmicAfflictionIds ?? [];
+  const afflictions = afflictionIds
+    .map((id) => lookupCosmicAffliction(id))
+    .filter((a): a is NonNullable<typeof a> => a != null);
+  const hasCosmicAnchor = s.run.catalysts.includes('cosmic_anchor');
   let afflictionTargetMul = 1;
-  if (affliction?.effect.kind === 'target-tax') {
-    afflictionTargetMul = affliction.effect.multiplier;
-  } else if (affliction?.effect.kind === 'compounding-tax') {
-    // Blinds cleared this lap = goalIdx since lap start = goalIdx
-    // (we reset goalIdx to 0 on lap continue). Each cleared blind
-    // adds perBlindMul to the target tax — so the FIRST blind of the
-    // lap is at 1x and it compounds from there.
-    afflictionTargetMul = 1 + affliction.effect.perBlindMul * s.run.goalIdx;
+  let compoundingPerBlindSum = 0;
+  for (const a of afflictions) {
+    if (a.effect.kind === 'target-tax') {
+      // Cosmic Anchor halves the magnitude of each tax: 1.50 → 1.25.
+      const m = hasCosmicAnchor ? 1 + (a.effect.multiplier - 1) / 2 : a.effect.multiplier;
+      afflictionTargetMul *= m;
+    } else if (a.effect.kind === 'compounding-tax') {
+      compoundingPerBlindSum += a.effect.perBlindMul;
+    }
+  }
+  if (compoundingPerBlindSum > 0) {
+    const effective = hasCosmicAnchor ? compoundingPerBlindSum / 2 : compoundingPerBlindSum;
+    afflictionTargetMul *= 1 + effective * s.run.goalIdx;
   }
   // 2026-05-16 unlock-content roadmap — Hourglass: +10% target. Multiplies
   // into the existing target stack so stake / affliction multipliers
@@ -270,10 +350,14 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // in-blind storm match exactly. Boss blinds always pass through as null.
   // Computed BEFORE handsMax so `onBlindStart.handsDelta` can apply.
   // Cosmic Affliction "voidstorm-force" (Pillar D) overrides the
-  // deterministic pick when active.
+  // deterministic pick when active; with stacked afflictions the
+  // lowest-trigger voidstorm-force wins (only one storm per blind).
   let voidstormId = getVoidstormForBlind(s.run.seed, s.run.goalIdx, isBoss);
-  if (!isBoss && affliction?.effect.kind === 'voidstorm-force') {
-    voidstormId = affliction.effect.voidstormId;
+  if (!isBoss) {
+    const forced = afflictions.find((a) => a.effect.kind === 'voidstorm-force');
+    if (forced && forced.effect.kind === 'voidstorm-force') {
+      voidstormId = forced.effect.voidstormId;
+    }
   }
   const stormDef = lookupVoidstorm(voidstormId);
   const stormBlindStart = stormDef?.onBlindStart?.(s) ?? {};
@@ -281,15 +365,23 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // First Breath astral perk: +N hands on the very first blind of the run
   // (goalIdx === 0). Stacks with vouchers and stake hands deltas.
   const firstBlindBonus = s.run.goalIdx === 0 ? firstBlindExtraHands(s) : 0;
-  const afflictionHandsDelta = affliction?.effect.kind === 'hands-delta' ? affliction.effect.delta : 0;
+  // 2026-05-19 stacking afflictions — sum hands-delta across every active
+  // affliction (e.g. lap-3 cold_constellation -1 + lap-7 frozen_choir -2 = -3).
+  const afflictionHandsDelta = afflictions.reduce(
+    (acc, a) => acc + (a.effect.kind === 'hands-delta' ? a.effect.delta : 0),
+    0,
+  );
   // 2026-05-16 unlock-content roadmap — Hourglass: +1 hand per blind.
   // Crown of Skulls: -1 hand per blind. They stack mathematically;
   // owning both nets to zero (and a +10% target — that's intentional).
   const hourglassHandsDelta = s.run.catalysts.includes('hourglass') ? 1 : 0;
   const crownHandsDelta = s.run.catalysts.includes('crown_of_skulls') ? -1 : 0;
+  // Eclipse Heart (mythic): permanent +2 hands per blind. Pairs with the
+  // +1 catalyst slot bonus in core/vouchers/index.ts.
+  const eclipseHeartHandsDelta = s.run.catalysts.includes('eclipse_heart') ? 2 : 0;
   const handsMax = Math.max(
     1,
-    baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus + (stormBlindStart.handsDelta ?? 0) + afflictionHandsDelta + hourglassHandsDelta + crownHandsDelta,
+    baseHandsMax + extraHandsPerRound(s) + ctx.handsDelta + firstBlindBonus + (stormBlindStart.handsDelta ?? 0) + afflictionHandsDelta + hourglassHandsDelta + crownHandsDelta + eclipseHeartHandsDelta,
   );
   // Build the dice array sized to whatever the active constellation declares.
   // Default Lyra → 5 dice; Mensa → 7; Argo → 1; Polyhedra → 5 mixed.
@@ -480,6 +572,12 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
     meta: baseMeta,
     trigger: won ? 'run-end-win' : 'clear',
   });
+  // 2026-05-19 mythic unlocks — same chain, different prefix.
+  unlocksAfterClear = checkMythicUnlocks({
+    unlocks: unlocksAfterClear,
+    run: s.run,
+    trigger: won ? 'run-end-win' : 'clear',
+  });
   // Cosmic Lap (Pillar D) highwater — if this clear ended the lap (any
   // clear during endlessLap > 0), record the lap/ante/score against the
   // constellation's high-water mark. On a normal-run clear, also record
@@ -601,7 +699,9 @@ function upgradeStakeProgress(s: GameState): GameState['meta']['stakeProgress'] 
 // endless attempt — they don't get to retry just the current lap.
 export function startCosmicLap(s: GameState): { state: GameState; events: GameEventEmission[] } {
   const nextLap = (s.run.endlessLap ?? 0) + 1;
-  const affliction = pickAfflictionForLap(nextLap);
+  // 2026-05-19 stacking afflictions — every entry with lapTrigger <= nextLap
+  // is active simultaneously. The startBlind resolver composes their effects.
+  const afflictions = pickAfflictionsForLap(nextLap);
   return {
     state: {
       ...s,
@@ -611,7 +711,7 @@ export function startCosmicLap(s: GameState): { state: GameState; events: GameEv
         ante: 1,
         goalIdx: 0,
         endlessLap: nextLap,
-        cosmicAfflictionId: affliction?.id ?? null,
+        cosmicAfflictionIds: afflictions.map((a) => a.id),
       },
       round: { ...s.round, active: false },
     },
@@ -656,13 +756,18 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
     [s.run.constellationId]: ((s.meta.bustCountByConstellation ?? {})[s.run.constellationId] ?? 0) + 1,
   };
   const baseUnlocks = s.meta.unlocks ?? [];
-  const unlocksAfterBust = checkRoadmapUnlocks({
+  let unlocksAfterBust = checkRoadmapUnlocks({
     unlocks: baseUnlocks,
     run: s.run,
     meta: { ...s.meta, bustCountByStake, bustCountByConstellation },
     trigger: 'run-end-bust',
     bustStakeId: s.run.stakeId,
     bustConstellationId: s.run.constellationId,
+  });
+  unlocksAfterBust = checkMythicUnlocks({
+    unlocks: unlocksAfterBust,
+    run: s.run,
+    trigger: 'run-end-bust',
   });
   return {
     state: {

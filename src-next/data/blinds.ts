@@ -422,14 +422,17 @@ export const BOSS_BLINDS: BossBlind[] = [
   },
 ];
 
-// Targets scale by (2.25 ^ lap) in Cosmic Lap (Pillar D) — passing lap=0
-// reproduces the legacy formula exactly. The exponent base was tuned to
-// roughly match the "every lap meaningfully harder, but reachable with
-// a strong build" feel: lap 1 = 2.25x, lap 2 = ~5x, lap 3 = ~11x.
+// 2026-05-19 Cosmic Lap rebalance — replaced the flat 2.25^lap curve with
+// a compounding multiplier so each lap punishes meaningfully harder than
+// the previous one. Endless players were outpacing the old curve by lap 4
+// (scaling catalysts accumulate permanent stacks across laps).
+//   lap=0 → 1× (legacy, normal-run target preserved exactly).
+//   lap=1 ≈ 2.70×, lap=2 ≈ 8.25×, lap=3 ≈ 26.88×, lap=4 ≈ 89.06×,
+//   lap=5 ≈ 292.97×, lap=6 ≈ 947×, lap=7 ≈ 3003×.
 export function targetForBlind(ante: number, blindIndex: number, lap = 0): number {
   const row = ANTE_BASE_TARGETS[Math.min(ante, ANTE_BASE_TARGETS.length) - 1]!;
   const base = row[blindIndex]!;
-  const lapMul = lap > 0 ? Math.pow(2.25, lap) : 1;
+  const lapMul = lap > 0 ? Math.pow(2.5, lap) * (1 + 0.08 * lap * lap) : 1;
   return Math.ceil(base * BLIND_DEFS[blindIndex]!.targetMult * lapMul);
 }
 

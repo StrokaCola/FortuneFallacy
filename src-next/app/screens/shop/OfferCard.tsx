@@ -27,10 +27,10 @@ import { bus } from '../../../events/bus';
 const ACCENT = '#7be3ff';
 
 // Soft rarity halo intensity sitting BEHIND the card. Stronger for
-// higher rarities; legendary uses its own pulsing aura instead so
-// the layers don't double-glow.
+// higher rarities; legendary and mythic use their own pulsing aura
+// instead so the layers don't double-glow.
 const RARITY_RING_STRENGTH: Record<Rarity, number> = {
-  common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0,
+  common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0, mythic: 0,
 };
 
 export type ShopOffer = {
