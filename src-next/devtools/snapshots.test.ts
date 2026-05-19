@@ -8,6 +8,7 @@ const fakeState: GameState = {
   shop: {} as never,
   meta: {} as never,
   ui: { screen: 'round' } as never,
+  tutorial: {} as never,
   pingCount: 0,
 };
 

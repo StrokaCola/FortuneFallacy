@@ -6,7 +6,7 @@ import { begin as perfBegin } from '../devtools/perf';
 
 const KEY = 'ff_next_save';
 
-type SavedState = Pick<GameState, 'run' | 'meta' | 'round' | 'ui' | 'shop'>;
+type SavedState = Pick<GameState, 'run' | 'meta' | 'round' | 'ui' | 'shop' | 'tutorial'>;
 
 export function loadSaved(): SavedState | null {
   const parsed = safeReadJSON(KEY);
@@ -25,7 +25,7 @@ export function startPersistence(): () => void {
   const flush = (s: ReturnType<typeof store.getState>): void => {
     timer = null;
     const end = perfBegin('persistence');
-    const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui, shop: s.shop };
+    const snapshot: SavedState = { run: s.run, meta: s.meta, round: s.round, ui: s.ui, shop: s.shop, tutorial: s.tutorial };
     safeWriteJSON(KEY, snapshot);
     end();
   };
@@ -88,6 +88,11 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedMeta.onboarding = {
     seen: savedOnb.seen ?? [],
     dismissed: savedOnb.dismissed ?? false,
+    // firstLaunch (added 2026-05-19) gates the guided-tour opt-in modal.
+    // Legacy saves without the field default to false so existing players
+    // don't get the tour prompt out of nowhere — they can replay via
+    // Settings if they want it.
+    firstLaunch: savedOnb.firstLaunch ?? false,
   };
   const savedDisc = mergedMeta.discovered ?? {};
   // Galaxies (Celestial Pack contents) are seeded as discovered for
@@ -186,6 +191,9 @@ export function applySavedToInitial(s: GameState): GameState {
   // entirely → fall back to the fresh slice so Shop's useEffect rolls
   // offers on next mount.
   const mergedShop = saved.shop ? { ...s.shop, ...saved.shop } : s.shop;
+  // Tutorial (added 2026-05-19) — legacy saves predate this slice, fall
+  // back to the fresh slice (inactive, no opt-in pending).
+  const mergedTutorial = saved.tutorial ? { ...s.tutorial, ...saved.tutorial } : s.tutorial;
   return {
     ...s,
     run:   mergedRun,
@@ -193,5 +201,6 @@ export function applySavedToInitial(s: GameState): GameState {
     round: saved.round?.active ? { ...s.round, ...saved.round, handInProgress: false } : s.round,
     ui:    { ...s.ui, screen: saved.ui?.screen ?? s.ui.screen },
     shop:  mergedShop,
+    tutorial: mergedTutorial,
   };
 }

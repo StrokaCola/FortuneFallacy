@@ -47,6 +47,8 @@ import { ChallengeSelect } from './screens/ChallengeSelect';
 import { AstralForge } from './screens/AstralForge';
 import { EventScreen } from './screens/EventScreen';
 import { CoachmarkController } from './onboarding/CoachmarkController';
+import { TutorialController } from './onboarding/tutorial/TutorialController';
+import { TutorialOptInModal } from './onboarding/tutorial/TutorialOptInModal';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { AfterglowOverlay } from './visual/AfterglowOverlay';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
@@ -281,6 +283,8 @@ export function App() {
         <PackOverlay />
         <SkipBountyOverlay />
         <CoachmarkController />
+        <TutorialController />
+        <TutorialOptInModal />
         <AfterglowOverlay />
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}

@@ -5,6 +5,7 @@ import { initialRoundSlice, type RoundSlice } from './slices/round';
 import { initialShopSlice, type ShopSlice } from './slices/shop';
 import { initialMetaSlice, type MetaSlice } from './slices/meta';
 import { initialUiSlice, type UiSlice } from './slices/ui';
+import { initialTutorialSlice, type TutorialSlice } from './slices/tutorial';
 
 export type GameState = {
   run: RunSlice;
@@ -12,6 +13,7 @@ export type GameState = {
   shop: ShopSlice;
   meta: MetaSlice;
   ui: UiSlice;
+  tutorial: TutorialSlice;
   pingCount: number;
 };
 
@@ -21,6 +23,7 @@ const initialState = (): GameState => ({
   shop:  initialShopSlice(),
   meta:  initialMetaSlice(),
   ui:    initialUiSlice(),
+  tutorial: initialTutorialSlice(),
   pingCount: 0,
 });
 

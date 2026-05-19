@@ -14,6 +14,27 @@ import { catalystIdFromEvent, resonanceIdFromEvent } from '../../core/upgrades/e
 import { lookupResonance } from '../../data/resonances';
 import type { RunSlice } from '../../state/slices/run';
 import { accrueScalingStacks, checkEasterEggs } from '../../core/round/scalingHooks';
+import { facesForStep, applyScriptedFaces, isTutorialActive } from '../../app/onboarding/tutorial/deterministicScript';
+import type { GameState } from '../../state/store';
+
+// Tutorial: override predeterminedFaces for unlocked dice on the next
+// roll. Locked dice always preserve their face. No-op when the tour is
+// inactive or the active step has no scripted dice.
+function applyTutorialDiceOverride(
+  ctx: { simRequest?: { predeterminedFaces: number[] } },
+  state: GameState,
+): void {
+  if (!ctx.simRequest) return;
+  if (!isTutorialActive(state)) return;
+  const scripted = facesForStep(state.tutorial.step);
+  if (!scripted) return;
+  const lockedMask = state.round.dice.map((d) => d.locked);
+  ctx.simRequest.predeterminedFaces = applyScriptedFaces(
+    ctx.simRequest.predeterminedFaces,
+    lockedMask,
+    scripted,
+  );
+}
 
 // Banish-face support — pull per-die substitution counts off the simRequest
 // and produce both the bus events (one per die that retried at least once)
@@ -65,6 +86,7 @@ export const rollHandler: ActionHandler = (a, s) => {
         },
       };
       const ctx = runRollPipelineUpToSim(workingState);
+      applyTutorialDiceOverride(ctx, workingState);
       const banish = readBanishFromSim(ctx.simRequest, workingState.round.banishTriggersByDie ?? []);
       const events: GameEventEmission[] = [
         {
@@ -95,6 +117,7 @@ export const rollHandler: ActionHandler = (a, s) => {
       if (s.round.scoring || s.round.handInProgress) return { state: s, events: [] };
       const advanced = { ...s, run: { ...s.run, rollCounter: (s.run.rollCounter ?? 0) + 1 } };
       const ctx = runRollPipelineUpToSim(advanced);
+      applyTutorialDiceOverride(ctx, advanced);
       const banish = readBanishFromSim(ctx.simRequest, advanced.round.banishTriggersByDie ?? []);
       const events: GameEventEmission[] = [
         {
@@ -122,10 +145,17 @@ export const rollHandler: ActionHandler = (a, s) => {
     }
     case 'ROLL_SETTLED': {
       const autoUnlock = hasDebuff(s, 'auto_unlock_after_roll');
+      // Tutorial: on the scripted hand-2 roll, auto-lock every die so
+      // Five-of-a-Kind scores in full without making the player re-learn
+      // the locking mechanic. Locking is taught on hand 1; hand 2 is the
+      // payoff beat. By the time ROLL_SETTLED fires, the dispatch-level
+      // tutorial advancer has already moved step from t_hand_two to
+      // t_score_two_pair — check both ids defensively.
+      const tutorialAutoLock = s.tutorial?.active && (s.tutorial.step === 't_hand_two' || s.tutorial.step === 't_score_two_pair');
       const dice = a.result.finalFaces.map((face, id) => ({
         id,
         face,
-        locked: autoUnlock ? false : s.round.dice[id]?.locked ?? false,
+        locked: tutorialAutoLock ? true : autoUnlock ? false : s.round.dice[id]?.locked ?? false,
       }));
       // Pi Approximation easter egg — first three dice settle as 3, 1, 4
       // on the very first roll of the run (run.handsPlayed === 0 AND first
@@ -165,7 +195,15 @@ export const rollHandler: ActionHandler = (a, s) => {
         state: {
           ...s,
           run: { ...s.run, ...runDiff },
-          round: { ...s.round, handInProgress: false, dice, piApproxArmed: true },
+          round: {
+            ...s.round,
+            handInProgress: false,
+            dice,
+            piApproxArmed: true,
+            // Mirror the auto-lock into scoringOrder so SCORE_HAND scores
+            // all five dice together rather than the empty post-roll set.
+            ...(tutorialAutoLock ? { scoringOrder: dice.map((_, i) => i) } : {}),
+          },
         },
         events,
       };

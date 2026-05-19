@@ -506,12 +506,16 @@ export function Settings() {
             type="button"
             className="btn btn-ghost mat-interactive tap"
             onClick={() => {
+              // Resets both surfaces: the 18 organic coachmarks (via
+              // RESET_ONBOARDING — clears seen + dismissed + firstLaunch)
+              // and the scripted guided tour (opt-in modal will re-fire
+              // on the next ConstellationSelect → Begin).
               dispatch({ type: 'RESET_ONBOARDING' });
               sfxPlay('uiClick');
             }}
             style={{ fontSize: 11, padding: '8px 14px' }}
           >
-            Replay tutorial
+            Replay guided tour
           </button>
         </div>
 

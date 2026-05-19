@@ -48,7 +48,14 @@ export type CoachmarkId =
   | 'first_boss_debuff'
   | 'first_skip_bounty'
   | 'first_dust_earned'
-  | 'astral_forge_first';
+  | 'astral_forge_first'
+  // 2026-05-19 — gap-fillers for players who decline the guided tour.
+  // Each covers a mechanic the scripted tour teaches but the prior 18
+  // didn't surface organically. See app/onboarding/tutorial/.
+  | 'free_reroll_first'
+  | 'free_play_hand_first'
+  | 'shop_reroll_first'
+  | 'shop_continue_first';
 
 export type CoachmarkSide = 'above' | 'below';
 
@@ -256,6 +263,43 @@ export const COACHMARKS: CoachmarkDef[] = [
     side: 'above',
     text: 'Astral perks are permanent edges that apply to every future run. Spend dust to unlock; the effects compound as you stack more.',
   },
+  // ── 2026-05-19 gap-fillers (after the 18 organic hints) ─────────────
+  // These cover mechanics the scripted guided tour teaches but the
+  // existing entries don't. Filed at the tail so they only surface
+  // when no higher-priority coachmark is eligible — i.e. once the
+  // player has dismissed the more specific hints, or they don't apply
+  // to the current state.
+  {
+    id: 'free_reroll_first',
+    screen: 'round',
+    anchor: 'reroll-btn',
+    side: 'above',
+    text: 'Reroll the unlocked dice. Locked dice keep their face — chase the combo you want, then play the hand.',
+    requires: (s) => s.round.firstRollDone && s.round.rerollsLeft >= 1 && s.run.handsPlayed === 0,
+  },
+  {
+    id: 'free_play_hand_first',
+    screen: 'round',
+    anchor: 'play-hand-btn',
+    side: 'above',
+    text: 'Tap Play Hand to lock in the score. Catalysts and mods fire on every scored hand.',
+    requires: (s) => s.round.firstRollDone && s.run.handsPlayed === 0 && !s.round.scoring,
+  },
+  {
+    id: 'shop_reroll_first',
+    screen: 'shop',
+    anchor: 'shop-reroll',
+    side: 'above',
+    text: 'Reroll the shop for new offers. Costs creep up each time you spin within the same shop — save it for runs that need the lift.',
+    requires: (s) => (s.run.shopSeq ?? 0) >= 1,
+  },
+  {
+    id: 'shop_continue_first',
+    screen: 'shop',
+    anchor: 'next-trial-btn',
+    side: 'above',
+    text: 'When you\'re ready, tap Next Trial. Nothing in the shop is required — you can move on with shards in pocket.',
+  },
 ];
 
 export function pickActiveCoachmark(
@@ -263,6 +307,14 @@ export function pickActiveCoachmark(
 ): CoachmarkDef | null {
   const onb = s.meta.onboarding ?? { seen: [], dismissed: false };
   if (onb.dismissed) return null;
+  // Guided tour owns the screen while active — coachmarks would
+  // visually fight the tutorial bubble and steal the teaching beat.
+  // The 18+ organic hints resume the moment the tour ends.
+  if (s.tutorial?.active) return null;
+  // The opt-in modal also owns the screen — suppress hub_blinds /
+  // constellation_select etc. while the player is making the
+  // tutorial-yes-or-no decision.
+  if (s.tutorial?.optInPending) return null;
   const screen = s.ui.screen;
   for (const c of COACHMARKS) {
     const matches = Array.isArray(c.screen)

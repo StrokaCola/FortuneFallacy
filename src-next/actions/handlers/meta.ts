@@ -82,8 +82,13 @@ export const metaHandler: ActionHandler = (a, s) => {
       };
     }
     case 'RESET_ONBOARDING':
+      // Resets all three onboarding surfaces — `seen` (the 18 organic
+      // coachmarks), `dismissed` (the Skip All flag from a tour bubble),
+      // and `firstLaunch` (re-queues the guided-tour opt-in modal on
+      // the next constellation-select submit). Settings → Replay
+      // guided tour is the player-facing trigger.
       return {
-        state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false } } },
+        state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false, firstLaunch: true } } },
         events: [],
       };
     case 'RESOLVE_AUDIT': {

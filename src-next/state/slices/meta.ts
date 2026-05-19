@@ -47,11 +47,14 @@ export type MetaSlice = {
   astralPerks: string[];
   // First-run onboarding. `seen` is the list of coachmark ids the player
   // has dismissed; `dismissed` short-circuits all coachmarks (Skip All).
-  // Settings exposes a "Replay tutorial" affordance that resets both fields.
+  // `firstLaunch` gates the one-time tutorial opt-in modal — true on a
+  // fresh save, flipped to false on Yes or No (or on Replay).
+  // Settings exposes a "Replay guided tour" affordance that resets all three fields.
   // See app/onboarding/coachmarks.ts for the registry.
   onboarding: {
     seen: string[];
     dismissed: boolean;
+    firstLaunch?: boolean;
   };
   // Daily Challenge history. Keyed by 'YYYY-MM-DD' (UTC), so today's
   // entry tells the Title screen whether the daily has already been
@@ -185,7 +188,7 @@ export const initialMetaSlice = (): MetaSlice => ({
   cosmicDust: 0,
   cosmicDustLifetime: 0,
   astralPerks: [],
-  onboarding: { seen: [], dismissed: false },
+  onboarding: { seen: [], dismissed: false, firstLaunch: true },
   dailyHistory: {},
   achievements: { unlocked: [], unlockedAt: {} },
   dailyLogin: { lastDate: null },

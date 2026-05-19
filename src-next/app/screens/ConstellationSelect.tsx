@@ -4,7 +4,7 @@ import { CONSTELLATIONS, type Constellation } from '../../data/constellations';
 import { lookupConstellationUnlock } from '../../data/constellationUnlocks';
 import { describeDiceSpec } from '../../data/dice';
 import { STAKES, stakeIndex } from '../../data/stakes';
-import { useStore, type GameState } from '../../state/store';
+import { useStore, store, type GameState } from '../../state/store';
 import { useIsCompactStage, useIsTightStage } from '../hooks/useIsCompactStage';
 import { decodeSeed } from '../../core/seed/rng';
 
@@ -320,6 +320,17 @@ function Card({ c, compact, tight, progressId, unlocked, enteredSeed, seedBlocke
               stakeId: stake.id,
               ...(enteredSeed != null ? { seed: enteredSeed } : {}),
             });
+            // Surface the one-time guided-tour opt-in modal AFTER NEW_RUN
+            // so the run is already set up when the player picks Yes/No.
+            // The modal handles the screen transition (into Round for
+            // tutorial, or stays on Hub for skip) so we don't race it
+            // with the NEW_RUN handler's `ui.screen='hub'` write.
+            // Defensive optional-chain in case a legacy save's meta
+            // shape didn't carry the field through persistence.
+            const onb = (store?.getState ? store.getState().meta.onboarding : undefined) ?? null;
+            if (onb?.firstLaunch) {
+              dispatch({ type: 'OPEN_OPT_IN' });
+            }
           }}
           style={{
             marginTop: 8, width: '100%', padding: '8px 14px', fontSize: 12,
