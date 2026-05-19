@@ -25,7 +25,12 @@ export type Debuff =
   | 'only_even_faces';
 
 export function activeDebuffs(s: GameState): Set<Debuff> {
-  if (!s.round.isBoss || !s.round.blindId) return new Set();
+  // Debuffs only apply while a round is actively being played. clearBlind /
+  // bustBlind leave round.isBoss + round.blindId intact for analytics and
+  // banner cleanup, but the player is in the shop/hub at that point — the
+  // boss's rules shouldn't still be biting (e.g. Sedna's mod-slot cap of 1
+  // overriding Forged Links until the next blind starts).
+  if (!s.round.active || !s.round.isBoss || !s.round.blindId) return new Set();
   const def = BOSS_BLINDS.find((b) => b.id === s.round.blindId);
   const debuffs = new Set((def?.debuffs ?? []) as Debuff[]);
   // Boss Phase Escalation (Pillar B) — once promoted to phase 2, union the

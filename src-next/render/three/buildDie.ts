@@ -149,10 +149,17 @@ export function buildDie(
   geometricVariant?: GeometricVariant,
   shape: DieShape = 'd6',
   faceValues?: readonly DieFace[],
+  mods?: readonly string[],
 ): BuiltDie {
   const baseS = STYLES[styleKey];
   const S: StyleDef = modOverride ? { ...baseS, ...modOverride } : baseS;
   if (shape !== 'd6') return buildPolyhedronDie(size, shape, S, styleKey, faceValues, geometricVariant);
+  // Wildcard mod overrides face visuals: every face renders as ★. The
+  // rolled values stay numeric for physics; wildcardSolve handles the
+  // "any face counts as any combo face" logic at score time.
+  if (mods?.includes('wildcard')) {
+    return buildD6WithDigits(size, S, geometricVariant, ['WILD', 'WILD', 'WILD', 'WILD', 'WILD', 'WILD']);
+  }
   // d6 with non-canonical faces (Fibonacci/Eclipse/Ophiuchus) renders digits
   // per spatial face so what the player sees matches the rolled value.
   if (faceValues && !isStandardD6(faceValues)) {
@@ -343,8 +350,15 @@ export function buildDie(
   const surfaceOut = size * 0.0015;
   const haloShown = S.eIntensity > 0;
 
+  // Loaded mod: the 1-pip face physically renders as a 6-pip face. The
+  // logical value-remap (1 → 6) happens at score time; this just makes
+  // the die's faces visually match the loaded outcome. Lens/halo
+  // materials stay keyed by SPATIAL face so settle-bloom animations
+  // still target "the face that landed up".
+  const loadedSwap = mods?.includes('loaded') ?? false;
   FACE_DEFS.forEach(({ val, axis, sign }) => {
-    const positions = PIPS[val]!;
+    const pipKey = (loadedSwap && val === 1) ? 6 : val;
+    const positions = PIPS[pipKey]!;
     const lensMat = faceLensMats[val as 1 | 2 | 3 | 4 | 5 | 6];
     const haloMat = faceHaloMats[val as 1 | 2 | 3 | 4 | 5 | 6];
     positions.forEach(([u, v], i) => {

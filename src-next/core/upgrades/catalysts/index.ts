@@ -110,6 +110,20 @@ import './runaway';
 import './doubleOrNothing';
 import './resonanceCascade';
 import './leveling';
+// 2026-05-19 shard-scaling pack — three lower-rarity shard-hoarder cards
+// that scale with live shard balance. Mythic Hoarder's Crown is the
+// build-defining ceiling for the same axis.
+import './counterPurse';
+import './magpie';
+import './vaultHeart';
+// 2026-05-19 mythic tier — 5 build-defining cards above legendary.
+// Cosmic Anchor + Eclipse Heart register no-op handlers; their real
+// effects live in transitions.startBlind and vouchers/maxCatalystSlots.
+import './singularityEngine';
+import './cosmicAnchor';
+import './voidforge';
+import './hoardersCrown';
+import './eclipseHeart';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -159,5 +173,9 @@ export const CATALYST_IDS = [
   'hourglass', 'the_reckoning',
   // 2026-05-18 audit additions
   'piggy_bank', 'runaway', 'double_or_nothing', 'resonance_cascade', 'leveling',
+  // 2026-05-19 shard-scaling pack
+  'counter_purse', 'magpie', 'vault_heart',
+  // 2026-05-19 mythic tier
+  'singularity_engine', 'cosmic_anchor', 'voidforge', 'hoarders_crown', 'eclipse_heart',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

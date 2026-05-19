@@ -779,9 +779,11 @@ export function Forge() {
           height: tight ? 360 : 440,
         }}>
           <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between' }}>
+            <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
               <span>◈ mod inventory</span>
-              <span style={{ color: '#f5c451' }}>{ownedMods.length}</span>
+              <span style={{ color: '#bba8ff', letterSpacing: '0.2em' }}>
+                <span style={{ color: '#f5c451' }}>{ownedMods.length}</span> owned · die {selectedDie + 1}: <span style={{ color: slots.length >= maxSlots ? '#e2334a' : '#f5c451' }}>{slots.length}/{maxSlots}</span> slots
+              </span>
             </div>
             {ownedMods.length === 0 ? (
               <div style={{ flex: '1 1 auto', display: 'grid', placeItems: 'center', textAlign: 'center', padding: 20 }}>
@@ -969,7 +971,7 @@ export function Forge() {
                           <div style={{ fontSize: 10, color: '#bba8ff', lineHeight: 1.3 }}>
                             {r.desc}
                           </div>
-                          {canForge && (
+                          {canForge ? (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -984,6 +986,13 @@ export function Forge() {
                               }}>
                               {isPickerOpen ? '✕ cancel' : `🔨 forge ◆${FORGE_COST}`}
                             </button>
+                          ) : edition === null && (
+                            <div className="f-mono uc" style={{
+                              marginTop: 6, fontSize: 9, color: '#7a6fa6',
+                              letterSpacing: '0.18em', opacity: 0.85,
+                            }}>
+                              🔨 needs 2 plain + ◆{FORGE_COST}
+                            </div>
                           )}
                           {isPickerOpen && (
                             // Phase 4.2 — edition forging as orbital ritual.
@@ -1057,8 +1066,8 @@ export function Forge() {
                           <span style={{ display: 'block', marginTop: 4, color: '#7be3ff', fontSize: 10 }}>
                             {canAttach ? 'Click to attach to the selected die.' : 'Selected die has no free mod slots.'}
                           </span>
-                          {canForge && (
-                            <span style={{ display: 'block', marginTop: 4, color: '#f5c451', fontSize: 10 }}>
+                          {edition === null && (
+                            <span style={{ display: 'block', marginTop: 4, color: canForge ? '#f5c451' : '#7a6fa6', fontSize: 10 }}>
                               Forge: combine 2 plain copies + ◆{FORGE_COST} into one editioned mod.
                             </span>
                           )}

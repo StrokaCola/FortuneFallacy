@@ -67,29 +67,33 @@ export function ConsumableTray() {
     <>
       <div data-coach="consumable-tray" style={{
         position: 'absolute',
-        // Mirrors the CatalystStrip on the opposite side; stack from
-        // TopBar's bottom edge so the row never collides with a wrapped TopBar.
-        //
-        // 2026-05-16 fix — bumped from +8px to +32px so the desktop
-        // PauseButton (which lives at top:max(80, --hud-top-h - 24)
-        // and shares the right:18 column) no longer overlaps the
-        // first consumable tile. Tight viewport pause is bottom-right
-        // so the extra offset is cheap there too.
-        top: 'calc(var(--hud-top-h, 134px) + 32px)',
-        right: 18,
-        // Wide-mode: vertical right rail to mirror the catalyst left rail.
+        // Stacked DIRECTLY UNDER the CatalystStrip on the left rail.
+        // CatalystStrip anchors at (--hud-top-h + 8px), and a single
+        // catalyst card is 88px tall, so + 8 + 88 + 8 = +104px puts the
+        // consumable row 8px below the catalyst row's bottom edge.
+        // This keeps both trays on the same side ("treasury" column)
+        // and clears the dice board entirely on tight portrait.
+        top: 'calc(var(--hud-top-h, 134px) + 104px)',
+        left: 18,
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,
         pointerEvents: scoring ? 'none' : 'auto',
         opacity: scoring ? 0.35 : 1,
         transition: 'opacity 220ms ease',
+        ...(wide ? {} : {
+          // Cap to visible play area so the absolute-positioned row
+          // never extends past the viewport edge on tight portrait.
+          // Mirrors the CatalystStrip guard.
+          maxWidth: 'calc(100vw - 36px)',
+        }),
       }}>
-        {/* Wide-mode rail header — mirrors CatalystStrip's "vessel"
-            naming on the opposite side. Hidden on tight portrait
-            where the row sits inline next to the dice canvas. */}
+        {/* Wide-mode rail header — labels the rail as a "consumables"
+            vessel. Now lives on the LEFT rail directly under catalysts
+            (was previously a right rail), so the header aligns to
+            flex-start to match CatalystStrip. */}
         {wide && (
-          <div className="ff-rail-header" style={{ alignSelf: 'flex-end' }}>
+          <div className="ff-rail-header" style={{ alignSelf: 'flex-start' }}>
             <span className="ff-rail-header-sigil">◇</span>
             consumables
           </div>

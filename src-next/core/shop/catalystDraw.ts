@@ -26,25 +26,51 @@ export function isRoadmapCatalystUnlocked(catalystId: string, unlocks: readonly 
   return unlocks.includes(`${UNLOCK_PREFIX}${catalystId}`);
 }
 
-type RarityWeights = { common: number; uncommon: number; rare: number; legendary: number };
+// 2026-05-19 mythic tier — each mythic is gated behind a per-id unlock
+// in meta.unlocks under the `mythic_` prefix. The unlock conditions
+// live in checkMythicUnlocks in core/round/transitions.ts.
+export const MYTHIC_UNLOCK_PREFIX = 'mythic_';
+export function isMythicUnlocked(meta: CatalystMeta, unlocks: readonly string[]): boolean {
+  if (meta.rarity !== 'mythic') return true;
+  return unlocks.includes(`${MYTHIC_UNLOCK_PREFIX}${meta.id}`);
+}
+
+type RarityWeights = {
+  common: number;
+  uncommon: number;
+  rare: number;
+  legendary: number;
+  mythic: number;
+};
 
 // Per-ante drift. At Ante 1-2 the shop leans heavily common to teach
-// archetypes; from Ante 3+ the rare/legendary bands open up. Hand-tuned
-// against blind targets — see balance notes in the progression-systems plan.
-export function rarityWeightsForAnte(ante: number): RarityWeights {
-  if (ante >= 3) return { common: 0.40, uncommon: 0.36, rare: 0.20, legendary: 0.04 };
-  return { common: 0.55, uncommon: 0.30, rare: 0.13, legendary: 0.02 };
+// archetypes; from Ante 3+ the rare/legendary bands open up. Mythic is
+// only available from ante 3 onward and stays scarce — even at ante 4
+// the rate is 4%, climbing to 8% in deep Cosmic Laps (+1% per lap,
+// capped at +4%). Hand-tuned against blind targets — see balance notes
+// in the progression-systems plan.
+export function rarityWeightsForAnte(ante: number, lap = 0): RarityWeights {
+  if (ante >= 4) {
+    const mythicBoost = Math.min(0.04, Math.max(0, lap) * 0.01);
+    return { common: 0.38, uncommon: 0.34, rare: 0.20, legendary: 0.04, mythic: 0.04 + mythicBoost };
+  }
+  if (ante === 3) {
+    const mythicBoost = Math.min(0.04, Math.max(0, lap) * 0.01);
+    return { common: 0.40, uncommon: 0.36, rare: 0.20, legendary: 0.02, mythic: 0.02 + mythicBoost };
+  }
+  return { common: 0.55, uncommon: 0.30, rare: 0.13, legendary: 0.02, mythic: 0 };
 }
 
 // Pick a single rarity tier from the weighted distribution. Pure function;
 // rng is a 0..1 supplier so this is fully reproducible in tests.
 export function rollRarity(weights: RarityWeights, rng: () => number): keyof RarityWeights {
-  const total = weights.common + weights.uncommon + weights.rare + weights.legendary;
+  const total = weights.common + weights.uncommon + weights.rare + weights.legendary + weights.mythic;
   let roll = rng() * total;
   if ((roll -= weights.common) <= 0) return 'common';
   if ((roll -= weights.uncommon) <= 0) return 'uncommon';
   if ((roll -= weights.rare) <= 0) return 'rare';
-  return 'legendary';
+  if ((roll -= weights.legendary) <= 0) return 'legendary';
+  return 'mythic';
 }
 
 // Probability that a draw biases toward the player's existing archetype set
@@ -88,7 +114,10 @@ function pickFromRarity(
   constellationId?: string,
   faceUniverse?: ReadonlySet<number>,
 ): string | null {
-  const order: (keyof RarityWeights)[] = ['legendary', 'rare', 'uncommon', 'common'];
+  // 2026-05-19 — mythic sits at the head of the fallthrough chain so an
+  // unlucky roll with no unlocked mythics drops cleanly to legendary, then
+  // rare, etc. Empty pools cascade until a non-empty tier is found.
+  const order: (keyof RarityWeights)[] = ['mythic', 'legendary', 'rare', 'uncommon', 'common'];
   const startIdx = order.indexOf(rarity);
   for (let i = startIdx; i < order.length; i++) {
     const tier = order[i]!;
@@ -97,6 +126,9 @@ function pickFromRarity(
         m.rarity === tier &&
         !excluded.has(m.id) &&
         isLegendaryUnlocked(m, unlocks) &&
+        // 2026-05-19 — mythics need their per-id unlock flag; locked
+        // mythics fall through to legendary via the loop above.
+        isMythicUnlocked(m, unlocks) &&
         // 2026-05-16 — roadmap-gated catalysts (Cosmic Compass etc) only
         // appear in the shop once the player has earned the matching
         // unlock flag. Non-roadmap catalysts pass through unchanged.
@@ -155,8 +187,11 @@ export function drawWeightedCatalysts(
   // can never appear. Caller computes from getComboCtx(state).faceUniverse.
   // Undefined falls back to the legacy "no face gate" behaviour for tests.
   faceUniverse?: ReadonlySet<number>,
+  // 2026-05-19: Cosmic Lap depth — mildly boosts mythic-tier weight in
+  // endless mode to reward continued play. Pass 0 (or omit) for normal runs.
+  lap: number = 0,
 ): string[] {
-  const weights = rarityWeightsForAnte(ante);
+  const weights = rarityWeightsForAnte(ante, lap);
   const out: string[] = [];
   const excluded = new Set<string>();
   let preferred = archetypesOf(ownedCatalysts);

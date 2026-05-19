@@ -124,13 +124,15 @@ export type RunSlice = {
   // Cosmic Lap (Pillar D) — endless-mode loop counter. 0 during the
   // normal 4-ante run. Increments by 1 each time the player clears Ante
   // 4 Final Trial and picks "Continue into the Cosmic Lap". Drives
-  // target scaling (`Math.pow(2.25, lap)`) and selects the active
-  // cosmic affliction below.
+  // target scaling (see targetForBlind in data/blinds.ts) and selects
+  // the active cosmic afflictions below.
   endlessLap?: number;
-  // ID of the current cosmic affliction (from data/cosmicAfflictions.ts).
-  // Set when endlessLap > 0; null during the normal run. Affliction
-  // effects are applied in startBlind / pipeline phases as needed.
-  cosmicAfflictionId?: string | null;
+  // 2026-05-19 stacking afflictions — IDs of EVERY active cosmic
+  // affliction for the current lap (from data/cosmicAfflictions.ts).
+  // Empty in normal-run; populated by startCosmicLap with all entries
+  // whose lapTrigger <= endlessLap. Effects compound in startBlind:
+  // target-tax multiplies, compounding-tax sums, hands-delta sums.
+  cosmicAfflictionIds?: string[];
   // Boss debuff id locked in for the CURRENT ante's boss blind. Picked
   // ahead of time (NEW_RUN seeds ante 1's; clearBlind picks the next on
   // boss-clear) so:
@@ -236,7 +238,7 @@ export const initialRunSlice = (): RunSlice => ({
   theAnswerArmed: false,
   mirroredHandActive: false,
   endlessLap: 0,
-  cosmicAfflictionId: null,
+  cosmicAfflictionIds: [],
   upcomingBossId: null,
   seedSource: 'random',
   shopSeq: 0,

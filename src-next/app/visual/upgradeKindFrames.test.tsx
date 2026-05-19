@@ -4,7 +4,7 @@ import { KindFrame, type UpgradeKind } from './upgradeKindFrames';
 import { RARITY_COLORS, type Rarity } from './rarityStyles';
 
 const KINDS: UpgradeKind[] = ['catalyst', 'mod', 'voucher', 'consumable', 'pack'];
-const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'legendary'];
+const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'legendary', 'mythic'];
 
 describe('KindFrame', () => {
   it('renders one path for every (kind × rarity) without throwing', () => {
@@ -54,6 +54,19 @@ describe('KindFrame', () => {
       <KindFrame kind="catalyst" rarity="rare" size={42}>X</KindFrame>,
     );
     expect((rare.firstElementChild as HTMLElement).className).not.toContain('legendary-aura');
+  });
+
+  it('adds the is-mythic-glyph class on mythic (light-touch chromatic only)', () => {
+    // 2026-05-19 — KindFrame mythic gets the light-touch glyph class
+    // (chromatic-aberration on the inner SVG only) so tiny thumbnails
+    // in the Codex don't render the 180px-spread breathing halo.
+    // Card surfaces (OfferCard, CatalystCard) opt into the full
+    // .is-mythic + <MythicFrame> treatment explicitly.
+    const { container: myth } = render(
+      <KindFrame kind="catalyst" rarity="mythic" size={42}>X</KindFrame>,
+    );
+    expect((myth.firstElementChild as HTMLElement).className).toContain('is-mythic-glyph');
+    expect((myth.firstElementChild as HTMLElement).className).not.toContain('legendary-aura');
   });
 
   it('renders without rarity (null) — no errors, no rarity attribute mismatch', () => {

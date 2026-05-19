@@ -3,6 +3,7 @@ import { Astrolabe } from '../visual/Astrolabe';
 import { Sigil } from '../visual/Sigil';
 import { lookupVoucher } from '../../data/vouchers';
 import { lookupCatalyst } from '../../data/catalysts';
+import { lookupVoidstorm } from '../../core/round/voidstorms';
 import { useStore, type GameState } from '../../state/store';
 import { selectProjectedScore } from '../../state/selectors';
 import {
@@ -44,6 +45,11 @@ const selectChallengeId = (s: GameState) => s.run.challengeId;
 const selectIsBoss = (s: GameState) => s.round.isBoss;
 const selectRoundActive = (s: GameState) => s.round.active;
 const selectBlindId = (s: GameState) => s.round.blindId;
+// Voidstorm (cosmic boon / curse) — moved into the ANTE panel as a
+// chip alongside the boss + stake badges so the player's tilt state
+// for the trial lives in one well-known spot. Previously this was a
+// floating VoidstormBadge pinned to the right rail.
+const selectVoidstormId = (s: GameState) => s.round.voidstormId;
 
 export function TopBar({
   ante = 1,
@@ -87,6 +93,8 @@ export function TopBar({
   const isBoss = useStore(selectIsBoss);
   const roundActive = useStore(selectRoundActive);
   const blindId = useStore(selectBlindId);
+  const voidstormId = useStore(selectVoidstormId);
+  const voidstormDef = (roundActive && voidstormId) ? lookupVoidstorm(voidstormId) : null;
   const stake = lookupStake(stakeId);
   const challenge = challengeId ? lookupChallenge(challengeId) : null;
   const bossDef = (roundActive && isBoss && blindId)
@@ -380,6 +388,46 @@ export function TopBar({
             </span>
           </div>
         )}
+        {/* Voidstorm chip — surfaces the active per-blind boon / curse
+            inside the well-known ANTE panel slot next to boss + stake
+            badges. Replaces the floating VoidstormBadge that used to
+            hover on the right rail. */}
+        {voidstormDef && (() => {
+          const isBoon = voidstormDef.tone === 'boon';
+          const accent = isBoon ? '#7be3ff' : '#ff4d6d';
+          const labelTint = isBoon ? '#7be3ff' : '#ff7847';
+          const glyph = isBoon ? '✦' : '✺';
+          return (
+            <div
+              className="has-tip"
+              data-coach="voidstorm-badge"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                marginTop: 6, padding: '2px 8px', borderRadius: 4,
+                background: `${accent}22`, border: `1px solid ${accent}88`,
+                boxShadow: `0 0 10px ${accent}44`,
+                cursor: 'help', position: 'relative',
+              }}
+            >
+              <span style={{
+                fontSize: 11, color: accent,
+                textShadow: `0 0 6px ${accent}`,
+                lineHeight: 1,
+              }}>{glyph}</span>
+              <span className="f-mono uc" style={{
+                fontSize: 9, letterSpacing: '0.22em', color: labelTint,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: tight ? 120 : 200,
+              }}>
+                {voidstormDef.tone} · {voidstormDef.name.toLowerCase()}
+              </span>
+              <span className={tight ? 'tip tip-above' : 'tip'}>
+                <span className="tip-title">{voidstormDef.name} · Voidstorm {isBoon ? 'Boon' : 'Curse'}</span>
+                {voidstormDef.flavor}
+              </span>
+            </div>
+          );
+        })()}
         <span className="tip">
           <span className="tip-title">{blind} · Ante {ante}</span>
           Hands left: how many full scoring hands you have this trial. Rerolls left: how many times you can re-roll the unlocked dice this hand.

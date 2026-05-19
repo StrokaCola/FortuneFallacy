@@ -10,7 +10,6 @@ import { CatalystStrip } from '../hud/CatalystStrip';
 import { LegendaryFire } from '../hud/LegendaryFire';
 import { HotStreakBanner } from '../hud/HotStreakBanner';
 import { HeatMeter } from '../hud/HeatMeter';
-import { VoidstormBadge } from '../hud/VoidstormBadge';
 import { PatternDetectedBanner } from '../hud/PatternDetectedBanner';
 import { ShardDeductToast } from '../hud/ShardDeductToast';
 import { ShardGainToast } from '../hud/ShardGainToast';
@@ -109,7 +108,6 @@ export function Round() {
       <LegendaryFire />
       <HotStreakBanner />
       <HeatMeter />
-      <VoidstormBadge />
       <PatternDetectedBanner />
       <ShardDeductToast />
       <ShardGainToast />

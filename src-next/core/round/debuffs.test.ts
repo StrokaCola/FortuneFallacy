@@ -11,7 +11,7 @@ import type { GameState } from '../../state/store';
 function mkState(blindId: string, bossPhase: 1 | 2): GameState {
   return {
     run: initialRunSlice(),
-    round: { ...initialRoundSlice(), isBoss: true, blindId, bossPhase },
+    round: { ...initialRoundSlice(), active: true, isBoss: true, blindId, bossPhase },
     shop: initialShopSlice(),
     meta: initialMetaSlice(),
     ui: initialUiSlice(),

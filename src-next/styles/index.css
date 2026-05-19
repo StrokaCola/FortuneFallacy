@@ -2438,6 +2438,380 @@ html:not(.reduce-motion) .legendary-aura.legendary-aura-static {
   animation: none;
 }
 
+/* ─── Mythic (apex tier) ─────────────────────────────────────────────
+   2026-05-19 — built from the Catalyst Card System Brief design package.
+   Cyberpunk-cosmic treatment: locked rectangle, prismatic spectrum
+   marqueeing the perimeter via @property animated conic-gradient, HUD
+   bracket corners + scan-target crown + CRT scanlines, paired data-
+   stream rails, signal-trace cartouche with mono RGB-split name, twin
+   counter-phased glitch slices, sub-pixel shake, SVG feDisplacementMap
+   bursts that physically warp card edges. Three pulses in ~330ms, then
+   four-plus seconds of calm. Glitch should feel uninvited. Forbidden:
+   no anthropomorphic creature crests, no dragons, no "louder gold."
+   Mythic is different gravity, not more gold.
+
+   The .frame-mythic block fills its parent (which must be position:
+   relative); .is-mythic on the card host adds the breathing halo,
+   sub-pixel shake, and displacement bursts. Compact variants for
+   small surfaces (CatalystStrip tile, Codex cell) drop the cartouche
+   text + scanlines + datastreams + displacement via .myth-compact —
+   marquee, brackets, glitch, comet, and chromatic glyph all stay so
+   the rarity still reads at thumbnail size. */
+
+@property --mythic-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.frame-mythic {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 9, 37, 0.75),
+    inset 0 0 0 6px rgba(15, 9, 37, 0.55),
+    inset 0 0 0 7px rgba(184, 164, 255, 0.55),
+    inset 0 0 0 8px rgba(15, 9, 37, 0.5),
+    inset 0 0 0 10px rgba(255, 82, 200, 0.2),
+    inset 0 0 0 11px rgba(15, 9, 37, 0.5),
+    inset 0 0 0 13px rgba(123, 227, 255, 0.16),
+    inset 0 0 0 14px rgba(15, 9, 37, 0.4);
+}
+
+/* Marquee rim — STATIC ring shape, spectrum flows via @property */
+.frame-mythic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--mythic-angle),
+    #b8a4ff 0deg,
+    #7be3ff 50deg,
+    #5be8a4 100deg,
+    #ffd84a 155deg,
+    #ff7847 210deg,
+    #ff52c8 265deg,
+    #cc88ff 315deg,
+    #b8a4ff 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  filter: drop-shadow(0 0 4px rgba(184, 164, 255, 0.75));
+}
+html:not(.reduce-motion) .frame-mythic::before {
+  animation: ff-mythic-marquee 7s linear infinite;
+}
+@keyframes ff-mythic-marquee {
+  to { --mythic-angle: 360deg; }
+}
+
+/* Scan-target reticle crown — top-center HUD anchor */
+.myth-crown {
+  position: absolute;
+  top: 5px; left: 50%;
+  transform: translateX(-50%);
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  color: rgba(232, 224, 255, 1);
+  filter: drop-shadow(0 0 5px rgba(184, 164, 255, 0.95));
+  z-index: 2;
+}
+.myth-crown svg { width: 100%; height: 100%; }
+
+/* HUD bracket corners — sharp L-brackets with tick marks */
+.myth-corner {
+  position: absolute;
+  width: 16px; height: 16px;
+  color: rgba(232, 224, 255, 0.95);
+  filter: drop-shadow(0 0 3px rgba(184, 164, 255, 0.85));
+  z-index: 2;
+}
+.myth-corner svg { width: 100%; height: 100%; }
+.myth-corner.tl { top: 5px; left: 5px; }
+.myth-corner.tr { top: 5px; right: 5px; transform: scaleX(-1); }
+.myth-corner.bl { bottom: 5px; left: 5px; transform: scaleY(-1); }
+.myth-corner.br { bottom: 5px; right: 5px; transform: scale(-1, -1); }
+
+/* CRT scanline overlay — fine horizontal lines inside the safe area */
+.myth-scanlines {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 2px,
+    rgba(184, 164, 255, 0.10) 2px 3px
+  );
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+/* Data-stream rails — thin neon verticals flanking the glyph */
+.myth-datastream {
+  position: absolute;
+  top: 38px; bottom: 62px;
+  width: 1px;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(123, 227, 255, 0.55) 35%,
+    rgba(184, 164, 255, 0.55) 65%,
+    transparent
+  );
+  box-shadow: 0 0 4px rgba(184, 164, 255, 0.65);
+}
+.myth-datastream.l { left: 16px; }
+.myth-datastream.r { right: 16px; }
+
+/* Glitch sweep — horizontal RGB-split slices, ~5.5s cycle */
+.myth-glitch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+  mix-blend-mode: screen;
+}
+.myth-glitch::before {
+  content: '';
+  position: absolute;
+  left: -8px; right: -8px;
+  height: 3px;
+  top: -10px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 82, 200, 0.85) 22%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(123, 227, 255, 0.85) 78%,
+    transparent
+  );
+  box-shadow: 0 0 12px rgba(184, 164, 255, 0.85), 0 0 4px rgba(255, 82, 200, 0.55);
+}
+.myth-glitch::after {
+  content: '';
+  position: absolute;
+  left: -8px; right: -8px;
+  height: 5px;
+  top: -10px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(123, 227, 255, 0.7) 30%,
+    rgba(184, 164, 255, 0.95) 50%,
+    rgba(255, 82, 200, 0.7) 70%,
+    transparent
+  );
+  box-shadow: 0 0 16px rgba(255, 82, 200, 0.7);
+}
+html:not(.reduce-motion) .myth-glitch::before {
+  animation: ff-mythic-glitch 5.5s steps(1) infinite;
+}
+html:not(.reduce-motion) .myth-glitch::after {
+  animation: ff-mythic-glitch-b 5.5s steps(1) infinite;
+}
+@keyframes ff-mythic-glitch {
+  0%, 86%   { top: -10px; opacity: 0; }
+  87%       { top: 26%;   opacity: 1; }
+  87.6%     { top: 28%;   opacity: 1; }
+  88.2%     { top: 26%;   opacity: 0; }
+  90%       { top: 52%;   opacity: 1; }
+  90.6%     { top: 50%;   opacity: 1; }
+  91.2%     { top: 52%;   opacity: 0; }
+  93%       { top: 74%;   opacity: 1; }
+  93.6%     { top: 76%;   opacity: 1; }
+  94.2%     { top: 74%;   opacity: 0; }
+  95%, 100% { top: -10px; opacity: 0; }
+}
+@keyframes ff-mythic-glitch-b {
+  0%, 86%   { top: -10px; opacity: 0; }
+  87.3%     { top: 42%;   opacity: 1; }
+  88%       { top: 42%;   opacity: 0; }
+  90.3%     { top: 18%;   opacity: 1; }
+  91%       { top: 20%;   opacity: 0; }
+  93.3%     { top: 60%;   opacity: 1; }
+  94%, 100% { top: -10px; opacity: 0; }
+}
+
+/* Signal-trace cartouche — hard-edged plate with tech-cut bottom-left
+   notch, mono RGB-split name + oscilloscope waveform. */
+.myth-cartouche {
+  position: absolute;
+  left: 10px; right: 10px; bottom: 10px;
+  height: 38px;
+  border: 1px solid rgba(184, 164, 255, 0.8);
+  background:
+    linear-gradient(180deg, rgba(255, 82, 200, 0.05), rgba(15, 9, 37, 0.92)),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(184, 164, 255, 0.22), transparent 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 9, 37, 0.6),
+    inset 0 0 16px rgba(184, 164, 255, 0.22);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  padding: 4px 6px 5px;
+  z-index: 2;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+.myth-name {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px; letter-spacing: 0.30em;
+  text-transform: uppercase;
+  color: rgba(243, 240, 255, 1);
+  text-shadow:
+    -1px 0 0 rgba(255, 82, 200, 0.9),
+     1px 0 0 rgba(123, 227, 255, 0.9),
+     0 0 8px rgba(184, 164, 255, 0.55);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.myth-trace {
+  width: 82px; height: 12px;
+  color: rgba(184, 255, 232, 0.92);
+  filter: drop-shadow(0 0 2px rgba(123, 227, 255, 0.75));
+}
+
+/* Orbital comet — specular point traces the perimeter every 8s.
+   The CSS offset-path is rebuilt by the component at mount time to
+   fit the actual host rect, so the same component works at 180×250
+   and 64×88 without manual path tuning. */
+.myth-comet {
+  position: absolute;
+  top: 0; left: 0;
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 25%, rgba(220, 210, 255, 0.7) 55%, transparent 80%);
+  box-shadow:
+    0 0 6px rgba(255, 255, 255, 0.95),
+    0 0 14px rgba(184, 164, 255, 0.85),
+    0 0 28px rgba(123, 227, 255, 0.55);
+  offset-distance: 0%;
+  z-index: 3;
+  pointer-events: none;
+}
+html:not(.reduce-motion) .myth-comet {
+  animation: ff-mythic-orbit 8s linear infinite;
+}
+@keyframes ff-mythic-orbit {
+  to { offset-distance: 100%; }
+}
+
+/* Card-level mythic — chromatic-aberration glyph + halo + shake + distort.
+   Stacks with .frame-mythic on the same card. */
+.is-mythic {
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(184, 164, 255, 0.85),
+    0 0 26px rgba(184, 164, 255, 0.55),
+    0 0 60px rgba(123, 227, 255, 0.32),
+    0 0 110px rgba(255, 82, 200, 0.2),
+    0 0 180px rgba(91, 232, 164, 0.1),
+    0 18px 44px rgba(0, 0, 0, 0.7);
+}
+html:not(.reduce-motion) .is-mythic {
+  animation:
+    ff-mythic-breathe 6.5s ease-in-out infinite,
+    ff-mythic-shake   5.5s steps(1)      infinite,
+    ff-mythic-distort 5.5s steps(1)      infinite;
+}
+@keyframes ff-mythic-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(184, 164, 255, 0.85),
+      0 0 24px rgba(184, 164, 255, 0.45),
+      0 0 56px rgba(123, 227, 255, 0.26),
+      0 0 100px rgba(255, 82, 200, 0.16),
+      0 0 160px rgba(91, 232, 164, 0.08),
+      0 18px 44px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(220, 210, 255, 1),
+      0 0 38px rgba(184, 164, 255, 0.75),
+      0 0 84px rgba(123, 227, 255, 0.46),
+      0 0 140px rgba(255, 82, 200, 0.32),
+      0 0 220px rgba(91, 232, 164, 0.14),
+      0 18px 44px rgba(0, 0, 0, 0.7);
+  }
+}
+@keyframes ff-mythic-shake {
+  0%, 86.9%, 88.2%, 89.9%, 91.2%, 92.9%, 94.2%, 100% { transform: translateX(0); }
+  87%, 87.6%   { transform: translate(-2px, 1px); }
+  90%, 90.6%   { transform: translate( 2px, -1px); }
+  93%, 93.6%   { transform: translate(-1.5px, 0); }
+}
+@keyframes ff-mythic-distort {
+  0%, 86.5%      { filter: none; }
+  87%, 87.9%     { filter: url(#myth-displace-a) saturate(1.4); }
+  88%, 89.9%     { filter: none; }
+  90%, 90.9%     { filter: url(#myth-displace-b) hue-rotate(12deg); }
+  91%, 92.9%     { filter: none; }
+  93%, 93.9%     { filter: url(#myth-displace-a) saturate(1.6); }
+  94%, 100%      { filter: none; }
+}
+
+/* Chromatic-aberration glyph treatment — applied to any catalyst icon
+   that sits inside a mythic host. Cyan/magenta drop-shadow split.
+   The .is-mythic-glyph variant (light-touch) is for surfaces like the
+   Codex grid cell where the full card halo would bleed badly at 32px;
+   it adds chromatic split to any descendant SVG without the breathing
+   halo / shake / displacement, so a tiny mythic thumbnail still reads
+   as mythic without dominating the layout. */
+.is-mythic .card-glyph-frame svg,
+.is-mythic .ff-mythic-glyph,
+.is-mythic-glyph svg {
+  filter:
+    drop-shadow(-1.5px 0 0 rgba(255, 82, 200, 0.85))
+    drop-shadow( 1.5px 0 0 rgba(123, 227, 255, 0.85))
+    drop-shadow(0 0 10px rgba(184, 164, 255, 0.75));
+}
+
+/* Compact variant — drops the high-cost / illegible-at-thumbnail bits
+   for surfaces ≤ ~80px wide (CatalystStrip tile, Codex cell). Keeps
+   the marquee rim, brackets, crown, glitch slice, comet, and halo so
+   mythic still reads at small sizes. */
+.myth-compact .myth-scanlines,
+.myth-compact .myth-datastream,
+.myth-compact .myth-cartouche { display: none; }
+.myth-compact .myth-corner { width: 10px; height: 10px; top: 3px; left: 3px; }
+.myth-compact .myth-corner.tl { top: 3px; left: 3px; }
+.myth-compact .myth-corner.tr { top: 3px; right: 3px; left: auto; }
+.myth-compact .myth-corner.bl { bottom: 3px; left: 3px; top: auto; }
+.myth-compact .myth-corner.br { bottom: 3px; right: 3px; top: auto; left: auto; }
+.myth-compact .myth-crown { width: 12px; height: 12px; top: 3px; }
+/* Skip the displacement bursts at tile size — they're imperceptible
+   on a 64px tile and the filter cost adds up across the strip. The
+   shake + breathe still fire. */
+html:not(.reduce-motion) .is-mythic.myth-compact {
+  animation:
+    ff-mythic-breathe 6.5s ease-in-out infinite,
+    ff-mythic-shake   5.5s steps(1)      infinite;
+}
+
+/* reduce-motion — hard stops every continuous animation + filter
+   so the player still sees mythic visual weight (rim shape, brackets,
+   color, halo geometry) without movement. */
+.reduce-motion .frame-mythic::before,
+.reduce-motion .myth-comet,
+.reduce-motion .myth-glitch::before,
+.reduce-motion .myth-glitch::after,
+.reduce-motion .is-mythic { animation: none; filter: none !important; }
+
 /* Wave X — atmospheric flourish per rarity below legendary so each tier
    reads as its own weight class, not just "brighter." Both are pure CSS
    pseudo-elements layered on the KindFrame wrapper; reduce-motion

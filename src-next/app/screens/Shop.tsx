@@ -170,6 +170,7 @@ export function Shop() {
             index={i}
             shards={shards}
             catalysts={catalysts}
+            catalystsFull={usedCatalystSlots >= maxCatalysts}
             offerVersion={offerVersion}
             tight={tight}
           />

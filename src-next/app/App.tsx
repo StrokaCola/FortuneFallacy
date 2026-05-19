@@ -55,6 +55,7 @@ import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { ScreenSilhouette } from './visual/ScreenSilhouette';
 import { HorizonBackdrop } from './visual/HorizonBackdrop';
 import { DiagnosticOverlay } from './visual/DiagnosticOverlay';
+import { MythicSvgDefs } from './visual/MythicSvgDefs';
 import { useMotion } from './hooks/useMotion';
 import { ScreenTransition } from './visual/ScreenTransition';
 import { audioEngine, ensureAudioAfterGesture } from '../audio/AudioEngine';
@@ -288,6 +289,10 @@ export function App() {
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
         {import.meta.env.DEV && <SpawnOverlay />}
+        {/* Global SVG filter defs for the Mythic frame's edge-warp
+            displacement bursts. Mounted once at app root so any mythic
+            card on screen can reference url(#myth-displace-a/b). */}
+        <MythicSvgDefs />
       </div>
     </DiagnosticOverlay>
   );
