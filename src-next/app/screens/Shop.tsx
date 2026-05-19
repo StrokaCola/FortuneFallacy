@@ -209,6 +209,7 @@ export function Shop() {
         zIndex: 5,
       }}>
         <button
+          data-coach="shop-reroll"
           className="btn mat-interactive has-tip ff-reroll-btn"
           // Wave Z — increment a spin counter on each successful reroll so
           // the ↻ glyph re-mounts (via the key on its span) and the spin
@@ -244,6 +245,7 @@ export function Shop() {
           </button>
         )}
         <button
+          data-coach="next-trial-btn"
           className="btn btn-primary mat-interactive has-tip"
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
         >

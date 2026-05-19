@@ -9,6 +9,7 @@ import {
 } from './applyAstralPerks';
 import { initialRunSlice } from '../../state/slices/run';
 import { initialMetaSlice } from '../../state/slices/meta';
+import { initialTutorialSlice } from '../../state/slices/tutorial';
 import type { GameState } from '../../state/store';
 
 const stateWithPerks = (perks: string[]): GameState => ({
@@ -17,6 +18,7 @@ const stateWithPerks = (perks: string[]): GameState => ({
   shop: {} as GameState['shop'],
   meta: { ...initialMetaSlice(), astralPerks: perks },
   ui: {} as GameState['ui'],
+  tutorial: initialTutorialSlice(),
   pingCount: 0,
 });
 

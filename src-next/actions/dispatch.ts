@@ -8,6 +8,8 @@ import { diceHandler } from './handlers/dice';
 import { roundHandler } from './handlers/round';
 import { shopHandler } from './handlers/shop';
 import { consumableHandler } from './handlers/consumable';
+import { tutorialHandler } from './handlers/tutorial';
+import { lookupStep } from '../app/onboarding/tutorial/tutorialScript';
 import type { ActionHandler, HandlerResult } from './handlers/types';
 import '../core/upgrades/catalysts';
 
@@ -58,6 +60,11 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   USE_CONSUMABLE: consumableHandler,
   GRANT_CONSUMABLE: consumableHandler,
   DISCARD_CONSUMABLE: consumableHandler,
+  OPEN_OPT_IN: tutorialHandler,
+  DISMISS_OPT_IN: tutorialHandler,
+  START_TUTORIAL: tutorialHandler,
+  ADVANCE_TUTORIAL: tutorialHandler,
+  END_TUTORIAL: tutorialHandler,
 };
 
 export function dispatch(action: Action): void {
@@ -70,4 +77,22 @@ export function dispatch(action: Action): void {
   const { state: after, events }: HandlerResult = handler(action, before);
   store.setState(after, true);
   for (const e of events) bus.emit(e.type, e.payload as never);
+  // Tutorial advance observer — if the just-dispatched action matches the
+  // active step's `action` trigger, fire ADVANCE_TUTORIAL. Skip re-entry
+  // on the tour's own actions to avoid loops.
+  if (action.type !== 'ADVANCE_TUTORIAL' && action.type !== 'START_TUTORIAL' && action.type !== 'END_TUTORIAL') {
+    maybeAdvanceTutorial(action);
+  }
+}
+
+function maybeAdvanceTutorial(action: Action): void {
+  const s = store.getState();
+  if (!s.tutorial.active || s.tutorial.step == null) return;
+  const step = lookupStep(s.tutorial.step);
+  if (!step) return;
+  const trig = step.advance;
+  if (trig.kind !== 'action') return;
+  if (action.type !== trig.actionType) return;
+  if (trig.pred && !trig.pred(s, action)) return;
+  dispatch({ type: 'ADVANCE_TUTORIAL' });
 }

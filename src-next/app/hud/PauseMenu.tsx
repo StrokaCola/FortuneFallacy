@@ -75,6 +75,12 @@ export function PauseMenu() {
     dispatch({ type: 'TOGGLE_PAUSE' });
     dispatch({ type: 'SET_SCREEN', screen: 'title' });
   };
+  const onHowToPlay = () => {
+    // Routes into the Codex with the Primer tab as the default. Pause
+    // is released so the player isn't stuck behind the paused overlay.
+    dispatch({ type: 'TOGGLE_PAUSE' });
+    dispatch({ type: 'SET_SCREEN', screen: 'codex' });
+  };
 
   return (
     <div
@@ -172,6 +178,14 @@ export function PauseMenu() {
             <PortalGate size={tight ? 48 : 72} label="Travel" />
 
             <div style={{ width: '100%', height: 1, background: 'rgba(149,119,255,0.2)', margin: tight ? '2px 0' : '4px 0' }} />
+
+            <button
+              className="btn btn-ghost mat-interactive tap"
+              style={{ width: tight ? 180 : 220 }}
+              onClick={onHowToPlay}
+            >
+              ⟡ How to Play
+            </button>
 
             <button
               className="btn btn-ghost mat-interactive tap"

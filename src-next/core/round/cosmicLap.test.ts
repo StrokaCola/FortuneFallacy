@@ -5,6 +5,7 @@ import { initialRoundSlice } from '../../state/slices/round';
 import { initialShopSlice } from '../../state/slices/shop';
 import { initialMetaSlice } from '../../state/slices/meta';
 import { initialUiSlice } from '../../state/slices/ui';
+import { initialTutorialSlice } from '../../state/slices/tutorial';
 import type { GameState } from '../../state/store';
 
 function mkState(overrides: Partial<GameState['run']> = {}): GameState {
@@ -14,6 +15,7 @@ function mkState(overrides: Partial<GameState['run']> = {}): GameState {
     shop: initialShopSlice(),
     meta: initialMetaSlice(),
     ui: { ...initialUiSlice(), screen: 'win' },
+    tutorial: initialTutorialSlice(),
     pingCount: 0,
   };
 }

@@ -13,6 +13,7 @@ import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
 import { makeSeedRng } from '../../core/seed/rng';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
+import { TUTORIAL_SHOP_OFFERS, TUTORIAL_MIN_SHARDS, isTutorialActive } from '../../app/onboarding/tutorial/deterministicScript';
 // Mods whose effects key on specific face values that some constellations
 // can never roll. When the active face universe lacks ALL the required
 // faces, the mod is removed from the offer pool so the player isn't sold
@@ -273,6 +274,21 @@ export const shopHandler: ActionHandler = (a, s) => {
     case 'OPEN_SHOP': {
       // Challenge overlay can lock the shop entirely. Stay in hub.
       if (stakeContext(s).shopDisabled) return { state: s, events: [] };
+      // Tutorial: hand-built scripted offers + a shard top-up so the
+      // recommended buy is affordable. Bypasses the normal seeded roll.
+      if (isTutorialActive(s)) {
+        const offers = [...TUTORIAL_SHOP_OFFERS];
+        const shards = Math.max(s.run.shards, TUTORIAL_MIN_SHARDS);
+        return {
+          state: {
+            ...s,
+            run: { ...s.run, shards },
+            shop: { ...s.shop, open: true, offers, rerollCost: initialRerollCost(s) },
+            ui: { ...s.ui, screen: 'shop' },
+          },
+          events: [{ type: 'onShopOpened', payload: { offers } }],
+        };
+      }
       // Seeded RNG keyed by run.seed + the monotonic shopSeq counter.
       // Two players entering the same seed see the same offers on each
       // hub re-entry, and a refresh mid-roll can't shuffle the wares

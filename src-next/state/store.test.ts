@@ -5,6 +5,7 @@ import { initialRoundSlice } from './slices/round';
 import { initialShopSlice } from './slices/shop';
 import { initialMetaSlice } from './slices/meta';
 import { initialUiSlice } from './slices/ui';
+import { initialTutorialSlice } from './slices/tutorial';
 
 beforeEach(() => {
   resetStore();
@@ -82,6 +83,7 @@ describe('setStateRaw', () => {
       shop: initialShopSlice(),
       meta: initialMetaSlice(),
       ui: initialUiSlice(),
+      tutorial: initialTutorialSlice(),
       pingCount: 7,
     };
     setStateRaw(custom);

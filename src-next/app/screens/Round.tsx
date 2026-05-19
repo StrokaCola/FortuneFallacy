@@ -227,6 +227,7 @@ function ActionBar({
       }}>
       {firstRollDone ? (
         <button
+          data-coach="reroll-btn"
           className="btn btn-ghost mat-interactive tap"
           // Lock the reroll during scoring AND while the dice physics
           // is mid-tumble (handInProgress). A fast click during either
@@ -265,6 +266,7 @@ function ActionBar({
         </button>
       )}
       <button
+        data-coach="play-hand-btn"
         className="btn btn-primary mat-interactive tap"
         disabled={hands === 0 || !firstRollDone || !ready}
         onClick={() => { playHaptic('tap'); dispatch({ type: 'SCORE_HAND' }); }}

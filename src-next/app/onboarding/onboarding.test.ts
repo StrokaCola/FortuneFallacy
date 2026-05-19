@@ -46,12 +46,12 @@ describe('SKIP_ONBOARDING', () => {
 });
 
 describe('RESET_ONBOARDING', () => {
-  it('clears seen and dismissed', () => {
+  it('clears seen, dismissed, and re-arms firstLaunch for the guided tour', () => {
     const dirty = baseState({
-      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll', 'shop_offers'], dismissed: true } },
+      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll', 'shop_offers'], dismissed: true, firstLaunch: false } },
     });
     const r = metaHandler({ type: 'RESET_ONBOARDING' }, dirty);
-    expect(r.state.meta.onboarding).toEqual({ seen: [], dismissed: false });
+    expect(r.state.meta.onboarding).toEqual({ seen: [], dismissed: false, firstLaunch: true });
   });
 });
 

@@ -46,6 +46,22 @@ export type Action =
   | { type: 'SKIP_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' }
   | { type: 'SHOW_DIE_TIP'; dieIdx: number; screenX: number; screenY: number; pointerType: 'mouse' | 'touch' | 'pen' }
-  | { type: 'HIDE_DIE_TIP' };
+  | { type: 'HIDE_DIE_TIP' }
+  // Tutorial (guided first run). See state/slices/tutorial.ts.
+  // OPEN_OPT_IN: ConstellationSelect dispatches after NEW_RUN on first
+  //   launch — the opt-in modal mounts when tutorial.optInPending=true.
+  // DISMISS_OPT_IN: modal's "No thanks" — clears optInPending and the
+  //   meta.onboarding.firstLaunch flag so the modal doesn't re-fire.
+  // START_TUTORIAL: modal's "Yes, show me" — pre-equips the starter
+  //   catalyst, clears shop offers, advances to the first step.
+  // ADVANCE_TUTORIAL: bumps step to next; auto-fires END_TUTORIAL on
+  //   the last step. Dispatched both by bubble "Got it" clicks and by
+  //   the dispatch-level observer when a step's action trigger fires.
+  // END_TUTORIAL: ends the tour, sets endedAt.
+  | { type: 'OPEN_OPT_IN' }
+  | { type: 'DISMISS_OPT_IN' }
+  | { type: 'START_TUTORIAL' }
+  | { type: 'ADVANCE_TUTORIAL' }
+  | { type: 'END_TUTORIAL'; reason: 'completed' | 'skipped' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

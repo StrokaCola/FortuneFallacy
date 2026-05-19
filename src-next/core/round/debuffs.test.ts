@@ -5,6 +5,7 @@ import { initialRunSlice } from '../../state/slices/run';
 import { initialShopSlice } from '../../state/slices/shop';
 import { initialMetaSlice } from '../../state/slices/meta';
 import { initialUiSlice } from '../../state/slices/ui';
+import { initialTutorialSlice } from '../../state/slices/tutorial';
 import type { GameState } from '../../state/store';
 
 function mkState(blindId: string, bossPhase: 1 | 2): GameState {
@@ -14,6 +15,7 @@ function mkState(blindId: string, bossPhase: 1 | 2): GameState {
     shop: initialShopSlice(),
     meta: initialMetaSlice(),
     ui: initialUiSlice(),
+    tutorial: initialTutorialSlice(),
     pingCount: 0,
   };
 }
@@ -48,6 +50,7 @@ describe('activeDebuffs — phase escalation (Pillar B)', () => {
       shop: initialShopSlice(),
       meta: initialMetaSlice(),
       ui: initialUiSlice(),
+      tutorial: initialTutorialSlice(),
       pingCount: 0,
     };
     expect(activeDebuffs(s).size).toBe(0);

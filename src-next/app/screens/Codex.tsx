@@ -16,10 +16,15 @@ import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { CatalystIcon } from '../visual/CatalystIcon';
 import { RARITY_COLORS } from '../visual/rarityStyles';
+import { PrimerTab } from './codex/PrimerTab';
 
-type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets' | 'about';
+type Tab = 'primer' | 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets' | 'about';
 
 const TABS: { id: Tab; label: string }[] = [
+  // Primer ships first so a new player landing in the Codex (via the
+  // pause menu's "How to Play" or the Title's Codex button) sees the
+  // plain-language reference before the discoverable content tabs.
+  { id: 'primer', label: 'Primer' },
   { id: 'catalysts', label: 'Catalysts' },
   { id: 'mods', label: 'Mods' },
   { id: 'vouchers', label: 'Vouchers' },
@@ -61,7 +66,7 @@ const selectEasterEggs = (s: GameState) => s.meta.easterEggs ?? EMPTY_EGGS;
 // RARITY_COLORS now lives in app/visual/rarityStyles.ts (shared with Shop).
 
 export function Codex() {
-  const [tab, setTab] = useState<Tab>('catalysts');
+  const [tab, setTab] = useState<Tab>('primer');
   const [page, setPage] = useState(0);
   const discovered = useStore(selectDiscovered);
   const stakeProgress = useStore(selectStakeProgress);
@@ -144,7 +149,9 @@ export function Codex() {
           ))}
         </div>
 
-        {tab === 'achievements' ? (
+        {tab === 'primer' ? (
+          <PrimerTab />
+        ) : tab === 'achievements' ? (
           <AchievementsView unlocked={achievements.unlocked} />
         ) : tab === 'secrets' ? (
           <SecretsView found={easterEggs} />
