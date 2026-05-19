@@ -273,4 +273,22 @@ describe('Sedna boss (mod_slots_capped_1)', () => {
     s.round.blindId = 'sedna';
     expect(maxModSlots(s)).toBe(1);
   });
+
+  it('drops the slot cap once the boss blind is cleared (shop/hub use the voucher value)', () => {
+    // Repro for the "Forged Links voucher silently capped to 1 slot after
+    // clearing Sedna" bug: clearBlind leaves round.isBoss + round.blindId
+    // intact (for analytics/banner cleanup), but the player is in the shop
+    // at that point and the boss's rules shouldn't still bite. activeDebuffs
+    // gates on round.active to make sure the cap clears.
+    const s = makeState({
+      vouchers: ['forged_links'], score: 200, target: 100, handsLeft: 0,
+    });
+    s.round.isBoss = true;
+    s.round.blindId = 'sedna';
+    expect(maxModSlots(s)).toBe(1);
+    const cleared = clearBlind(s).state;
+    expect(cleared.round.active).toBe(false);
+    expect(maxModSlots(cleared)).toBe(3);
+    expect(hasDebuff(cleared, 'mod_slots_capped_1')).toBe(false);
+  });
 });

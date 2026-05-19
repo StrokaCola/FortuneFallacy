@@ -11,6 +11,7 @@ import { dispatch } from '../../actions/dispatch';
 import { useStore, type GameState } from '../../state/store';
 import { lookupConsumable } from '../../core/consumables';
 import { CATALYST_META } from '../../data/catalysts';
+import { selectMaxCatalystSlots, selectEffectiveCatalystSlotsUsed } from '../../state/selectors';
 import { Z } from '../hud/zLayers';
 import { useFocusTrap } from '../hud/useFocusTrap';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
@@ -22,6 +23,9 @@ const accent = '#7be3ff';
 
 export function SkipBountyOverlay() {
   const bounty = useStore(selectPendingSkipBounty);
+  const maxCatalysts = useStore(selectMaxCatalystSlots);
+  const usedCatalysts = useStore(selectEffectiveCatalystSlotsUsed);
+  const catalystsFull = usedCatalysts >= maxCatalysts;
   const tight = useIsTightStage();
   const dialogRef = useRef<HTMLDivElement>(null);
   const isOpen = !!bounty;
@@ -39,14 +43,15 @@ export function SkipBountyOverlay() {
       if (e.key === 'Escape') dispatch({ type: 'RESOLVE_SKIP_BOUNTY', optionIdx: 0 });
       if (e.key === '1' || e.key === '2' || e.key === '3') {
         const idx = Number(e.key) - 1;
-        if (idx < (bounty.options.length ?? 0)) {
+        const opt = bounty.options[idx];
+        if (opt && !(opt.kind === 'catalyst' && catalystsFull)) {
           dispatch({ type: 'RESOLVE_SKIP_BOUNTY', optionIdx: idx });
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, bounty]);
+  }, [isOpen, bounty, catalystsFull]);
 
   // Stay mounted long enough to fade out cleanly when the player
   // resolves the bounty.
@@ -105,15 +110,22 @@ export function SkipBountyOverlay() {
           gridTemplateColumns: tight ? '1fr' : 'repeat(3, 1fr)',
           gap: 12,
         }}>
-          {bounty.options.map((opt, idx) => (
-            <BountyCard
-              key={idx}
-              optionIdx={idx}
-              option={opt}
-              onPick={() => dispatch({ type: 'RESOLVE_SKIP_BOUNTY', optionIdx: idx })}
-              tight={tight}
-            />
-          ))}
+          {bounty.options.map((opt, idx) => {
+            const disabled = opt.kind === 'catalyst' && catalystsFull;
+            return (
+              <BountyCard
+                key={idx}
+                optionIdx={idx}
+                option={opt}
+                disabled={disabled}
+                onPick={() => {
+                  if (disabled) return;
+                  dispatch({ type: 'RESOLVE_SKIP_BOUNTY', optionIdx: idx });
+                }}
+                tight={tight}
+              />
+            );
+          })}
         </div>
         <div className="f-mono" style={{
           textAlign: 'center', fontSize: 9, color: '#7a6fa6', marginTop: 12,
@@ -129,25 +141,29 @@ export function SkipBountyOverlay() {
 type Opt = NonNullable<GameState['shop']['pendingSkipBounty']>['options'][number];
 
 function BountyCard({
-  optionIdx, option, onPick, tight,
+  optionIdx, option, onPick, tight, disabled,
 }: {
   optionIdx: number;
   option: Opt;
   onPick: () => void;
   tight: boolean;
+  disabled: boolean;
 }) {
   const { title, body, glyph, color } = describeOption(option);
   return (
     <button
       className="btn-ghost mat-interactive"
       onClick={onPick}
+      disabled={disabled}
+      aria-disabled={disabled}
       style={{
         padding: tight ? 14 : 18,
         borderRadius: 10,
         background: 'rgba(15,9,37,0.7)',
         border: `1px solid ${color}66`,
         textAlign: 'center',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
         boxShadow: `0 0 14px ${color}22, 0 6px 14px rgba(0,0,0,0.35)`,
         display: 'flex',
         flexDirection: 'column',
@@ -180,6 +196,14 @@ function BountyCard({
       }}>
         {body}
       </div>
+      {disabled && (
+        <div className="f-mono uc" style={{
+          fontSize: 9, letterSpacing: '0.2em',
+          color: '#e2334a', marginTop: 4,
+        }}>
+          slots full
+        </div>
+      )}
     </button>
   );
 }

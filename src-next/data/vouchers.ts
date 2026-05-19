@@ -15,7 +15,7 @@ export const VOUCHERS: VoucherDef[] = [
   { id: 'forged_links', name: 'Forged Links', description: '+1 mod slot per die', price: 8, rarity: 'uncommon' },
   { id: 'shard_streak', name: 'Shard Streak', description: '+1 shard per cleared trial', price: 6, rarity: 'common' },
   { id: 'open_mic',     name: 'Open Mic',     description: '+1 hand per round', price: 8, rarity: 'uncommon' },
-  { id: 'free_refresh', name: 'Free Refresh', description: 'Shop rerolls cost 0', price: 8, rarity: 'uncommon' },
+  { id: 'free_refresh', name: 'Free Refresh', description: 'First shop reroll free', price: 8, rarity: 'uncommon' },
   { id: 'capacity',     name: 'Capacity',     description: '+1 consumable slot (max 5)', price: 6, rarity: 'common' },
   // 2026-05-08 — extra die voucher. Highest-priced voucher (12 vs the
   // 6-8 range above) and the largest single-purchase power swing in the

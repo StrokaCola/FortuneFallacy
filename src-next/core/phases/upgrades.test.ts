@@ -22,6 +22,7 @@ function makeCtx(overrides: {
       diceMods: [],
     },
     round: {
+      active: true,
       isBoss: overrides.isBoss ?? false,
       blindId: overrides.blindId ?? null,
       handsLeft: overrides.handsLeft ?? 3,
