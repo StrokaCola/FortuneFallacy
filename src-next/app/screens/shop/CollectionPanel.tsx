@@ -18,6 +18,7 @@ import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
 import { SellButton } from '../../hud/SellButton';
 import { EditionBadge } from './EditionBadge';
+import { MythicFrame } from '../../visual/MythicFrame';
 
 type CollectionRowProps = {
   kindLabel: string;
@@ -44,22 +45,27 @@ function CollectionRow({ kindLabel, items, emptyHint, kind }: CollectionRowProps
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {items.map((it) => {
             const isLegendary = it.rarity === 'legendary';
+            const isMythic = it.rarity === 'mythic';
             const rarityRing = it.rarity ? RARITY_COLORS[it.rarity] : it.color;
             return (
               <div
                 key={`${it.id}-${it.index}`}
-                className="has-tip"
+                className={`has-tip${isMythic ? ' is-mythic' : ''}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '6px 8px', borderRadius: 6,
                   background: 'rgba(15,9,37,0.5)',
-                  border: `1px solid ${isLegendary ? rarityRing + 'aa' : it.color + '40'}`,
+                  border: isMythic
+                    // Mythic owns its border via MythicFrame's inset shadow stack.
+                    ? '1px solid transparent'
+                    : `1px solid ${isLegendary ? rarityRing + 'aa' : it.color + '40'}`,
                   position: 'relative',
                   overflow: 'hidden',
                   boxShadow: isLegendary ? `0 0 12px ${rarityRing}55, inset 0 0 6px ${rarityRing}22` : undefined,
                 }}
               >
                 {isLegendary && <div className="ff-holo" style={{ borderRadius: 6, opacity: 0.55 }} />}
+                {isMythic && <MythicFrame name={it.name} compact />}
                 <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex' }}>
                   <KindFrame
                     kind={kind as UpgradeKind}

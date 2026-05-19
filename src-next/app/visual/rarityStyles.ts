@@ -52,11 +52,15 @@ export function rarityStrokeWidth(r: Rarity | null | undefined): number {
 //   uncommon  → soft pulsing inner haze (rarity-uncommon-aura)
 //   rare      → slow-rotating twin concentric ring (rarity-rare-aura)
 //   legendary → existing pulsing aura + ember flourishes (legendary-aura)
-//   mythic    → re-uses legendary-aura for v1; distinct mythic-aura CSS
-//               is a polish follow-up.
+//   mythic    → light chromatic-aberration on the glyph only
+//               (.is-mythic-glyph). The full cyberpunk-cosmic card
+//               treatment lives on .is-mythic + <MythicFrame> and is
+//               opted into by card surfaces (OfferCard, CatalystCard)
+//               so it doesn't fire on tiny KindFrame thumbnails in
+//               the Codex where the 180px-spread halo would bleed.
 // Empty string when no flourish, so callers can unconditionally append it.
 export function rarityClassName(r: Rarity | null | undefined): string {
-  if (r === 'mythic') return 'legendary-aura';
+  if (r === 'mythic') return 'is-mythic-glyph';
   if (r === 'legendary') return 'legendary-aura';
   if (r === 'rare') return 'rarity-rare-aura';
   if (r === 'uncommon') return 'rarity-uncommon-aura';
