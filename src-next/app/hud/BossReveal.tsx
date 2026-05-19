@@ -246,6 +246,32 @@ export function BossReveal() {
           position: 'absolute', inset: 0,
           background: `radial-gradient(ellipse at center, transparent 0%, transparent 35%, rgba(3,2,12,0.85) 75%, ${def.color}55 100%)`,
         }} />
+        {/* Wave T (Batch F) — Boss music-duck visualizer. Three bars
+            top-center showing the music has been ducked. Bars
+            "collapse downward" over the dread phase so the player
+            reads the audio shift visually. */}
+        <div className="boss-music-duck-viz" aria-hidden style={{
+          position: 'absolute',
+          left: '50%', top: 20,
+          transform: 'translateX(-50%)',
+          display: 'flex', gap: 6, alignItems: 'flex-end',
+          height: 32,
+        }}>
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`boss-music-duck-bar boss-music-duck-bar-${i}`}
+              style={{
+                width: 4, height: '100%',
+                background: def.color,
+                boxShadow: `0 0 8px ${def.color}99`,
+                borderRadius: 2,
+                transformOrigin: 'bottom',
+                opacity: 0.7,
+              }}
+            />
+          ))}
+        </div>
         <div className="boss-dread-silhouette" style={{
           position: 'absolute', inset: 0,
           display: 'grid', placeItems: 'center',

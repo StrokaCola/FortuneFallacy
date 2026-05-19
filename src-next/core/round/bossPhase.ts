@@ -49,6 +49,36 @@ export type BossPhaseEvalResult =
   | { promote: false }
   | { promote: true; secondWind: BossSecondWind };
 
+// Wave T (Batch E) — pre-fire telegraph. Returns the trigger name when
+// the player has crossed a "phase 2 is about to fire next hand"
+// threshold, but the actual evaluateBossPhase has NOT yet promoted.
+// Only fires for half-target (>= 40% target) and last-hand
+// (handsLeft === 2) bosses — hand-2 bosses are pre-warned by the
+// reveal cinematic itself. Returns null when no incoming threshold
+// is crossed or guards aren't met.
+export function evaluateBossPhase2Incoming(
+  input: BossPhaseEvalInput,
+): 'half-target' | 'last-hand' | null {
+  if (!input.isBoss || !input.blindId) return null;
+  if (input.bossPhase !== 1) return null;
+  if (input.pendingRoundEnd) return null;
+  if (stakeIndex(input.stakeId) < PHASE_ESCALATION_MIN_STAKE) return null;
+  const def = BOSS_BLINDS.find((b) => b.id === input.blindId);
+  if (!def?.secondWind) return null;
+  const sw = def.secondWind;
+  if (sw.trigger === 'half-target') {
+    if (input.target <= 0) return null;
+    const ratio = input.newScore / input.target;
+    if (ratio >= 0.40 && ratio < 0.50) return 'half-target';
+    return null;
+  }
+  if (sw.trigger === 'last-hand') {
+    if (input.newHandsLeft === 2) return 'last-hand';
+    return null;
+  }
+  return null;
+}
+
 export function evaluateBossPhase(input: BossPhaseEvalInput): BossPhaseEvalResult {
   if (!input.isBoss || !input.blindId) return { promote: false };
   if (input.bossPhase !== 1) return { promote: false };

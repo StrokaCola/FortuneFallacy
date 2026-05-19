@@ -24,31 +24,50 @@ const EDITION_CLASS: Record<CatalystEdition, string> = {
 
 export function EditionBadge({ edition }: { edition: CatalystEdition }) {
   const c = editionColor(edition);
-  const tip =
-    edition === 'foil' ? 'Foil — +50 chips when this catalyst fires.'
-    : edition === 'holo' ? 'Holographic — +10 mult when this catalyst fires.'
-    : edition === 'void' ? 'Void — does not count against your catalyst slot cap.'
-    : 'Polychrome — adds +50% of this catalyst\'s contribution each fire.';
+  const title = editionLabel(edition);
+  const body =
+    edition === 'foil' ? '+50 chips when this catalyst fires.'
+    : edition === 'holo' ? '+10 mult when this catalyst fires.'
+    : edition === 'void' ? 'Does not count against your catalyst slot cap.'
+    : 'Adds +50% of this catalyst\'s contribution each fire.';
+  // 2026-05-19 fix — split the visual into an inner span so
+  // `overflow: hidden` (needed to clip the foil shimmer ::before
+  // pseudo) doesn't also clip the absolutely-positioned `.tip`
+  // tooltip. The outer span owns positioning + has-tip; the inner
+  // owns the animated visuals.
   return (
     <span
-      className={`f-mono uc has-tip ${EDITION_CLASS[edition] ?? ''}`}
+      className="has-tip"
       style={{
         position: 'relative',
+        display: 'inline-block',
         marginLeft: 6,
-        padding: '1px 5px',
-        fontSize: edition === 'void' ? 11 : 8,
-        letterSpacing: '0.18em',
-        borderRadius: 3,
-        color: c,
-        border: `1px solid ${c}88`,
-        background: `${c}22`,
-        fontWeight: edition === 'void' ? 700 : undefined,
-        textShadow: edition === 'void' ? `0 0 6px ${c}` : undefined,
-        overflow: 'hidden',
+        verticalAlign: 'middle',
       }}
     >
-      {edition === 'void' ? '★' : editionLabel(edition).slice(0, 4).toLowerCase()}
-      <span className="tip">{tip}</span>
+      <span
+        className={`f-mono uc ${EDITION_CLASS[edition] ?? ''}`}
+        style={{
+          display: 'inline-block',
+          padding: '1px 5px',
+          fontSize: edition === 'void' ? 11 : 8,
+          letterSpacing: '0.18em',
+          borderRadius: 3,
+          color: c,
+          border: `1px solid ${c}88`,
+          background: `${c}22`,
+          fontWeight: edition === 'void' ? 700 : undefined,
+          textShadow: edition === 'void' ? `0 0 6px ${c}` : undefined,
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {edition === 'void' ? '★' : editionLabel(edition).slice(0, 4).toLowerCase()}
+      </span>
+      <span className="tip tip-above">
+        <span className="tip-title" style={{ color: c }}>{title}</span>
+        {body}
+      </span>
     </span>
   );
 }

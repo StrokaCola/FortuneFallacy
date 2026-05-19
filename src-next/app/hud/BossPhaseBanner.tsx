@@ -48,7 +48,18 @@ export function BossPhaseBanner() {
       window.setTimeout(() => setGateOpen(false), INPUT_GATE_MS);
       window.setTimeout(() => setBanner(null), SHOW_MS);
     });
-    return () => off();
+    // Wave T (Batch E) — phase-2 incoming telegraph. Brief screen-edge
+    // crimson pulse + the listener stub so audioBridge's whisperChime
+    // and duck land alongside a visible cue. 900ms total, then the
+    // class lifts so the cosmos tint returns to normal.
+    const offIncoming = bus.on('onBossPhase2Incoming', () => {
+      if (typeof document === 'undefined') return;
+      const stage = document.getElementById('stage-root');
+      if (!stage) return;
+      stage.classList.add('boss-phase-incoming');
+      window.setTimeout(() => stage.classList.remove('boss-phase-incoming'), 900);
+    });
+    return () => { off(); offIncoming(); };
   }, []);
 
   if (!banner) return null;
@@ -74,6 +85,31 @@ export function BossPhaseBanner() {
           }}
         />
       )}
+    {/* Wave T (Batch D) — escalation flare. Single 700ms radial burst
+        at banner center on phase-2 entry so the moment lands as a
+        visible pulse, not just a banner slide-in. Soft style on
+        relent (boss softens) so the player reads the tone-shift
+        visually before they read the text. */}
+    <div
+      aria-hidden
+      className="boss-phase-flare"
+      style={{
+        position: 'absolute',
+        top: tight
+          ? 'calc(var(--hud-top-h, 0px) + (var(--stage-h, 100vh) - var(--hud-top-h, 0px) - var(--hud-bottom-h, 0px)) * 0.22)'
+          : '26%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: Z.bannerBoss - 1,
+        pointerEvents: 'none',
+        width: 320, height: 320,
+        borderRadius: '50%',
+        background: `radial-gradient(circle, ${color}aa 0%, ${color}55 28%, ${color}11 55%, transparent 75%)`,
+        opacity: 0,
+        animation: 'boss-phase-flare 700ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards',
+        mixBlendMode: 'screen',
+      }}
+    />
     <div
       aria-hidden
       className="boss-phase-banner"

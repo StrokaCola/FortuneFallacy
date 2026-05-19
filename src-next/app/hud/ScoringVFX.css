@@ -143,6 +143,40 @@
   100% { filter: none; }
 }
 
+/* ── Wave T Scoring Theater (Batch J, 2026-05-19) — tier-scaled
+   intensity. TheaterStage sets data-theater-tier 1-4 on the layer
+   based on peak-mult. Each tier amplifies the existing FX via
+   brightness + saturate + scale so a ×16 hand visibly hits harder
+   than a ×2 hand. Tier 1 is the baseline (no change). */
+#vfx-scoring-layer[data-theater-tier="2"] { filter: brightness(1.08) saturate(1.12); }
+#vfx-scoring-layer[data-theater-tier="3"] { filter: brightness(1.18) saturate(1.28); }
+#vfx-scoring-layer[data-theater-tier="4"] { filter: brightness(1.30) saturate(1.5) contrast(1.08); }
+/* Tier 3+: godrays burst opens wider so the radial sweep reads as
+   a more committed celestial moment, not a token flourish. */
+#vfx-scoring-layer[data-theater-tier="3"].vfx-godrays-fire .vfx-godrays,
+#vfx-scoring-layer[data-theater-tier="4"].vfx-godrays-fire .vfx-godrays {
+  animation: vfx-godrays-burst-tier-high 2200ms cubic-bezier(0.25, 1, 0.4, 1) forwards;
+}
+@keyframes vfx-godrays-burst-tier-high {
+  0%   { opacity: 0;    transform: translate(-50%, -50%) rotate(0deg)   scale(0.4); }
+  20%  { opacity: 1;    transform: translate(-50%, -50%) rotate(20deg)  scale(1.05); }
+  50%  { opacity: 0.92; transform: translate(-50%, -50%) rotate(60deg)  scale(1.25); }
+  100% { opacity: 0;    transform: translate(-50%, -50%) rotate(140deg) scale(1.55); }
+}
+/* Tier 4: chromatic aberration kicks in twice as far so the mega
+   moment visibly shears the play area. */
+#vfx-scoring-layer[data-theater-tier="4"].vfx-ca-fire .vfx-effects-layer {
+  animation: vfx-ca-burst-tier-4 480ms ease-out;
+}
+@keyframes vfx-ca-burst-tier-4 {
+  0%   { filter: drop-shadow(-8px 0 0 rgba(255, 82, 200, 0.85)) drop-shadow(8px 0 0 rgba(123, 227, 255, 0.85)); }
+  50%  { filter: drop-shadow(-4px 0 0 rgba(255, 82, 200, 0.6)) drop-shadow(4px 0 0 rgba(123, 227, 255, 0.6)); }
+  100% { filter: none; }
+}
+.reduce-motion #vfx-scoring-layer[data-theater-tier] {
+  filter: none;
+}
+
 /* ── Multiplier Slam ────────────────────────────────────── */
 .vfx-slam-root {
   position: absolute;

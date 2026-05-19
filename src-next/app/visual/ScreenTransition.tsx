@@ -227,6 +227,21 @@ function StellarDrift() {
 // through a gate" rather than "the screen faded." Only fires on
 // Hub → Round (the player's deliberate commitment to a trial).
 function PortalWarp() {
+  // Wave T (Batch F) — Portal Warp SFX. Whoosh on mount (rings begin
+  // expanding) + bass thump 240ms later when the gold flare blooms.
+  // Lazy import so the audio module doesn't hard-couple to the
+  // transition component.
+  useEffect(() => {
+    let cancelled = false;
+    void import('../../audio/sfx').then((sfx) => {
+      if (cancelled) return;
+      sfx.sfxPlay('transitionWipe', { gain: 0.7 });
+      window.setTimeout(() => {
+        if (!cancelled) sfx.sfxPlay('castBoom', { gain: 0.35, idx: 0 });
+      }, 240);
+    });
+    return () => { cancelled = true; };
+  }, []);
   return (
     <svg
       className="portal-warp"

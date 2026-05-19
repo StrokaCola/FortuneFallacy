@@ -56,6 +56,10 @@ void ensureRoundBundle();
 startAudioBridge();
 startHapticsBridge();
 startDiscoveryBridge();
+// Wave T Scoring Theater (Batch I, 2026-05-19) — phase orchestrator
+// subscribes to onScoreBeat and drives crescendo audio + emits the
+// onTheaterPhase events for downstream HUD layers.
+import('./app/hud/theater/TheaterDirector').then((m) => m.installTheaterDirector());
 startPersistence();
 installButtonJuice();
 startLeaderboard();

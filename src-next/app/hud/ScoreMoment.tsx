@@ -35,7 +35,15 @@ const COUNTER_FILL_MS = 360;
 // the catch-pulse a moment to settle on the visible counter before
 // the entire screen fades out, so the player actually SEES the
 // celebration land instead of getting yanked into the shop mid-flight.
-const POST_FILL_SAVOR_MS = 240;
+// Wave T (2026-05-19): variable by boom variant. Mega/gold booms keep
+// the full hold because the celebration earned it; normal booms snap
+// to a short hold so a non-crossing hand's energy carries into the
+// next decision instead of holding on dead air.
+const POST_FILL_SAVOR_MS_BY_VARIANT: Record<'normal' | 'gold' | 'mega', number> = {
+  normal: 80,
+  gold: 240,
+  mega: 240,
+};
 
 function isReducedMotion(): boolean {
   if (typeof document === 'undefined') return false;
@@ -234,7 +242,7 @@ export function ScoreMoment() {
           // the counter catches.
           schedule(
             finishBoom,
-            BOOM_FLY_START_MS + STAR_TRAIL_MS + scaledFillMs + POST_FILL_SAVOR_MS,
+            BOOM_FLY_START_MS + STAR_TRAIL_MS + scaledFillMs + POST_FILL_SAVOR_MS_BY_VARIANT[variant],
           );
           break;
         }

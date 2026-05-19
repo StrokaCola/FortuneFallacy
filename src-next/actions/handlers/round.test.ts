@@ -156,9 +156,14 @@ describe('START_BLIND', () => {
     expect(r.state.round.active).toBe(true);
   });
 
-  it('emits no events', () => {
+  it('emits onBlindAboutToStart for non-boss blinds', () => {
+    // 2026-05-19 Wave T (Batch F) — startBlind now emits a transition
+    // cue for non-boss blinds so the UI can play a brief vignette /
+    // audio bridge so the moment of entering a new blind reads as a
+    // beat. Boss blinds emit onBossRevealed instead.
     const r = roundHandler({ type: 'START_BLIND' }, baseState());
-    expect(r.events).toHaveLength(0);
+    expect(r.events).toHaveLength(1);
+    expect(r.events[0]?.type).toBe('onBlindAboutToStart');
   });
 });
 

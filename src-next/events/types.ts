@@ -200,6 +200,41 @@ export type GameEventMap = {
   // these events; DiscoveryFeed renders the toast.
   onCatalystDiscovered: { catalystId: string; total: number };
   onEditionDiscovered: { edition: 'foil' | 'holo' | 'poly' | 'void'; catalystId: string };
+  // Wave T (2026-05-19) — emitted from SCORE_HAND when handsLeft
+  // transitions to 1 and the round neither clears nor busts. Drives
+  // a music duck so the final hand of a blind sounds focused. Single
+  // emit per blind; not sticky to state because the listener side is
+  // a transient audio cue.
+  onLastHandOfBlind: { handsLeft: number; target: number; score: number };
+  // Wave T (Batch E) — emitted by SynergyBurstBanner when ≥3 distinct
+  // resonance pairs fired in the just-scored hand. Drives a brief
+  // celebration banner + triumphant chord. Counted from
+  // onUpgradeTriggered events with the `resonance:` prefix; finalized
+  // on the next onScoreCalculated (hand-end trigger).
+  onSynergyBurst: { pairCount: number; resonanceIds: string[] };
+  // Wave T (Batch E) — fires once per boss blind when the player
+  // crosses a pre-phase-2 threshold (e.g., 40% of target for a
+  // half-target boss, handsLeft=2 for a last-hand boss). Drives a
+  // warning vignette + soft chime so the player reads "the boss is
+  // about to escalate" instead of being surprised by the banner.
+  // Suppressed for hand-2 bosses since the reveal cinematic already
+  // covers the "you're going to see phase 2 soon" beat.
+  onBossPhase2Incoming: { blindId: string; trigger: 'half-target' | 'last-hand' };
+  // Wave T (Batch F) — non-boss blind transition cue. Boss blinds fire
+  // onBossRevealed instead. Drives a brief vignette pulse + soft
+  // constellation polyline animation so each blind entry reads as a
+  // beat rather than a snap.
+  onBlindAboutToStart: { blindId: string; ante: number; isBoss: boolean };
+  // Wave T Scoring Theater (Batch I, 2026-05-19) — theater phase
+  // emitter. TheaterDirector listens to onScoreBeat and emits these
+  // phase markers so audio, visual, and HUD layers can react to
+  // crescendo state (filter sweep, camera zoom, banner show) without
+  // each subsystem reimplementing the same threshold logic.
+  //   ramping     — fired on cast-swell (hand starts; below 50% target)
+  //   sustained   — fired when runningTotal first crosses 50% of target
+  //   held-breath — fired on the hold-breath beat (just before boom)
+  //   release     — fired on boom or bail (theater layer winds down)
+  onTheaterPhase: { phase: 'ramping' | 'sustained' | 'held-breath' | 'release'; peakMult?: number };
 };
 
 export type GameEventEmission = {
