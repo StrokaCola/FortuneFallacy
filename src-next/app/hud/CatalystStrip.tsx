@@ -101,7 +101,10 @@ export function CatalystStrip() {
         data-coach="catalyst-strip"
         style={{
           position: 'absolute',
-          top: 'calc(var(--hud-top-h, 134px) + 8px)',
+          // Tight gets a 16px breathing buffer below TopBar so the
+          // strip doesn't crowd the bar (mirrors the ConsumableTray
+          // bump on tight). Non-tight keeps the original 8px gap.
+          top: `calc(var(--hud-top-h, 134px) + ${tight ? '24px' : '8px'})`,
           left: 18,
           display: 'flex',
           flexDirection: wide ? 'column' : 'row',
@@ -138,8 +141,9 @@ export function CatalystStrip() {
         position: 'absolute',
         // Stack from the bottom edge of TopBar (with breathing room) so
         // catalysts never disappear under TopBar when it wraps onto two
-        // rows on narrow viewports.
-        top: 'calc(var(--hud-top-h, 134px) + 8px)',
+        // rows on narrow viewports. Tight bumps the gap to 24px so the
+        // strip + mirrored consumable tray don't crowd TopBar.
+        top: `calc(var(--hud-top-h, 134px) + ${tight ? '24px' : '8px'})`,
         left: 18,
         // Wide-mode (desktop landscape, ≥1280×760): turn the row into a
         // left rail so catalysts use the otherwise-empty side margin and

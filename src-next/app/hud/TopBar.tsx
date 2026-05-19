@@ -477,7 +477,7 @@ export function TopBar({
         minWidth: tight ? 0 : 200,
         // Cap on tight portrait so the panel never pushes past the viewport
         // edge when its content (catalysts/vouchers badges) wraps.
-        maxWidth: tight ? 160 : 'none',
+        maxWidth: tight ? 140 : 'none',
         pointerEvents: 'auto',
       }}>
         <div className="f-mono uc" style={{ fontSize: 10, opacity: 0.6, letterSpacing: '0.2em' }}>treasury</div>
@@ -500,8 +500,8 @@ export function TopBar({
             Run currency. Earned by clearing trials and unused hands; spent at the Bazaar on upgrades and rerolls.
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          {catalystSlots && (
+        <div style={{ display: 'flex', gap: 6, marginTop: tight ? 0 : 6 }}>
+          {catalystSlots && !tight && (
             <span className="f-mono has-tip" style={{ fontSize: 10, color: '#7be3ff', padding: '2px 6px',
               border: '1px solid rgba(123,227,255,0.4)', borderRadius: 4, position: 'relative', cursor: 'help',
               display: 'inline-flex', alignItems: 'center', gap: 6 }}>

@@ -73,7 +73,7 @@ export function EmptySlot({ kind, hint }: EmptySlotProps) {
       <div className="f-mono" style={{
         fontSize: 7,
         letterSpacing: '0.08em',
-        color: 'rgba(187,168,255,0.55)',
+        color: 'rgba(187,168,255,0.4)',
         textAlign: 'center',
         lineHeight: 1.2,
         position: 'relative', zIndex: 2,
