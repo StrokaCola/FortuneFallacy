@@ -13,6 +13,7 @@ import { CatalystIcon } from '../../visual/CatalystIcon';
 import { SellButton } from '../SellButton';
 import { LunarPhaseBadge, TideBadge, CornerBadge } from './badges';
 import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
+import { MythicFrame } from '../../visual/MythicFrame';
 import type { FloaterRecord, RingRecord, PulseKind } from './types';
 import { CATALYST_ANIM } from './useCatalystEvents';
 
@@ -79,6 +80,7 @@ export function CatalystCard(props: CatalystCardProps) {
     : undefined;
 
   const isLegendary = c.rarity === 'legendary';
+  const isMythic = c.rarity === 'mythic';
   const eColor = edition ? editionColor(edition) : null;
   // Bespoke surface treatment per edition (added 2026-05-15):
   // every edition is now a distinct material, not a tint. The
@@ -126,6 +128,10 @@ export function CatalystCard(props: CatalystCardProps) {
           // out in a shop offer row, matching the design brief at
           // docs/catalyst-card-system-brief.md (Edition Overlay → Void).
           isVoid ? 'ff-card-void' : '',
+          // Mythic host class — drives the breathing halo + shake +
+          // displacement bursts. <MythicFrame> below auto-detects tile
+          // size and drops the cartouche/scanlines/datastreams.
+          isMythic ? 'is-mythic' : '',
         ].filter(Boolean).join(' ') || undefined}
         style={{
           width: 64, height: 88, borderRadius: 8,
@@ -150,6 +156,11 @@ export function CatalystCard(props: CatalystCardProps) {
             micro-animation. Only fires when the catalyst is
             legendary AND has a registered flourish. */}
         {isLegendary && <LegendaryFlourish catalystId={id} />}
+        {/* Mythic cyberpunk-cosmic frame. Tile size (64×88) is below
+            the auto-compact threshold so MythicFrame drops the
+            cartouche + scanlines + datastreams; marquee, brackets,
+            crown, glitch, comet, and halo still fire. */}
+        {isMythic && <MythicFrame name={c.name} />}
         <div className="f-mono uc" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#bba8ff', position: 'relative', zIndex: 2 }}>catalyst</div>
         <div style={{
           position: 'relative', zIndex: 2,

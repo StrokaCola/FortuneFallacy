@@ -11,7 +11,12 @@ export function ownsVoucher(s: GameState, id: string): boolean {
 
 export function maxCatalystSlots(s: GameState): number {
   const base = ownsVoucher(s, 'bench') ? 7 : 6;
-  const computed = base + getCatalystSlotBonus(s);
+  // Eclipse Heart (mythic) — permanent +1 catalyst slot for the run.
+  // Folded in alongside constellation + astral perks so the stake cap
+  // still applies on top (a mythic slot does not bypass the stake's
+  // catalystCap ceiling).
+  const eclipseHeartBonus = s.run.catalysts.includes('eclipse_heart') ? 1 : 0;
+  const computed = base + getCatalystSlotBonus(s) + eclipseHeartBonus;
   const cap = stakeContext(s).catalystCap;
   return cap > 0 ? Math.min(cap, computed) : computed;
 }

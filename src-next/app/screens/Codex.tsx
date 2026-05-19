@@ -16,6 +16,7 @@ import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES } from '../../data/achievements';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { CatalystIcon } from '../visual/CatalystIcon';
 import { RARITY_COLORS } from '../visual/rarityStyles';
+import { MythicFrame } from '../visual/MythicFrame';
 
 type Tab = 'catalysts' | 'mods' | 'vouchers' | 'consumables' | 'constellations' | 'bosses' | 'resonances' | 'achievements' | 'secrets' | 'about';
 
@@ -291,7 +292,7 @@ function CodexProgressHeader({
 }
 
 function Cell({
-  children, locked = false, accent = '#7be3ff', tipTitle, tipBody,
+  children, locked = false, accent = '#7be3ff', tipTitle, tipBody, className,
 }: {
   children: React.ReactNode;
   locked?: boolean;
@@ -301,11 +302,14 @@ function Cell({
   /** Optional tooltip body — shown on hover. Wave JJ surfaces unlock
    * hints for locked codex entries so the ???-card has an answer. */
   tipBody?: string;
+  /** Additional CSS class — used by the catalyst grid to attach
+   *  `is-mythic` for the discovered-mythic apex treatment. */
+  className?: string;
 }) {
   const hasTip = !!(tipTitle || tipBody);
   return (
     <div
-      className={`panel${hasTip ? ' has-tip' : ''}`}
+      className={`panel${hasTip ? ' has-tip' : ''}${className ? ` ${className}` : ''}`}
       style={{
         padding: 12, borderRadius: 10,
         border: `1px solid ${locked ? 'rgba(149,119,255,0.18)' : `${accent}55`}`,
@@ -416,15 +420,23 @@ function CatalystGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { disco
       {CATALYST_META.slice(pageStart, pageEnd).map((c) => {
         const seen = discovered.includes(c.id);
         const accent = RARITY_COLORS[c.rarity] ?? c.color;
+        // Codex cells for discovered mythics get the full apex-tier
+        // treatment — frame brackets, marquee rim, glitch, comet, and
+        // breathing halo — so a mythic trophy in the collection reads
+        // as such. Compact mode forced because the cell short side is
+        // 88px (cartouche text would crowd the catalyst name).
+        const isMythicSeen = seen && c.rarity === 'mythic';
         return (
           <Cell
             key={c.id}
             locked={!seen}
             accent={accent}
+            className={isMythicSeen ? 'is-mythic' : undefined}
             tipTitle={seen ? undefined : 'Catalyst · undiscovered'}
             tipBody={seen ? undefined : 'Encounter this catalyst at the Bazaar in a run to reveal its name, effect, and flavor here.'}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isMythicSeen && <MythicFrame name={c.name} compact />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 2 }}>
               <KindFrame kind="catalyst" rarity={seen ? c.rarity : null} size={32}>
                 {seen ? (
                   <CatalystIcon

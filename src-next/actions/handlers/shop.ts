@@ -9,6 +9,18 @@ import { sellTriggerFor } from '../../core/shop/sellTriggers';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '../../core/consumables/galaxies';
 import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
+import { lookupCatalyst } from '../../data/catalysts';
+
+// 2026-05-19 mythic tier pricing. Every existing catalyst still costs 5
+// shards; mythic catalysts cost 20. Stake.shopPriceMult applies on top
+// via applyShopPriceMult.
+const MYTHIC_CATALYST_PRICE = 20;
+const STANDARD_CATALYST_PRICE = 5;
+function priceForCatalystId(id: string): number {
+  return lookupCatalyst(id)?.rarity === 'mythic'
+    ? MYTHIC_CATALYST_PRICE
+    : STANDARD_CATALYST_PRICE;
+}
 import { rollCatalystEdition } from '../../core/upgrades/editions';
 import { stakeContext } from '../../core/run/stakeContext';
 import { makeSeedRng } from '../../core/seed/rng';
@@ -162,10 +174,11 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
   // Constellations like Argo replace mod slots with extra catalyst breadth, so
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse));
+  const endlessLap = s.run.endlessLap ?? 0;
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse), endlessLap);
   for (const id of catalystIds) {
     const edition = rollCatalystEdition(rng);
-    offers.push({ kind: 'catalyst', id, price: 5, ...(edition ? { edition } : {}) });
+    offers.push({ kind: 'catalyst', id, price: priceForCatalystId(id), ...(edition ? { edition } : {}) });
   }
 
   // 2026-05-16 polish — Sixth Star (+1 die for the run) is the single
@@ -207,10 +220,10 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
     // No vouchers left to offer — fill the slot with one extra catalyst
     // so the shop doesn't shrink late-run. Mirrors the modsOff branch's
     // approach of using catalyst breadth as the fallback currency.
-    const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId);
+    const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, undefined, endlessLap);
     if (extra[0]) {
       const edition = rollCatalystEdition(rng);
-      offers.push({ kind: 'catalyst', id: extra[0], price: 5, ...(edition ? { edition } : {}) });
+      offers.push({ kind: 'catalyst', id: extra[0], price: priceForCatalystId(extra[0]), ...(edition ? { edition } : {}) });
     }
   }
 

@@ -20,6 +20,7 @@ import type { CatalystEdition } from '../../../state/slices/run';
 import { offerMeta, editionBonusDescription } from './offerMeta';
 import { EditionBadge } from './EditionBadge';
 import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
+import { MythicFrame } from '../../visual/MythicFrame';
 import { RevealAnimation } from './RevealAnimation';
 import { store } from '../../../state/store';
 import { bus } from '../../../events/bus';
@@ -27,10 +28,10 @@ import { bus } from '../../../events/bus';
 const ACCENT = '#7be3ff';
 
 // Soft rarity halo intensity sitting BEHIND the card. Stronger for
-// higher rarities; legendary uses its own pulsing aura instead so
-// the layers don't double-glow.
+// higher rarities; legendary and mythic use their own pulsing aura
+// instead so the layers don't double-glow.
 const RARITY_RING_STRENGTH: Record<Rarity, number> = {
-  common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0,
+  common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0, mythic: 0,
 };
 
 export type ShopOffer = {
@@ -57,6 +58,7 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
   const affordable = shards >= o.price && !slotBlocked;
   const refundIfBought = sellRefund(o.kind, o.id);
   const isLegendary = m.rarity === 'legendary';
+  const isMythic = m.rarity === 'mythic';
   const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;
 
   // Aliveness pass (2026-05-18). First-encounter discovery moment.
@@ -100,11 +102,16 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
     }
   }
   const showReveal = revealRef.current.catalyst || revealRef.current.edition != null;
-  const cardBorder = isLegendary
-    ? `1.5px solid ${ringColor}cc`
-    : m.rarity === 'rare'
-      ? `1px solid ${ringColor}aa`
-      : `1px solid ${c}55`;
+  const cardBorder = isMythic
+    // Mythic owns the inset shadow stack via MythicFrame; a normal
+    // border on top of the frame's 14px nested ring system would
+    // double-draw the edge.
+    ? '0px solid transparent'
+    : isLegendary
+      ? `1.5px solid ${ringColor}cc`
+      : m.rarity === 'rare'
+        ? `1px solid ${ringColor}aa`
+        : `1px solid ${c}55`;
   const ringIntensity = m.rarity ? RARITY_RING_STRENGTH[m.rarity] : 0;
 
   return (
@@ -146,6 +153,11 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
           affordable ? 'ff-offer-card-affordable' : '',
           isLegendary ? 'legendary-aura' : '',
           isLegendary ? 'ff-legendary-lift' : '',
+          // Mythic gets the .is-mythic host class so the breathing halo,
+          // sub-pixel shake, and ~5.5s SVG displacement bursts (defined
+          // in styles/index.css) fire on the card. Inner cyberpunk
+          // frame is owned by <MythicFrame> below.
+          isMythic ? 'is-mythic' : '',
         ].filter(Boolean).join(' ')}
         onPointerEnter={() => sfxPlay('cardFlip')}
         onClick={() => affordable && dispatch({ type: 'BUY_OFFER', offerIdx: i })}
@@ -154,7 +166,10 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
           width: tight ? '100%' : 180,
           height: tight ? 'auto' : 250,
           minHeight: tight ? 200 : undefined,
-          padding: 14,
+          // Mythic reserves vertical safe-area for the crown reticle (top)
+          // and signal-trace cartouche (bottom 48px) so the price row and
+          // glyph stay clear of the frame overlay.
+          padding: isMythic ? '28px 14px 56px' : 14,
           border: cardBorder,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           cursor: affordable ? 'pointer' : 'not-allowed',
@@ -186,6 +201,14 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
             <LegendaryEmbers />
           </>
         )}
+        {/* Mythic frame — cyberpunk-cosmic apex-tier treatment built
+            from the Catalyst Card System Brief design package. Renders
+            the marquee rim, HUD bracket corners, scan-target crown,
+            CRT scanlines, data-stream rails, glitch slices, signal-
+            trace cartouche (with this offer's name), and the orbital
+            comet. The .is-mythic class on the host (above) drives the
+            breathing halo + shake + displacement bursts. */}
+        {isMythic && <MythicFrame name={m.name} />}
         {/* Aliveness first-encounter reveal — only renders on the
             first time the player sees this catalyst (or this edition).
             Self-destructs after ~1.2s (or ~2s for rare editions). */}
@@ -193,13 +216,21 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
           <RevealAnimation name={m.name} edition={revealRef.current.edition ?? undefined} />
         )}
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>
+        <div style={{ position: 'relative', zIndex: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>
           <div className="f-mono uc rarity-tag" style={{
             color: ringColor, marginBottom: 6,
-            border: `1px solid ${ringColor}66`,
+            // Mythic eyebrow swaps the bordered chip for a bare terminal-
+            // style marker (▌ MYTHIC.CATALYST) per the design package's
+            // card-eyebrow spec. The frame's brackets already enclose the
+            // top edge so a second pill-shaped border reads as noise.
+            border: isMythic ? 'none' : `1px solid ${ringColor}66`,
             background: isLegendary ? `${ringColor}14` : 'transparent',
+            letterSpacing: isMythic ? '0.34em' : undefined,
+            textShadow: isMythic ? `0 0 6px ${ringColor}` : undefined,
           }}>
-            {m.kindLabel}{m.rarity ? ` · ${m.rarity}` : ''}
+            {isMythic
+              ? `▌ ${m.kindLabel}.${m.rarity ?? ''}`
+              : `${m.kindLabel}${m.rarity ? ` · ${m.rarity}` : ''}`}
           </div>
           <div style={{ marginTop: 8 }}>
             <KindFrame
