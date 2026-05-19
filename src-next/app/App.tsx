@@ -13,6 +13,11 @@ import { WhisperToast } from './hud/WhisperToast';
 import { EventFlash } from './hud/EventFlash';
 import { ToastHost } from './hud/toastQueue';
 import { ResonanceToast } from './hud/ResonanceToast';
+import { SynergyBurstBanner } from './hud/SynergyBurstBanner';
+import { FlyToCounter } from './hud/theater/FlyToCounter';
+import { TheaterStage } from './hud/theater/TheaterStage';
+import { CrescendoBanner } from './hud/theater/CrescendoBanner';
+import { RunningHandRail } from './hud/theater/RunningHandRail';
 import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
 import { DailyLoginComet } from './hud/DailyLoginComet';
 import { SoundCaptions } from './hud/SoundCaptions';
@@ -265,6 +270,11 @@ export function App() {
               their own rendering; migrate them one at a time. */}
           <ToastHost />
           <ResonanceToast />
+          <SynergyBurstBanner />
+          <FlyToCounter />
+          <TheaterStage />
+          <CrescendoBanner />
+          <RunningHandRail />
           <ForgeAttachRitual />
           <DailyLoginComet />
           <SoundCaptions />

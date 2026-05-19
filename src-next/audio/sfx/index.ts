@@ -124,6 +124,14 @@ const SPAMMABLE_GAP_MS: Partial<Record<SfxId, number>> = {
   modRhythmStack:240,
   modAppetite:   200,
   modAwaken:     500,
+  // Wave T Scoring Theater (Batch I, 2026-05-19) — voice-steal
+  // throttle for scoring beats. Without this, a 5-die hand with 4
+  // catalysts and 3 mods piled 12 chipTicks + 4 multSlams into a
+  // ~400ms window and the mix washed. Gaps tuned to roughly match
+  // the existing pacing's beat duration so isolated fires are
+  // inaudible-throttled but a wash collapses to a clean cadence.
+  chipTick:  50,
+  multSlam:  80,
 };
 const lastPlayedAt: Partial<Record<SfxId, number>> = {};
 

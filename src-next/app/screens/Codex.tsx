@@ -873,6 +873,7 @@ function AchievementsView({ unlocked }: { unlocked: string[] }) {
 // gives the player something to chew on.
 import { EASTER_EGGS } from '../../data/easterEggs';
 import pkg from '../../../package.json';
+import { COACHMARKS } from '../onboarding/coachmarks';
 
 function SecretsView({ found }: { found: string[] }) {
   const foundSet = new Set(found);
@@ -976,6 +977,14 @@ function SecretsView({ found }: { found: string[] }) {
 // somewhere to land for "what is this and where do I follow it?"
 function AboutView() {
   const version: string = (pkg as { version: string }).version;
+  // Wave T (2026-05-19) — tour completion counter. Reads
+  // meta.onboarding.seen vs COACHMARKS registry so the player can
+  // verify they've seen the full set, and surfaces the "Replay guided
+  // tour" affordance for those who skipped or rushed past hints.
+  const onboardingSeen = useStore((s: GameState) => s.meta.onboarding?.seen ?? []);
+  const seenCount = onboardingSeen.length;
+  const totalCoachmarks = COACHMARKS.length;
+  const tourPct = totalCoachmarks > 0 ? Math.round((seenCount / totalCoachmarks) * 100) : 0;
   const labelStyle: React.CSSProperties = {
     fontSize: 10, letterSpacing: '0.28em', color: '#bba8ff',
   };
@@ -1032,6 +1041,32 @@ function AboutView() {
           a run, your name + score are submitted to a public leaderboard
           (no other tracking, no analytics). You can clear local data via
           your browser's site settings.
+        </div>
+      </div>
+
+      <div style={{ ...sectionStyle, borderColor: tourPct >= 100 ? 'rgba(91,232,164,0.45)' : 'rgba(123,227,255,0.35)' }}>
+        <div className="f-mono uc" style={{ ...labelStyle, color: tourPct >= 100 ? '#5be8a4' : '#7be3ff' }}>tour progress</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 6 }}>
+          <div className="f-mono num" style={{ fontSize: 22, color: '#f3f0ff' }}>
+            {seenCount} / {totalCoachmarks}
+          </div>
+          <div className="f-mono" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.12em' }}>
+            coachmarks seen ({tourPct}%)
+          </div>
+        </div>
+        <div style={{
+          height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)',
+          overflow: 'hidden', marginTop: 8,
+        }}>
+          <div style={{
+            width: `${tourPct}%`, height: '100%',
+            background: tourPct >= 100 ? '#5be8a4' : '#7be3ff',
+            boxShadow: tourPct >= 100 ? '0 0 8px #5be8a4' : '0 0 8px #7be3ff',
+            transition: 'width 400ms ease-out',
+          }} />
+        </div>
+        <div className="f-mono" style={{ fontSize: 10, color: '#bba8ff', marginTop: 8, lineHeight: 1.5 }}>
+          Coachmarks fire the first time you meet each system. Replay the guided tour from Settings.
         </div>
       </div>
 

@@ -38,12 +38,20 @@ const PACING = {
   },
 } as const;
 
-// Post-cross-target acceleration. Once the running total has crossed
+// Post-cross-target pacing curve. Once the running total has crossed
 // the blind's target, the player has WON; remaining beats are pure
-// celebration. Shrinking subsequent gaps by 25% turns the lingering
-// upgrade/mult chain into a victory drumroll instead of a slow lap.
-// Floor on hold-breath separately so the climax still has weight.
-const POST_CROSS_GAP_FACTOR = 0.75;
+// celebration.
+//
+// Wave T Scoring Theater (Batch I, 2026-05-19) — replaces the flat
+// 0.75× shrink with a *curve*: the FIRST post-cross beat snaps in
+// fast (0.75×, the "you crossed it" punch), then subsequent beats
+// progressively stretch BACK (0.85 → 0.95 → 1.05) so the chain reads
+// as *sustained tension* climbing toward the boom rather than a
+// drumroll rushing past it. Floor at 40ms so the floor case never
+// hits zero. Hold-breath uses the FIRST factor (0.75) so the breath
+// still tightens after cross.
+const POST_CROSS_GAP_CURVE = [0.75, 0.85, 0.95, 1.05];
+const POST_CROSS_GAP_FACTOR_HOLD = 0.75; // applied to hold-breath specifically
 const POST_CROSS_BREATH_FLOOR_MS = 200;
 
 const REDUCED_MOTION_DIE_GAP_MS = 220;
@@ -174,12 +182,18 @@ function buildUpgradePath(
   let runningMult = input.baseMult!;
   const product = () => Math.round(runningChips * runningMult);
 
-  // Once the running total crosses target, all subsequent gaps shrink
-  // by POST_CROSS_GAP_FACTOR. Wraps the bare `t += gap` lines so the
-  // celebration tail flies past instead of dragging through the
-  // remaining upgrades + mults at the pre-cross cadence.
+  // Once the running total crosses target, gaps follow POST_CROSS_GAP_CURVE
+  // — first beat snaps in (0.75×), then stretches back to build sustained
+  // tension into the boom.
+  let postCrossAdvanceCount = 0;
   const advance = (gap: number): void => {
-    t += crossEmitted ? Math.max(40, Math.round(gap * POST_CROSS_GAP_FACTOR)) : gap;
+    if (crossEmitted) {
+      const factor = POST_CROSS_GAP_CURVE[Math.min(postCrossAdvanceCount, POST_CROSS_GAP_CURVE.length - 1)] ?? 1;
+      postCrossAdvanceCount += 1;
+      t += Math.max(40, Math.round(gap * factor));
+    } else {
+      t += gap;
+    }
   };
 
   const checkCross = () => {
@@ -242,6 +256,9 @@ function buildUpgradePath(
         label: upg.label,
         chipDelta: upg.chipDelta,
         runningTotal: product(),
+        sourceType: upg.sourceType,
+        sourceId: upg.sourceId,
+        dieIdx: upg.dieIdx,
       });
       checkCross();
       advance(upgradeChipGap);
@@ -255,6 +272,9 @@ function buildUpgradePath(
         multDelta: upg.multDelta,
         currentMult: runningMult,
         tint: upg.tint,
+        sourceType: upg.sourceType,
+        sourceId: upg.sourceId,
+        dieIdx: upg.dieIdx,
       });
       checkCross();
       advance(upgradeMultGap);
@@ -297,7 +317,7 @@ function buildUpgradePath(
   // boom still has weight even after the celebration has accelerated.
   const breathBaseMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
   const breathMs = crossEmitted
-    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR))
+    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR_HOLD))
     : breathBaseMs;
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;
@@ -326,10 +346,16 @@ function buildLegacyPath(
   let running = 0;
   let crossEmitted = false;
 
-  // Same post-cross acceleration as the upgrade-path. Wraps every
-  // bare `t += gap` so the celebration tail flies past the cross.
+  // Same post-cross curve as the upgrade-path (Wave T Batch I).
+  let postCrossAdvanceCount = 0;
   const advance = (gap: number): void => {
-    t += crossEmitted ? Math.max(40, Math.round(gap * POST_CROSS_GAP_FACTOR)) : gap;
+    if (crossEmitted) {
+      const factor = POST_CROSS_GAP_CURVE[Math.min(postCrossAdvanceCount, POST_CROSS_GAP_CURVE.length - 1)] ?? 1;
+      postCrossAdvanceCount += 1;
+      t += Math.max(40, Math.round(gap * factor));
+    } else {
+      t += gap;
+    }
   };
 
   const checkCross = (beforeRunning: number) => {
@@ -411,7 +437,7 @@ function buildLegacyPath(
   // Hold-breath — same post-cross floor treatment as the upgrade-path.
   const breathBaseMs = tier === 'full' ? PACING.full.holdBreathMs : PACING[tier].holdBreathMs;
   const breathMs = crossEmitted
-    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR))
+    ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR_HOLD))
     : breathBaseMs;
   beats.push({ kind: 'hold-breath', t, durMs: breathMs });
   t += breathMs;

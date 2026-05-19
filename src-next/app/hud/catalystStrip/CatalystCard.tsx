@@ -116,6 +116,7 @@ export function CatalystCard(props: CatalystCardProps) {
     <div
       key={i}
       className="has-tip has-sell card-wobble"
+      data-catalyst-id={id}
       style={{ position: 'relative', animationDelay: `${(i * 230) % 1700}ms` }}
     >
       <SellButton kind="catalyst" id={id} index={i} variant="badge" />

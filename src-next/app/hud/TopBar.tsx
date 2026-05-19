@@ -113,6 +113,11 @@ export function TopBar({
   // commits bypass the pin and the displayed value updates with
   // state as usual.
   const [displayedScore, setDisplayedScore] = useState(score);
+  // Wave T Scoring Theater (Batch J, 2026-05-19) — physical fill bar
+  // under the score number. fillProgress tracks 0..1 during the boom
+  // counter-fill tween so the stripe grows visually in lockstep with
+  // the score climb. Reset to 0 at start of each fill.
+  const [fillProgress, setFillProgress] = useState(0);
   const displayedScoreRef = useRef(displayedScore);
   const scoreRef = useRef(score);
   const pinnedFromRef = useRef<number | null>(null);
@@ -135,14 +140,19 @@ export function TopBar({
       if (from === null) return;
       const to = scoreRef.current;
       const start = performance.now();
+      setFillProgress(0);
       const tick = () => {
         const t = Math.min(1, (performance.now() - start) / durationMs);
         const eased = 1 - Math.pow(1 - t, 3);
         setDisplayedScore(Math.round(from + (to - from) * eased));
+        setFillProgress(eased);
         if (t < 1) {
           requestAnimationFrame(tick);
         } else {
           pinnedFromRef.current = null;
+          // Let the bar linger briefly at full then fade so it reads
+          // as "filled to the top" before resetting.
+          window.setTimeout(() => setFillProgress(0), 400);
           // Catch pulse on the visible counter once the trails have
           // landed and the climb finished — the spring bounce CSS
           // animation already exists from the old ScoreFloat path.
@@ -274,7 +284,7 @@ export function TopBar({
             <div
               data-score-counter
               key={`score-cross-${scoreCrossKey}`}
-              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}${kineticTier > 0 ? ` ff-score-kinetic-tier${kineticTier}` : ''}`}
+              className={`f-display num ff-number-plate${tense ? ' last-throw-warn' : ''}${scoreCrossKey > 0 ? ' ff-score-cross-pulse' : ''}${kineticTier > 0 ? ` ff-score-kinetic-tier${kineticTier}` : ''}${!tense && kineticTier === 0 && scoreCrossKey === 0 ? ' ff-score-idle-glow' : ''}`}
               style={{
                 fontSize: scoreFontSize, lineHeight: 1,
                 color: tense ? '#ff4d6d' : (kineticColor ?? '#f3f0ff'),
@@ -297,6 +307,34 @@ export function TopBar({
               title={isCompactScore ? scoreFmt.full : undefined}
             >
               {scoreFmt.display}
+            </div>
+            {/* Wave T Scoring Theater (Batch J) — physical fill bar.
+                Stripe grows under the score number during the boom
+                counter-fill so the climb is visible as a meter, not
+                just a tween. Fades after ~400ms hold at full. */}
+            <div
+              aria-hidden
+              style={{
+                height: 3,
+                width: '100%',
+                marginTop: 3,
+                borderRadius: 2,
+                background: 'rgba(245, 196, 81, 0.10)',
+                overflow: 'hidden',
+                opacity: fillProgress > 0 ? 1 : 0,
+                transition: 'opacity 300ms ease-out',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.min(100, fillProgress * 100)}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #f5c451 0%, #ffd97a 50%, #fff7e0 100%)',
+                  boxShadow: '0 0 8px rgba(245, 196, 81, 0.85), 0 0 16px rgba(245, 196, 81, 0.45)',
+                  transition: 'width 60ms linear',
+                }}
+              />
             </div>
             <div className="f-mono num" style={{ fontSize: 12, color: accent, marginTop: 2, whiteSpace: 'nowrap' }}>
               / {targetFmt ? targetFmt.display : '—'}

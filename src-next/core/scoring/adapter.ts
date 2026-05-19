@@ -1,5 +1,55 @@
 import { COMBOS } from './combos';
-import type { SequenceInput } from './types';
+import type { SequenceInput, BeatSourceType } from './types';
+
+// Wave T Theater (2026-05-19) — classify an upgrade event id into
+// theater attribution metadata. Mirrors the id format conventions
+// documented in core/upgrades/eventId.ts:
+//
+//   'stratifier'              → catalyst, sourceId='stratifier'
+//   'gilding_press@2'         → catalyst, sourceId='gilding_press', dieIdx=2
+//   'edition:foil@stratifier' → catalyst, sourceId='stratifier'
+//   'mod:loaded@3'            → mod, sourceId='loaded', dieIdx=3
+//   'resonance:symphony'      → resonance, sourceId='symphony'
+//   'easter_egg:answer'       → unknown (not surfaced by theater attribution)
+function classifyEventSource(
+  eventId: string,
+): { sourceType: BeatSourceType; sourceId?: string; dieIdx?: number } {
+  if (!eventId) return { sourceType: 'unknown' };
+  if (eventId.startsWith('resonance:')) {
+    return { sourceType: 'resonance', sourceId: eventId.slice('resonance:'.length) };
+  }
+  if (eventId.startsWith('mod:')) {
+    const body = eventId.slice('mod:'.length);
+    const at = body.indexOf('@');
+    if (at >= 0) {
+      const dieIdx = Number.parseInt(body.slice(at + 1), 10);
+      return {
+        sourceType: 'mod',
+        sourceId: body.slice(0, at),
+        dieIdx: Number.isFinite(dieIdx) ? dieIdx : undefined,
+      };
+    }
+    return { sourceType: 'mod', sourceId: body };
+  }
+  if (eventId.startsWith('edition:')) {
+    const at = eventId.indexOf('@');
+    return { sourceType: 'catalyst', sourceId: at > 0 ? eventId.slice(at + 1) : undefined };
+  }
+  if (eventId.startsWith('easter_egg:')) {
+    return { sourceType: 'unknown', sourceId: eventId.slice('easter_egg:'.length) };
+  }
+  // Plain catalyst form, optionally @dieIdx.
+  const at = eventId.indexOf('@');
+  if (at > 0) {
+    const dieIdx = Number.parseInt(eventId.slice(at + 1), 10);
+    return {
+      sourceType: 'catalyst',
+      sourceId: eventId.slice(0, at),
+      dieIdx: Number.isFinite(dieIdx) ? dieIdx : undefined,
+    };
+  }
+  return { sourceType: 'catalyst', sourceId: eventId };
+}
 
 type MinimalScoringCtx = {
   combo: { id: string; tier: number } | null;
@@ -31,12 +81,18 @@ export function adaptScoringContext(ctx: MinimalScoringCtx): SequenceInput {
 
   const upgrades = upgradeEvents
     .filter((e) => e.payload.deltaChips !== 0 || e.payload.deltaMult !== 0)
-    .map((e) => ({
-      label: e.payload.id,
-      chipDelta: e.payload.deltaChips,
-      multDelta: e.payload.deltaMult,
-      tint: e.payload.id === 'patience_counter' ? ('magenta' as const) : undefined,
-    }));
+    .map((e) => {
+      const src = classifyEventSource(e.payload.id);
+      return {
+        label: e.payload.id,
+        chipDelta: e.payload.deltaChips,
+        multDelta: e.payload.deltaMult,
+        tint: e.payload.id === 'patience_counter' ? ('magenta' as const) : undefined,
+        sourceType: src.sourceType,
+        sourceId: src.sourceId,
+        dieIdx: src.dieIdx,
+      };
+    });
 
   // comboBonus = pure combo chip bonus only (mod chip deltas moved to upgrade beats).
   const modChipsTotal = upgradeEvents.reduce((s, e) => s + e.payload.deltaChips, 0);

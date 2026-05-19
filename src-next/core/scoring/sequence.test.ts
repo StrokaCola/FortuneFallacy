@@ -449,6 +449,31 @@ describe('buildScoreSequence — upgrade-beat path', () => {
     expect(multBeats.map((b) => (b.kind === 'upgrade-mult' ? b.currentMult : -1))).toEqual([8, 10]);
   });
 
+  it('upgrade beats carry sourceType/sourceId/dieIdx attribution when provided', () => {
+    // Wave T Theater (Batch G) — attribution metadata threads through
+    // the sequence builder onto each upgrade-chip / upgrade-mult beat
+    // so the theater layer can fly floaters from the correct anchor.
+    const seq = buildScoreSequence(
+      upgradeInput({
+        baseMult: 1,
+        upgrades: [
+          { label: 'lodestone', chipDelta: 8, multDelta: 0, sourceType: 'catalyst', sourceId: 'lodestone' },
+          { label: 'mod:loaded@3', chipDelta: 5, multDelta: 0, sourceType: 'mod', sourceId: 'loaded', dieIdx: 3 },
+          { label: 'resonance:symphony', chipDelta: 0, multDelta: 2, sourceType: 'resonance', sourceId: 'symphony' },
+        ],
+        finalTotal: (9 + 8 + 5) * 3,
+      }),
+      baseCtx({ target: 10000 }),
+    );
+    const chipBeats = seq.beats.filter((b) => b.kind === 'upgrade-chip');
+    const multBeats = seq.beats.filter((b) => b.kind === 'upgrade-mult');
+    expect(chipBeats).toHaveLength(2);
+    expect(chipBeats[0]).toMatchObject({ sourceType: 'catalyst', sourceId: 'lodestone' });
+    expect(chipBeats[1]).toMatchObject({ sourceType: 'mod', sourceId: 'loaded', dieIdx: 3 });
+    expect(multBeats).toHaveLength(1);
+    expect(multBeats[0]).toMatchObject({ sourceType: 'resonance', sourceId: 'symphony' });
+  });
+
   it('chain mult-slam still fires when chain.mult != 1', () => {
     const seq = buildScoreSequence(
       upgradeInput({
@@ -505,12 +530,13 @@ describe('buildScoreSequence — post-cross-target acceleration', () => {
   // target, subsequent gaps shrink by ×0.75. Verifies the same hand
   // takes meaningfully longer when it never crosses target vs when it
   // crosses early.
-  it('a hand that crosses early ends sooner than one that crosses only at boom', () => {
-    // Both pick the same tier (full) so the comparison isolates the
-    // post-cross acceleration. Cross-early target=1 means the very
-    // first die-tick crosses; cross-late target=finalTotal-1 means
-    // the cross only fires near/at the boom, so almost no post-cross
-    // savings apply.
+  it('post-cross curve: first beat after cross snaps in faster than later ones', () => {
+    // Wave T Scoring Theater (Batch I, 2026-05-19) — flat 0.75×
+    // post-cross acceleration replaced with a curve [0.75, 0.85,
+    // 0.95, 1.05]. The first post-cross beat punches in fast (the
+    // "you crossed it" moment), then beats progressively stretch
+    // back so the chain reads as sustained tension building into
+    // the boom rather than a drumroll rushing past it.
     const input = baseInput({
       comboLabel: 'FULL_HOUSE',
       comboBonus: 100,
@@ -526,11 +552,12 @@ describe('buildScoreSequence — post-cross-target acceleration', () => {
     const seqLate = buildScoreSequence(input, baseCtx({ target: 799 }));
     expect(seqEarly.tier).toBe('full');
     expect(seqLate.tier).toBe('full');
-    expect(seqEarly.totalDurMs).toBeLessThan(seqLate.totalDurMs);
-    // Should save at least ~10% on the tail. Loose bound to absorb
-    // future tuning without churning the test on every adjustment.
-    const savedRatio = 1 - seqEarly.totalDurMs / seqLate.totalDurMs;
-    expect(savedRatio).toBeGreaterThan(0.10);
+    // Within 5% of each other: the curve trades initial acceleration
+    // for late-beat stretching, so total duration stays in the same
+    // ballpark regardless of where cross-target lands.
+    const ratio = seqEarly.totalDurMs / seqLate.totalDurMs;
+    expect(ratio).toBeGreaterThan(0.92);
+    expect(ratio).toBeLessThan(1.08);
   });
 
   it('hold-breath floor never goes below 200ms post-cross', () => {

@@ -528,6 +528,18 @@ export const CATALYST_META: CatalystMeta[] = [
     desc: 'Permanent: +2 Hands per blind, +1 catalyst slot.',
     flavor: 'A second beat under the first. The dark keeps time.',
     rarity: 'mythic', archetype: 'risk' },
+  // 2026-05-19 locked-dice archetype pair. Patience's Reward rewards
+  // committed plays (all dice locked); Sunk Cost punishes spam-rerolls
+  // (compounding 0.85× per reroll, per blind). Asymmetric synergy with
+  // crescendo_run (no-lock reward).
+  { id: 'patiences_reward', name: "Patience's Reward", icon: '⏸', color: '#88ddff',
+    desc: 'All dice locked at score time: ×1.8 mult (this hand).',
+    flavor: 'The waiting is the work.',
+    rarity: 'rare', archetype: 'timing' },
+  { id: 'sunk_cost', name: 'Sunk Cost', icon: '⛓', color: '#ff7847',
+    desc: 'Each reroll this blind: current hand mult ×0.85 (compounds).',
+    flavor: 'Every recall costs the next.',
+    rarity: 'rare', archetype: 'risk' },
 ];
 
 export function lookupCatalyst(id: string): CatalystMeta | undefined {

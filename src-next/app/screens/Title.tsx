@@ -4,7 +4,7 @@ import { useStore, store } from '../../state/store';
 import type { GameState } from '../../state/store';
 import { lookupConstellation } from '../../data/constellations';
 import { useIsTightStage, useIsLandscapeTight } from '../hooks/useIsCompactStage';
-import { getDailyChallenge } from '../../online/dailyChallenge';
+import { getDailyChallenge, getDailyDate } from '../../online/dailyChallenge';
 import { lookupStake } from '../../data/stakes';
 import { getTipOfTheDay } from '../../data/tips';
 import { currentPrestigeTier } from '../../data/prestigeTiers';
@@ -49,6 +49,16 @@ export function Title() {
   const dailyConst = lookupConstellation(daily.constellationId);
   const dailyStake = lookupStake(daily.stakeId);
   const dailyAttempt = dailyHistory[daily.date];
+  // Wave T (Batch E) — Run-of-Day. Surface yesterday's local daily
+  // result so the player sees their own recent daily even when they
+  // haven't started today's. Reads from local dailyHistory; no remote
+  // leaderboard call. Falls back gracefully when no entry exists.
+  const yesterdayDate = (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 1);
+    return getDailyDate(d);
+  })();
+  const yesterdayAttempt = dailyHistory[yesterdayDate];
   // Derived in render — the underlying array reference is stable, so this
   // recomputes only when highScores actually changes.
   const best = highScores.length === 0
@@ -144,22 +154,26 @@ export function Title() {
             for the React render. The container caps the wordmark's
             width so the lockup scales with viewport while keeping
             its internal proportions baked-in. */}
-        <div style={{
-          width: tight
-            ? 'min(420px, 92vw)'
-            : short
-              ? 'min(460px, 48vw)'
-              : 'min(640px, 70vw)',
-          margin: '0 auto',
-          opacity: 0,
-          animation: 'fadein 1100ms ease-out 300ms forwards',
-        }}>
+        <div
+          className="ff-title-wordmark-breath"
+          style={{
+            width: tight
+              ? 'min(420px, 92vw)'
+              : short
+                ? 'min(460px, 48vw)'
+                : 'min(640px, 70vw)',
+            margin: '0 auto',
+            opacity: 0,
+            // Animation composed in CSS class (fadein + idle breath).
+            // Removing the inline animation lets the class drive both.
+          }}
+        >
           <FortuneFallacyWordmark />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: buttonsGap, marginTop: buttonsMarginTop, alignItems: 'center' }}>
           <button
-            className="btn btn-primary mat-interactive tap"
+            className="btn btn-primary mat-interactive tap ff-title-cta-pulse"
             style={{ width: primaryBtnWidth }}
             onClick={() => {
               if (hasRun) {
@@ -241,6 +255,21 @@ export function Title() {
               }}>
                 {dailyAttempt.cleared ? '✓ cleared · ' : 'best · '}
                 {dailyAttempt.score.toLocaleString()}
+              </div>
+            )}
+            {/* Wave T — Run-of-Day surfacing. Shows player's previous
+                daily result so the daily card carries one beat of
+                continuity across sessions. Dropped when no prior
+                attempt exists; suppressed if today already has a
+                cleared result so the chip stays uncluttered. */}
+            {yesterdayAttempt && !dailyAttempt?.cleared && (
+              <div className="f-mono" style={{
+                fontSize: 8.5, color: '#7a6fa6',
+                letterSpacing: '0.18em',
+                marginTop: 2,
+              }}>
+                yesterday · {yesterdayAttempt.cleared ? '✓ ' : ''}
+                {yesterdayAttempt.score.toLocaleString()}
               </div>
             )}
           </button>

@@ -56,6 +56,16 @@ export type RoundSlice = {
   // debuff). Non-boss blinds stay at 1. Saved state from before this
   // shipped defaults to 1 via persistence migration.
   bossPhase: 1 | 2;
+  // Wave T (Batch E) — sticky one-shot guard for the phase-2 incoming
+  // telegraph. Flipped true the first time the player crosses a
+  // pre-trigger threshold (half-target approach, last-hand approach)
+  // so the warning fires once per blind, not on every subsequent
+  // hand. Reset by START_BLIND via initialRoundSlice.
+  bossPhase2IncomingFired?: boolean;
+  // Wave T (Batch E) — cumulative rerolls used this blind. Drives the
+  // Sunk Cost catalyst's compounding penalty. Increments on each
+  // successful REROLL_REQUESTED; reset by START_BLIND.
+  rerollsUsedThisBlind?: number;
   lastScoringCtx?: {
     combo: { id: string; tier: number } | null;
     chips: number;
@@ -125,6 +135,8 @@ export const initialRoundSlice = (): RoundSlice => ({
   hotStreakFiredThisBlind: false,
   voidstormId: null,
   bossPhase: 1,
+  bossPhase2IncomingFired: false,
+  rerollsUsedThisBlind: 0,
   errisAppleFlipped: false,
   mirroredHandConsumed: false,
   piApproxArmed: false,

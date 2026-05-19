@@ -207,6 +207,22 @@ class AudioEngineImpl {
     return this.progress;
   }
 
+  // Wave T Scoring Theater (Batch I, 2026-05-19) — crescendo filter
+  // override. When non-null, the rAF loop forces the music filter
+  // cutoff toward this Hz value instead of the heat/tension-driven
+  // computation, producing a sustained low-pass sweep. Cleared on
+  // crescendoEnd() — the cutoff snaps back to the normal model so
+  // the boom hits with the bass + highs returning.
+  private crescendoCutoffHz: number | null = null;
+
+  crescendoBegin(targetHz: number = 2400): void {
+    this.crescendoCutoffHz = Math.max(200, targetHz);
+  }
+
+  crescendoEnd(): void {
+    this.crescendoCutoffHz = null;
+  }
+
   // Schedule a duck envelope on the music bus. The envelope ramps the
   // music multiplier 1 → depth → 1 over (attack + hold + release) ms.
   // Calling again replaces any in-flight envelope.
@@ -419,8 +435,21 @@ class AudioEngineImpl {
       // tension=0 → tensionFloor=16000 (no extra narrowing); tension=1 → tensionFloor=2000.
       const heatCutoff = 600 + this.state.heat * 15000;
       const tensionFloor = 16000 - this.tension * 14000;
-      const cutoff = this.state.mode === 'fail' ? 800 : Math.min(heatCutoff, tensionFloor);
-      this.filter.frequency.setTargetAtTime(cutoff, this.filter.context.currentTime, 0.05);
+      // Wave T (Batch I) — crescendoCutoffHz overrides the heat/tension
+      // model with a slow sweep toward the target so the music feels
+      // sustained-pressing-down during the big-combo build. Time
+      // constant 0.18s gives a noticeable but not jarring ramp.
+      let cutoff: number;
+      let timeConstant = 0.05;
+      if (this.state.mode === 'fail') {
+        cutoff = 800;
+      } else if (this.crescendoCutoffHz != null) {
+        cutoff = this.crescendoCutoffHz;
+        timeConstant = 0.18;
+      } else {
+        cutoff = Math.min(heatCutoff, tensionFloor);
+      }
+      this.filter.frequency.setTargetAtTime(cutoff, this.filter.context.currentTime, timeConstant);
     }
   };
 }

@@ -2,7 +2,7 @@ import type { ActionHandler } from './types';
 import { runRollPipelineUpToSim, runRollPipelineAfterSim } from '../../core/pipeline/runRollPipeline';
 import { clearBlind, bustBlind } from '../../core/round/transitions';
 import { hasDebuff } from '../../core/round/debuffs';
-import { evaluateBossPhase } from '../../core/round/bossPhase';
+import { evaluateBossPhase, evaluateBossPhase2Incoming } from '../../core/round/bossPhase';
 import { rerollsPerHand } from '../../core/run/stakeContext';
 import { lookupMod } from '../../core/mods';
 import { shardSinkActive } from '../../core/upgrades/catalysts/shardSink';
@@ -138,6 +138,9 @@ export const rollHandler: ActionHandler = (a, s) => {
             rerollsLeft: advanced.round.rerollsLeft - 1,
             rollsWithoutLock: (advanced.round.rollsWithoutLock ?? 0) + 1,
             banishTriggersByDie: banish.nextTally,
+            // Wave T (Batch E) — cumulative reroll count for Sunk Cost.
+            // Persists across hands until START_BLIND resets it.
+            rerollsUsedThisBlind: (advanced.round.rerollsUsedThisBlind ?? 0) + 1,
           },
         },
         events,
@@ -395,6 +398,45 @@ export const rollHandler: ActionHandler = (a, s) => {
       } else if (workingState.round.active && newHandsLeft === 0 && newScore < workingState.round.target) {
         pendingRoundEnd = 'bust';
       }
+      // Wave T (2026-05-19) — last-hand-of-blind telegraph. Fires once
+      // when the player drops to 1 hand left AND the round is still
+      // live (no pending clear/bust). Drives the audio duck so the
+      // final hand sounds focused.
+      if (
+        workingState.round.active
+        && newHandsLeft === 1
+        && workingState.round.handsLeft > 1
+        && pendingRoundEnd === null
+      ) {
+        baseEvents.push({
+          type: 'onLastHandOfBlind',
+          payload: { handsLeft: newHandsLeft, target: workingState.round.target, score: newScore },
+        });
+      }
+      // Wave T (Batch E) — phase-2 incoming telegraph. Detect when the
+      // player has crossed a pre-fire threshold (half-target ≥ 40 %,
+      // last-hand handsLeft = 2) but evaluateBossPhase has NOT yet
+      // promoted. One-shot per blind via round.bossPhase2IncomingFired.
+      let phase2IncomingFireNow: 'half-target' | 'last-hand' | null = null;
+      if (!workingState.round.bossPhase2IncomingFired) {
+        phase2IncomingFireNow = evaluateBossPhase2Incoming({
+          isBoss: workingState.round.isBoss,
+          blindId: workingState.round.blindId,
+          bossPhase: workingState.round.bossPhase,
+          stakeId: workingState.run.stakeId,
+          newScore,
+          newHandsLeft,
+          handsMax: workingState.round.handsMax,
+          target: workingState.round.target,
+          pendingRoundEnd,
+        });
+        if (phase2IncomingFireNow) {
+          baseEvents.push({
+            type: 'onBossPhase2Incoming',
+            payload: { blindId: workingState.round.blindId ?? 'unknown', trigger: phase2IncomingFireNow },
+          });
+        }
+      }
       // Boss Phase Escalation (Pillar B) — evaluate the per-boss
       // second-wind trigger against the *post-score* round shape. Only
       // promotes when the blind continues (no clear/bust pending) and
@@ -414,6 +456,12 @@ export const rollHandler: ActionHandler = (a, s) => {
       let stateWithPending = pendingRoundEnd
         ? { ...baseState, round: { ...baseState.round, pendingRoundEnd } }
         : baseState;
+      if (phase2IncomingFireNow) {
+        stateWithPending = {
+          ...stateWithPending,
+          round: { ...stateWithPending.round, bossPhase2IncomingFired: true },
+        };
+      }
       if (phaseEval.promote) {
         stateWithPending = {
           ...stateWithPending,

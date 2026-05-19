@@ -54,11 +54,15 @@ describe('sfxPlay throttle', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it('does not throttle un-listed cues (e.g. multSlam fires every time)', () => {
-    const fn = vi.mocked(voicesMock.multSlam);
-    sfxPlay('multSlam');
-    sfxPlay('multSlam');
-    sfxPlay('multSlam');
+  it('does not throttle un-listed cues (e.g. comboChime fires every time)', () => {
+    // multSlam + chipTick gained throttles in Wave T Scoring Theater
+    // (Batch I, 2026-05-19) — voice-steal prevents 5-catalyst wash.
+    // comboChime stays unlisted; if every cue ever gets throttled
+    // this guard catches the accidental over-throttle.
+    const fn = vi.mocked(voicesMock.comboChime);
+    sfxPlay('comboChime');
+    sfxPlay('comboChime');
+    sfxPlay('comboChime');
     expect(fn).toHaveBeenCalledTimes(3);
   });
 

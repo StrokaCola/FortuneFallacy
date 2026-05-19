@@ -124,6 +124,11 @@ import './cosmicAnchor';
 import './voidforge';
 import './hoardersCrown';
 import './eclipseHeart';
+// 2026-05-19 locked-dice archetype pair. Asymmetric tradeoff —
+// Patience's Reward rewards no-reroll commit, Sunk Cost punishes
+// spam-rerolling. See docs/superpowers/plans/2026-05-19-tier2-batch-e.md.
+import './patiencesReward';
+import './sunkCost';
 
 export const CATALYST_IDS = [
   'stratifier', 'chaos_theory', 'six_bias',
@@ -177,5 +182,7 @@ export const CATALYST_IDS = [
   'counter_purse', 'magpie', 'vault_heart',
   // 2026-05-19 mythic tier
   'singularity_engine', 'cosmic_anchor', 'voidforge', 'hoarders_crown', 'eclipse_heart',
+  // 2026-05-19 locked-dice archetype pair
+  'patiences_reward', 'sunk_cost',
 ] as const;
 export type CatalystId = typeof CATALYST_IDS[number];

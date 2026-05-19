@@ -453,7 +453,11 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
     },
     events: isBoss
       ? [{ type: 'onBossRevealed', payload: { blindId, ante: s.run.ante } }]
-      : [],
+      // Wave T (Batch F) — Blind→Blind transition cue for non-boss
+      // blinds. Boss blinds use the BossReveal cinematic instead. Drives
+      // a brief vignette pulse so the moment of entering a new blind
+      // reads as a beat rather than a snap.
+      : [{ type: 'onBlindAboutToStart', payload: { blindId, ante: s.run.ante, isBoss: false } }],
   };
 }
 

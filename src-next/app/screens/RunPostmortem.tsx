@@ -95,6 +95,17 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Wave T (2026-05-19): visible "ready to advance" cue. After the
+  // celebration animations land (~2.4s; fadein 1400ms + button reveal
+  // 1400ms), pulse the primary CTA so the player reads "you can
+  // continue now" without having to discover the Space shortcut. The
+  // pulse is a class toggle so reduce-motion gates it via CSS.
+  const [ctaReady, setCtaReady] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setCtaReady(true), 2400);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const heroColor = mode === 'win' ? '#f5c451' : '#ff4d6d';
   const heroLabel = mode === 'win' ? 'VICTORY' : 'NOT ENOUGH';
   const heroSub = mode === 'win'
@@ -530,8 +541,9 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           <button
             type="button"
             onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'constellation_select' })}
-            className="btn btn-primary mat-interactive tap"
+            className={`btn btn-primary mat-interactive tap${ctaReady ? ' ff-cta-ready-pulse' : ''}`}
             data-autofocus={mode === 'fail'}
+            title="Run again — or press Space / Enter"
           >
             {mode === 'win' ? '✦ Run Again' : '↻ Try Again'}
           </button>
