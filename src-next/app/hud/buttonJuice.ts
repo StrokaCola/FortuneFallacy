@@ -82,7 +82,11 @@ function spawnShockwave(btn: HTMLElement, variant: 'primary' | 'cta' | 'ghost' |
 // most desktop browsers — the API just returns false. We gate it on
 // pointerType === 'touch' so a mouse-on-laptop doesn't try to vibrate.
 function tapHaptic(durationMs: number): void {
-  const vib = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
+  // Type the vibrate slot as a single-arg numeric pulse so TS's
+  // `Function.prototype.call` resolution doesn't widen the param to
+  // `Iterable<number>` via the union variant. `.call(navigator, n)`
+  // still preserves `this`-binding to the navigator.
+  const vib = (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate;
   if (typeof vib === 'function') {
     try { vib.call(navigator, durationMs); } catch { /* ignore */ }
   }
