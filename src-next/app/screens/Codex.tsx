@@ -660,9 +660,9 @@ function ResonanceGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { disc
         const seen = discovered.includes(r.id);
         const accent = '#7be3ff';
         const effectStr =
-          r.effect.kind === 'chips' ? `+${r.effect.value} chips`
+          r.effect.kind === 'chips' ? `+${r.effect.value} pips`
           : r.effect.kind === 'mult' ? `+${r.effect.value} mult`
-          : `+${r.effect.chips} chips, +${r.effect.mult} mult`;
+          : `+${r.effect.chips} pips, +${r.effect.mult} mult`;
         const a = CATALYST_META.find((c) => c.id === r.a);
         const b = CATALYST_META.find((c) => c.id === r.b);
         return (

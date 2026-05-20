@@ -80,7 +80,7 @@ const COMBO_GALAXIES: ConsumableDef[] = GALAXY_META.map((meta) => {
     type: 'galaxy',
     name: meta.name,
     icon: meta.icon,
-    description: `Lvl up ${comboNameForDescription(meta.comboId)}: +${bonus.chips} chips, +${bonus.mult} mult.`,
+    description: `Lvl up ${comboNameForDescription(meta.comboId)}: +${bonus.chips} pips, +${bonus.mult} mult.`,
     requiresTarget: false,
     comboId: meta.comboId,
     levels: 1,

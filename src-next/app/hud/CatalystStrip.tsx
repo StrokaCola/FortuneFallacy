@@ -159,9 +159,14 @@ export function CatalystStrip() {
         // populated case so tooltips fire on real mouse hover.
         pointerEvents: 'auto',
         ...(wide ? {} : {
-          // Cap to visible play area so the absolute-positioned row
-          // never extends past the viewport edge.
-          maxWidth: 'calc(100vw - 36px)',
+          // Wave T+1 (2026-05-19) responsive UI pass — reserve a slot
+          // for the ConsumableTray on the right edge of tight portrait
+          // viewports so a 5-catalyst row doesn't collide with the
+          // consumable card. 18px padding + ~80px consumable area on
+          // tight; medium portraits get more breathing room.
+          maxWidth: tight
+            ? 'calc(100vw - 36px - 80px)'
+            : 'calc(100vw - 36px)',
         }),
       }}
     >

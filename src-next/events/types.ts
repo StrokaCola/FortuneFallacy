@@ -99,6 +99,20 @@ export type GameEventMap = {
   onRunEnded:          { score: number; won: boolean; ante: number; constellation: string };
   onShopOpened:        { offers: ShopOffer[] };
   onLockToggled:       { dieIdx: number; locked: boolean };
+  // Wave T+1 (2026-05-20) living cosmos — emitted by ScoreBreakdown
+  // when the displayed mult tier crosses an escalation threshold
+  // (≥×2/×4/×8/×16). Drives the nebula pulse cosmos layer + audio
+  // tier rituals. fromTier/toTier are tierIndex() outputs (0-3).
+  // accent is the tier color so subscribers don't need to recompute.
+  onMultTierCross:     { fromTier: number; toTier: number; accent: string };
+  // Wave T+1 (2026-05-19) — viewport-relative click position of the
+  // lock-toggle pointer up. Dice3D emits this immediately before
+  // dispatching TOGGLE_LOCK so a click ripple can render at the
+  // cursor position (where the player's attention is) rather than at
+  // the die center. Carries `locked` (the upcoming state, not the
+  // current one) so the ripple can tint differently for lock vs
+  // unlock without subscribing to the action result.
+  onLockClickRipple:   { x: number; y: number; locked: boolean };
   onOfferBought:       { kind: ShopOffer['kind']; id: string; price: number };
   onUpgradeSold:       { kind: ShopOffer['kind']; id: string; refund: number };
   onScoreBeat:         { beat: Beat };

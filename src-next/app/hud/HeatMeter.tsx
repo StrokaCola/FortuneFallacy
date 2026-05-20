@@ -169,7 +169,7 @@ export function HeatMeter() {
           Each step lights another segment. Three lit = full heat. The bar pulses while you're hot — break the chain and it dims.
         </span>
         <span style={{ display: 'block', marginTop: 6, color: '#bba8ff', fontFamily: '"JetBrains Mono", monospace', fontSize: 10 }}>
-          ◇ Quorum catalyst doubles down on this — same combo twice in a row → chips ×1.5, three in a row → mult ×1.5 too.
+          ◇ Quorum catalyst doubles down on this — same combo twice in a row → pips ×1.5, three in a row → mult ×1.5 too.
         </span>
       </span>
     </div>

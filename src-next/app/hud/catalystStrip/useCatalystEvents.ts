@@ -89,92 +89,23 @@ export function useCatalystEvents(
       return t;
     };
 
-    const off = bus.on('onUpgradeTriggered', (payload: { id: string; deltaChips: number; deltaMult: number }) => {
-      const id = payload.id;
-
-      // Resonance: a hand-authored pair fired. Pulse BOTH halves with the
-      // legendary fire animation so the player sees the link visually,
-      // and float a single resonance label off the FIRST owned catalyst
-      // card (we don't double the floater — the player just saw "+5 mult"
-      // once, attributed to the named pair).
-      const resonanceId = resonanceIdFromEvent(id);
-      if (resonanceId) {
-        const pair = lookupResonance(resonanceId);
-        if (!pair) return;
-        const halves = [pair.a, pair.b].filter((cId) => catalysts.includes(cId));
-        for (const half of halves) {
-          setPulsing((s) => ({ ...s, [half]: 'fire-legendary' }));
-          track(() => {
-            setPulsing((s) => ({ ...s, [half]: undefined }));
-          }, PULSE_DURATION_LEGENDARY_MS);
-          // Same tight-mode ring suppression as below — keeps the
-          // legendary pulse + named-beat floater, drops the rings.
-          if (!tight) {
-            const ringKey = ++ringKeyRef.current;
-            setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
-            track(() => {
-              setRings((rs) => rs.filter((r) => r.key !== ringKey));
-            }, RING_DURATION_MS);
-          }
-        }
-        // Single floater on the first owned half — shows the named beat
-        // ("Symphony +5 mult") rather than two anonymous deltas.
-        if (halves[0]) {
-          const dChips = payload.deltaChips ?? 0;
-          const dMult = payload.deltaMult ?? 0;
-          const parts: string[] = [pair.name];
-          if (dChips > 0) parts.push(`+${Math.round(dChips)}`);
-          if (dMult > 0) parts.push(`+${(Math.round(dMult * 10) / 10).toString().replace(/\.0$/, '')} mult`);
-          const floaterKey = ++floaterKeyRef.current;
-          const launchAt = tight ? Math.max(performance.now(), floaterStaggerRef.current) : performance.now();
-          const delay = launchAt - performance.now();
-          if (tight) floaterStaggerRef.current = launchAt + FLOATER_STAGGER_MS;
-          const launch = () => {
-            setFloaters((fs) => [...fs, {
-              key: floaterKey,
-              catalystId: halves[0]!,
-              text: parts.join(' · '),
-              tone: 'mult',
-            }]);
-            track(() => {
-              setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
-            }, FLOATER_DURATION_MS);
-          };
-          if (delay > 0) track(launch, delay);
-          else launch();
-        }
-        return;
-      }
-
-      // catalyst_bench is special: it ripples through every OTHER owned
-      // catalyst with a chain pulse, so its fire payload itself stays
-      // attributed to the bench card.
-      if (id === 'catalyst_bench') {
-        const others = catalysts.filter((c) => c !== 'catalyst_bench');
-        others.forEach((otherId, i) => {
-          track(() => {
-            setPulsing((s) => ({ ...s, [otherId]: 'chain' }));
-            track(() => {
-              setPulsing((s) => ({ ...s, [otherId]: undefined }));
-            }, PULSE_DURATION_MS);
-          }, i * CHAIN_PULSE_STEP_MS);
-        });
-        return;
-      }
-
-      const catalystId = catalystIdFromEvent(id);
-      if (!catalystId || !catalysts.includes(catalystId)) return;
-
+    // Wave T+1 (2026-05-19) sync fix — catalyst pulse + ring + floater
+    // used to fire on onUpgradeTriggered (eval-time, all at once before
+    // scoring sequence playback). The corresponding upgrade-chip /
+    // upgrade-mult beats fire LATER during sequence playback. That
+    // desync meant the catalyst bounced + the cardFloater rose at t=0,
+    // while the FlyToCounter +N floater rose 1-2s later when its beat
+    // played. The fix here: drive catalyst visuals from onScoreBeat
+    // instead, so the catalyst pulses at the same moment the beat
+    // plays back and FlyToCounter renders the +N. catalyst_bench's
+    // chain ripple stays on onUpgradeTriggered because it has no
+    // per-target beats — it's pure visual decoration triggered when
+    // the bench card itself fires.
+    const triggerCatalystVisual = (catalystId: string) => {
       const meta = lookupCatalyst(catalystId);
       const isLegendary = meta?.rarity === 'legendary';
       const isScaling = SCALING_CATALYST_IDS.has(catalystId);
       const isCollision = COLLISION_CATALYST_IDS.has(catalystId);
-      // Priority: legendary > scaling > collision > regular fire.
-      // Legendary catalysts that are ALSO scaling (heirloom_locket) keep
-      // the legendary pulse because their rarity is the stronger signal;
-      // the scaling tooltip line + corner badge already mark them as
-      // scaling-class. Collision sits between scaling and regular fire —
-      // it's a real visual class but rarity overrides it the same way.
       const pulseKind: PulseKind =
         isLegendary ? 'fire-legendary'
         : isScaling ? 'scaling'
@@ -185,24 +116,12 @@ export function useCatalystEvents(
         isScaling ? PULSE_DURATION_SCALING_MS :
         isCollision ? PULSE_DURATION_COLLISION_MS :
         PULSE_DURATION_MS;
-
       setPulsing((s) => ({ ...s, [catalystId]: pulseKind }));
       track(() => {
         setPulsing((s) => ({ ...s, [catalystId]: undefined }));
       }, pulseDuration);
-
-      // Ring burst emanates from the card; lower-cost than the floater and
-      // fires for every catalyst contribution (incl. edition stamps).
-      // Tight viewports skip the ring entirely — the card-pulse already
-      // communicates "this card fired" and the floater carries the
-      // actual delta. The ring is pure redundant celebration on small
-      // screens where 4+ concurrent rings stack into visual mud.
       if (!tight) {
         const ringKey = ++ringKeyRef.current;
-        // Edition tints win over the rarity / kind defaults so a
-        // foil/holo/poly/void catalyst's fire ring matches its
-        // surface treatment. Legendary still keeps the warm coral
-        // when no edition is set.
         const editionTint = editionRingColor(editions[catalystId]);
         const ringColor =
           editionTint ??
@@ -214,47 +133,67 @@ export function useCatalystEvents(
           setRings((rs) => rs.filter((r) => r.key !== ringKey));
         }, RING_DURATION_MS);
       }
+    };
 
-      // Floater — only when there's a material delta. Skips silent fires
-      // (utility catalysts that mutate state without moving chips/mult)
-      // so the strip doesn't spam +0 toasts.
-      const dChips = payload.deltaChips ?? 0;
-      const dMult = payload.deltaMult ?? 0;
-      let text = '';
-      let tone: 'chips' | 'mult' | 'scaling' = 'chips';
-      if (dChips !== 0) {
-        text = `+${Math.round(dChips)}`;
-        // Scaling-catalyst chip contributions tinted emerald so the
-        // accumulated bonus reads visually distinct from regular +chips.
-        tone = isScaling ? 'scaling' : 'chips';
-      } else if (dMult !== 0) {
-        const rounded = Math.round(dMult * 10) / 10;
-        text = `+${rounded.toString().replace(/\.0$/, '')} mult`;
-        tone = isScaling ? 'scaling' : 'mult';
+    const offBeat = bus.on('onScoreBeat', ({ beat }) => {
+      if (beat.kind === 'cast-swell') {
+        // New hand — clear any in-flight visual state to avoid stale
+        // floaters / pulses bleeding in from a previous sequence.
+        setPulsing({});
+        setRings([]);
+        floaterStaggerRef.current = 0;
+        return;
       }
-      if (text) {
-        const floaterKey = ++floaterKeyRef.current;
-        // Tight: stagger floaters by 120ms so a chain of 4 catalyst
-        // fires reads as four sequential reveals instead of four
-        // overlapping +chips numbers stacking at the same Y. Wide
-        // keeps the simultaneous-burst behavior (more space, clearer
-        // spatial attribution per card).
-        const now = performance.now();
-        const launchAt = tight ? Math.max(now, floaterStaggerRef.current) : now;
-        const delay = launchAt - now;
-        if (tight) floaterStaggerRef.current = launchAt + FLOATER_STAGGER_MS;
-        const launch = () => {
-          setFloaters((fs) => [...fs, { key: floaterKey, catalystId, text, tone }]);
+      if (beat.kind !== 'upgrade-chip' && beat.kind !== 'upgrade-mult') return;
+      const sourceType = beat.sourceType;
+      const sourceId = beat.sourceId;
+      if (!sourceId) return;
+      if (sourceType === 'catalyst') {
+        if (!catalysts.includes(sourceId)) return;
+        triggerCatalystVisual(sourceId);
+      } else if (sourceType === 'resonance') {
+        const pair = lookupResonance(sourceId);
+        if (!pair) return;
+        const halves = [pair.a, pair.b].filter((cId) => catalysts.includes(cId));
+        for (const half of halves) {
+          setPulsing((s) => ({ ...s, [half]: 'fire-legendary' }));
           track(() => {
-            setFloaters((fs) => fs.filter((f) => f.key !== floaterKey));
-          }, FLOATER_DURATION_MS);
-        };
-        if (delay > 0) track(launch, delay);
-        else launch();
+            setPulsing((s) => ({ ...s, [half]: undefined }));
+          }, PULSE_DURATION_LEGENDARY_MS);
+          if (!tight) {
+            const ringKey = ++ringKeyRef.current;
+            setRings((rs) => [...rs, { key: ringKey, catalystId: half, color: RESONANCE_RING_COLOR }]);
+            track(() => {
+              setRings((rs) => rs.filter((r) => r.key !== ringKey));
+            }, RING_DURATION_MS);
+          }
+        }
+      }
+    });
+
+    const off = bus.on('onUpgradeTriggered', (payload: { id: string; deltaChips: number; deltaMult: number }) => {
+      const id = payload.id;
+      // Resonance and per-catalyst pulses moved to the onScoreBeat
+      // listener above (beat-time sync with FlyToCounter floaters).
+      // Per-catalyst cardFloater dropped — FlyToCounter is the single
+      // floater system now, with size scaling and float-up-at-origin.
+      // catalyst_bench's chain ripple stays here because it has no
+      // matching per-target upgrade-chip/upgrade-mult beat to hook on.
+      if (id === 'catalyst_bench') {
+        const others = catalysts.filter((c) => c !== 'catalyst_bench');
+        others.forEach((otherId, i) => {
+          track(() => {
+            setPulsing((s) => ({ ...s, [otherId]: 'chain' }));
+            track(() => {
+              setPulsing((s) => ({ ...s, [otherId]: undefined }));
+            }, PULSE_DURATION_MS);
+          }, i * CHAIN_PULSE_STEP_MS);
+        });
       }
     });
     return () => {
       off();
+      offBeat();
       timers.forEach(clearTimeout);
       timers.clear();
     };

@@ -76,22 +76,22 @@ export const PRIMER_ENTRIES: readonly PrimerEntry[] = [
   {
     id: 'chips',
     category: 'scoring',
-    term: 'Chips',
-    definition: "The bright number that adds up. Bigger chip stack means more points before any multiplier hits.",
+    term: 'Pips',
+    definition: "The bright number that adds up. Bigger pip stack means more points before any multiplier hits.",
     seeAlso: ['mult', 'combo'],
   },
   {
     id: 'mult',
     category: 'scoring',
     term: 'Mult (Multiplier)',
-    definition: "Multiplies your chip total. \"20 × 4\" reads as 20 chips times 4 = 80 points. Catalysts almost always raise either chips or mult.",
+    definition: "Multiplies your pip total. \"20 × 4\" reads as 20 pips times 4 = 80 points. Catalysts almost always raise either pips or mult.",
     seeAlso: ['chips', 'catalyst'],
   },
   {
     id: 'combo',
     category: 'scoring',
     term: 'Combo',
-    definition: "The hand-type your scoring dice form — Pair, Two Pair, Three of a Kind, Straight, Full House, Four of a Kind, Five of a Kind. Higher combos pay more base chips and mult.",
+    definition: "The hand-type your scoring dice form — Pair, Two Pair, Three of a Kind, Straight, Full House, Four of a Kind, Five of a Kind. Higher combos pay more base pips and mult.",
     seeAlso: ['chips', 'mult'],
   },
   {
@@ -120,14 +120,14 @@ export const PRIMER_ENTRIES: readonly PrimerEntry[] = [
     id: 'catalyst',
     category: 'catalysts',
     term: 'Catalyst',
-    definition: "A card you keep for the whole run. Each one reshapes how your dice score — adding chips, mult, retriggers, or whole new rules.",
+    definition: "A card you keep for the whole run. Each one reshapes how your dice score — adding pips, mult, retriggers, or whole new rules.",
     seeAlso: ['edition', 'scaling', 'resonance'],
   },
   {
     id: 'edition',
     category: 'catalysts',
     term: 'Edition',
-    definition: "A rare stamp on a catalyst: Foil adds chips, Holo adds mult, Polychrome adds 50% of the card's own contribution, Void costs zero slots. Editions roll randomly in the shop.",
+    definition: "A rare stamp on a catalyst: Foil adds pips, Holo adds mult, Polychrome adds 50% of the card's own contribution, Void costs zero slots. Editions roll randomly in the shop.",
     seeAlso: ['catalyst'],
   },
   {
@@ -157,7 +157,7 @@ export const PRIMER_ENTRIES: readonly PrimerEntry[] = [
     id: 'mod',
     category: 'mods',
     term: 'Mod',
-    definition: "A small enchantment attached to a specific die. Mods fire every time that die scores — chips, mult, shards, or face-bending effects.",
+    definition: "A small enchantment attached to a specific die. Mods fire every time that die scores — pips, mult, shards, or face-bending effects.",
     seeAlso: ['forge'],
   },
   {
@@ -259,7 +259,7 @@ export const PRIMER_ENTRIES: readonly PrimerEntry[] = [
     id: 'boss_debuff',
     category: 'trials',
     term: 'Boss Debuff',
-    definition: "A rule the boss imposes for one trial only. Disable rerolls, force scoring order, lower a face's chips — boss debuffs lift the moment you clear.",
+    definition: "A rule the boss imposes for one trial only. Disable rerolls, force scoring order, lower a face's pips — boss debuffs lift the moment you clear.",
     seeAlso: ['blind'],
   },
   {

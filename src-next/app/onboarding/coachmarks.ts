@@ -151,7 +151,7 @@ export const COACHMARKS: CoachmarkDef[] = [
     screen: 'round',
     anchor: 'catalyst-strip',
     side: 'below',
-    text: 'A catalyst with an edition stamp pays more — foil adds chips, holographic adds mult, polychrome adds 50% of its own contribution, void costs zero slots.',
+    text: 'A catalyst with an edition stamp pays more — foil adds pips, holographic adds mult, polychrome adds 50% of its own contribution, void costs zero slots.',
     requires: ownsAnyEdition,
   },
   {

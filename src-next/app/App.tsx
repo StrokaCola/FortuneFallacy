@@ -1,4 +1,5 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
+import { bus } from '../events/bus';
 import { DevConsole } from '../devtools/DevConsole';
 import { BoundsOverlay } from '../devtools/inspector/BoundsOverlay';
 import { SpawnOverlay } from '../devtools/inspector/SpawnOverlay';
@@ -15,9 +16,13 @@ import { ToastHost } from './hud/toastQueue';
 import { ResonanceToast } from './hud/ResonanceToast';
 import { SynergyBurstBanner } from './hud/SynergyBurstBanner';
 import { FlyToCounter } from './hud/theater/FlyToCounter';
+import { BeatTracer } from './hud/theater/BeatTracer';
+import { ComboFlash } from './hud/theater/ComboFlash';
+import { ComboSignature } from './hud/theater/ComboSignature';
+import { ScoreMilestones } from './hud/theater/ScoreMilestones';
+import { LockClickRipple } from './hud/LockClickRipple';
 import { TheaterStage } from './hud/theater/TheaterStage';
 import { CrescendoBanner } from './hud/theater/CrescendoBanner';
-import { RunningHandRail } from './hud/theater/RunningHandRail';
 import { ForgeAttachRitual } from './hud/ForgeAttachRitual';
 import { DailyLoginComet } from './hud/DailyLoginComet';
 import { SoundCaptions } from './hud/SoundCaptions';
@@ -72,6 +77,27 @@ export function App() {
   const screen = useStore(selectScreen);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
+  // Wave T+1 (2026-05-19) reactive environment pass — track theater
+  // phase so the cosmos background lifts tension during scoring
+  // crescendo even outside boss-tension situations. The base tension
+  // signal lives in selectTensionFromState (driven by round state +
+  // boss); this overlay adds a transient scoring boost so the cosmos
+  // visibly inhales during the sustained phase and holds at peak
+  // during held-breath, then exhales on release.
+  const [theaterPhaseBoost, setTheaterPhaseBoost] = useState(0);
+  useEffect(() => {
+    const off = bus.on('onTheaterPhase', ({ phase }) => {
+      if (phase === 'sustained') setTheaterPhaseBoost(0.25);
+      else if (phase === 'held-breath') setTheaterPhaseBoost(0.45);
+      else if (phase === 'release') {
+        // Brief exhale — drop in 600ms so background settles after
+        // boom without a hard cut.
+        const t = window.setTimeout(() => setTheaterPhaseBoost(0), 600);
+        return () => clearTimeout(t);
+      } else if (phase === 'ramping') setTheaterPhaseBoost(0);
+    });
+    return () => off();
+  }, []);
   // Per-stake border tint — drives a body-level class that shifts
   // panel border colors so two players on different stakes see
   // visually distinct runs. Subtle: only changes the border-color
@@ -212,11 +238,17 @@ export function App() {
   //   Win       — progress 1.5 (gold halo blazes, celebration)
   //   Fail      — tension 1.0 (full crimson dominates)
   //   everything else — 0 / 0 (calm)
-  const cosmosTension =
-    screen === 'round' ? tension :
+  // Wave T+1 (2026-05-19) reactive environment — fold the theater
+  // phase boost into the cosmos tension so the background visibly
+  // inhales during scoring crescendo. Clamped to [0,1] so the
+  // existing crimson-tint + drift-speed ramps stay within their
+  // designed envelope.
+  const cosmosTension = Math.min(1, (
+    screen === 'round' ? tension + theaterPhaseBoost :
     screen === 'fail'  ? 1.0 :
     hubBossPending     ? 0.4 :
-    0;
+    0
+  ));
   const cosmosProgress =
     screen === 'round' ? progress :
     screen === 'win'   ? 1.5 :
@@ -272,9 +304,19 @@ export function App() {
           <ResonanceToast />
           <SynergyBurstBanner />
           <FlyToCounter />
+          <BeatTracer />
+          <ComboFlash />
+          <ComboSignature />
+          <ScoreMilestones />
+          <LockClickRipple />
           <TheaterStage />
           <CrescendoBanner />
-          <RunningHandRail />
+          {/* Wave T+1 (2026-05-19) UI/UX refinement — RunningHandRail
+              dropped during scoring. Per-source attribution is already
+              carried by FlyToCounter floaters that rise from the firing
+              catalyst/die/resonance midpoint; the rail was a parallel
+              voice saying the same thing one layer below the dice and
+              competing with the eye-anchor on the played hand. */}
           <ForgeAttachRitual />
           <DailyLoginComet />
           <SoundCaptions />

@@ -155,16 +155,16 @@ export type ModDef = {
   // maximizes the resulting combo tier.
   wildcard?: boolean;
   // ─── Phase 5b additions ─────────────────────────────────────────────────
-  // Anchor: +chips when this die's face appears 2+ times in scoringFaces
+  // Anchor: +pips when this die's face appears 2+ times in scoringFaces
   // (a soft "part of a combo" detector — fires on Pair / Two Pair /
   // Three of a Kind etc).
   pairedFaceChips?: number;
   // Keystone: ×mult when this die's face is the strict max of scoringFaces.
   keystoneMult?: number;
-  // Astrolabe: +chips per combo level on the PLAYED combo. Reads
+  // Astrolabe: +pips per combo level on the PLAYED combo. Reads
   // run.comboLevels[combo.id] via StepCtx.comboLevelOnPlayed.
   chipsPerComboLevel?: number;
-  // Pressure: +chips per remaining hand this round (handsLeft).
+  // Pressure: +pips per remaining hand this round (handsLeft).
   chipsPerHandLeft?: number;
   // Risk: face-conditional bonus on 6 AND penalty on 1.
   riskHighMult?: number;   // applies on face 6
@@ -204,16 +204,16 @@ export type ModDef = {
   // Veteran — +0.5 mult per blind survived (1 stack per blind cleared while
   // this mod is attached to this die). +1 stack on clearBlind.
   veteranMultPerStack?: number;
-  // Glutton — when this die rolls a 6, +1 stack permanent. +N chips per stack.
+  // Glutton — when this die rolls a 6, +1 stack permanent. +N pips per stack.
   gluttonChipPerStack?: number;
   // Dormant — silent until N fires, then a free holo edition is granted.
   // Reads as +0 chips/mult until the awaken threshold; after, +X mult bonus.
   dormantAwakenAt?: number;
   dormantMultAfter?: number;
-  // Ballast — +1 stack each time this die is locked when scoring. +N chips per stack.
+  // Ballast — +1 stack each time this die is locked when scoring. +N pips per stack.
   ballastChipPerStack?: number;
   // Pyre Mark — face 1 re-rolls (via the face-remap flow handled elsewhere)
-  // AND grants +1 chip permanent. +N chips per stack.
+  // AND grants +1 chip permanent. +N pips per stack.
   pyreChipPerStack?: number;
   // ─── Banish-face family (2026-05-13) ──────────────────────────────────
   // Banished faces: integers (or WILD sentinel -1) that this mod prevents
@@ -263,7 +263,7 @@ export type BanishResolverInput = {
 export const MODS: ModDef[] = [
   {
     id: 'amplify', name: 'Amplify', icon: '⬆',
-    desc: '+2 chips per scoring die', scoreBonus: 2, rarity: 'common',
+    desc: '+2 pips per scoring die', scoreBonus: 2, rarity: 'common',
     visual: { materialKey: 'amplify', accentColor: '#f5c451', triggerFx: 'pulse', geometricVariant: 'gilded' },
   },
   {
@@ -298,7 +298,7 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'pip_charge', name: 'Pip Charge', icon: '⫶',
-    desc: '+chips equal to face × 2 per scoring die', chipPerPip: 2, rarity: 'uncommon',
+    desc: '+pips equal to face × 2 per scoring die', chipPerPip: 2, rarity: 'uncommon',
     visual: { materialKey: 'pip_charge', accentColor: '#ffd84a', geometricVariant: 'recessed', triggerFx: 'pipCharge' },
   },
   {
@@ -313,13 +313,13 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'vanguard', name: 'Vanguard', icon: '◀',
-    desc: '+5 chips if scored first',
+    desc: '+5 pips if scored first',
     firstBonus: 5, rarity: 'common',
     visual: { materialKey: 'vanguard', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'haloed' },
   },
   {
     id: 'capstone', name: 'Capstone', icon: '▶',
-    desc: '+10 chips if scored last',
+    desc: '+10 pips if scored last',
     lastBonus: 10, rarity: 'common',
     visual: { materialKey: 'capstone', accentColor: '#5be8a4', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
@@ -331,7 +331,7 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'tithe', name: 'Tithe', icon: '⛁',
-    desc: '+5 chips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
+    desc: '+5 pips, +2 mult per scoring die. Costs 1 shard per scored die (skipped if 0).',
     titheChips: 5, titheMult: 2, rarity: 'rare',
     visual: { materialKey: 'tithe', accentColor: '#f5c451', triggerFx: 'shardClink', geometricVariant: 'gilded' },
   },
@@ -371,7 +371,7 @@ export const MODS: ModDef[] = [
   // borrows crown's gold). New material/triggerFx work tracked separately.
   {
     id: 'anchor', name: 'Anchor', icon: '⚓',
-    desc: '+15 chips when this die is part of a combo set.',
+    desc: '+15 pips when this die is part of a combo set.',
     pairedFaceChips: 15, rarity: 'uncommon',
     visual: { materialKey: 'anchor', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
@@ -383,13 +383,13 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'astrolabe', name: 'Astrolabe', icon: '✺',
-    desc: '+3 chips per combo level on the played hand.',
+    desc: '+3 pips per combo level on the played hand.',
     chipsPerComboLevel: 3, rarity: 'uncommon',
     visual: { materialKey: 'astrolabe', accentColor: '#cc88ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
   {
     id: 'pressure', name: 'Pressure', icon: '⏲',
-    desc: '+5 chips per remaining hand this round.',
+    desc: '+5 pips per remaining hand this round.',
     chipsPerHandLeft: 5, rarity: 'common',
     visual: { materialKey: 'pressure', accentColor: '#ff7847', triggerFx: 'pulse', geometricVariant: 'spiked' },
   },
@@ -467,7 +467,7 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'glutton', name: 'Glutton', icon: '◉',
-    desc: 'When this die rolls a 6: +1 stack. +3 chips per stack.',
+    desc: 'When this die rolls a 6: +1 stack. +3 pips per stack.',
     gluttonChipPerStack: 3, rarity: 'uncommon',
     visual: { materialKey: 'glutton', accentColor: '#ff7847', triggerFx: 'appetite', geometricVariant: 'spiked' },
   },
@@ -482,13 +482,13 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'ballast', name: 'Ballast', icon: '⚓',
-    desc: '+5 chips per time this die was locked when scoring.',
+    desc: '+5 pips per time this die was locked when scoring.',
     ballastChipPerStack: 5, rarity: 'common',
     visual: { materialKey: 'ballast', accentColor: '#88ddff', triggerFx: 'pulse', geometricVariant: 'plated' },
   },
   {
     id: 'pyre_mark', name: 'Pyre Mark', icon: '🔥',
-    desc: 'When this die rolls a 1: +1 stack. +2 chips per stack.',
+    desc: 'When this die rolls a 1: +1 stack. +2 pips per stack.',
     pyreChipPerStack: 2, rarity: 'common',
     visual: { materialKey: 'pyre_mark', accentColor: '#ff7847', triggerFx: 'pyreMark', geometricVariant: 'etched' },
   },
@@ -508,7 +508,7 @@ export const MODS: ModDef[] = [
   },
   {
     id: 'anti_one_sigil', name: 'Anti-One Sigil', icon: '✦',
-    desc: 'This die cannot land on face 1. +2 chips on this die when the banish fires.',
+    desc: 'This die cannot land on face 1. +2 pips on this die when the banish fires.',
     banishFaces: [1], banishTriggerChips: 2, rarity: 'common',
     visual: { materialKey: 'anti_one_sigil', accentColor: '#7be3ff', triggerFx: 'pulse', geometricVariant: 'crystalline' },
   },
@@ -606,7 +606,7 @@ export const MODS: ModDef[] = [
   // only the first scoring die picks up the +15 chip stamp.
   {
     id: 'calibrated', name: 'Calibrated', icon: '⊹',
-    desc: 'First scoring die: +15 chips.', firstBonus: 15, rarity: 'rare',
+    desc: 'First scoring die: +15 pips.', firstBonus: 15, rarity: 'rare',
     visual: { materialKey: 'calibrated', accentColor: '#7be3ff', triggerFx: 'pulse', geometricVariant: 'etched' },
   },
 
@@ -643,7 +643,7 @@ export const MODS: ModDef[] = [
   // overlay; a strict lock-carry check is a follow-up pass).
   {
     id: 'veiled', name: 'Veiled', icon: '◐',
-    desc: '+5 chips per scoring die. Whispers when locked.',
+    desc: '+5 pips per scoring die. Whispers when locked.',
     scoreBonus: 5, rarity: 'uncommon',
     visual: { materialKey: 'veiled', accentColor: '#9577ff', triggerFx: 'pulse', geometricVariant: 'recessed' },
   },

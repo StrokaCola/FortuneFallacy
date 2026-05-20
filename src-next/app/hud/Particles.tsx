@@ -152,16 +152,12 @@ export function Particles() {
             if (key === lastScoringOrderKey) return;
             lastScoringOrderKey = key;
             if (motionReduced()) return;
-            const { w, h } = getStageSize();
-            const id = nextId++;
-            const x = w / 2;
-            const y = h * 0.62;
-            // 2026-05-19 tuning — scoringOrder change (lock/unlock,
-            // reorder) is high-frequency; ring fires at 50% peak
-            // opacity so it reads as confirmation without competing
-            // with the score read.
-            setBursts((b) => [...b, { id, x, y, tier: 1, color: '#7be3ff', dim: true }]);
-            setTimeout(() => setBursts((b) => b.filter((v) => v.id !== id)), 700);
+            // Wave T+1 (2026-05-19) — center-screen confirmation ring
+            // disabled. LockClickRipple at the pointer position now
+            // owns lock-toggle feedback; a second ring at screen-
+            // center (firing on every scoringOrder mutation including
+            // lock/unlock) was redundant noise. Reorder still gets
+            // audio + die-slide feedback through other paths.
           });
         });
         return () => unsub();

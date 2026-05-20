@@ -253,8 +253,8 @@ export function CatalystCard(props: CatalystCardProps) {
             </div>
           );
           if (id === 'star_chart' && stack) return wrap(<CornerBadge color={c.color} text={`+${(stack * 0.25).toFixed(2)}×`} />);
-          if (id === 'lodestone' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack * 2}c`} />);
-          if (id === 'comet_trail' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack * 10}c`} />);
+          if (id === 'lodestone' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack * 2}p`} />);
+          if (id === 'comet_trail' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack * 10}p`} />);
           if (id === 'memento_star' && stack) return wrap(<CornerBadge color={c.color} text={`+${(stack * 0.5).toFixed(1)}×`} />);
           if (id === 'ouroboros' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack * 3}m`} />);
           if (id === 'event_horizon' && stack) return wrap(<CornerBadge color={c.color} text={`+${stack}%`} />);
@@ -380,8 +380,8 @@ export function CatalystCard(props: CatalystCardProps) {
         {(() => {
           let line: string | null = null;
           if (id === 'star_chart' && stack) line = `currently +${(stack * 0.25).toFixed(2)}× mult · ${stack} straights`;
-          else if (id === 'lodestone' && stack) line = `currently +${stack * 2} chips · ${stack} pairs`;
-          else if (id === 'comet_trail' && stack) line = `currently +${stack * 10} chips · ${stack}-blind streak`;
+          else if (id === 'lodestone' && stack) line = `currently +${stack * 2} pips · ${stack} pairs`;
+          else if (id === 'comet_trail' && stack) line = `currently +${stack * 10} pips · ${stack}-blind streak`;
           else if (id === 'memento_star' && stack) line = `currently +${(stack * 0.5).toFixed(1)}× mult · ${stack} overflows`;
           else if (id === 'ouroboros' && stack) line = `currently +${stack * 3} mult · ${stack} loops`;
           else if (id === 'event_horizon' && stack) line = `currently +${stack}% mult · ${stack} big hits absorbed`;
@@ -407,7 +407,7 @@ export function CatalystCard(props: CatalystCardProps) {
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 10,
           }}>
-            ◇ contributed +{Math.round(catalystChips).toLocaleString()} chips this run
+            ◇ contributed +{Math.round(catalystChips).toLocaleString()} pips this run
           </span>
         )}
         {(() => {

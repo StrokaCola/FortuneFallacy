@@ -22,11 +22,17 @@
 import { bus } from '../../../events/bus';
 import { store } from '../../../state/store';
 import { audioEngine } from '../../../audio/AudioEngine';
+import { sfxPlay } from '../../../audio/sfx';
 
 type Phase = 'idle' | 'ramping' | 'sustained' | 'held-breath' | 'release';
 
 const SUSTAINED_RATIO = 0.5;
-const CRESCENDO_TARGET_HZ = 2400;
+// Wave T+1 (2026-05-19) UI/UX refinement — deeper filter sweep on
+// sustained phase. Was 2400 Hz (gentle); now 1800 Hz, then 1200 Hz on
+// held-breath so the music progressively darkens through the
+// build-up. Boom releases back to full spectrum for the snap-back.
+const CRESCENDO_SUSTAINED_HZ = 1800;
+const CRESCENDO_HELD_BREATH_HZ = 1200;
 
 export function installTheaterDirector(): () => void {
   let phase: Phase = 'idle';
@@ -36,15 +42,20 @@ export function installTheaterDirector(): () => void {
     if (phase === next) return;
     phase = next;
     if (next === 'sustained') {
-      // Begin the audio crescendo sweep — filter cutoff drops to
-      // CRESCENDO_TARGET_HZ over ~0.18s time constant.
-      audioEngine.crescendoBegin(CRESCENDO_TARGET_HZ);
+      audioEngine.crescendoBegin(CRESCENDO_SUSTAINED_HZ);
       bus.emit('onTheaterPhase', { phase: 'sustained', peakMult });
     } else if (next === 'held-breath') {
+      // Deepen the filter sweep further + add a brief sub-bass rumble
+      // so the held-breath has physical weight, not just silence. The
+      // rumble piggybacks on the existing chipTick voice at 65 Hz so
+      // no new synth voice is needed.
+      audioEngine.crescendoBegin(CRESCENDO_HELD_BREATH_HZ);
+      try { sfxPlay('chipTick', { freq: 65, gain: 0.55 }); } catch { /* sfx not ready */ }
       bus.emit('onTheaterPhase', { phase: 'held-breath', peakMult });
     } else if (next === 'release') {
       // Release the crescendo so the boom hits with the filter
-      // re-opening.
+      // re-opening — biggest impact when the music spectrum suddenly
+      // re-opens to full bandwidth.
       audioEngine.crescendoEnd();
       bus.emit('onTheaterPhase', { phase: 'release', peakMult });
     } else if (next === 'ramping') {

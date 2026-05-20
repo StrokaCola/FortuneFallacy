@@ -192,7 +192,7 @@ export function PackOverlay() {
               </div>
               {discovered && bonus && def?.comboId !== 'all' && (
                 <div className="f-mono num" style={{ fontSize: 11, color: '#f5c451', marginTop: 'auto' }}>
-                  +{bonus.chips} chips · +{bonus.mult} mult
+                  +{bonus.chips} pips · +{bonus.mult} mult
                 </div>
               )}
               {discovered && def?.comboId === 'all' && (

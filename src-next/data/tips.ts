@@ -12,7 +12,7 @@
 export const TIPS: readonly string[] = [
   // Core loop
   'Locked dice keep their face when you reroll. Use your locks early.',
-  'Chance always scores — five chips and a multiplier of one. The floor is never zero.',
+  'Chance always scores — five pips and a multiplier of one. The floor is never zero.',
   'A bad roll is rarely a busted hand. Catalysts pay off the worst faces, too.',
 
   // Catalysts

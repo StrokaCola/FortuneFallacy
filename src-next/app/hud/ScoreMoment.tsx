@@ -15,20 +15,19 @@ import { lookupConstellation } from '../../data/constellations';
 //   - the END_SCORING dispatch that advances the round, timed to land
 //     after the boom celebration / bail stamp completes.
 
-// BoomNumber phases (must match ScoringVFX.tsx):
-//   pop+hold: 1700ms, fly: 800ms → catch pulse fires at ~2350ms,
-//   round advances right after.
-const BOOM_FLY_START_MS = 1700;
-const BOOM_FLY_MS = 800;
+// Wave T+1 (2026-05-19) UI/UX refinement — boom celebration tightened
+// from ~3.7s total (1700ms pop hold + 800ms fly + 820ms star trails +
+// counter fill + savor) to ~1.4s. The old fly-to-corner pattern
+// duplicated the work the counter fill already does and held the
+// player away from the next decision. The new sequence:
+//   t=0       : BoomNumber pops at center, scoring panel highlights formula
+//   t=600ms   : onScoreCounterFill emits, counter tweens up to new total
+//   t=600+fill: catch pulse + END_SCORING dispatch
+// BoomNumber now lives 1200ms total (pop + dissolve) and never flies.
+// Star-trails / fly timings retained as constants for backwards-compat
+// with any external listener but no longer drive the round advance.
+const BOOM_HOLD_MS = 600;
 const BAIL_HOLD_MS = 2400;
-// Star-trail timing (must match `vfx-star-fly` keyframe in
-// ScoringVFX.css). Trails emit when BoomNumber switches to 'fly'
-// (BOOM_FLY_START_MS) and each takes STAR_TRAIL_MS to reach the
-// counter. We start the counter fill when the FIRST star arrives so
-// the meter visibly fills as the trails land on it — the user-facing
-// fix for the old behavior where the counter caught ~500ms before
-// the trails got there.
-const STAR_TRAIL_MS = 820;
 const COUNTER_FILL_MS = 360;
 // Savor pause after the counter fill completes before the screen
 // swap fires (clearBlind → ui.screen = 'shop' | 'hub' | 'win'). Gives
@@ -124,14 +123,15 @@ export function ScoreMoment() {
           break;
         case 'mult-slam': {
           const color = slamColor(crossed, beat.tint);
-          // Handoff: shake-sm for ×2–4, shake-md for ×6+. Only meaningful
-          // slams shake (existing rule preserved: low mults stay silent).
+          // Wave T+1 (2026-05-19) choreography — every mult-slam now
+          // shakes, scaled by multiplier value. Tier 1 (×2) gets the
+          // 'sm' fine shake (was previously silent) so even a small
+          // mult-slam reads as physical impact, not just a number
+          // change. Bigger mults still escalate to 'md'.
           const shake = beat.multiplier >= 6 || crossed
             ? 'md'
-            : beat.multiplier >= 4
-              ? 'sm'
-              : null;
-          scoringVFX.fireSlam(beat.label, color, shake ?? 'sm');
+            : 'sm';
+          scoringVFX.fireSlam(beat.label, color, shake);
           break;
         }
         case 'cross-target': {
@@ -173,6 +173,23 @@ export function ScoreMoment() {
 
           scoringVFX.fireBoom(variant, beat.finalTotal, isNewBest);
 
+          // Wave T+1 (2026-05-19) choreography — boom afterglow.
+          // Warm radial vignette pulses across the play area for
+          // ~1200ms after a crossed-target boom, leaving an afterimage
+          // of the celebration as the player's eye settles. Skipped on
+          // bail / non-cross booms (no celebration earned).
+          if (!isReducedMotion() && gold) {
+            const stage = document.getElementById('stage-root');
+            if (stage) {
+              stage.classList.add(variant === 'mega' ? 'boom-afterglow-mega' : 'boom-afterglow');
+              const dur = variant === 'mega' ? 1600 : 1200;
+              schedule(
+                () => stage.classList.remove(variant === 'mega' ? 'boom-afterglow-mega' : 'boom-afterglow'),
+                dur,
+              );
+            }
+          }
+
           // Star-cluster ripple — fires on every boom (gold and mega
           // get the brighter 'mega' tier). Washes the cosmos starfield
           // with three (or four) screen-blend rings so the boom reads
@@ -212,20 +229,13 @@ export function ScoreMoment() {
             }
           }
 
-          // Counter fill — fire exactly when the first star trail
-          // reaches the counter. TopBar's tween advances the displayed
-          // total from the pre-boom value up to the new round.score
-          // over the scaled fill duration so the meter visually fills
-          // under the trailing stars instead of catching ahead.
-          //
-          // 2026-05-16 polish — scale fill duration with score magnitude
-          // (log10) so a 50k hand reads as longer + heavier than a 1k
-          // hand. Floor at 240ms keeps small-clear payoffs snappy;
-          // ceiling at 900ms prevents late-run megas from dragging the
-          // hand-off out past the boom celebration. Pitch of the
-          // chipTick beat already scales with chip delta in
-          // audio/scoring.ts (upgrade-chip case), so the visual ramp
-          // and audio ramp now land together.
+          // Wave T+1 — counter fill fires after the brief BOOM_HOLD_MS
+          // pop-hold so the BoomNumber stays visible while the counter
+          // tweens up underneath. Fill duration still scales with score
+          // magnitude so a 50k hand reads as heavier than a 1k hand
+          // (floor 240ms, ceiling 900ms). Pitch ramp in
+          // audio/scoring.ts upgrade-chip case still scales with delta,
+          // so visual + audio ramps stay coherent.
           const total = Math.max(1, beat.finalTotal);
           const scaledFillMs = Math.max(
             240,
@@ -233,16 +243,13 @@ export function ScoreMoment() {
           );
           schedule(
             () => bus.emit('onScoreCounterFill', { durationMs: scaledFillMs }),
-            BOOM_FLY_START_MS + STAR_TRAIL_MS,
+            BOOM_HOLD_MS,
           );
-          // END_SCORING fires AFTER the full celebration ladder
-          // (boom pop + fly + star trails + counter fill + catch
-          // pulse + a brief savor pause) has played out. Use the
-          // SAME scaled duration so the hand-off lands right after
-          // the counter catches.
+          // END_SCORING fires AFTER pop hold + counter fill + savor.
+          // Trimmed from ~3.7s → ~1.4s vs old fly-to-corner pattern.
           schedule(
             finishBoom,
-            BOOM_FLY_START_MS + STAR_TRAIL_MS + scaledFillMs + POST_FILL_SAVOR_MS_BY_VARIANT[variant],
+            BOOM_HOLD_MS + scaledFillMs + POST_FILL_SAVOR_MS_BY_VARIANT[variant],
           );
           break;
         }
