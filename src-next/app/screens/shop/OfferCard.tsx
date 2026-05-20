@@ -16,7 +16,7 @@ import { lookupCatalyst, CATALYST_META } from '../../../data/catalysts';
 import { KindFrame, type UpgradeKind } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
-import type { CatalystEdition } from '../../../state/slices/run';
+import type { ShopOffer as CanonicalShopOffer } from '../../../events/types';
 import { offerMeta, editionBonusDescription } from './offerMeta';
 import { EditionBadge } from './EditionBadge';
 import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
@@ -34,12 +34,11 @@ const RARITY_RING_STRENGTH: Record<Rarity, number> = {
   common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0, mythic: 0,
 };
 
-export type ShopOffer = {
-  kind: string;
-  id: string;
-  price: number;
-  edition?: CatalystEdition;
-};
+// Re-export the canonical ShopOffer so callers in this folder can keep
+// importing from OfferCard. Local kind/edition fields stay aligned with
+// the events/types.ts source of truth (kind is the narrowed union;
+// edition includes 'void' for catalysts).
+export type ShopOffer = CanonicalShopOffer;
 
 export type OfferCardProps = {
   offer: ShopOffer;

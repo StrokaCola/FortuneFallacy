@@ -8,6 +8,7 @@
 import type React from 'react';
 import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../../data/catalysts';
 import { editionColor } from '../../../core/upgrades/editions';
+import type { CatalystEdition } from '../../../state/slices/run';
 import { KindFrame } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { SellButton } from '../SellButton';
@@ -28,7 +29,7 @@ export type CatalystCardProps = {
   id: string;
   index: number;
   pulseKind: PulseKind | undefined;
-  edition: string | undefined;
+  edition: CatalystEdition | undefined;
   isLinked: boolean;
   showLastThrowWarn: boolean;
   // Stack values that drive corner-badge text per catalyst id.
