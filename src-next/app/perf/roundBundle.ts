@@ -59,7 +59,7 @@ export function ensureRoundBundle(): Promise<void> {
     if (threeCanvas instanceof HTMLCanvasElement) {
       try {
         const d3 = new dice3dMod.Dice3D(threeCanvas);
-        (window as unknown as { __dice3d: dice3dMod.Dice3D }).__dice3d = d3;
+        (window as unknown as { __dice3d: InstanceType<typeof dice3dMod.Dice3D> }).__dice3d = d3;
       } catch (e) {
         console.error('[Dice3D] init failed:', e);
       }
