@@ -22,6 +22,7 @@ function priceForCatalystId(id: string): number {
     : STANDARD_CATALYST_PRICE;
 }
 import { rollCatalystEdition } from '../../core/upgrades/editions';
+import type { ModEdition } from '../../state/slices/run';
 import { stakeContext } from '../../core/run/stakeContext';
 import { makeSeedRng } from '../../core/seed/rng';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
@@ -167,7 +168,10 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
     for (const id of modIds) {
       // Mod editions roll independently, same drop weights as catalysts:
       // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.
-      const edition = rollCatalystEdition(rng);
+      // Void editions only apply to catalysts (they save a catalyst slot),
+      // so drop a void roll back to plain for mods.
+      const rolled = rollCatalystEdition(rng);
+      const edition = rolled === 'void' ? undefined : rolled;
       offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE, ...(edition ? { edition } : {}) });
     }
   }
@@ -387,10 +391,15 @@ export const shopHandler: ActionHandler = (a, s) => {
           ? { ...s.run.catalystEditions, [offer.id]: offer.edition }
           : s.run.catalystEditions;
       // Mods carry their edition in a parallel array — push or keep length-
-      // synced regardless of whether this offer had an edition.
+      // synced regardless of whether this offer had an edition. Mod offers
+      // never carry the 'void' edition (filtered out at the roll site in
+      // rollOffers), so narrow here for the ModEdition-typed array.
+      const modEdition: ModEdition | null = offer.edition && offer.edition !== 'void'
+        ? offer.edition
+        : null;
       const ownedModEditions =
         offer.kind === 'mod'
-          ? [...(s.run.ownedModEditions ?? []), offer.edition ?? null]
+          ? [...(s.run.ownedModEditions ?? []), modEdition]
           : (s.run.ownedModEditions ?? []);
       // Audit catalyst tracks total catalyst spend in the run. Other kinds
       // (mods, vouchers, consumables) don't contribute — only catalyst price.

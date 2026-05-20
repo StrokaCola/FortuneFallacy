@@ -1,6 +1,7 @@
 import type { Phase } from '../core/pipeline/types';
 import type { Beat, ScoreSequence } from '../core/scoring/types';
 import type { DieShape } from '../data/dice';
+import type { CatalystEdition } from '../state/slices/run';
 
 export type DieSnapshot = {
   id: number;
@@ -68,9 +69,9 @@ export type ShopOffer = {
   kind: 'catalyst' | 'voucher' | 'consumable' | 'mod' | 'pack';
   id: string;
   price: number;
-  // Catalyst-only: foil/holo/poly stamp rolled at offer time. Carried
+  // Catalyst-only: foil/holo/poly/void stamp rolled at offer time. Carried
   // through BUY_OFFER into run.catalystEditions. See state/slices/run.ts.
-  edition?: 'foil' | 'holo' | 'poly';
+  edition?: CatalystEdition;
 };
 
 export type GameEventMap = {
