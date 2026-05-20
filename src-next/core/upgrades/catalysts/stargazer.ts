@@ -24,7 +24,10 @@ register({
   priority: 90,
   apply: (ctx) => {
     const faces = ctx.sim?.finalFaces ?? [];
-    const order = ctx.state.run.scoringOrder ?? faces.map((_, i) => i);
+    // scoringOrder lives on the round slice (set by EVALUATION). Fall back
+    // to natural order if it hasn't been written yet (e.g. early phases /
+    // legacy code paths).
+    const order = ctx.state.round.scoringOrder ?? faces.map((_, i) => i);
     const scoringFaces = order
       .filter((idx) => idx >= 0 && idx < faces.length)
       .map((i) => faces[i]!)
