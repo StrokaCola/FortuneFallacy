@@ -9,6 +9,8 @@ import { lookupStake } from '../../data/stakes';
 import { getTipOfTheDay } from '../../data/tips';
 import { currentPrestigeTier } from '../../data/prestigeTiers';
 import { FortuneFallacyWordmark } from '../visual/FortuneFallacyWordmark';
+import { BlackHole } from '../visual/BlackHole';
+import { startVoidRun } from '../../voidmode/voidRun';
 
 const selectCosmicDustLifetime = (s: GameState) => s.meta.cosmicDustLifetime ?? 0;
 
@@ -375,6 +377,21 @@ export function Title() {
           v 0.42 · seed ⟨LYRA-VII⟩
         </div>
       </div>
+      {/* Void Mode entry point — a faint procgen-portal in the corner.
+          Players who don't notice it never see void mode; players who
+          do tap into an alt-mode where every catalyst is procedurally
+          re-affixed and the run plays under a violet/black tint. The
+          black hole stays mounted across all viewports because it's
+          the only entry to void mode. See voidmode/voidRun.ts. */}
+      <BlackHole onClick={() => {
+        if (hasRun) {
+          const ok = window.confirm(
+            'A run is in progress. Entering Void Mode will overwrite it. Continue?',
+          );
+          if (!ok) return;
+        }
+        startVoidRun();
+      }} />
     </div>
   );
 }

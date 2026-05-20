@@ -26,6 +26,15 @@ export type RunSlice = {
   // applyAffixesPhase shape can read consumable affixes later by
   // extending `collectAffixedItems` in voidmode/voidRun.ts.
   consumableAffixes: Record<string, AffixedItem<ConsumableDef>>;
+  // Display alias shown in the HUD during a void run. Deterministic from
+  // voidSeed (see voidmode/nameGenerator.ts generateRunAlias). Empty
+  // outside void mode; cleared when leaving void mode.
+  runAlias: string;
+  // True when the current void run is using today's certified seed (the
+  // pre-balance-validated daily). Only certified runs are leaderboard-eligible.
+  // Phase 8 introduces dailySeed.getTodayCertified — Phase 6 defaults
+  // to false.
+  dailyCertified: boolean;
   shards: number;
   ante: number;
   goalIdx: number;
@@ -219,6 +228,8 @@ export const initialRunSlice = (): RunSlice => ({
   voidSeed: 0,
   catalystAffixes: {},
   consumableAffixes: {},
+  runAlias: '',
+  dailyCertified: false,
   shards: 0,
   ante: 1,
   goalIdx: 0,

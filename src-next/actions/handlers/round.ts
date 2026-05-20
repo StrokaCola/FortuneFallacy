@@ -36,6 +36,56 @@ export const roundHandler: ActionHandler = (a, s) => {
       if (!def) return { state: s, events: [] };
       return clearDieTip(resolveEventChoice(s, def, a.choiceIdx));
     }
+    case 'START_VOID_RUN': {
+      // Void Mode entry — mirrors NEW_RUN's reset (round, shop, run slice
+      // re-initialized) but flips run.mode to 'void' and seeds the procgen
+      // affix generator. Constellation falls back to the default Lyra so
+      // the dice count + scoring rules are well-defined. Astral perks are
+      // SKIPPED (like daily challenges) so a void run's scoring stays
+      // self-contained — the alt-mode telegraphs its own variance and
+      // shouldn't get a free start-of-run boost from meta progression.
+      const constellation = lookupConstellation('lyra');
+      const baseRun = applyConstellation(initialRunSlice(), constellation);
+      const seed = (a.seed >>> 0);
+      const run = {
+        ...baseRun,
+        seed,
+        seedSource: 'random' as const,
+        mode: 'void' as const,
+        voidSeed: (a.voidSeed >>> 0),
+        runAlias: a.runAlias,
+        dailyCertified: a.dailyCertified,
+        catalystAffixes: {},
+        consumableAffixes: {},
+        upcomingBossId: pickBossId(seed, 1),
+      };
+      return {
+        state: {
+          ...s,
+          run,
+          round: initialRoundSlice(),
+          shop: initialShopSlice(),
+          ui: { ...s.ui, screen: 'hub', dieTip: null },
+        },
+        events: [],
+      };
+    }
+    case 'END_VOID_RUN': {
+      // Wipe all void-specific run state and reset to a fresh normal-run
+      // slice. Mirrors the postmortem→title transition for normal runs:
+      // resets round + shop + ui screen back to title so the player isn't
+      // left mid-state on a now-defunct void run.
+      return {
+        state: {
+          ...s,
+          run: initialRunSlice(),
+          round: initialRoundSlice(),
+          shop: initialShopSlice(),
+          ui: { ...s.ui, screen: 'title', dieTip: null },
+        },
+        events: [],
+      };
+    }
     case 'NEW_RUN': {
       // Daily challenge: deterministic seed + constellation + stake derived
       // from today's UTC date so every player gets the same run on the same

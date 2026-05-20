@@ -68,6 +68,8 @@ export const actionSamples = {
   START_TUTORIAL:       { type: 'START_TUTORIAL' },
   ADVANCE_TUTORIAL:     { type: 'ADVANCE_TUTORIAL' },
   END_TUTORIAL:         { type: 'END_TUTORIAL', reason: 'completed' },
+  START_VOID_RUN:       { type: 'START_VOID_RUN', seed: 1, voidSeed: 1, runAlias: 'Echo 17', dailyCertified: false },
+  END_VOID_RUN:         { type: 'END_VOID_RUN' },
 } satisfies ActionSamples;
 
 export const actionTypes: Action['type'][] = Object.keys(actionSamples) as Action['type'][];
