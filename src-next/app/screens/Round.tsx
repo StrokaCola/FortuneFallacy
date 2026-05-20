@@ -34,6 +34,11 @@ import {
   selectAccent, selectConstellationAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
+import { VoidOverlay } from '../visual/VoidOverlay';
+
+// Void-mode flag selector. Returned as a primitive boolean so the store's
+// Object.is snapshot comparison stays stable across renders.
+const selectIsVoid = (s: { run: { mode: string } }) => s.run.mode === 'void';
 
 export function Round() {
   const hands    = useStore(selectHandsLeft);
@@ -82,9 +87,14 @@ export function Round() {
   const ready = useRoundBundleReady();
 
   const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
+  const isVoid = useStore(selectIsVoid);
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {/* Void-mode tint + accretion ambient. Sits between the 3D scene
+          and the HUD (z-30) so dice / cards stay readable but everything
+          is muted under a violet/black wash. No-op in normal mode. */}
+      <VoidOverlay active={isVoid} />
       <ScoringVFX />
       <TopBar
         ante={ante}
