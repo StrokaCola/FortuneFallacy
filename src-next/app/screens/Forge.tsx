@@ -321,13 +321,13 @@ export function Forge() {
             position: 'relative', display: 'grid', placeItems: 'center',
             overflow: 'hidden',
           }}>
-            {/* Oracle-table rim — a faint circular outline + four
+            {/* Calibration-table rim — a faint circular outline + four
                 cardinal glyphs (N/S/E/W as ◇/◆/▲/▼) that frame the
-                die as if it sat on a divination table. Reinforces
-                the alchemy / oracle theming without competing with
-                the constellation sigil ring inside. The rim color
-                inherits the run's constellation accent so it carries
-                the same identity thread. */}
+                die as if it sat on an analysis table. Reinforces the
+                instrument-bench theming without competing with the
+                constellation glyph ring inside. The rim color inherits
+                the run's constellation accent so it carries the same
+                identity thread. */}
             <svg aria-hidden="true" style={{
               position: 'absolute',
               left: '50%', top: '50%',

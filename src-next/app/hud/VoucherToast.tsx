@@ -34,7 +34,7 @@ function renderVoucher({ name, toastId }: VoucherData) {
         color: '#f5c451',
         textShadow: '0 0 8px rgba(245,196,81,0.55)',
       }}>
-        ✦ sigil inscribed
+        ✦ voucher activated
       </span>
       <span className="f-display" style={{
         fontSize: 14, color: '#f3f0ff', letterSpacing: '0.04em',

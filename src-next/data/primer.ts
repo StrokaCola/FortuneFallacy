@@ -157,7 +157,7 @@ export const PRIMER_ENTRIES: readonly PrimerEntry[] = [
     id: 'mod',
     category: 'mods',
     term: 'Mod',
-    definition: "A small enchantment attached to a specific die. Mods fire every time that die scores — pips, mult, shards, or face-bending effects.",
+    definition: "A small modification attached to a specific die. Mods fire every time that die scores — pips, mult, shards, or face-bending effects.",
     seeAlso: ['forge'],
   },
   {

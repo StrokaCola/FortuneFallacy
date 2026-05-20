@@ -48,7 +48,7 @@ export const COSMIC_AFFLICTIONS: CosmicAfflictionDef[] = [
   {
     id: 'echoing_void',
     name: 'Echoing Void',
-    flavor: 'A second curse follows the first. Every blind a small darkness.',
+    flavor: 'A second weight follows the first. Every blind a small darkness.',
     // 2026-05-19 rebalance: 1.15 → 1.20 in concert with the stacking-
     // afflictions change (afflictions now compound; floor lifts so the
     // step-up at each lap stays meaningful).
