@@ -187,7 +187,7 @@ function Sunburst({ size = 460, color = '#f5c451', spokes = 24, gradId = 'vfx-su
 }
 
 function BailCracks({ size = 360, color = '#ff4d6d' }: { size?: number; color?: string }) {
-  const cracks = [];
+  const cracks: React.ReactElement[] = [];
   const angles = [0, 28, 62, 95, 132, 168, 198, 232, 268, 300, 332];
   angles.forEach((a, i) => {
     const rad = (a * Math.PI) / 180;
@@ -348,7 +348,10 @@ function BoomSparks({ count = 24, intensity = INTENSITY }: { count?: number; int
       const angle = (360 / count) * i + (Math.random() - 0.5) * 18;
       const dist = (140 + Math.random() * 180) * (0.6 + intensity * 0.12);
       const size = 14 + Math.random() * 12;
-      const color = colors[i % colors.length];
+      // `colors` is a fixed non-empty literal — index is always in range,
+      // but noUncheckedIndexedAccess widens the lookup to `string | undefined`.
+      // Fallback to the first entry keeps the type narrow and behavior identical.
+      const color = colors[i % colors.length] ?? colors[0]!;
       const variant = i % 3;
       const spin = (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 540);
       const dur = 900 + Math.random() * 400;
