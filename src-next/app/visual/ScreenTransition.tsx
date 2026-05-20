@@ -74,7 +74,7 @@ export function ScreenTransition({
   // from after lastKey.current rolls forward.
   const [fromKey, setFromKey] = useState<string>(screenKey);
   const lastKey = useRef(screenKey);
-  const tEnterRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const tEnterRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (screenKey === lastKey.current) return;
