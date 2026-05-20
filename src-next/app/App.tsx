@@ -1,4 +1,6 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { lazyWithRetry } from './perf/lazyWithRetry';
+import { ForgeChunkBoundary } from './visual/ForgeChunkBoundary';
 import { bus } from '../events/bus';
 import { DevConsole } from '../devtools/DevConsole';
 import { BoundsOverlay } from '../devtools/inspector/BoundsOverlay';
@@ -48,7 +50,7 @@ import { Fail }  from './screens/Fail';
 // of the initial bundle - the screen is reachable from Hub, so users who
 // never open the Forge never pay for it. See app/perf/roundBundle for
 // the matching dynamic split on the round-time stack.
-const Forge = lazy(() => import('./screens/Forge').then((m) => ({ default: m.Forge })));
+const Forge = lazyWithRetry('forge', () => import('./screens/Forge').then((m) => ({ default: m.Forge })));
 import { Scores } from './screens/Scores';
 import { NameEntry } from './screens/NameEntry';
 import { Settings } from './screens/Settings';
@@ -275,9 +277,11 @@ export function App() {
             {screen === 'round'  && <Round />}
             {screen === 'shop'   && <Shop />}
             {screen === 'forge'  && (
-              <Suspense fallback={<ForgeLoading />}>
-                <Forge />
-              </Suspense>
+              <ForgeChunkBoundary>
+                <Suspense fallback={<ForgeLoading />}>
+                  <Forge />
+                </Suspense>
+              </ForgeChunkBoundary>
             )}
             {screen === 'win'    && <Win />}
             {screen === 'fail'   && <Fail />}
