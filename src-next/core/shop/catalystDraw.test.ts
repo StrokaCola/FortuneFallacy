@@ -5,10 +5,12 @@ import {
   isMythicUnlocked,
   rarityWeightsForAnte,
   rollRarity,
+  rollCatalystAffixes,
   LEGENDARY_UNLOCK_PREFIX,
   MYTHIC_UNLOCK_PREFIX,
 } from './catalystDraw';
 import { CATALYST_META } from '../../data/catalysts';
+import { mulberry32 } from '../rng';
 
 describe('rarityWeightsForAnte', () => {
   it('Ante 1-2 leans heavy common (>=0.55)', () => {
@@ -256,5 +258,48 @@ describe('drawWeightedCatalysts — face-universe gating (Dead Pick Audit)', () 
       }
     }
     expect(allowedHits).toBeGreaterThan(0);
+  });
+});
+
+describe('rollCatalystAffixes — Void Mode affix payload', () => {
+  // Pick three catalysts whose metas have archetypeTags so the generator
+  // has a non-empty pool to draw from. These were tagged in Phase 3.
+  const TAGGED_IDS = ['stratifier', 'six_bias', 'compounding_bias'];
+
+  it('produces an AffixedItem per input id with matching base.id', () => {
+    const rolls = rollCatalystAffixes(TAGGED_IDS, mulberry32(42));
+    expect(rolls.length).toBe(TAGGED_IDS.length);
+    for (let i = 0; i < TAGGED_IDS.length; i++) {
+      expect(rolls[i]!.base.id).toBe(TAGGED_IDS[i]);
+      expect(rolls[i]!.baseId).toBe(TAGGED_IDS[i]);
+    }
+  });
+
+  it('is deterministic for a given seed (same rng → same affix ids)', () => {
+    const a = rollCatalystAffixes(TAGGED_IDS, mulberry32(123));
+    const b = rollCatalystAffixes(TAGGED_IDS, mulberry32(123));
+    for (let i = 0; i < TAGGED_IDS.length; i++) {
+      expect(a[i]!.affixes.map((af) => af.id)).toEqual(b[i]!.affixes.map((af) => af.id));
+      expect(a[i]!.displayName).toBe(b[i]!.displayName);
+    }
+  });
+
+  it('skips unknown ids gracefully', () => {
+    const rolls = rollCatalystAffixes(['stratifier', 'not_a_real_catalyst', 'six_bias'], mulberry32(7));
+    // Unknown ids drop out — only the two known ones produce entries.
+    expect(rolls.length).toBe(2);
+    expect(rolls.map((r) => r.baseId)).toEqual(['stratifier', 'six_bias']);
+  });
+
+  it('attaches at least one affix to tagged uncommon+ catalysts most of the time', () => {
+    // Across many seeds, a tagged catalyst with a non-trivial budget should
+    // typically produce >=1 affix. Allow a wide floor — generator can roll
+    // empty if no affix happens to fit, but it should be rare.
+    let withAffixes = 0;
+    for (let seed = 1; seed <= 50; seed++) {
+      const rolls = rollCatalystAffixes(['stratifier'], mulberry32(seed));
+      if (rolls[0]!.affixes.length > 0) withAffixes++;
+    }
+    expect(withAffixes).toBeGreaterThan(30);
   });
 });
