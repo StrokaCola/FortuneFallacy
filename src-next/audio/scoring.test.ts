@@ -97,11 +97,14 @@ describe('installScoringRouter', () => {
     expect(mockDuck).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }));
   });
 
-  it('hold-breath beat does not call sfxPlay (no SFX, only ducks the music)', () => {
+  it('hold-breath beat plays a bell tone via comboChime', () => {
     const unsub = installScoringRouter();
     bus.emit('onScoreBeat', { beat: { kind: 'hold-breath', t: 0, durMs: 400 } });
     unsub();
-    expect(mockSfxPlay).not.toHaveBeenCalled();
+    // Wave T+1 (2026-05-19) bespoke theater — Move 5 added a sustained
+    // bell tone over the deep-freeze window. Non-crossed-target bell
+    // pitches lower than a crossed-target one (see scoring.ts).
+    expect(mockSfxPlay).toHaveBeenCalledWith('comboChime', { freq: 440, gain: 0.4 });
   });
 
   it('hold-breath beat ducks the music to ~30% over the breath duration', () => {
