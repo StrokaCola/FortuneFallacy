@@ -70,7 +70,7 @@ export function AuditEvent() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="The Audit — choose your fate"
+      aria-label="The Audit — choose your outcome"
       style={{
         position: 'absolute', inset: 0,
         zIndex: Z.modal,

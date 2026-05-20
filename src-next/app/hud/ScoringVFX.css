@@ -512,17 +512,17 @@
   72%  { transform: translate(-50%, -50%) scale(0.96) rotate(-0.5deg); }
   100% { transform: translate(-50%, -50%) scale(1.05) rotate(0); }
 }
-.vfx-boom-number.fly {
-  animation: vfx-boom-fly 720ms cubic-bezier(0.55, 0, 0.7, 0.4) forwards;
+/* Wave T+1 (2026-05-19) UI/UX refinement — dissolve replaces fly.
+   BoomNumber stays in place and fades + blurs out while the counter
+   tweens up underneath. Cleaner Balatro-style finale than the
+   old fly-to-corner pattern that duplicated the counter fill work. */
+.vfx-boom-number.dissolve {
+  animation: vfx-boom-dissolve 520ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
-/* Self-centering `-50%` must be preserved at every keyframe — losing
-   it shifted the visible element's centre by half its width / height,
-   landing the shrunken number ~80px down-right of the counter on
-   mobile. Compose with the (fx, fy) target via calc. */
-@keyframes vfx-boom-fly {
+@keyframes vfx-boom-dissolve {
   0%   { transform: translate(-50%, -50%) scale(1.05); opacity: 1; filter: blur(0); }
-  30%  { transform: translate(calc(-50% + var(--fx, 0px) * 0.2), calc(-50% + var(--fy, 0px) * 0.2)) scale(0.85); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--fx, 0px)), calc(-50% + var(--fy, 0px))) scale(0.18); opacity: 0; filter: blur(2px); }
+  60%  { transform: translate(-50%, calc(-50% - 12px)) scale(0.92); opacity: 0.55; filter: blur(2px); }
+  100% { transform: translate(-50%, calc(-50% - 28px)) scale(0.78); opacity: 0; filter: blur(6px); }
 }
 
 .vfx-boom-sparks {
@@ -682,6 +682,27 @@
   35%  { transform: translate(-50%, -50%) scale(1); }
   72%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18); }
+}
+/* Wave T+1 (2026-05-19) bespoke theater — Move 2 — per-line draw-in
+   animation. stroke-dashoffset eases from full length down to 0 so
+   the line strokes from start to end. Each line uses an inline
+   per-line stroke-dasharray (=length) so dashoffset 0 reveals the
+   full line. */
+@keyframes vfx-cons-line-draw {
+  to { stroke-dashoffset: 0; }
+}
+/* Per-star ignition — pops in with a slight overshoot scale so each
+   star reads as lighting up sequentially as the lines reach it. */
+@keyframes vfx-cons-star-ignite {
+  0%   { opacity: 0; transform: scale(0.4); transform-origin: center; }
+  60%  { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.reduce-motion .vfx-cons-seal-svg line,
+.reduce-motion .vfx-cons-seal-svg g {
+  animation: none !important;
+  opacity: 0.85 !important;
+  stroke-dashoffset: 0 !important;
 }
 
 /* Conductive arcs: anchor pulses once at start as the constellation

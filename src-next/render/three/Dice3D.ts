@@ -992,7 +992,7 @@ export class Dice3D {
       }
     };
 
-    this.onPointerUp = (_ev: PointerEvent) => {
+    this.onPointerUp = (ev: PointerEvent) => {
       if (!this.dragStart) return;
       const draggedIdx = this.dragStart.dieIdx;
       // Always clear any pending hold timer on release.
@@ -1028,7 +1028,12 @@ export class Dice3D {
         // so the same gesture doesn't also toggle the lock.
         this.holdTriggered = false;
       } else {
-        // No movement past threshold → treat as click.
+        // No movement past threshold → treat as click. Emit a lock
+        // ripple at the pointer position so the click feedback
+        // originates where the player's eye is, then toggle.
+        const draggedDie = this.dice[draggedIdx];
+        const upcomingLocked = draggedDie ? !draggedDie.locked : true;
+        bus.emit('onLockClickRipple', { x: ev.clientX, y: ev.clientY, locked: upcomingLocked });
         dispatch({ type: 'TOGGLE_LOCK', dieIdx: draggedIdx });
       }
       this.dragStart = null;

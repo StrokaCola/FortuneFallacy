@@ -97,10 +97,11 @@ function Chip({ color, glyph, tone, label, line, flavor, tight, compact }: ChipP
         fontSize: tight ? 9 : 10,
         color: '#f3f0ff',
         letterSpacing: '0.04em',
-        // Boss debuff lines like "Mod slots capped at 1." overran the
-        // single-line ellipsis (cut at "capped a…"). Allow up to two
-        // lines via webkit-line-clamp so the full rule lands on the
-        // card; tooltip still carries the canonical wording.
+        // Wave T+1 (2026-05-19) — tighter maxWidth (140 vs 160) so the
+        // chip stays well inside the 240px card content area
+        // (card 240 - 20*2 pad - glyph + gap + chip pad ≈ 168 usable).
+        // Two-line clamp keeps the full boss rule readable; tooltip
+        // carries the canonical wording.
         display: '-webkit-box',
         WebkitBoxOrient: 'vertical',
         WebkitLineClamp: 2,
@@ -108,7 +109,7 @@ function Chip({ color, glyph, tone, label, line, flavor, tight, compact }: ChipP
         wordBreak: 'normal',
         overflowWrap: 'anywhere',
         lineHeight: 1.25,
-        maxWidth: tight ? 120 : 160,
+        maxWidth: tight ? 110 : 140,
       }}>
         {line}
       </span>

@@ -482,6 +482,14 @@ function StarRipple({ intensity }: { intensity: 'normal' | 'mega' }) {
 // as the picker. Replaces the generic gold "TARGET BEAT" ceremony
 // with the run's identity.
 function ConstellationSeal({ glyph, color, name }: { glyph: { x: number; y: number }[]; color: string; name: string }) {
+  // Wave T+1 (2026-05-19) bespoke theater — Move 2 — constellation
+  // now DRAWS itself on cross-target. Each connecting line strokes in
+  // sequentially (stroke-dashoffset animation), and each star halo
+  // ignites right after the line reaches it. Reads as the active
+  // constellation completing across the play area as the player
+  // crosses target — the ritual that earns the moment.
+  const LINE_DRAW_MS = 320;
+  const PER_STAR_STAGGER_MS = 120;
   return (
     <div className="vfx-cons-seal-root" aria-hidden="true">
       <svg
@@ -491,26 +499,44 @@ function ConstellationSeal({ glyph, color, name }: { glyph: { x: number; y: numb
         className="vfx-cons-seal-svg"
         style={{ ['--seal-accent' as string]: color }}
       >
-        {/* Connecting lines — drawn first so the bright pips render on top. */}
+        {/* Connecting lines — each draws in sequentially via stroke-dashoffset. */}
         {glyph.slice(0, -1).map((p, i) => {
           const next = glyph[i + 1]!;
+          const dx = next.x - p.x;
+          const dy = next.y - p.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const delay = i * PER_STAR_STAGGER_MS;
           return (
             <line
               key={`l${i}`}
               x1={p.x} y1={p.y} x2={next.x} y2={next.y}
               stroke={color}
               strokeWidth={0.6}
-              strokeDasharray="1.5 2"
+              strokeLinecap="round"
               opacity={0.85}
+              style={{
+                strokeDasharray: len,
+                strokeDashoffset: len,
+                animation: `vfx-cons-line-draw ${LINE_DRAW_MS}ms cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms forwards`,
+              }}
             />
           );
         })}
-        {/* Stars — each point as a glowing pip with an outer halo. */}
+        {/* Stars — each ignites slightly after the line that arrives at it. */}
         {glyph.map((p, i) => {
           const isPrimary = i === 0;
           const r = isPrimary ? 2.6 : 1.8;
+          // Star at index i ignites when line (i-1) finishes drawing,
+          // or immediately for the first star.
+          const delay = Math.max(0, i * PER_STAR_STAGGER_MS - 40);
           return (
-            <g key={`s${i}`}>
+            <g
+              key={`s${i}`}
+              style={{
+                opacity: 0,
+                animation: `vfx-cons-star-ignite 280ms cubic-bezier(0.3, 1.4, 0.4, 1) ${delay}ms forwards`,
+              }}
+            >
               <circle cx={p.x} cy={p.y} r={r * 2.4} fill={color} opacity={0.18} />
               <circle cx={p.x} cy={p.y} r={r * 1.5} fill={color} opacity={0.4} />
               <circle cx={p.x} cy={p.y} r={r} fill="#fff7e0" />
@@ -618,7 +644,13 @@ function BoomNumber({
   counterFy: number;
   newBest: boolean;
 }) {
-  const [phase, setPhase] = useState<'pop' | 'fly'>('pop');
+  // Wave T+1 (2026-05-19) UI/UX refinement — BoomNumber simplified to
+  // a single pop+dissolve phase. The old pop(1700ms)→fly(800ms) pattern
+  // is replaced by a tighter 600ms pop hold + CSS-driven dissolve.
+  // Counter fill now starts immediately after the pop hold (driven by
+  // ScoreMoment) so the meter visibly tweens up under the dissolving
+  // BoomNumber instead of waiting for star-trails to bridge.
+  const [phase, setPhase] = useState<'pop' | 'dissolve'>('pop');
   // Tight stage = phones / split-landscape. Cut the spark count
   // roughly in half so 36 mega particles → 18, etc. — the boom's
   // GPU load on integrated mobile GPUs was dominated by these
@@ -627,7 +659,7 @@ function BoomNumber({
   const tight = useIsTightStage();
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => setPhase('fly'), 1700);
+    const t1 = window.setTimeout(() => setPhase('dissolve'), 600);
     return () => {
       window.clearTimeout(t1);
     };
@@ -662,16 +694,9 @@ function BoomNumber({
 
       <div
         className={`vfx-boom-number ${variant} ${phase}`}
-        style={
-          phase === 'fly'
-            ? ({ ['--fx' as never]: `${counterFx}px`, ['--fy' as never]: `${counterFy}px` } as React.CSSProperties)
-            : undefined
-        }
       >
         {total.toLocaleString()}
       </div>
-
-      {phase === 'fly' && <StarTrails count={variant === 'mega' ? 14 : 10} targetX={counterFx} targetY={counterFy} />}
 
       {newBest && phase === 'pop' && (
         <div className="vfx-newbest">★ NEW BEST ★</div>

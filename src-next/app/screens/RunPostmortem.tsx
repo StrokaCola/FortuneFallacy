@@ -755,13 +755,13 @@ function computeBuildIdentity(catalysts: string[]): { label: string; color: stri
 // at least two contributors (the line would read like a fragment).
 const STORY_CLOSERS: Record<string, string> = {
   'COMBO TRIBE':     'every higher-tier hand fed the next.',
-  'FACE HUNTER':     'each die that rolled high paid in chips and mult.',
+  'FACE HUNTER':     'each die that rolled high paid in pips and mult.',
   'ECONOMIST':       'shards kept rolling into the multiplier.',
   'INFINITE SCALER': 'each clear made the next one harder to bust.',
   'MOD MAESTRO':     'every die slot doubled as a multiplier.',
   'METRONOME':       'pacing turned restraint into payoff.',
   'OPPORTUNIST':     'each beat hedged the next hand\'s risk.',
-  'RISK COURTIER':   'every tradeoff paid back in mult before the chips bled out.',
+  'RISK COURTIER':   'every tradeoff paid back in mult before the pips bled out.',
 };
 function computeBuildStory(label: string, topIds: string[]): string | null {
   // Top 3 catalysts by chip contribution, mapped to display names.
@@ -781,8 +781,8 @@ function computeBuildStory(label: string, topIds: string[]): string | null {
 function formatScalingBonus(id: string, stacks: number): string {
   switch (id) {
     case 'star_chart':       return `+${(stacks * 0.25).toFixed(2)}× mult`;
-    case 'lodestone':        return `+${stacks * 2} chips`;
-    case 'comet_trail':      return `+${stacks * 10} chips`;
+    case 'lodestone':        return `+${stacks * 2} pips`;
+    case 'comet_trail':      return `+${stacks * 10} pips`;
     case 'memento_star':     return `+${(stacks * 0.5).toFixed(1)}× mult`;
     case 'ouroboros':        return `+${stacks * 3} mult`;
     case 'event_horizon':    return `+${stacks}% mult`;

@@ -84,6 +84,18 @@ export function ScoreBreakdown() {
   const [chipsPulse, setChipsPulse] = useState(0);
   const [multPulse, setMultPulse] = useState(0);
   const [tierPulse, setTierPulse] = useState(0);
+  // Wave T+1 (2026-05-19) UI/UX refinement — Balatro-style formula
+  // resolution. On boom the panel shows `[chips] × [mult] = [TOTAL]`
+  // with the equals + total snapping in over the existing chips/mult.
+  // Phase: 'building' during scoring, 'resolving' for ~600ms after
+  // boom (formula collapse moment), then fades out via FADE_OUT_MS.
+  const [phase, setPhase] = useState<'building' | 'resolving'>('building');
+  const [resolveTotal, setResolveTotal] = useState<number | null>(null);
+  // Wave T+1 (2026-05-19) UI/UX refinement — sustained phase scales
+  // the whole panel +6% so the player's eye is drawn to the math home
+  // as the crescendo builds. Subtle (1.06×) so layout doesn't shift,
+  // strong enough to register as "we're cooking now".
+  const [theaterPhase, setTheaterPhase] = useState<'idle' | 'ramping' | 'sustained' | 'held-breath' | 'release'>('idle');
   const fadeTimerRef = useRef<number | null>(null);
   const prevTierRef = useRef(0);
   // Slot-spin tween for the mult readout. mult is the snap-to value;
@@ -108,6 +120,8 @@ export function ScoreBreakdown() {
           setChipsPulse(0);
           setMultPulse(0);
           setTierPulse(0);
+          setPhase('building');
+          setResolveTotal(null);
           prevTierRef.current = beat.initialMult !== undefined ? tierIndex(beat.initialMult) : 0;
           setVisible(true);
           break;
@@ -121,33 +135,67 @@ export function ScoreBreakdown() {
             setChipsPulse((p) => p + 1);
           }
           break;
-        case 'upgrade-chip':
-          setChips((c) => c + beat.chipDelta);
-          setChipsPulse((p) => p + 1);
+        case 'upgrade-chip': {
+          // Wave T+1 (2026-05-19) choreography — defer panel update by
+          // tracer-arrival delay so the chips number ratchets up at the
+          // exact moment the BeatTracer mote lands on the panel. Reads
+          // as "this chip arrived at chips" rather than "chip flew off
+          // source and chips magically incremented at the same time".
+          const delta = beat.chipDelta;
+          window.setTimeout(() => {
+            setChips((c) => c + delta);
+            setChipsPulse((p) => p + 1);
+          }, 360);
           break;
-        case 'upgrade-mult':
-          setMult((m) => {
-            const next = m + beat.multDelta;
-            const prevT = tierIndex(m);
-            const nextT = tierIndex(next);
-            if (nextT > prevT) setTierPulse((p) => p + 1);
-            prevTierRef.current = nextT;
-            return next;
-          });
-          setMultPulse((p) => p + 1);
+        }
+        case 'upgrade-mult': {
+          const delta = beat.multDelta;
+          window.setTimeout(() => {
+            setMult((m) => {
+              const next = m + delta;
+              const prevT = tierIndex(m);
+              const nextT = tierIndex(next);
+              if (nextT > prevT) {
+                setTierPulse((p) => p + 1);
+                // Wave T+1 (2026-05-20) living cosmos — broadcast tier
+                // crossing for nebula pulse + audio rituals.
+                bus.emit('onMultTierCross', { fromTier: prevT, toTier: nextT, accent: multTier(next).color });
+              }
+              prevTierRef.current = nextT;
+              return next;
+            });
+            setMultPulse((p) => p + 1);
+          }, 360);
           break;
+        }
         case 'mult-slam':
           setMult((m) => {
             const next = Math.round(m * beat.multiplier * 100) / 100;
             const prevT = tierIndex(m);
             const nextT = tierIndex(next);
-            if (nextT > prevT) setTierPulse((p) => p + 1);
+            if (nextT > prevT) {
+              setTierPulse((p) => p + 1);
+              bus.emit('onMultTierCross', { fromTier: prevT, toTier: nextT, accent: multTier(next).color });
+            }
             prevTierRef.current = nextT;
             return next;
           });
           setMultPulse((p) => p + 1);
           break;
         case 'boom':
+          clearFade();
+          // Formula resolution moment — equals + total snap in
+          // alongside the existing chips × mult, holding for ~700ms
+          // before the panel fades out. The total comes from the
+          // boom beat itself (finalTotal), which is the engine's
+          // authoritative chips × mult product.
+          setResolveTotal(beat.finalTotal);
+          setPhase('resolving');
+          fadeTimerRef.current = window.setTimeout(() => {
+            setVisible(false);
+            fadeTimerRef.current = null;
+          }, FADE_OUT_MS);
+          break;
         case 'bail':
           clearFade();
           fadeTimerRef.current = window.setTimeout(() => {
@@ -157,8 +205,12 @@ export function ScoreBreakdown() {
           break;
       }
     });
+    const offPhase = bus.on('onTheaterPhase', ({ phase: tp }) => {
+      setTheaterPhase(tp as typeof theaterPhase);
+    });
     return () => {
       off();
+      offPhase();
       if (fadeTimerRef.current !== null) clearTimeout(fadeTimerRef.current);
     };
   }, []);
@@ -172,17 +224,24 @@ export function ScoreBreakdown() {
 
   const tier = multTier(mult);
 
+  const sustainedScale = (theaterPhase === 'sustained' || theaterPhase === 'held-breath') ? 1.06 : 1;
   return (
     <div
       style={{
         position: 'absolute',
         left: '50%',
-        // Sit cleanly below the catalyst/consumable rows. Strips are 88px
-        // tall starting at `--hud-top-h + 8`, so we clear them with
-        // 96 + 8 = 104px instead of the previous 76px (which left a
-        // ~20px vertical overlap with the strip card bottoms).
-        top: 'calc(var(--hud-top-h, 134px) + 104px)',
-        transform: 'translateX(-50%)',
+        // Wave T+1 (2026-05-19) responsive UI pass — tight viewports
+        // anchor the catalyst strip at +24px (vs +8px on medium/wide)
+        // to give the multi-row TopBar breathing room, which pushes
+        // the strip's BOTTOM edge to hud-top-h + 24 + 88 = +112. The
+        // old +104 offset undershot the strip on tight, causing a
+        // 12px overlap. Bump to +124 on tight; non-tight keeps +104.
+        top: tight
+          ? 'calc(var(--hud-top-h, 134px) + 124px)'
+          : 'calc(var(--hud-top-h, 134px) + 104px)',
+        transform: `translateX(-50%) scale(${sustainedScale})`,
+        transformOrigin: 'top center',
+        transition: 'transform 380ms cubic-bezier(0.2, 1.2, 0.4, 1)',
         display: 'flex',
         gap: tight ? 10 : 22,
         alignItems: 'center',
@@ -196,6 +255,7 @@ export function ScoreBreakdown() {
       <div
         key={`chips-${chipsPulse}`}
         className="panel"
+        data-score-chips
         style={{
           // Tight shrinks horizontal padding so the centered chips+mult
           // strip doesn't reach into the catalyst/consumable cards at
@@ -220,7 +280,7 @@ export function ScoreBreakdown() {
             : undefined,
         }}
       >
-        <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.18em' }}>chips</div>
+        <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.18em' }}>pips</div>
         <div
           className="f-display num"
           style={{
@@ -269,6 +329,7 @@ export function ScoreBreakdown() {
         <div
           key={`mult-${multPulse}`}
           className="panel"
+          data-score-mult
           style={{
             padding: tight ? '8px 16px' : '14px 26px',
             borderRadius: 14,
@@ -295,6 +356,58 @@ export function ScoreBreakdown() {
           </div>
         </div>
       </div>
+      {/* Wave T+1 (2026-05-19) UI/UX refinement — Balatro formula
+          resolution. `= [total]` snaps in at boom alongside the
+          existing chips × mult panels, holds briefly, then fades
+          with the rest of the panel. Reads as "this is the math
+          collapsing into your answer." */}
+      {phase === 'resolving' && resolveTotal != null && (
+        <div
+          className="score-formula-resolve"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: tight ? 10 : 22,
+            marginLeft: tight ? 10 : 22,
+            animation: 'score-formula-resolve-in 480ms cubic-bezier(0.2, 1.5, 0.4, 1) both',
+          }}
+        >
+          <div
+            className="f-display"
+            style={{
+              fontSize: tight ? 32 : 48,
+              color: '#f3f0ff',
+              textShadow: '0 0 14px rgba(245, 196, 81, 0.7)',
+            }}
+          >
+            =
+          </div>
+          <div
+            className="panel"
+            style={{
+              padding: tight ? '8px 16px' : '14px 26px',
+              borderRadius: 14,
+              textAlign: 'center',
+              borderColor: '#f5c451',
+              boxShadow: '0 0 32px rgba(245, 196, 81, 0.6)',
+            }}
+          >
+            <div className="f-mono uc" style={{ fontSize: 10, color: '#f5c451', letterSpacing: '0.18em' }}>total</div>
+            <div
+              className="f-display num"
+              style={{
+                fontSize: tight ? 32 : 52,
+                color: '#f5c451',
+                fontWeight: 800,
+                lineHeight: 1,
+                textShadow: '0 0 24px rgba(245, 196, 81, 0.85), 0 0 48px rgba(245, 196, 81, 0.4)',
+              }}
+            >
+              {formatNumber(resolveTotal)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

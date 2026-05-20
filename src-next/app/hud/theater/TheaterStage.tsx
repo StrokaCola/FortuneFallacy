@@ -45,22 +45,39 @@ export function TheaterStage(): null {
       if (phase === 'ramping') {
         setStageClass('theater-zoom', false);
         setStageClass('theater-freeze', false);
+        setStageClass('scoring-active', true);
         setVfxTier(null);
       } else if (phase === 'sustained') {
         const m = peakMult ?? 1;
         const tier = tierFromMult(m);
-        setVfxTier(tier);
+        // Wave T+1 (2026-05-19) UI/UX refinement — VFX layer amp now
+        // gated to tier >= 3 (peakMult >= 8) so the universe-reaction
+        // doesn't double-signal alongside ScoreBreakdown's tier-color
+        // escalation on lower multipliers. ScoreBreakdown handles the
+        // ×2-×8 escalation visually via panel color; the VFX layer
+        // stays reserved for true "world warps" moments at ×8+.
+        if (tier >= 3) setVfxTier(tier);
         if (m >= ZOOM_MIN_PEAK_MULT) {
           setStageClass('theater-zoom', true);
         }
       } else if (phase === 'held-breath') {
         setStageClass('theater-freeze', true);
+        // Wave T+1 (2026-05-19) bespoke theater — held-breath is now
+        // the cinematic freeze frame. Deep desaturation + golden
+        // spotlight on the PIPS×MULT panel, single bell tone holds
+        // through the beat. Boom releases everything at once.
+        setStageClass('theater-deep-freeze', true);
       } else if (phase === 'release') {
         setStageClass('theater-zoom', false);
         setStageClass('theater-freeze', false);
+        setStageClass('theater-deep-freeze', false);
         // Keep tier briefly so the boom inherits the intensity, then
         // clear after the post-fill savor window.
         window.setTimeout(() => setVfxTier(null), 1200);
+        // Scene-dim lifts a beat after release so the boom + counter
+        // catch read against the dimmed surroundings, then UI brightens
+        // back as the round resumes.
+        window.setTimeout(() => setStageClass('scoring-active', false), 1400);
       }
     });
     return () => {
@@ -69,6 +86,8 @@ export function TheaterStage(): null {
       // component unmounts mid-sequence.
       setStageClass('theater-zoom', false);
       setStageClass('theater-freeze', false);
+      setStageClass('theater-deep-freeze', false);
+      setStageClass('scoring-active', false);
       setVfxTier(null);
     };
   }, []);

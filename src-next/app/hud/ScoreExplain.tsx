@@ -104,7 +104,7 @@ function Header({ exp, onClose }: { exp: Explanation; onClose: () => void }) {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span className="f-display" style={{ fontSize: 22, color: '#f3f0ff' }}>{exp.combo.name}</span>
             <span className="f-mono num" style={{ fontSize: 12, color: CHIPS_COLOR }}>
-              base +{exp.combo.baseChips} chips
+              base +{exp.combo.baseChips} pips
             </span>
             <span style={{ width: 1, height: 12, background: 'rgba(149,119,255,0.4)' }} />
             <span className="f-mono num" style={{ fontSize: 12, color: MULT_COLOR }}>
@@ -177,7 +177,7 @@ function Rows({ exp }: { exp: Explanation }) {
             fontSize: 13, color: r.chipsDelta !== 0 ? CHIPS_COLOR : 'transparent',
             minWidth: 56, textAlign: 'right',
           }}>
-            {r.chipsDelta !== 0 ? `${formatDelta(r.chipsDelta)} chips` : '—'}
+            {r.chipsDelta !== 0 ? `${formatDelta(r.chipsDelta)} pips` : '—'}
           </div>
           <div className="f-mono num" style={{
             fontSize: 13, color: r.multDelta !== 0 ? MULT_COLOR : 'transparent',
@@ -204,7 +204,7 @@ function FinalMath({ exp }: { exp: Explanation }) {
         ◈ final math
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <Token value={formatNumber(exp.totalChips)} label="chips" color={CHIPS_COLOR} />
+        <Token value={formatNumber(exp.totalChips)} label="pips" color={CHIPS_COLOR} />
         <Op>×</Op>
         <Token value={formatNumber(exp.totalMult)} label="mult" color={MULT_COLOR} />
         {showChain && (

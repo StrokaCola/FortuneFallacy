@@ -7,17 +7,58 @@
 // defensively.
 export type BeatSourceType = 'catalyst' | 'mod' | 'resonance' | 'combo' | 'chain' | 'unknown';
 
+// Wave T+1 (2026-05-19) — theatrical beat metadata. Every beat now
+// carries an importance tier that consumers (FlyToCounter, audio
+// router, catalyst pulse, BeatTracer) read to scale their visual /
+// audio intensity. `triggerReason` is a human-readable explanation
+// of WHY the beat fired (shown in floaters + breakdown). `targetId`
+// names which scoreboard panel the contribution lands on so
+// BeatTracer can draw a source→target arc. `retrigger` flags
+// repeat-fires for distinct visual treatment.
+export type BeatImportance = 'minor' | 'moderate' | 'major' | 'finale';
+export type BeatTarget = 'pips' | 'mult' | 'score';
+
+// Shared optional metadata fields. Beat type unions narrow further
+// on top of this — kept here so a generic consumer can read importance
+// without exhaustive switch on every kind.
+export type BeatMeta = {
+  importance?: BeatImportance;
+  triggerReason?: string;
+  targetId?: BeatTarget;
+  retrigger?: boolean;
+};
+
 export type Beat =
-  | { kind: 'cast-swell';    t: number; initialMult?: number }
-  | { kind: 'die-tick';      t: number; dieIdx: number; face: number; chipDelta: number; runningTotal: number; pitchSemis: number }
-  | { kind: 'combo-bonus';   t: number; comboLabel: string; chipDelta: number; runningTotal: number; sourceType?: BeatSourceType; sourceId?: string }
-  | { kind: 'upgrade-chip';  t: number; label: string; chipDelta: number; runningTotal: number; sourceType?: BeatSourceType; sourceId?: string; dieIdx?: number }
-  | { kind: 'upgrade-mult';  t: number; label: string; multDelta: number; currentMult: number; tint?: 'gold' | 'magenta'; sourceType?: BeatSourceType; sourceId?: string; dieIdx?: number }
-  | { kind: 'mult-slam';     t: number; label: string; multiplier: number; pitchSemis: number; ampScale: number; tint?: 'gold' | 'magenta'; sourceType?: BeatSourceType; sourceId?: string }
-  | { kind: 'cross-target';  t: number; runningTotal: number; target: number }
-  | { kind: 'hold-breath';   t: number; durMs: number }
-  | { kind: 'boom';          t: number; finalTotal: number; crossedTarget: boolean; megaRatio?: number }
-  | { kind: 'bail';          t: number; runningTotal: number; target: number };
+  | ({ kind: 'cast-swell';    t: number; initialMult?: number } & BeatMeta)
+  | ({ kind: 'die-tick';      t: number; dieIdx: number; face: number; chipDelta: number; runningTotal: number; pitchSemis: number } & BeatMeta)
+  | ({ kind: 'combo-detect';  t: number; comboLabel: string; baseChips: number; baseMult: number } & BeatMeta)
+  | ({ kind: 'combo-bonus';   t: number; comboLabel: string; chipDelta: number; runningTotal: number; sourceType?: BeatSourceType; sourceId?: string } & BeatMeta)
+  | ({ kind: 'upgrade-chip';  t: number; label: string; chipDelta: number; runningTotal: number; sourceType?: BeatSourceType; sourceId?: string; dieIdx?: number } & BeatMeta)
+  | ({ kind: 'upgrade-mult';  t: number; label: string; multDelta: number; currentMult: number; tint?: 'gold' | 'magenta'; sourceType?: BeatSourceType; sourceId?: string; dieIdx?: number } & BeatMeta)
+  | ({ kind: 'mult-slam';     t: number; label: string; multiplier: number; pitchSemis: number; ampScale: number; tint?: 'gold' | 'magenta'; sourceType?: BeatSourceType; sourceId?: string } & BeatMeta)
+  | ({ kind: 'cross-target';  t: number; runningTotal: number; target: number } & BeatMeta)
+  | ({ kind: 'hold-breath';   t: number; durMs: number } & BeatMeta)
+  | ({ kind: 'boom';          t: number; finalTotal: number; crossedTarget: boolean; megaRatio?: number } & BeatMeta)
+  | ({ kind: 'bail';          t: number; runningTotal: number; target: number } & BeatMeta);
+
+// Importance → 0-1 intensity scale. Consumers (animation duration,
+// audio gain, floater size punch) read this for consistent scaling
+// across the theater layer. Default 'minor' for any beat that didn't
+// set an importance explicitly — keeps legacy code paths working.
+export function beatIntensity(b: Beat | BeatMeta): number {
+  switch (b.importance ?? 'minor') {
+    case 'minor':    return 0.25;
+    case 'moderate': return 0.55;
+    case 'major':    return 0.85;
+    case 'finale':   return 1.0;
+  }
+}
+
+export function classifyUpgradeImportance(absDelta: number): BeatImportance {
+  if (absDelta >= 200) return 'major';
+  if (absDelta >= 40)  return 'moderate';
+  return 'minor';
+}
 
 export type SequenceTier = 'short' | 'mid' | 'full';
 

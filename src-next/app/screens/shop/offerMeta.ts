@@ -88,12 +88,12 @@ export function offerMeta(kind: string, id: string): OfferMeta {
 // smaller magnitudes — the tooltip surfaces the right numbers.
 export function editionBonusDescription(kind: 'catalyst' | 'mod', edition: CatalystEdition): string {
   if (kind === 'catalyst') {
-    if (edition === 'foil') return '+50 chips on each fire';
+    if (edition === 'foil') return '+50 pips on each fire';
     if (edition === 'holo') return '+10 mult on each fire';
     if (edition === 'void') return 'Costs zero catalyst slots';
     return '+50% of own contribution';
   }
-  if (edition === 'foil') return '+20 chips per fire';
+  if (edition === 'foil') return '+20 pips per fire';
   if (edition === 'holo') return '+4 mult per fire';
   return '+25% of own contribution per fire';
 }

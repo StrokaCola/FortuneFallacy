@@ -67,19 +67,25 @@ export function ConsumableTray() {
     <>
       <div data-coach="consumable-tray" style={{
         position: 'absolute',
-        // Tight portrait: anchor to the TOP-RIGHT at the same vertical
-        // band as the CatalystStrip (which sits at + 24px on tight),
-        // so the two trays read as a mirrored pair flanking the dice
-        // board. Items flow left-from-the-right-edge as more
-        // consumables are added.
-        // Non-tight (medium / wide rail): stacked DIRECTLY UNDER the
-        // CatalystStrip on the LEFT rail. CatalystStrip anchors at
-        // (--hud-top-h + 8px) here, and a single catalyst card is
-        // 88px tall, so + 8 + 88 + 8 = +104px puts the consumable
-        // row 8px below the catalyst row's bottom edge.
-        top: tight ? 'calc(var(--hud-top-h, 134px) + 24px)' : 'calc(var(--hud-top-h, 134px) + 104px)',
-        left: tight ? 'auto' : 18,
-        right: tight ? 18 : 'auto',
+        // Wave T+1 (2026-05-19) responsive UI pass — placement
+        // rationalized across viewports:
+        //   - tight portrait → top-right (mirrored pair with the
+        //     horizontal catalyst strip on the top-left)
+        //   - wide (catalyst is a left vertical rail) → top-right
+        //     vertical rail to mirror catalyst rail. Previous logic
+        //     stacked it BELOW catalyst rail at left=18, which
+        //     collided with the rail's own vertical extent (5
+        //     catalysts × ~96px each).
+        //   - medium (catalyst strip is a horizontal row) → keep
+        //     left=18 row under catalysts, +104px down (one catalyst
+        //     row height + gap), original behavior.
+        top: tight
+          ? 'calc(var(--hud-top-h, 134px) + 24px)'
+          : (wide
+              ? 'calc(var(--hud-top-h, 134px) + 8px)'
+              : 'calc(var(--hud-top-h, 134px) + 104px)'),
+        left: (tight || wide) ? 'auto' : 18,
+        right: (tight || wide) ? 18 : 'auto',
         display: 'flex',
         flexDirection: wide ? 'column' : 'row',
         gap: 8, zIndex: Z.hud,

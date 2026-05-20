@@ -26,7 +26,7 @@ export function EditionBadge({ edition }: { edition: CatalystEdition }) {
   const c = editionColor(edition);
   const title = editionLabel(edition);
   const body =
-    edition === 'foil' ? '+50 chips when this catalyst fires.'
+    edition === 'foil' ? '+50 pips when this catalyst fires.'
     : edition === 'holo' ? '+10 mult when this catalyst fires.'
     : edition === 'void' ? 'Does not count against your catalyst slot cap.'
     : 'Adds +50% of this catalyst\'s contribution each fire.';

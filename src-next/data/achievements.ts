@@ -183,7 +183,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'score_5k',
     name: 'Five Thousand',
-    description: 'Score 5,000 chips in a single hand.',
+    description: 'Score 5,000 pips in a single hand.',
     dust: 10, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 5_000,
     progress: (s) => ({ current: Math.min(5_000, s.run.runStats?.peakHand ?? 0), target: 5_000 }),
@@ -191,7 +191,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'score_25k',
     name: 'Twenty-Five Thousand',
-    description: 'Score 25,000 chips in a single hand.',
+    description: 'Score 25,000 pips in a single hand.',
     dust: 25, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 25_000,
     progress: (s) => ({ current: Math.min(25_000, s.run.runStats?.peakHand ?? 0), target: 25_000 }),
@@ -199,7 +199,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'score_100k',
     name: 'Sixfigure',
-    description: 'Score 100,000 chips in a single hand.',
+    description: 'Score 100,000 pips in a single hand.',
     dust: 50, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 100_000,
     progress: (s) => ({ current: Math.min(100_000, s.run.runStats?.peakHand ?? 0), target: 100_000 }),
@@ -207,7 +207,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'score_500k',
     name: 'Half Million',
-    description: 'Score 500,000 chips in a single hand.',
+    description: 'Score 500,000 pips in a single hand.',
     dust: 100, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 500_000,
     progress: (s) => ({ current: Math.min(500_000, s.run.runStats?.peakHand ?? 0), target: 500_000 }),
@@ -215,7 +215,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'score_1m',
     name: 'Apex',
-    description: 'Score 1,000,000 chips in a single hand.',
+    description: 'Score 1,000,000 pips in a single hand.',
     dust: 200, category: 'score',
     check: (_s, e) => finalScoreOfHand(e) >= 1_000_000,
     progress: (s) => ({ current: Math.min(1_000_000, s.run.runStats?.peakHand ?? 0), target: 1_000_000 }),
@@ -415,7 +415,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'combo_chance_pure',
     name: 'No Pattern, No Problem',
-    description: 'Score a Chance hand for over 1,000 chips.',
+    description: 'Score a Chance hand for over 1,000 pips.',
     dust: 30, category: 'misc',
     check: (_s, e) =>
       e?.type === 'onScoreCalculated' && e.payload.combo === 'chance' && e.payload.total >= 1000,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isPerfDegraded, subscribePerfMode } from '../perf/perfMode';
 import { bus } from '../../events/bus';
+import { CosmosEvents } from './CosmosEvents';
 
 export type ThemeKey = 'midnight' | 'voidlit' | 'sandstorm' | 'abyssal';
 
@@ -148,6 +149,14 @@ export function CosmosBackground({
           read as cosmic foreground motion. Skipped in degraded mode
           (same gate as stardust + halo). */}
       <MeteorShowerLayer enabled={!degraded} />
+      {/* Living-cosmos reactive event layers (Wave T+1, 2026-05-20).
+          Subscribes to in-round gameplay bus events and paints
+          bespoke transient overlays. Sits BETWEEN meteors and the
+          tension/vignette tints so a) meteors still streak above
+          synergy/echo layers during boom celebrations, and b) the
+          crimson/vignette tints still dominate the late-blind mood.
+          Degraded mode keeps only the cheap class-toggle layers. */}
+      <CosmosEvents enabled={!degraded} />
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'radial-gradient(ellipse at center, transparent 30%, rgba(226,51,74,1) 100%)',

@@ -399,12 +399,16 @@ export function Hub() {
                     />
                   )}
                   <div style={{
-                    // Tight: sigil shrinks and the slot stretches to fill,
-                    // pushing the target row to the bottom edge so the
-                    // card stays visually balanced at 150-200px height.
-                    marginTop: tight ? 4 : 14,
-                    flex: tight ? 1 : undefined,
-                    height: tight ? undefined : 96,
+                    // Wave T+1 (2026-05-19) — sigil slot now flex-grows
+                    // with min-height instead of fixed 96px, so a boss
+                    // card carrying the modifier chip ("Demoted. 1s
+                    // refuse to transform.") compresses the sigil
+                    // instead of overflowing the bottom rows. Tight
+                    // path unchanged.
+                    marginTop: tight ? 4 : 10,
+                    flex: 1,
+                    minHeight: tight ? 32 : 60,
+                    height: tight ? undefined : undefined,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {cleared
@@ -475,7 +479,10 @@ export function Hub() {
               </OrnateFrame>
 
               {/* Desktop / compact layout keeps the dramatic overhanging
-                  Begin button. Tight mode renders it inline above. */}
+                  Begin button. Tight mode renders it inline above.
+                  Wave T+1 (2026-05-19) — pushed further outside the
+                  card (bottom: -28 vs -18) so the button doesn't visually
+                  overlap the target number / multiplier rows. */}
               {!tight && cur && (
                 <button
                   className="btn btn-primary mat-interactive"
@@ -483,7 +490,7 @@ export function Hub() {
                     ? { type: 'SET_SCREEN', screen: 'event' }
                     : { type: 'START_BLIND' })}
                   style={{
-                    position: 'absolute', bottom: -18, left: '50%', transform: 'translateX(-50%)',
+                    position: 'absolute', bottom: -28, left: '50%', transform: 'translateX(-50%)',
                     fontSize: 13, padding: '10px 18px',
                   }}>
                   {hasEvent ? 'Open Event' : 'Begin'}

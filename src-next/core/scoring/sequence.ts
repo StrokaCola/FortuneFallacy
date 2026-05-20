@@ -1,4 +1,5 @@
 import type { Beat, ScoreSequence, SequenceCtx, SequenceInput, SequenceTier } from './types';
+import { classifyUpgradeImportance } from './types';
 
 // Pacing constants per tier. All ms. Tunable in dev.
 //
@@ -198,14 +199,35 @@ function buildUpgradePath(
 
   const checkCross = () => {
     if (!crossEmitted && product() >= ctx.target) {
-      beats.push({ kind: 'cross-target', t: t + CROSS_TARGET_DELAY_MS, runningTotal: product(), target: ctx.target });
+      beats.push({
+        kind: 'cross-target', t: t + CROSS_TARGET_DELAY_MS,
+        runningTotal: product(), target: ctx.target,
+        importance: 'major',
+        triggerReason: 'Target reached',
+        targetId: 'score',
+      });
       crossEmitted = true;
     }
   };
 
   // Cast-swell
-  beats.push({ kind: 'cast-swell', t, initialMult: input.baseMult });
+  beats.push({ kind: 'cast-swell', t, initialMult: input.baseMult, importance: 'minor', triggerReason: 'Hand cast' });
   t += tier === 'full' ? PACING.full.castSwellMs : PACING[tier].castSwellMs;
+
+  // Wave T+1 (2026-05-19) — combo-detect beat fires right after
+  // cast-swell so the player sees WHICH hand they played before any
+  // dice tick. ScoreBreakdown / new combo flash component can render
+  // the combo name + base values.
+  beats.push({
+    kind: 'combo-detect', t,
+    comboLabel: input.comboLabel,
+    baseChips: input.comboBonus,
+    baseMult: input.baseMult ?? 1,
+    importance: 'moderate',
+    triggerReason: `${input.comboLabel} detected`,
+    targetId: 'score',
+  });
+  t += 200; // brief beat for the combo flash to read before dice start
 
   // Die ticks
   const dieGaps =
@@ -223,6 +245,9 @@ function buildUpgradePath(
       chipDelta: input.faces[i]!,
       runningTotal: product(),
       pitchSemis: i,
+      importance: 'minor',
+      triggerReason: `Die ${i + 1} face ${input.faces[i]}`,
+      targetId: 'pips',
     });
     checkCross();
     advance(dieGaps[i]!);
@@ -237,16 +262,32 @@ function buildUpgradePath(
       comboLabel: input.comboLabel,
       chipDelta: input.comboBonus,
       runningTotal: product(),
+      importance: input.comboBonus >= 25 ? 'major' : input.comboBonus > 0 ? 'moderate' : 'minor',
+      triggerReason: `${input.comboLabel} bonus`,
+      targetId: 'pips',
     });
     checkCross();
     const comboGap = tier === 'full' ? PACING.full.comboGapMs : PACING[tier].comboGapMs;
     advance(comboGap);
   }
 
-  // Upgrade events — chip pass then mult pass for each event
+  // Upgrade events — chip pass then mult pass for each event.
+  // Wave T+1 (2026-05-19) choreography — escalating chain compression.
+  // After the 3rd consecutive upgrade fire, gaps shrink (0.85 then
+  // 0.75 then 0.7 floor) so a deep stack of catalysts crescendos
+  // visibly into the boom rather than ticking at a flat tempo. Reads
+  // as "the build is paying off" without changing total runtime
+  // (later beats just bunch tighter).
   const upgradeChipGap = tier === 'full' ? PACING.full.upgradeChipGapMs : PACING[tier].upgradeChipGapMs;
   const upgradeMultGap = tier === 'full' ? PACING.full.upgradeMultGapMs : PACING[tier].upgradeMultGapMs;
+  const chainGapFactor = (chainIdx: number): number => {
+    if (chainIdx < 3) return 1.0;
+    if (chainIdx < 5) return 0.85;
+    if (chainIdx < 7) return 0.75;
+    return 0.7;
+  };
 
+  let upgradeChainIdx = 0;
   for (const upg of input.upgrades ?? []) {
     if (upg.chipDelta !== 0) {
       runningChips += upg.chipDelta;
@@ -259,9 +300,13 @@ function buildUpgradePath(
         sourceType: upg.sourceType,
         sourceId: upg.sourceId,
         dieIdx: upg.dieIdx,
+        importance: classifyUpgradeImportance(Math.abs(upg.chipDelta)),
+        triggerReason: upg.label,
+        targetId: 'pips',
       });
       checkCross();
-      advance(upgradeChipGap);
+      advance(Math.round(upgradeChipGap * chainGapFactor(upgradeChainIdx)));
+      upgradeChainIdx += 1;
     }
     if (upg.multDelta !== 0) {
       runningMult += upg.multDelta;
@@ -275,9 +320,13 @@ function buildUpgradePath(
         sourceType: upg.sourceType,
         sourceId: upg.sourceId,
         dieIdx: upg.dieIdx,
+        importance: classifyUpgradeImportance(Math.abs(upg.multDelta) * 10),
+        triggerReason: upg.label,
+        targetId: 'mult',
       });
       checkCross();
-      advance(upgradeMultGap);
+      advance(Math.round(upgradeMultGap * chainGapFactor(upgradeChainIdx)));
+      upgradeChainIdx += 1;
     }
   }
 
@@ -306,6 +355,9 @@ function buildUpgradePath(
       // so a 4-mult chain peaks ~30% louder on the last slam vs the first.
       ampScale: 1 + (multSemis - 12) * 0.1 + mi * 0.08,
       tint: m.tint,
+      importance: m.value >= 4 ? 'major' : 'moderate',
+      triggerReason: m.label,
+      targetId: 'mult',
     });
     checkCross();
     multSemis += 2;
@@ -319,7 +371,11 @@ function buildUpgradePath(
   const breathMs = crossEmitted
     ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR_HOLD))
     : breathBaseMs;
-  beats.push({ kind: 'hold-breath', t, durMs: breathMs });
+  beats.push({
+    kind: 'hold-breath', t, durMs: breathMs,
+    importance: 'finale',
+    triggerReason: 'Tension peak',
+  });
   t += breathMs;
 
   // Boom — megaRatio drives hit-stop tier in ScoreMoment. Computed
@@ -331,6 +387,9 @@ function buildUpgradePath(
     kind: 'boom', t, finalTotal: input.finalTotal,
     crossedTarget: product() >= ctx.target,
     ...(megaRatioFull >= 3 ? { megaRatio: megaRatioFull } : {}),
+    importance: 'finale',
+    triggerReason: product() >= ctx.target ? 'Target cleared' : 'Hand resolved',
+    targetId: 'score',
   });
   return { beats, tier, totalDurMs: t };
 }
@@ -439,7 +498,11 @@ function buildLegacyPath(
   const breathMs = crossEmitted
     ? Math.max(POST_CROSS_BREATH_FLOOR_MS, Math.round(breathBaseMs * POST_CROSS_GAP_FACTOR_HOLD))
     : breathBaseMs;
-  beats.push({ kind: 'hold-breath', t, durMs: breathMs });
+  beats.push({
+    kind: 'hold-breath', t, durMs: breathMs,
+    importance: 'finale',
+    triggerReason: 'Tension peak',
+  });
   t += breathMs;
 
   // Boom — terminal. megaRatio extension matches the upgrade-path above

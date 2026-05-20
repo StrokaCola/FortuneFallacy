@@ -54,14 +54,14 @@ export type EventDef = {
 export const EVENTS: EventDef[] = [
   {
     id: 'wandering_oracle',
-    name: 'The Wandering Oracle',
+    name: 'The Wandering Analyst',
     glyph: '◉',
     prompt:
-      'A figure in star-flecked rags blocks the path. She offers to read your fate.',
+      'A figure in star-flecked rags blocks the path. She offers to read your odds.',
     choices: [
       {
-        label: 'Pay 5 shards · gain a tarot',
-        flavor: 'Her eyes are very old. She does not waste your time.',
+        label: 'Pay 5 shards · take a reading',
+        flavor: 'Her ledger is heavy. She does not waste your time.',
         costs: { shards: 5 },
         effects: [{ kind: 'consumable', consumableId: 'shard_drop' }, { kind: 'cosmic_dust', amount: 4 }],
       },
@@ -73,19 +73,19 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'derelict_shrine',
-    name: 'The Derelict Shrine',
+    name: 'The Derelict Beacon',
     glyph: '⛨',
     prompt:
-      'A small shrine, half-buried in dust. You feel the weight of something forgotten.',
+      'A small beacon, half-buried in dust. Its panel still hums under your hand.',
     choices: [
       {
-        label: 'Light the offering',
-        flavor: 'A rare mark answers your prayer.',
+        label: 'Power the beacon',
+        flavor: 'A rare mark answers the signal.',
         effects: [{ kind: 'random_mod', rarity: ['rare'] }],
       },
       {
-        label: 'Leave it sleeping',
-        flavor: 'Some doors are best left closed.',
+        label: 'Leave it dormant',
+        flavor: 'Some signals are best ignored.',
         effects: [],
       },
     ],
@@ -174,14 +174,14 @@ export const EVENTS: EventDef[] = [
   },
   {
     id: 'astrologers_debt',
-    name: "The Astrologer's Debt",
+    name: "The Surveyor's Debt",
     glyph: '✦',
     prompt:
-      'A robed scholar tugs at your sleeve. She owes a debt to the stars and needs help paying it.',
+      'A robed surveyor tugs at your sleeve. She is short on her next route fee and needs help paying it.',
     choices: [
       {
         label: 'Lend 10 shards',
-        flavor: 'She promises 15 back. The stars are listening.',
+        flavor: 'She promises 15 back. The numbers favor her.',
         costs: { shards: 10 },
         effects: [{ kind: 'shards', amount: 15 }, { kind: 'cosmic_dust', amount: 6 }],
       },

@@ -12,7 +12,12 @@ import { useEffect, useState } from 'react';
 import { bus } from '../../../events/bus';
 import { Z } from '../zLayers';
 
-const MIN_MULT_TO_SHOW = 4;
+// Wave T+1 (2026-05-19) UI/UX refinement — banner gated to >=16x only.
+// ScoreBreakdown's mult-tier color escalation already says "you're
+// cooking" at >=2/4/8x. Banner reading the same message at >=4 was
+// redundant; reserving it for >=16x makes it a true milestone signal
+// ("you broke the game") instead of constant chyron noise.
+const MIN_MULT_TO_SHOW = 16;
 
 const TIER_COLOR = ['#7be3ff', '#ff9d4a', '#cc88ff', '#f5c451', '#e2334a'];
 function tierColor(mult: number): string {

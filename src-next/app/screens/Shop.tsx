@@ -29,7 +29,7 @@ import { sfxPlay } from '../../audio/sfx';
 import type { CatalystEdition } from '../../state/slices/run';
 import { OfferCard } from './shop/OfferCard';
 import { HandLevelsPanel } from './shop/HandLevelsPanel';
-import { CollectionPanel, CollectionSheet } from './shop/CollectionPanel';
+import { CollectionSheet } from './shop/CollectionPanel';
 
 // Stable empty-object fallback so the selector returns a consistent ref
 // across renders (avoids useSyncExternalStore tear-loops).
@@ -179,18 +179,10 @@ export function Shop() {
 
       <HandLevelsPanel comboLevels={comboLevels} />
 
-      {/* Desktop renders Collection inline; tight portrait surfaces it via
-          a bottom-sheet triggered from the action bar (see CollectionSheet). */}
-      {!tight && (
-        <CollectionPanel
-          catalysts={catalysts}
-          catalystEditions={catalystEditions}
-          vouchers={vouchers}
-          consumables={consumables}
-          ownedMods={ownedMods}
-          voucherSellBlock={voucherSellBlock}
-        />
-      )}
+      {/* Wave T+1 (2026-05-19) UI pass — Collection no longer renders
+          inline anywhere; always reached via the Collection button in
+          the action bar (CollectionSheet). Inline panel was overtaking
+          the shop screen at desktop sizes and burying offer cards. */}
 
       <ActionBar tight={tight} gap={tight ? 8 : 12} minChildWidth={100} style={tight ? {
         // Tight: pin the action bar to the bottom of the viewport so
@@ -231,20 +223,23 @@ export function Shop() {
           <span key={`spin-${rerollSpin}`} className={`ff-reroll-glyph${rerollSpin > 0 ? ' ff-reroll-glyph-spinning' : ''}`} aria-hidden="true">↻</span> Reroll <span className="f-mono num" style={{ color: '#f5c451' }}>◆ {rerollCost}</span>
           <span className="tip tip-above">Replace all current offers with a new set. Cost rises by 1 each reroll this visit.</span>
         </button>
-        {tight && (
-          <button
-            className="btn mat-interactive has-tip"
-            onClick={() => setCollectionOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={collectionOpen}
-          >
-            ☰ Collection{' '}
-            <span className="f-mono num" style={{ color: '#bba8ff' }}>
-              {catalysts.length + vouchers.length + consumables.length + ownedMods.length}
-            </span>
-            <span className="tip tip-above">View and sell owned catalysts, mods, vouchers, and consumables.</span>
-          </button>
-        )}
+        {/* Wave T+1 (2026-05-19) — Collection button now lives in the
+            action bar on EVERY viewport (was tight-only). Opens the
+            CollectionSheet bottom-sheet on click. Replaces the
+            previous always-visible inline panel on desktop which
+            buried the shop offers under a tall list of owned items. */}
+        <button
+          className="btn mat-interactive has-tip"
+          onClick={() => setCollectionOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={collectionOpen}
+        >
+          ☰ Collection{' '}
+          <span className="f-mono num" style={{ color: '#bba8ff' }}>
+            {catalysts.length + vouchers.length + consumables.length + ownedMods.length}
+          </span>
+          <span className="tip tip-above">View and sell owned catalysts, mods, vouchers, and consumables.</span>
+        </button>
         <button
           data-coach="next-trial-btn"
           className="btn btn-primary mat-interactive has-tip"
@@ -255,7 +250,7 @@ export function Shop() {
         </button>
       </ActionBar>
 
-      {tight && collectionOpen && (
+      {collectionOpen && (
         <CollectionSheet
           catalysts={catalysts}
           catalystEditions={catalystEditions}

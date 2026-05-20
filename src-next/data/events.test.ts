@@ -86,7 +86,7 @@ describe('getEventForBlind', () => {
 
 describe('lookupEvent', () => {
   it('finds an event by id', () => {
-    expect(lookupEvent('wandering_oracle')?.name).toBe('The Wandering Oracle');
+    expect(lookupEvent('wandering_oracle')?.name).toBe('The Wandering Analyst');
   });
 
   it('returns undefined for unknown / nullish ids', () => {

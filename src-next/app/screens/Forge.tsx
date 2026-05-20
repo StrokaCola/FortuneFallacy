@@ -200,18 +200,18 @@ export function Forge() {
 
       <div style={{
         position: 'absolute', left: '50%',
-        top: tight ? 80 : 130,
+        top: tight ? 70 : 60,
         transform: 'translateX(-50%)', textAlign: 'center', zIndex: 4,
         width: tight ? 'calc(100% - 32px)' : 'auto',
       }}>
-        <div className="f-mono uc" style={{ fontSize: 11, color: '#bba8ff', letterSpacing: '0.4em' }}>
+        <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.4em' }}>
           ◇ etch a mod ◇
         </div>
         <div className="f-display" style={{
-          fontSize: 'clamp(20px, 6vw, 32px)',
-          color: '#f3f0ff', marginTop: tight ? 4 : 6,
+          fontSize: 'clamp(18px, 4.4vw, 24px)',
+          color: '#f3f0ff', marginTop: tight ? 4 : 4,
           whiteSpace: 'nowrap',
-          display: 'inline-flex', alignItems: 'center', gap: 12,
+          display: 'inline-flex', alignItems: 'center', gap: 10,
         }}>
           {/* Animated constellation icon — small SVG built from the
               constellation's glyph nodes, slowly rotating. Reads as
@@ -239,31 +239,38 @@ export function Forge() {
           </svg>
           The Star Forge
         </div>
-        {/* Subtitle — kept under 60 chars so it sits below the title on
-            tight viewports without wrapping. */}
-        <div className="f-mono" style={{
-          marginTop: tight ? 2 : 4,
-          fontSize: 10, letterSpacing: '0.24em',
-          color: '#bba8ff', opacity: 0.85,
-          fontStyle: 'italic',
-        }}>
-          strike the cosmos into your dice
-        </div>
+        {/* Wave T+1 (2026-05-20) Forge layout pass — subtitle dropped
+            on non-tight to reclaim ~24px vertical for the workspace +
+            inventory rendering above the fold. Tight portrait keeps it
+            since the title block is the only header anchor there. */}
+        {tight && (
+          <div className="f-mono" style={{
+            marginTop: 2,
+            fontSize: 10, letterSpacing: '0.24em',
+            color: '#bba8ff', opacity: 0.85,
+            fontStyle: 'italic',
+          }}>
+            strike the cosmos into your dice
+          </div>
+        )}
       </div>
 
-      {/* Centered two-column layout: left = orbit + dice strip + detach row, right = mod inventory.
-          Tier 2: flex-wrap kicks in below ~840px so the columns stack on narrow screens.
-          Phase 4.x polish — tight viewports add extra paddingBottom so the
-          fixed Done bar at the bottom doesn't overlap the last
-          inventory row when fully scrolled. */}
+      {/* Wave T+1 (2026-05-20) Forge layout pass — two-column with
+          EXPLICIT width so the workspace + inventory render side-by-side
+          on laptop viewports. Previously the absolute-positioned
+          container shrank to natural content width (~683px), forcing
+          inventory to wrap below the visible viewport at 1366×768.
+          Tight viewports still stack vertically. Top offset moved up
+          from 220 → 140 so the workspace + inventory fit within 768px
+          tall without scroll. */}
       <div style={{
         position: 'absolute', left: '50%',
-        top: tight ? 150 : 220,
+        top: tight ? 130 : 140,
         transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 60px)',
+        display: 'flex', alignItems: 'flex-start', gap: 'clamp(20px, 4vw, 48px)',
         flexWrap: 'wrap', justifyContent: 'center',
-        maxWidth: 'calc(100% - 40px)',
-        paddingBottom: tight ? 200 : 120,
+        width: tight ? 'calc(100% - 24px)' : 'min(1100px, calc(100% - 40px))',
+        paddingBottom: tight ? 200 : 90,
       }}>
         {/* Left column. Sticky so the die centerpiece + picker + detach
             row stay pinned to the top of the scrollport as the player
@@ -284,10 +291,10 @@ export function Forge() {
             attached-mod chips above the inventory panel below. */}
         <div data-forge-sticky-col style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 14, width: 'min(360px, 100%)',
+          gap: 12, width: 'min(340px, 100%)',
           position: 'sticky', top: 0, zIndex: 20,
           alignSelf: 'flex-start',
-          padding: '8px 0 14px',
+          padding: '4px 0 12px',
           // Important: do NOT add backdrop-filter here. The .panel class
           // already applies its own backdrop-filter to the die panel,
           // and stacking a second backdrop-filter on this parent breaks
@@ -302,23 +309,25 @@ export function Forge() {
               - Outer dashed orbit + 4 orbital nodes (already present, unchanged).
               - Centerpiece DieView levitates with a slow vertical bob. */}
           <div ref={dieAnchorRef} data-forge-die-panel className="panel" style={{
-            width: tight ? 'min(320px, calc(100vw - 32px))' : 360,
+            width: tight ? 'min(320px, calc(100vw - 32px))' : 320,
             // On landscape phones (360px-tall) the bare width-as-height
             // orbit can swallow the whole viewport vertically, pushing
             // the mod inventory off-screen. Clamp the height to half
             // the viewport (minus a 40px buffer for the header strip)
             // so the inventory always stays reachable below.
-            height: tight ? 'min(320px, calc(100vw - 32px), calc(50vh - 40px))' : 360,
+            // Wave T+1 (2026-05-20) — desktop panel sized 320 to fit
+            // alongside the inventory + die picker column.
+            height: tight ? 'min(320px, calc(100vw - 32px), calc(50vh - 40px))' : 320,
             position: 'relative', display: 'grid', placeItems: 'center',
             overflow: 'hidden',
           }}>
-            {/* Oracle-table rim — a faint circular outline + four
+            {/* Calibration-table rim — a faint circular outline + four
                 cardinal glyphs (N/S/E/W as ◇/◆/▲/▼) that frame the
-                die as if it sat on a divination table. Reinforces
-                the alchemy / oracle theming without competing with
-                the constellation sigil ring inside. The rim color
-                inherits the run's constellation accent so it carries
-                the same identity thread. */}
+                die as if it sat on an analysis table. Reinforces the
+                instrument-bench theming without competing with the
+                constellation glyph ring inside. The rim color inherits
+                the run's constellation accent so it carries the same
+                identity thread. */}
             <svg aria-hidden="true" style={{
               position: 'absolute',
               left: '50%', top: '50%',
@@ -547,11 +556,12 @@ export function Forge() {
           <div
             className="forge-dice-strip"
             style={{
-              // A bit wider so the dice row breathes — and so adding a
-              // 6th die from a voucher doesn't force horizontal scroll
-              // until we actually run out of room.
-              width: tight ? 'min(380px, calc(100vw - 8px))' : 360,
-              overflow: 'visible',
+              // Wave T+1 (2026-05-20) Forge layout pass — picker strip
+              // bumped to 340 so 6 dice (44px each + 4px gap = 6×44 +
+              // 5×4 = 284) fit inside with padding. Tight viewports
+              // keep their auto-scroll behavior.
+              width: tight ? 'min(380px, calc(100vw - 8px))' : 340,
+              overflow: 'hidden',
               // Trimmed outer paddings to compensate for the larger
               // inner paddings below — the halo glow needs room
               // *inside* the scroll-clipped inner wrapper, not outside
@@ -582,7 +592,10 @@ export function Forge() {
               // toward the bottom edge.
               alignItems: 'center',
               flexWrap: 'nowrap',
-              overflowX: tight ? 'auto' : 'visible',
+              // Wave T+1 (2026-05-20) — non-tight also scrolls when 6+
+              // dice present, so the picker stays inside the 300px
+              // column instead of spilling under the inventory panel.
+              overflowX: 'auto',
               overflowY: 'visible',
               // Native scroll-snap so the user can flick between dies
               // without falling between two on tight viewports.
@@ -638,7 +651,10 @@ export function Forge() {
                     transform: isSelected ? 'translateY(-3px) scale(1.05)' : 'translateY(0) scale(0.94)',
                     transition: 'all 280ms cubic-bezier(0.2, 1.1, 0.3, 1)',
                     position: 'relative',
-                    padding: 6,
+                    // Wave T+1 (2026-05-20) — tighter padding on 6+ die
+                    // rows so all dice fit inside the picker without
+                    // overflow on non-tight (Sixth Star voucher).
+                    padding: dice.length >= 6 ? 3 : 6,
                     pointerEvents: 'auto',
                     background: 'transparent',
                     border: 'none',
@@ -679,7 +695,7 @@ export function Forge() {
                       animation: 'forge-die-pick-halo 3200ms ease-in-out infinite',
                     }} />
                   )}
-                  <DieView face={d.face} size={56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
+                  <DieView face={d.face} size={dice.length >= 7 ? 36 : dice.length >= 6 ? 40 : 56} style="celestial" shape={diceSpec[i]?.shape ?? 'd6'} faceValues={diceSpec[i]?.faces} mods={dieMods} />
                   {extraCount > 0 && (
                     <div className="f-mono num" style={{
                       position: 'absolute', top: -2, right: -4,
@@ -775,8 +791,11 @@ export function Forge() {
 
         {/* Right column: mod inventory */}
         <div data-forge-inventory style={{
-          width: 'min(380px, calc(100vw - 32px))',
-          height: tight ? 360 : 440,
+          width: tight ? 'min(380px, calc(100vw - 32px))' : 'min(420px, calc(100vw - 380px))',
+          // Wave T+1 (2026-05-20) — desktop inventory height aligned
+          // to the workspace stack (die panel 280 + picker strip ~80 +
+          // detach ~50 + DONE ~60 ≈ 470). Bumped slightly for header.
+          height: tight ? 360 : 500,
         }}>
           <div className="panel-strong" style={{ width: '100%', height: '100%', padding: 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.3em', marginBottom: 12, flex: '0 0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
@@ -798,12 +817,14 @@ export function Forge() {
               <div style={{
                 flex: '1 1 auto', overflowY: 'auto', minHeight: 0, paddingRight: 4,
                 display: 'grid',
-                // Tight viewports: 1-column so each mod card has the
-                // full ~328px width on phones. The 2-column layout
-                // produced ~164px columns at 360px wide, aggressively
-                // truncating mod names and squeezing descriptions.
-                gridTemplateColumns: tight ? '1fr' : '1fr 1fr',
-                gap: 10, alignContent: 'start',
+                // Wave T+1 (2026-05-20) Forge polish — single-column
+                // list rows on every viewport. The 2-column desktop
+                // layout produced 205px cards at 420px wide which
+                // chopped descriptions mid-word. Vertical list gives
+                // each row the full inventory width so name + desc +
+                // forge button all read on a single line.
+                gridTemplateColumns: '1fr',
+                gap: 8, alignContent: 'start',
               }}>
                 {(() => {
                   // Group by (id, edition). Each unique pair gets its own
