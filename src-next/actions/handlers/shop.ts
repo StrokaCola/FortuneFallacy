@@ -1,6 +1,7 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
-import { lookupConsumable } from '../../core/consumables';
+import { lookupConsumable, rollConsumableAffixes } from '../../core/consumables';
+import type { ConsumableDef } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled, getDiceSpec, getComboCtx } from '../../core/run/diceContext';
@@ -141,6 +142,18 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
+}
+
+// Small 32-bit string hash used to scope void-mode affix RNG to a
+// specific consumable id. Trimmed Cyrb32 — same shape as the seed
+// helper in core/seed/rng.ts; redeclared here to avoid pulling that
+// module's encoding helpers (encodeSeed etc) into the shop handler.
+function hashId(s: string): number {
+  let h = 0xdeadbeef ^ 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 2654435761);
+  }
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 function applyShopPriceMult(offers: ShopOffer[], mult: number): ShopOffer[] {
@@ -481,21 +494,33 @@ export const shopHandler: ActionHandler = (a, s) => {
       const def = lookupConsumable(galaxyId);
       if (!def) return { state: s, events: [] };
 
+      // Void Mode — roll affixes for this consumable pick and persist
+      // the bundle on run.consumableAffixes. Galaxies apply immediately
+      // (their effect runs once on pick), but the affix bundle is still
+      // stored so the UI/postmortem can show what rolled. Maneuvers
+      // persist alongside the consumable in `run.consumables`.
+      const voidAffixed = s.run.mode === 'void'
+        ? rollConsumableAffixes([def.id], mulberry32(s.run.voidSeed ^ a.galaxyIdx ^ hashId(def.id)))[0]
+        : undefined;
+      const consumableAffixes = voidAffixed
+        ? { ...s.run.consumableAffixes, [def.id]: voidAffixed as AffixedItem<ConsumableDef> }
+        : s.run.consumableAffixes;
+
       // Galaxies apply immediately (combo level bump). Maneuvers go into the
       // consumable tray so the player can choose when to fire them. Other
       // types are rejected for safety.
       let applied: { state: GameState; events: GameEventEmission[] };
       if (def.type === 'galaxy') {
-        applied = def.apply(s, []);
+        applied = def.apply({ ...s, run: { ...s.run, consumableAffixes } }, []);
       } else if (def.type === 'maneuver') {
         if (s.run.consumables.length >= maxConsumableSlots(s)) {
           // Inventory full — skip silently. The pick still counts so the
           // player can move on; alternative is to refund a pick, but the
           // simpler flow keeps overlay logic clean.
-          applied = { state: s, events: [] };
+          applied = { state: { ...s, run: { ...s.run, consumableAffixes } }, events: [] };
         } else {
           applied = {
-            state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, def.id] } },
+            state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, def.id], consumableAffixes } },
             events: [],
           };
         }
@@ -607,8 +632,20 @@ export const shopHandler: ActionHandler = (a, s) => {
         const id = s.run.consumables[a.index];
         if (!id) return { state: s, events: [] };
         const refund = sellRefund('consumable', id);
+        // Void Mode — only drop the affix bundle when no other copies of
+        // this consumable remain in the inventory. Consumables CAN appear
+        // more than once (unlike catalysts), so a duplicate stack would
+        // be cleared too eagerly if we dropped on every sell.
+        const remainingConsumables = removeAt(s.run.consumables, a.index);
+        const stillHas = remainingConsumables.includes(id);
+        const consumableAffixes = stillHas
+          ? s.run.consumableAffixes
+          : (() => {
+              const { [id]: _drop, ...rest } = s.run.consumableAffixes ?? {};
+              return rest;
+            })();
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, consumables: removeAt(s.run.consumables, a.index) } },
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, consumables: remainingConsumables, consumableAffixes } },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'consumable', id, refund } }],
         };
       }
@@ -686,10 +723,18 @@ function resolveSkipBounty(s: GameState, optionIdx: number): { state: GameState;
         events: [],
       };
     }
+    // Void Mode — roll + persist consumable affixes alongside the
+    // acquisition. Mirrors the PICK_FROM_PACK branch.
+    const voidAffixed = cleared.run.mode === 'void'
+      ? rollConsumableAffixes([def.id], mulberry32(cleared.run.voidSeed ^ hashId(def.id)))[0]
+      : undefined;
+    const consumableAffixes = voidAffixed
+      ? { ...cleared.run.consumableAffixes, [def.id]: voidAffixed as AffixedItem<ConsumableDef> }
+      : cleared.run.consumableAffixes;
     return {
       state: {
         ...cleared,
-        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId] },
+        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId], consumableAffixes },
       },
       events: [],
     };

@@ -1,5 +1,6 @@
 import type { AffixedItem } from '../../voidmode/types';
 import type { CatalystMeta } from '../../data/catalysts';
+import type { ConsumableDef } from '../../core/consumables';
 
 export type RunSlice = {
   seed: number;
@@ -17,6 +18,14 @@ export type RunSlice = {
   // mode; populated by the shop hook when a catalyst is bought during
   // a void run.
   catalystAffixes: Record<string, AffixedItem<CatalystMeta>>;
+  // Per-consumable rolled affixes (void mode only). Keyed by consumable
+  // id — each entry holds the procgen-generated affix bundle attached
+  // when the consumable was acquired (pack pick, skip bounty). Empty
+  // outside void mode. v1 stores these for UI surfacing; the scoring
+  // pipeline currently reads only `catalystAffixes`, but the same
+  // applyAffixesPhase shape can read consumable affixes later by
+  // extending `collectAffixedItems` in voidmode/voidRun.ts.
+  consumableAffixes: Record<string, AffixedItem<ConsumableDef>>;
   shards: number;
   ante: number;
   goalIdx: number;
@@ -209,6 +218,7 @@ export const initialRunSlice = (): RunSlice => ({
   mode: 'normal',
   voidSeed: 0,
   catalystAffixes: {},
+  consumableAffixes: {},
   shards: 0,
   ante: 1,
   goalIdx: 0,

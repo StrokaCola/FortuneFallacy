@@ -1,5 +1,8 @@
 import type { GameState } from '../../state/store';
 import type { GameEventEmission } from '../../events/types';
+import type { ArchetypeTag, ItemRarity, AffixedItem } from '../../voidmode/types';
+import type { SeededRng } from '../rng';
+import { generateAffixedItem } from '../../voidmode/affixGenerator';
 // Galaxies are kept in their own file because the table is large and is
 // generated from a per-combo bonus map. Importing here registers them in
 // the global CONSUMABLES list below.
@@ -20,6 +23,12 @@ export type ConsumableDef = {
   // use (default 1). Both fields are unused for non-galaxy consumables.
   comboId?: string | 'all';
   levels?: number;
+  // Void Mode affix surface. `rarity` is used to compute the affix budget;
+  // `archetypeTags` filter which affix families can attach. Optional —
+  // untagged consumables fall through as base (no affixes attached) in
+  // void runs. Mirrors the same fields on CatalystMeta.
+  rarity?: ItemRarity;
+  archetypeTags?: ArchetypeTag[];
   apply: (s: GameState, targets: number[]) => { state: GameState; events: GameEventEmission[] };
 };
 
@@ -109,6 +118,24 @@ export const CONSUMABLES: ConsumableDef[] = [
 
 export function lookupConsumable(id: string): ConsumableDef | undefined {
   return CONSUMABLES.find((c) => c.id === id);
+}
+
+// Void Mode: roll a procgen affix bundle for each consumable id. Mirrors
+// `rollCatalystAffixes` in core/shop/catalystDraw.ts. Returns AffixedItem
+// entries keyed off each consumable's def. Untagged consumables still
+// produce an entry (base-only AffixedItem) so the caller can attach a
+// payload uniformly. Unknown ids are skipped.
+export function rollConsumableAffixes(
+  ids: readonly string[],
+  voidRng: SeededRng,
+): AffixedItem<ConsumableDef>[] {
+  const out: AffixedItem<ConsumableDef>[] = [];
+  for (const id of ids) {
+    const def = lookupConsumable(id);
+    if (!def) continue;
+    out.push(generateAffixedItem(voidRng, def));
+  }
+  return out;
 }
 
 // Derive a Rarity tier from the consumable's `type` field. Used by the

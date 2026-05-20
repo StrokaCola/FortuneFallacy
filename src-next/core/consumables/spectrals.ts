@@ -32,6 +32,11 @@ export const SPECTRALS: ConsumableDef[] = [
     description: 'Sacrifice 1 level on a chosen combo. +5 shards, +1 level on the next-tier combo.',
     requiresTarget: true,
     targetType: 'combo',
+    // Spectrals are the rarest, deepest payoffs in the consumable pool —
+    // affix budget set to rare so the procgen pass can stamp something
+    // meaningful onto these meta-effects.
+    rarity: 'rare',
+    archetypeTags: ['mods', 'utility'],
     apply: (s, targets) => {
       // targets[0] is an INDEX into COMBO_TIER_ORDER (passed from the UI).
       // Validate range; refuse to fire on the top tier or if level === 0
@@ -71,6 +76,8 @@ export const SPECTRALS: ConsumableDef[] = [
     description: 'Stamp a random edition (foil/holo/poly) onto a chosen catalyst.',
     requiresTarget: true,
     targetType: 'catalyst',
+    rarity: 'rare',
+    archetypeTags: ['mods', 'utility'],
     apply: (s, targets) => {
       const idx = targets[0];
       if (idx == null) return { state: s, events: [] };

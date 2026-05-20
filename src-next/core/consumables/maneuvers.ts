@@ -19,6 +19,11 @@ export const MANEUVERS: ConsumableDef[] = [
     icon: '↺',
     description: 'Re-roll all unlocked dice. Does not consume a reroll.',
     requiresTarget: false,
+    // Void Mode affix tags. Maneuvers are the tactical sibling of galaxies;
+    // most reshape the round budget (extra hands, rerolls), so `timing` +
+    // `utility` are the natural matches.
+    rarity: 'rare',
+    archetypeTags: ['timing', 'utility'],
     apply: (s) => {
       // Resample faces uniformly per-die based on its die spec range.
       // We use Math.random here intentionally — the player chose to spend
@@ -46,6 +51,8 @@ export const MANEUVERS: ConsumableDef[] = [
     description: 'Flip one die to its complement face (1↔6, 2↔5, 3↔4).',
     requiresTarget: true,
     targetType: 'die',
+    rarity: 'uncommon',
+    archetypeTags: ['face', 'utility'],
     apply: (s, [idx]) => {
       if (idx == null || !s.round.dice[idx]) return { state: s, events: [] };
       const dice = s.round.dice.map((d, i) => {
@@ -64,6 +71,8 @@ export const MANEUVERS: ConsumableDef[] = [
     description: 'Copy the highest-face die onto one of your dice.',
     requiresTarget: true,
     targetType: 'die',
+    rarity: 'uncommon',
+    archetypeTags: ['combo', 'face'],
     apply: (s, [idx]) => {
       if (idx == null || !s.round.dice[idx]) return { state: s, events: [] };
       const highest = s.round.dice.reduce((m, d) => Math.max(m, d.face), 0);

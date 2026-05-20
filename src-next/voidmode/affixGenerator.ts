@@ -1,9 +1,18 @@
 // src-next/voidmode/affixGenerator.ts
-import type { CatalystMeta } from '../data/catalysts';
 import type { SeededRng } from '../core/rng';
-import type { AffixDef, AffixedItem, ItemRarity } from './types';
+import type { AffixDef, AffixedItem, ArchetypeTag, ItemRarity } from './types';
 import { AFFIX_DEFS } from './affixes';
 import { generateItemName, generateFlavor } from './nameGenerator';
+
+// Minimum surface area required by the affix generator. Anything with an
+// id/name and optional rarity+archetypeTags can be wrapped — catalysts
+// (CatalystMeta), consumables (ConsumableDef), and future kinds.
+export type AffixGeneratorBase = {
+  id: string;
+  name: string;
+  rarity?: ItemRarity;
+  archetypeTags?: ReadonlyArray<ArchetypeTag>;
+};
 
 const BUDGET_BY_RARITY: Record<ItemRarity, number> = {
   common: 4,
@@ -49,10 +58,10 @@ function rarityTierFor(rarity: ItemRarity, affixCount: number): AffixedItem['rar
   return 'normal';
 }
 
-export function generateAffixedItem(
+export function generateAffixedItem<T extends AffixGeneratorBase>(
   rng: SeededRng,
-  base: CatalystMeta,
-): AffixedItem<CatalystMeta> {
+  base: T,
+): AffixedItem<T> {
   const tags = base.archetypeTags ?? [];
   if (tags.length === 0) {
     return {
