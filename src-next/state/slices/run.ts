@@ -1,3 +1,6 @@
+import type { AffixedItem } from '../../voidmode/types';
+import type { CatalystMeta } from '../../data/catalysts';
+
 export type RunSlice = {
   seed: number;
   // Void Mode flag. 'normal' is the standard game. 'void' enables the
@@ -8,6 +11,12 @@ export type RunSlice = {
   // `seed` (which drives the physics/scoring pipeline) so daily-certified
   // void seeds can be substituted independently of the base seed.
   voidSeed: number;
+  // Per-catalyst rolled affixes (void mode only). Keyed by catalyst id —
+  // each entry holds the procgen-generated affix bundle that's applied
+  // during the scoring pipeline's applyAffixes phase. Empty in normal
+  // mode; populated by the shop hook when a catalyst is bought during
+  // a void run.
+  catalystAffixes: Record<string, AffixedItem<CatalystMeta>>;
   shards: number;
   ante: number;
   goalIdx: number;
@@ -199,6 +208,7 @@ export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
   mode: 'normal',
   voidSeed: 0,
+  catalystAffixes: {},
   shards: 0,
   ante: 1,
   goalIdx: 0,

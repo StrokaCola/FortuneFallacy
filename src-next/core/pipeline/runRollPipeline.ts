@@ -7,6 +7,7 @@ import { preRollModifiers } from '../phases/preRollModifiers';
 import { initSimulation }   from '../phases/initSimulation';
 import { postRollModifiers } from '../phases/postRollModifiers';
 import { evaluation }       from '../phases/evaluation';
+import { applyAffixesPhase } from '../phases/applyAffixes';
 import { onCollision }      from '../phases/onCollision';
 import { unheldScan }       from '../phases/unheldScan';
 import { upgrades }         from '../phases/upgrades';
@@ -42,6 +43,13 @@ export function runRollPipelineAfterSim(ctx: PipelineCtx, simResult: SimulationR
   let next: PipelineCtx = { ...ctx, sim: simResult, metrics: deriveMetrics(simResult) };
   next = postRollModifiers(next);
   next = evaluation(next);
+  // applyAffixesPhase is a STRICT no-op outside void mode — gated on
+  // state.run.mode === 'void' inside the phase. Slots in after combo
+  // detection so affix effects can read the comboId + resolved dice
+  // values, and before catalyst/scoring sweeps so any chip/mult bonus
+  // rides downstream multipliers (matching how the base combo's chips
+  // ride catalyst mults).
+  next = applyAffixesPhase(next);
   next = onCollision(next);
   next = unheldScan(next);
   next = upgrades(next);
