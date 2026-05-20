@@ -62,6 +62,12 @@ export const actionSamples = {
   RESOLVE_SKIP_BOUNTY:  { type: 'RESOLVE_SKIP_BOUNTY', optionIdx: 0 },
   START_COSMIC_LAP:     { type: 'START_COSMIC_LAP' },
   RESOLVE_EVENT_CHOICE: { type: 'RESOLVE_EVENT_CHOICE', eventId: 'wandering_oracle', choiceIdx: 0 },
+  BUY_COSMETIC:         { type: 'BUY_COSMETIC', cosmeticId: 'sample_cosmetic' },
+  OPEN_OPT_IN:          { type: 'OPEN_OPT_IN' },
+  DISMISS_OPT_IN:       { type: 'DISMISS_OPT_IN' },
+  START_TUTORIAL:       { type: 'START_TUTORIAL' },
+  ADVANCE_TUTORIAL:     { type: 'ADVANCE_TUTORIAL' },
+  END_TUTORIAL:         { type: 'END_TUTORIAL', reason: 'completed' },
 } satisfies ActionSamples;
 
 export const actionTypes: Action['type'][] = Object.keys(actionSamples) as Action['type'][];
