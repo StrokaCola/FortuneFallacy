@@ -97,11 +97,13 @@ describe('installScoringRouter', () => {
     expect(mockDuck).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }));
   });
 
-  it('hold-breath beat does not call sfxPlay (no SFX, only ducks the music)', () => {
+  it('hold-breath beat plays sustained bell tone (Wave T+1 bespoke theater Move 5)', () => {
     const unsub = installScoringRouter();
     bus.emit('onScoreBeat', { beat: { kind: 'hold-breath', t: 0, durMs: 400 } });
     unsub();
-    expect(mockSfxPlay).not.toHaveBeenCalled();
+    // Bell tone holds through the deep-freeze window so audio + visual
+    // freeze duration coincide. Non-crossed defaults to 440Hz / 0.4 gain.
+    expect(mockSfxPlay).toHaveBeenCalledWith('comboChime', { freq: 440, gain: 0.4 });
   });
 
   it('hold-breath beat ducks the music to ~30% over the breath duration', () => {
