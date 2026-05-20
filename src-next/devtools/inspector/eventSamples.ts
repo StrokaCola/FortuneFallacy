@@ -89,6 +89,23 @@ export const eventSamples: { [K in keyof GameEventMap]: GameEventMap[K] } = {
     addedDebuffs: ['hand_size_cap_4'],
     removedDebuffs: [],
   },
+  onMultTierCross: { fromTier: 1, toTier: 2, accent: '#7be3ff' },
+  onLockClickRipple: { x: 200, y: 300, locked: true },
+  onDieBanishTriggered: { dieIdx: 0, substitutions: 1, finalFace: 6 },
+  onCrystallineEdgeCatch: { color: '#7be3ff' },
+  onMeteorShowerTriggered: { accent: '#f5c451', count: 5 },
+  onScoreCounterFill: { durationMs: 360 },
+  onCelebrationAfterglow: { durationMs: 1200 },
+  onNearBust: { tension: 0.85 },
+  onSafe: {},
+  onStormIncoming: { stormId: 'shimmer', bindIdx: 2 },
+  onCatalystDiscovered: { catalystId: 'stipend', total: 1 },
+  onEditionDiscovered: { edition: 'foil', catalystId: 'stipend' },
+  onLastHandOfBlind: { handsLeft: 1, target: 8000, score: 4200 },
+  onSynergyBurst: { pairCount: 3, resonanceIds: ['resonance:symphony'] },
+  onBossPhase2Incoming: { blindId: 'pluto', trigger: 'half-target' },
+  onBlindAboutToStart: { blindId: 'small', ante: 1, isBoss: false },
+  onTheaterPhase: { phase: 'sustained' },
 } satisfies { [K in keyof GameEventMap]: GameEventMap[K] };
 
 export const eventKeys: (keyof GameEventMap)[] = Object.keys(eventSamples) as (keyof GameEventMap)[];

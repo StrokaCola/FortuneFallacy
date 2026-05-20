@@ -8,6 +8,8 @@ import { useEffect, useRef } from 'react';
 import { bus } from '../../events/bus';
 import { lookupVoucher } from '../../data/vouchers';
 import { pushToast, toastQueue } from './toastQueue';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 type VoucherData = { name: string; toastId: string };
 
@@ -15,6 +17,13 @@ function renderVoucher({ name, toastId }: VoucherData) {
   return (
     <div
       onClick={() => toastQueue.dismiss(toastId)}
+      onPointerDown={(e) => {
+        // Dead-spot fix (2026-05-20): a div tap-to-dismiss had no audio
+        // or haptic. Use uiHoverSoft so the cue reads "acknowledge,
+        // dismiss" rather than committal — same as soft chrome.
+        sfxPlay('uiHoverSoft');
+        if (e.pointerType === 'touch') playHaptic('tap');
+      }}
       className="mat-crystal ff-voucher-inscribe"
       style={{
         padding: '8px 18px',

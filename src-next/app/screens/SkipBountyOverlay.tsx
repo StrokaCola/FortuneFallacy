@@ -238,7 +238,7 @@ function describeOption(opt: Opt): { title: string; body: string; glyph: string;
     case 'pack':
       return {
         title: 'Celestial Pack',
-        body: 'A handful of galaxies, opened when you next visit the bazaar.',
+        body: 'A handful of galaxies, opened when you next visit the Night Market.',
         glyph: '✺',
         color: '#cc88ff',
       };

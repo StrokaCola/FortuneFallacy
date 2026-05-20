@@ -180,7 +180,7 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon', archetype: 'utility' },
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
     desc: 'Shop reroll cost −1 shard (min 0).',
-    flavor: 'A quick scrub for the bazaar dust.', rarity: 'common', archetype: 'utility' },
+    flavor: 'A quick scrub for the night-market dust.', rarity: 'common', archetype: 'utility' },
 
   // Phase 5e — lifecycle catalysts (need round-state counters or hooks).
   { id: 'crescendo_run', name: 'Crescendo Run', icon: '↗', color: '#5be8a4',

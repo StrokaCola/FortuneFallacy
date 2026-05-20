@@ -1,6 +1,7 @@
 import { dispatch } from '../../actions/dispatch';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 // Sellable kinds — narrower than `ShopOffer['kind']` because packs are
 // one-shot booster items that consume themselves on purchase.
@@ -62,12 +63,25 @@ export function SellButton({ kind, id, index, disabled, disabledReason, variant 
     sfxPlay('buy');
   };
 
+  // Press feedback (2026-05-20 responsiveness pass) — sell is a hard
+  // commit, so we add the tap haptic alongside the existing audio cue.
+  // Disabled gets a denied cue so the press still registers.
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled) {
+      sfxPlay('uiDenied');
+      if (e.pointerType === 'touch') playHaptic('tap');
+      return;
+    }
+    if (e.pointerType === 'touch') playHaptic('tap');
+  };
+
   if (variant === 'badge') {
     return (
       <button
         className="sell-btn has-tip tap"
         onClick={onClick}
-        disabled={disabled}
+        onPointerDown={onPointerDown}
+        aria-disabled={disabled || undefined}
         aria-label={`Sell for ${refund} shards`}
       >
         ◆{refund}
@@ -79,7 +93,8 @@ export function SellButton({ kind, id, index, disabled, disabledReason, variant 
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
+      onPointerDown={onPointerDown}
+      aria-disabled={disabled || undefined}
       className="f-mono uc has-tip tap"
       style={{
         position: 'relative',

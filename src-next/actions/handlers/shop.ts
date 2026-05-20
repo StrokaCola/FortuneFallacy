@@ -388,9 +388,15 @@ export const shopHandler: ActionHandler = (a, s) => {
           : s.run.catalystEditions;
       // Mods carry their edition in a parallel array — push or keep length-
       // synced regardless of whether this offer had an edition.
+      // Mods only support foil/holo/poly editions (no 'void'). Filter
+      // a 'void' offer edition down to null so the ownedModEditions
+      // array stays type-clean even if the roll generates one.
+      const modEdition = offer.kind === 'mod'
+        ? (offer.edition && offer.edition !== 'void' ? offer.edition : null)
+        : null;
       const ownedModEditions =
         offer.kind === 'mod'
-          ? [...(s.run.ownedModEditions ?? []), offer.edition ?? null]
+          ? [...(s.run.ownedModEditions ?? []), modEdition]
           : (s.run.ownedModEditions ?? []);
       // Audit catalyst tracks total catalyst spend in the run. Other kinds
       // (mods, vouchers, consumables) don't contribute — only catalyst price.

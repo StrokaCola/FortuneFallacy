@@ -9,6 +9,8 @@ import { useIsWideMode, useIsTightStage } from '../hooks/useIsCompactStage';
 import { KindFrame } from '../visual/upgradeKindFrames';
 import { bus } from '../../events/bus';
 import { EmptySlot } from './EmptySlot';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 const selectConsumables = (s: GameState) => s.run.consumables;
 const selectDiceCount = (s: GameState) => s.round.dice.length;
@@ -44,6 +46,21 @@ export function ConsumableTray() {
     return () => { offCalc(); offBeat(); };
   }, []);
 
+  // Press-feedback wiring (2026-05-20 responsiveness pass):
+  // `.tap` buttons sit outside the `.btn` tier that buttonJuice covers,
+  // so we mirror the buttonJuice pattern inline — uiClick + tap haptic
+  // on touch. Disabled (locked) consumables get uiDenied so the player
+  // hears that the press registered but the action is blocked.
+  const onUseTap = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (locked) {
+      sfxPlay('uiDenied');
+      if (e.pointerType === 'touch') playHaptic('tap');
+      return;
+    }
+    sfxPlay('uiClick');
+    if (e.pointerType === 'touch') playHaptic('tap');
+  };
+
   const onUse = (index: number) => {
     if (locked) return;
     const id = items[index];
@@ -59,6 +76,7 @@ export function ConsumableTray() {
 
   const onTargetDie = (idx: number) => {
     if (!armed) return;
+    sfxPlay('uiCommit');
     dispatch({ type: 'USE_CONSUMABLE', index: armed.index, targets: [idx] });
     setArmed(null);
   };
@@ -119,8 +137,9 @@ export function ConsumableTray() {
               <SellButton kind="consumable" id={id} index={i} variant="badge" />
               <button
                 onClick={() => onUse(i)}
+                onPointerDown={onUseTap}
                 className="tap"
-                disabled={locked}
+                aria-disabled={locked || undefined}
                 style={{
                   width: 64, height: 88, borderRadius: 8,
                   background: 'linear-gradient(180deg, rgba(28,18,69,0.9), rgba(15,9,37,0.95))',
@@ -182,7 +201,7 @@ export function ConsumableTray() {
               accidentally trigger the ActionBar while choosing a target.
               Tapping the backdrop cancels the armed state. */}
           <div
-            onClick={() => setArmed(null)}
+            onClick={() => { sfxPlay('uiHoverSoft'); setArmed(null); }}
             aria-hidden="true"
             style={{
               position: 'absolute', inset: 0,
@@ -213,6 +232,10 @@ export function ConsumableTray() {
               <span>select a die for {armed.def?.name}</span>
               <button
                 onClick={() => setArmed(null)}
+                onPointerDown={(e) => {
+                  sfxPlay('uiClick');
+                  if (e.pointerType === 'touch') playHaptic('tap');
+                }}
                 className="tap"
                 style={{
                   fontSize: 12, padding: '6px 12px', borderRadius: 6,
@@ -227,6 +250,10 @@ export function ConsumableTray() {
                 <button
                   key={i}
                   onClick={() => onTargetDie(i)}
+                  onPointerDown={(e) => {
+                    sfxPlay('uiClick');
+                    if (e.pointerType === 'touch') playHaptic('tap');
+                  }}
                   className="tap"
                   aria-label={`Target die ${i + 1}`}
                   style={{

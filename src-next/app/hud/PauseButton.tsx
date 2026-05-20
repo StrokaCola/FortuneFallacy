@@ -60,7 +60,7 @@ export function PauseButton() {
         // Wave V — tight viewports moved the pause button to the
         // bottom-right corner of the stage instead of floating
         // alongside the wrapped TopBar. On mobile portrait the prior
-        // top-anchored placement overlapped the Shop "Celestial Bazaar"
+        // top-anchored placement overlapped the Shop "Night Market"
         // title and the Hub trial card row at narrow widths. Pinning
         // bottom-right keeps it reachable for the thumb without
         // colliding with any screen's title row.

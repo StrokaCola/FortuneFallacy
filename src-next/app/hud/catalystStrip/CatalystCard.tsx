@@ -81,7 +81,7 @@ export function CatalystCard(props: CatalystCardProps) {
 
   const isLegendary = c.rarity === 'legendary';
   const isMythic = c.rarity === 'mythic';
-  const eColor = edition ? editionColor(edition) : null;
+  const eColor = edition ? editionColor(edition as Parameters<typeof editionColor>[0]) : null;
   // Bespoke surface treatment per edition (added 2026-05-15):
   // every edition is now a distinct material, not a tint. The
   // surface div renders BELOW the icon/name (z-index: 1). Legendary

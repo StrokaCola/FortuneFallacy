@@ -10,7 +10,7 @@ describe('EmptySlot', () => {
     // in the bespoke-astral pass — reads as "a sky waiting to be
     // charted" instead of a flat absence statement.
     expect(container.textContent).toContain('unwritten');
-    expect(container.textContent).toContain('Buy them at the Bazaar');
+    expect(container.textContent).toContain('Buy them at the Night Market');
     cleanup();
   });
 
@@ -24,7 +24,7 @@ describe('EmptySlot', () => {
   it('respects a `hint` override over the default copy', () => {
     const { container } = render(<EmptySlot kind="catalyst" hint="Custom nudge." />);
     expect(container.textContent).toContain('Custom nudge.');
-    expect(container.textContent).not.toContain('Buy them at the Bazaar');
+    expect(container.textContent).not.toContain('Buy them at the Night Market');
     cleanup();
   });
 

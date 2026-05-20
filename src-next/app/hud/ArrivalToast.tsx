@@ -3,6 +3,8 @@
 
 import { useEffect } from 'react';
 import { pushToast, toastQueue } from './toastQueue';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 const HOLD_MS = 5000;
 
@@ -22,6 +24,10 @@ function renderArrival({ from, toastId }: ArrivalData) {
     <div
       // Click-to-dismiss preserved from the pre-migration toast.
       onClick={() => toastQueue.dismiss(toastId)}
+      onPointerDown={(e) => {
+        sfxPlay('uiHoverSoft');
+        if (e.pointerType === 'touch') playHaptic('tap');
+      }}
       className="mat-crystal"
       style={{
         padding: '8px 16px', borderRadius: 10,

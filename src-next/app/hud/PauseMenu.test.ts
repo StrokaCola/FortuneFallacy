@@ -31,7 +31,7 @@ describe('PauseMenu selectCatalystChipsForPause stability', () => {
   });
 
   it('returns the same reference on repeated calls when catalystChips is undefined', () => {
-    const s = { run: { runStats: { peakHand: 0 } } };
+    const s = { run: { runStats: { peakHand: 0 } } } as Parameters<typeof selectCatalystChipsForPause>[0];
     const a = selectCatalystChipsForPause(s);
     const b = selectCatalystChipsForPause(s);
     expect(a).toBe(b);

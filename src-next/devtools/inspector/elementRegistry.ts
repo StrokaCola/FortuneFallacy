@@ -59,8 +59,8 @@ const INSPECT_ATTR = 'data-ff-inspect';
 export function useInspectable<T extends HTMLElement = HTMLElement>(
   id: string,
   meta: InspectableMeta,
-): React.RefObject<T | null> {
-  const ref = useRef<T | null>(null);
+): React.RefObject<T> {
+  const ref = useRef<T>(null);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const el = ref.current;

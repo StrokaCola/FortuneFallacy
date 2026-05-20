@@ -40,7 +40,7 @@ export const CHALLENGES: Challenge[] = [
   {
     id: 'silent_market',
     name: 'Silent Market',
-    flavor: 'No bazaar. Make do with what you have.',
+    flavor: 'No Night Market. Make do with what you have.',
     constellationId: 'lyra',
     rules: ['Shop locked', 'Targets +10%'],
     overlay: { shopDisabled: true, targetMult: 1.1 },
