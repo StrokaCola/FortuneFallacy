@@ -10,6 +10,8 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useModalExit } from '../hooks/useModalExit';
 import { CATALYST_META } from '../../data/catalysts';
 import { lookupConstellation } from '../../data/constellations';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 const selectPaused = (s: GameState) => s.ui.paused;
 const selectRunActive = (s: GameState) =>
@@ -218,6 +220,13 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button
       onClick={onClick}
+      onPointerDown={(e) => {
+        // 2026-05-20 QA pass — tab swap had no audio/haptic; the
+        // .f-mono uc tap class sits outside the .btn tier that
+        // buttonJuice covers. Mirror the soft-chrome pattern.
+        sfxPlay('uiHoverSoft');
+        if (e.pointerType === 'touch') playHaptic('tap');
+      }}
       className="f-mono uc tap"
       style={{
         background: active ? 'rgba(123,227,255,0.18)' : 'rgba(28,18,69,0.6)',
