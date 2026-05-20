@@ -146,12 +146,12 @@ Dev-only / kept:
 overflow risk at any viewport. `◇ exchange ◇` decoration label above
 the title kept as-is; reads cleanly with the new name.
 
-`TopBar` `blind` prop will still pass `"Bazaar"` internally — this is
-a phase identifier the TopBar can label however it likes. The TopBar
-will render the player-visible label via a small lookup so the rename
-is consistent without changing the prop contract. If the TopBar
-currently writes `Bazaar` directly to the DOM, update its display
-mapping during the rename commit.
+`TopBar` `blind` prop is rendered literally in three places
+(`TopBar.tsx` lines 368, 371, 470). Cleanest fix is to change the
+Shop call site to `blind="Night Market"` (`Shop.tsx` line 116). No
+TopBar internal change required. The data layer's internal phase
+identifier (`s.round.blindId` etc.) is unrelated to this string and
+is not touched.
 
 ## Verification workflow
 
