@@ -160,7 +160,7 @@ export const EVENTS: EventDef[] = [
     choices: [
       {
         label: 'Catch the bundle',
-        flavor: 'A galaxy pack opens in your next bazaar.',
+        flavor: 'A galaxy pack opens in your next Night Market.',
         effects: [
           { kind: 'random_consumable', from: ['galaxy'] },
           { kind: 'hands_next_blind', delta: -1 },

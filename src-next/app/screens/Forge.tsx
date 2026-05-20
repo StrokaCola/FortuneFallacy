@@ -811,7 +811,7 @@ export function Forge() {
                 <div>
                   <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em', opacity: 0.6 }}>— empty —</div>
                   <div style={{ fontSize: 11, color: '#bba8ff', marginTop: 12, opacity: 0.7, lineHeight: 1.5 }}>
-                    Buy mods at the Bazaar to etch them onto your dice here.
+                    Buy mods at the Night Market to etch them onto your dice here.
                   </div>
                 </div>
               </div>

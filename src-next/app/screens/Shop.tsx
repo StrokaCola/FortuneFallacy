@@ -1,4 +1,4 @@
-// Shop screen — the Celestial Bazaar between blinds. Renders the
+// Shop screen — the Night Market between blinds. Renders the
 // player's three offers, the player's owned collection, hand-level
 // status, and the action bar (Reroll / Collection / Next Trial).
 //
@@ -113,7 +113,7 @@ export function Shop() {
     }}>
       <TopBar
         ante={ante}
-        blind="Bazaar"
+        blind="Night Market"
         shards={shards}
         hands={hands}
         rerolls={rerolls}
@@ -146,7 +146,7 @@ export function Shop() {
           color: '#f3f0ff', marginTop: tight ? 4 : 8,
           whiteSpace: 'nowrap',
         }}>
-          The Celestial Bazaar
+          The Night Market
         </div>
       </div>
 
@@ -246,7 +246,7 @@ export function Shop() {
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'hub' })}
         >
           Next Trial →
-          <span className="tip tip-above">Leave the Bazaar and return to the Tribunal of Stars.</span>
+          <span className="tip tip-above">Leave the Night Market and return to the Tribunal of Stars.</span>
         </button>
       </ActionBar>
 

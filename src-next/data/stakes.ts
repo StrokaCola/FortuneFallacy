@@ -72,7 +72,7 @@ export const STAKES: Stake[] = [
     id: 'beacon',
     name: 'Beacon',
     color: '#7be3ff',
-    flavor: 'The bazaar grows greedy.',
+    flavor: 'The Night Market grows greedy.',
     rules: ['Targets +30%', '−1 reroll', 'Shop +15%'],
     targetMult: 1.30,
     handsDelta: 0,

@@ -440,7 +440,7 @@ function CatalystGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { disco
             accent={accent}
             className={isMythicSeen ? 'is-mythic' : undefined}
             tipTitle={seen ? undefined : 'Catalyst · undiscovered'}
-            tipBody={seen ? undefined : 'Encounter this catalyst at the Bazaar in a run to reveal its name, effect, and flavor here.'}
+            tipBody={seen ? undefined : 'Encounter this catalyst at the Night Market in a run to reveal its name, effect, and flavor here.'}
           >
             {isMythicSeen && <MythicFrame name={c.name} compact />}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 2 }}>
@@ -498,7 +498,7 @@ function ModGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discovered
             locked={!seen}
             accent={accent}
             tipTitle={seen ? undefined : 'Mod · undiscovered'}
-            tipBody={seen ? undefined : 'Encounter this mod (drops as a Bazaar offer or pack reward) to reveal its name, effect, and flavor here.'}
+            tipBody={seen ? undefined : 'Encounter this mod (drops as a Night Market offer or pack reward) to reveal its name, effect, and flavor here.'}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="mod" rarity={seen ? m.rarity : null} size={32}>
@@ -550,7 +550,7 @@ function VoucherGrid({ discovered, pageStart = 0, pageEnd = Infinity }: { discov
             locked={!seen}
             accent={accent}
             tipTitle={seen ? undefined : 'Voucher · undiscovered'}
-            tipBody={seen ? undefined : 'Buy this voucher at the Bazaar in a run to reveal its name and permanent perk here.'}
+            tipBody={seen ? undefined : 'Buy this voucher at the Night Market in a run to reveal its name and permanent perk here.'}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <KindFrame kind="voucher" rarity={seen ? v.rarity : null} size={32}>

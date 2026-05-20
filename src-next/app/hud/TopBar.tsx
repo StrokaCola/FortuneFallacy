@@ -497,7 +497,7 @@ export function TopBar({
           <div className="f-mono uc" style={{ fontSize: 10, color: '#bba8ff', letterSpacing: '0.2em' }}>shards</div>
           <span className="tip">
             <span className="tip-title">Shards ◆</span>
-            Run currency. Earned by clearing trials and unused hands; spent at the Bazaar on upgrades and rerolls.
+            Run currency. Earned by clearing trials and unused hands; spent at the Night Market on upgrades and rerolls.
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: tight ? 0 : 6 }}>
@@ -544,7 +544,7 @@ export function TopBar({
               <span className="tip" style={{ maxWidth: 280, textAlign: 'left' }}>
                 <span className="tip-title">Vouchers</span>
                 {vouchers.length === 0 ? (
-                  'Permanent run perks bought at the Bazaar.'
+                  'Permanent run perks bought at the Night Market.'
                 ) : (
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
                     {vouchers.map((id) => {
