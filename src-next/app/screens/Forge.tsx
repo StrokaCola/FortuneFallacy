@@ -22,6 +22,7 @@ import { activeAffinitiesOnDie, affinitySlotIndices } from '../../data/modAffini
 import { ForgeVFX, forgeVFX } from '../hud/ForgeVFX';
 import { formatModStackLabel } from '../hud/modStackLabel';
 import { invalidateRects } from '../../render/three/sharedRenderer';
+import { clearLazyReloadFlag } from '../perf/lazyWithRetry';
 import '../hud/ForgeVFX.css';
 
 const FORGE_COST = 5;
@@ -45,6 +46,7 @@ const selectDice = (s: GameState) => s.round.dice;
 const selectMaxMod = (s: GameState) => maxModSlots(s);
 
 export function Forge() {
+  useEffect(() => { clearLazyReloadFlag('forge'); }, []);
   const dice = useStore(selectDice);
   const diceMods = useStore(selectDiceMods);
   const diceModStacks = useStore(selectDiceModStacks);
