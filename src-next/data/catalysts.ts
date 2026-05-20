@@ -1,3 +1,5 @@
+import type { ArchetypeTag } from '../voidmode/types';
+
 // Build archetypes — drives the Ante 1 shop coherence bias (see
 // `core/shop/catalystDraw.ts`). Catalysts that play together in a synergistic
 // build share an archetype. Optional — uncategorized catalysts ignore the bias.
@@ -39,15 +41,21 @@ export type CatalystMeta = {
   // shop pool when the active constellation matches. Drives build
   // identity across constellations. See core/shop/catalystDraw.ts.
   requiresConstellation?: string;
+  /** Tags used by the void-mode affix generator to gate which affix
+   * families can attach to this catalyst. Optional — catalysts without
+   * tags are skipped by the void generator and fall through as base. */
+  archetypeTags?: ArchetypeTag[];
 };
 
 export const CATALYST_META: CatalystMeta[] = [
   { id: 'stratifier',     name: 'Stratifier',     icon: '👁',  color: '#cc88ff',
-    desc: 'Full House → Mult ×2',          flavor: 'Three plus two. The shape pays.', rarity: 'uncommon', archetype: 'combo' },
+    desc: 'Full House → Mult ×2',          flavor: 'Three plus two. The shape pays.', rarity: 'uncommon', archetype: 'combo',
+    archetypeTags: ['combo'] },
   { id: 'chaos_theory',   name: 'Chaos Theory',   icon: '∞',   color: '#44ddff',
     desc: 'Straights → +5 Mult',           flavor: 'Order from disorder. +5 for the trick.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'six_bias',       name: 'Six Bias',       icon: '📈',  color: '#b088ff',
-    desc: 'Each 6 → +4 Pips',             flavor: 'Instrument loaded. Top of range pays.', rarity: 'common', archetype: 'face' },
+    desc: 'Each 6 → +4 Pips',             flavor: 'Instrument loaded. Top of range pays.', rarity: 'common', archetype: 'face',
+    archetypeTags: ['face'] },
   { id: 'twin_sample',    name: 'Twin Sample',    icon: '🔢',  color: '#ff9944',
     desc: 'Hand contains Two Pair → Pips ×2',           flavor: 'Both samples agree. Confidence doubled.', rarity: 'uncommon', archetype: 'combo' },
   { id: 'cold_hand',      name: 'Cold Hand',      icon: '💬',  color: '#c0c8ff',
@@ -61,34 +69,42 @@ export const CATALYST_META: CatalystMeta[] = [
   // 'synergy' profile suggests for any build that actually slots this card.
   { id: 'compounding_bias', name: 'Compounding Bias', icon: '∆', color: '#88ddff',
     desc: 'Each cleared trial: +0.10× mult permanently. Resets on bust.',
-    flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon', archetype: 'scaling' },
+    flavor: 'Variance bleeds out. Edge holds.', rarity: 'uncommon', archetype: 'scaling',
+    archetypeTags: ['scaling', 'timing'] },
   { id: 'last_throw', name: 'Last Throw', icon: '🔔', color: '#ff7847',
     desc: 'Last hand of round: +25 pips.',
-    flavor: 'House always pays the closer.', rarity: 'common', archetype: 'timing' },
+    flavor: 'House always pays the closer.', rarity: 'common', archetype: 'timing',
+    archetypeTags: ['timing'] },
   { id: 'patience_counter', name: 'Patience Counter', icon: '⏳', color: '#cc88ff',
     desc: 'Every 5th hand of run: ×3 mult (this hand only).',
-    flavor: 'Wait. Then strike.', rarity: 'rare', archetype: 'timing' },
+    flavor: 'Wait. Then strike.', rarity: 'rare', archetype: 'timing',
+    archetypeTags: ['timing'] },
   { id: 'catalyst_bench', name: 'Catalyst Bench', icon: '⌗', color: '#a080c0',
     desc: '+1 mult per other catalyst owned.',
-    flavor: 'Crowded table tilts faster.', rarity: 'uncommon', archetype: 'scaling' },
+    flavor: 'Crowded table tilts faster.', rarity: 'uncommon', archetype: 'scaling',
+    archetypeTags: ['scaling'] },
   { id: 'shard_sink', name: 'Shard Sink', icon: '◈', color: '#f5c451',
     desc: 'Spend 1 shard before scoring: ×1.5 mult. Skips if 0 shards.',
-    flavor: 'Pay to play. Pays back.', rarity: 'common', archetype: 'economy' },
+    flavor: 'Pay to play. Pays back.', rarity: 'common', archetype: 'economy',
+    archetypeTags: ['economy'] },
   { id: 'stipend', name: 'Stipend', icon: '💠', color: '#f5c451',
     desc: '+1 shard at the start of each hand (caps at 6 shards).',
-    flavor: 'Steady drip. Fills the cup before it fills the grave.', rarity: 'uncommon', archetype: 'economy' },
+    flavor: 'Steady drip. Fills the cup before it fills the grave.', rarity: 'uncommon', archetype: 'economy',
+    archetypeTags: ['economy', 'timing'] },
   { id: 'recursive_sink', name: 'Recursive Sink', icon: '◇', color: '#f5c451',
     desc: 'When Shard Sink primes, pay 1 more shard for an extra ×1.25 mult.',
     flavor: 'A deeper cut. The vein keeps giving.', rarity: 'rare', archetype: 'economy' },
   { id: 'encore', name: 'Encore', icon: '⤾', color: '#bba8ff',
     desc: 'The last scoring die\'s mods fire one extra time (pips/mult).',
-    flavor: 'The crowd demands it.', rarity: 'rare', archetype: 'mods' },
+    flavor: 'The crowd demands it.', rarity: 'rare', archetype: 'mods',
+    archetypeTags: ['mods'] },
   { id: 'phase_shift', name: 'Phase-Shift', icon: '⊚', color: '#bba8ff',
     desc: 'Mirror Pair, Conduit, Crescendo, Pip Charge each gain +1 per instance.',
     flavor: 'Tilt the lattice; the threads sing one note louder.', rarity: 'uncommon', archetype: 'mods' },
   { id: 'iron_six', name: 'Iron Six', icon: '⬢', color: '#ffd84a',
     desc: 'Each scoring 6 also grants +2 mult.',
-    flavor: 'Heavy at the top of the range.', rarity: 'common', archetype: 'face' },
+    flavor: 'Heavy at the top of the range.', rarity: 'common', archetype: 'face',
+    archetypeTags: ['face'] },
   { id: 'solar_flare', name: 'Solar Flare', icon: '☀', color: '#ff7847',
     desc: '3+ scoring dice show 5 or 6 → ×1.5 mult.',
     flavor: 'High pressure ignites. The sky bleaches.', rarity: 'uncommon', archetype: 'face' },
@@ -100,7 +116,8 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'Each measure climbs. Don\'t miss the beat.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'conductor', name: 'Conductor', icon: '⌘', color: '#bba8ff',
     desc: 'Full hand scores: +20 pips × distinct mods across scoring dice.',
-    flavor: 'Every section accounted for.', rarity: 'rare', archetype: 'mods' },
+    flavor: 'Every section accounted for.', rarity: 'rare', archetype: 'mods',
+    archetypeTags: ['mods'] },
   { id: 'quorum', name: 'Quorum', icon: '⫶', color: '#cc88ff',
     desc: 'Same combo as last hand: pips ×1.5. 3rd in a row: also mult ×1.5.',
     flavor: 'Repeat until the verdict holds.', rarity: 'uncommon', archetype: 'timing' },
@@ -110,7 +127,8 @@ export const CATALYST_META: CatalystMeta[] = [
   // complete deck-building lane.
   { id: 'pair_dynamo', name: 'Pair Dynamo', icon: '⚊', color: '#7be3ff',
     desc: 'Hand contains a Pair → +5 Mult.',
-    flavor: 'The simplest match still spins the wheel.', rarity: 'common', archetype: 'combo' },
+    flavor: 'The simplest match still spins the wheel.', rarity: 'common', archetype: 'combo',
+    archetypeTags: ['combo'] },
   { id: 'triplet_engine', name: 'Triplet Engine', icon: '⚙', color: '#cc88ff',
     desc: 'Hand contains Three of a Kind → Mult ×1.75.',
     flavor: 'Three sealed prongs, one current.', rarity: 'uncommon', archetype: 'combo' },
@@ -132,7 +150,8 @@ export const CATALYST_META: CatalystMeta[] = [
   // Economy rare — Stipend / Shard Sink decks finally have a payoff scaler.
   { id: 'usurer', name: 'Usurer', icon: '⛁', color: '#f5c451',
     desc: 'Each shard above 10 → +1 Mult (uncapped).',
-    flavor: 'The vault grows louder.', rarity: 'rare', archetype: 'economy' },
+    flavor: 'The vault grows louder.', rarity: 'rare', archetype: 'economy',
+    archetypeTags: ['economy', 'scaling'] },
 
   // Galaxy-aware rare — pays you for committing to galaxies. Should be
   // cheap to slot mid-run alongside any Galaxy strategy.
@@ -177,7 +196,8 @@ export const CATALYST_META: CatalystMeta[] = [
   // hooks (skip-blind, sell-refund) rather than the per-hand upgrades pass.
   { id: 'silver_tongue', name: 'Silver Tongue', icon: '✎', color: '#a4d4ff',
     desc: 'When you skip a blind, gain 2 random consumables.',
-    flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon', archetype: 'utility' },
+    flavor: 'Talk your way past the trial. Pocket the favor.', rarity: 'uncommon', archetype: 'utility',
+    archetypeTags: ['utility'] },
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
     desc: 'Shop reroll cost −1 shard (min 0).',
     flavor: 'A quick scrub for the bazaar dust.', rarity: 'common', archetype: 'utility' },
@@ -220,7 +240,8 @@ export const CATALYST_META: CatalystMeta[] = [
     flavor: 'The wheel keeps turning. The wheel keeps paying.', rarity: 'uncommon', archetype: 'scaling' },
   { id: 'dice_master', name: 'Dice Master', icon: '⚂', color: '#bba8ff',
     desc: '+1 reroll per hand.',
-    flavor: 'A steadier hand. A wider net.', rarity: 'uncommon', archetype: 'utility' },
+    flavor: 'A steadier hand. A wider net.', rarity: 'uncommon', archetype: 'utility',
+    archetypeTags: ['utility'] },
   { id: 'prism_lens', name: 'Prism Lens', icon: '◆', color: '#cc88ff',
     desc: 'Any combo (not Chance): +25 pips, ×1.5 mult.',
     flavor: 'Bend the light, brighten the verdict.', rarity: 'uncommon', archetype: 'combo' },
@@ -397,11 +418,13 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'kinetic_charge', name: 'Kinetic Charge', icon: '⚡', color: '#ffd84a',
     desc: 'Each die collision in the tray → +1 chip (cap +30).',
     flavor: 'Every bump is a tiny dividend.',
-    rarity: 'common', archetype: 'collision' },
+    rarity: 'common', archetype: 'collision',
+    archetypeTags: ['collision'] },
   { id: 'chain_reaction', name: 'Chain Reaction', icon: '⛓', color: '#ff7847',
     desc: '15+ collisions this roll → ×1.5 mult.',
     flavor: 'Cascade past the threshold and the room ignites.',
-    rarity: 'uncommon', archetype: 'collision' },
+    rarity: 'uncommon', archetype: 'collision',
+    archetypeTags: ['collision'] },
   { id: 'kindred_clatter', name: 'Kindred Clatter', icon: '◈', color: '#a080c0',
     desc: '+3 mult for each collision between dice that ended on the same value.',
     flavor: 'Twins find each other in mid-air.',
@@ -411,11 +434,13 @@ export const CATALYST_META: CatalystMeta[] = [
   { id: 'bone_tax', name: 'Bone Tax', icon: '☠', color: '#ff4d6d',
     desc: '+5 mult per scoring die. Pips ×0.85 each hand.',
     flavor: 'The table eats first. What\'s left, you keep.',
-    rarity: 'uncommon', archetype: 'risk' },
+    rarity: 'uncommon', archetype: 'risk',
+    archetypeTags: ['risk'] },
   { id: 'hollow_bishop', name: 'Hollow Bishop', icon: '♟', color: '#cc88ff',
     desc: 'Full House and above: +12 mult. One Pair and Two Pair: pips ×0.5.',
     flavor: 'A bishop only moves diagonal. Stop crawling sideways.',
-    rarity: 'rare', archetype: 'risk' },
+    rarity: 'rare', archetype: 'risk',
+    archetypeTags: ['combo', 'risk'] },
   { id: 'witchs_bargain', name: 'Witch\'s Bargain', icon: '🜍', color: '#a080c0',
     desc: 'Mult ×1.4 every hand. Each scoring die: -8 pips before the multiplier.',
     flavor: 'The price is named. Pay it once, pay it every time.',
