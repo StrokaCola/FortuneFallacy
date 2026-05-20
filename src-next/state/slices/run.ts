@@ -1,5 +1,13 @@
 export type RunSlice = {
   seed: number;
+  // Void Mode flag. 'normal' is the standard game. 'void' enables the
+  // procgen-affixed-upgrade alt-mode entered via the title-screen black
+  // hole. Strictly ephemeral — does not persist across runs.
+  mode: 'normal' | 'void';
+  // Seed used to drive the void-mode affix generator. Distinct from
+  // `seed` (which drives the physics/scoring pipeline) so daily-certified
+  // void seeds can be substituted independently of the base seed.
+  voidSeed: number;
   shards: number;
   ante: number;
   goalIdx: number;
@@ -189,6 +197,8 @@ export type ModEdition = 'foil' | 'holo' | 'poly';
 
 export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
+  mode: 'normal',
+  voidSeed: 0,
   shards: 0,
   ante: 1,
   goalIdx: 0,
