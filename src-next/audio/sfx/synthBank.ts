@@ -271,11 +271,12 @@ export async function buildBank(): Promise<SynthBank> {
   // ---- modLoaded: rising chord + whoosh ----
   // maxPolyphony bounds the stack when several Loaded mods fire in one
   // hand — without it, every chord trigger adds 3 fresh voices.
+  const modLoadedChord = new Tone.PolySynth(Tone.FMSynth, {
+    envelope: { attack: 0.04, decay: 0.4, sustain: 0.0, release: 0.3 },
+  });
+  modLoadedChord.maxPolyphony = 6;
   const modLoaded = {
-    chord: new Tone.PolySynth(Tone.FMSynth, {
-      maxPolyphony: 6,
-      envelope: { attack: 0.04, decay: 0.4, sustain: 0.0, release: 0.3 },
-    }),
+    chord: modLoadedChord,
     whoosh: new Tone.NoiseSynth({
       noise: { type: 'pink' },
       envelope: { attack: 0.05, decay: 0.3, sustain: 0, release: 0.2 },
@@ -347,11 +348,12 @@ export async function buildBank(): Promise<SynthBank> {
   // The Wildcard's "face cycling" resolved sonically as three quick
   // notes flicking by. maxPolyphony caps the trio at 4 even if a
   // Wildcard chains into another Wildcard.
+  const modSwirlTrio = new Tone.PolySynth(Tone.FMSynth, {
+    envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
+  });
+  modSwirlTrio.maxPolyphony = 4;
   const modSwirl = {
-    trio: new Tone.PolySynth(Tone.FMSynth, {
-      maxPolyphony: 4,
-      envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.08 },
-    }),
+    trio: modSwirlTrio,
   };
   modSwirl.trio.connect(buses.mag.input);
 
@@ -395,10 +397,13 @@ export async function buildBank(): Promise<SynthBank> {
       noise: { type: 'pink' },
       envelope: { attack: 0.12, decay: 0.18, sustain: 0, release: 0.12 },
     }),
-    chord: new Tone.PolySynth(Tone.FMSynth, {
-      maxPolyphony: 4,
-      envelope: { attack: 0.02, decay: 0.24, sustain: 0, release: 0.16 },
-    }),
+    chord: (() => {
+      const c = new Tone.PolySynth(Tone.FMSynth, {
+        envelope: { attack: 0.02, decay: 0.24, sustain: 0, release: 0.16 },
+      });
+      c.maxPolyphony = 4;
+      return c;
+    })(),
   };
   modCrescendo.swell.connect(buses.perc.input);
   modCrescendo.chord.connect(buses.mag.input);
@@ -407,12 +412,13 @@ export async function buildBank(): Promise<SynthBank> {
   // For Resonance (legendary double-fire). Beat-frequency feel.
   // maxPolyphony caps the chord stack even if multiple Resonance dice
   // score in a single hand.
+  const modResonanceChord = new Tone.PolySynth(Tone.FMSynth, {
+    modulationIndex: 6,
+    envelope: { attack: 0.005, decay: 0.32, sustain: 0.10, release: 0.40 },
+  });
+  modResonanceChord.maxPolyphony = 4;
   const modResonance = {
-    chord: new Tone.PolySynth(Tone.FMSynth, {
-      maxPolyphony: 4,
-      modulationIndex: 6,
-      envelope: { attack: 0.005, decay: 0.32, sustain: 0.10, release: 0.40 },
-    }),
+    chord: modResonanceChord,
     harmonic: new Tone.MetalSynth({
       envelope: { attack: 0.005, decay: 0.20, sustain: 0, release: 0.12 },
       harmonicity: 3.1, modulationIndex: 18, resonance: 3500, octaves: 1.2,
@@ -517,12 +523,13 @@ export async function buildBank(): Promise<SynthBank> {
   // The longest, fullest voice in the bank — Dormant's once-per-run
   // awakening earns the screen-time. maxPolyphony caps it at 3 since
   // multiple Dormants could conceivably awaken on the same hand.
+  const modAwakenDrone = new Tone.PolySynth(Tone.FMSynth, {
+    modulationIndex: 8,
+    envelope: { attack: 0.20, decay: 0.40, sustain: 0.05, release: 0.45 },
+  });
+  modAwakenDrone.maxPolyphony = 3;
   const modAwaken = {
-    drone: new Tone.PolySynth(Tone.FMSynth, {
-      maxPolyphony: 3,
-      modulationIndex: 8,
-      envelope: { attack: 0.20, decay: 0.40, sustain: 0.05, release: 0.45 },
-    }),
+    drone: modAwakenDrone,
     flash: new Tone.FMSynth({
       modulationIndex: 10,
       envelope: { attack: 0.005, decay: 0.35, sustain: 0, release: 0.25 },

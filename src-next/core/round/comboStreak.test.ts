@@ -1,23 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { updateComboStreaks } from './comboStreak';
-import type { RunSlice } from '../../state/slices/run';
+import { initialRunSlice, type RunSlice } from '../../state/slices/run';
 
 function run(over: Partial<RunSlice> = {}): RunSlice {
-  return {
-    seed: 0, shards: 0, ante: 1, goalIdx: 0, constellationId: 'lyra',
-    catalysts: [], vouchers: [], consumables: [], ownedMods: [],
-    diceMods: [[], [], [], [], []],
-    handsPlayed: 0, compoundingStacks: 0, rollCounter: 0,
-    tempoStreak: 0, tempoLastTier: -1, lastComboId: null, comboStreak: 0,
-    comboLevels: {},
-    catalystEditions: {},
-    ownedModEditions: [],
-    diceModEditions: [[], [], [], [], []],
-    catalystShardSpend: 0,
-    stakeId: 'spark',
-    challengeId: '',
-    ...over,
-  };
+  return { ...initialRunSlice(), ...over };
 }
 
 describe('updateComboStreaks', () => {

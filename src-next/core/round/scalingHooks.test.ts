@@ -41,7 +41,7 @@ describe('accrueScalingStacks', () => {
   });
   it('Event Horizon bumps when a big die contributes', () => {
     const run = { ...initialRunSlice(), catalysts: ['event_horizon'] };
-    const events = [{ type: 'onUpgradeTriggered' as const, payload: { id: 'mod:loaded@2', phase: 5, deltaChips: 150, deltaMult: 0 } }];
+    const events = [{ type: 'onUpgradeTriggered' as const, payload: { id: 'mod:loaded@2', phase: 5 as const, deltaChips: 150, deltaMult: 0 } }];
     const { run: diff } = accrueScalingStacks({ run, comboId: 'one_pair', events, peakHandWasNew: false });
     expect(diff.catalystStacks?.['event_horizon']).toBe(1);
   });

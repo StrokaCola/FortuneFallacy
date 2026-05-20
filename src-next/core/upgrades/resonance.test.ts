@@ -78,7 +78,7 @@ describe('applyResonances', () => {
     const ctx = ctxWithCatalysts(['conductor', 'encore', 'six_bias', 'iron_six']);
     const result = applyResonances(ctx);
     expect(result.events.length).toBe(2);
-    const ids = new Set(result.events.map((e) => e.payload.id));
+    const ids = new Set(result.events.map((e) => (e.payload as { id: string }).id));
     expect(ids.has('resonance:symphony')).toBe(true);
     expect(ids.has('resonance:loaded_die')).toBe(true);
   });
@@ -91,8 +91,8 @@ describe('applyResonances', () => {
     });
     const result = applyResonances(ctx);
     expect(result.events.length).toBe(2); // 1 pre-existing + 1 resonance
-    expect(result.events[0]?.payload.id).toBe('stratifier');
-    expect(result.events[1]?.payload.id).toBe('resonance:symphony');
+    expect((result.events[0]?.payload as { id: string }).id).toBe('stratifier');
+    expect((result.events[1]?.payload as { id: string }).id).toBe('resonance:symphony');
   });
 });
 

@@ -15,7 +15,6 @@ import { editionLabel, editionColor } from '../../../core/upgrades/editions';
 import type { CatalystEdition } from '../../../state/slices/run';
 
 const EDITION_CLASS: Record<CatalystEdition, string> = {
-  base: '',
   foil: 'edition-foil',
   holo: 'edition-holo',
   poly: 'edition-poly',

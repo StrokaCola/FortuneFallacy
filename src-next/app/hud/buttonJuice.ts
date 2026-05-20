@@ -84,7 +84,7 @@ function spawnShockwave(btn: HTMLElement, variant: 'primary' | 'cta' | 'ghost' |
 function tapHaptic(durationMs: number): void {
   const vib = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
   if (typeof vib === 'function') {
-    try { vib.call(navigator, durationMs); } catch { /* ignore */ }
+    try { (vib as (p: number | number[]) => boolean).call(navigator, durationMs); } catch { /* ignore */ }
   }
 }
 
