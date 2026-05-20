@@ -8,6 +8,7 @@ import { installScoringRouter } from './scoring';
 import { installHeatRouter } from './heat';
 import * as audioSettings from './audioSettings';
 import { triggerShake } from '../app/visual/screenShake';
+import { startVoidDrone, stopVoidDrone } from './voidDrone';
 
 // Wave T (2026-05-19) — used to defer achievement audio if it would
 // collide with a still-ringing win fanfare. Set on onRunEnded(won=true).
@@ -292,6 +293,17 @@ export function startAudioBridge(): () => void {
   const RICH_THRESHOLD = 6;
   const POOR_THRESHOLD = 2;
   const offStore = store.subscribe((s, prev) => {
+    // Void Mode drone — fades in on normal -> void, fades out on the
+    // reverse. Layers UNDER the existing music; does not replace it.
+    // Gated on a real transition so unrelated state changes don't
+    // re-fire the lifecycle.
+    if (s.run.mode !== prev.run.mode) {
+      if (s.run.mode === 'void') {
+        void startVoidDrone();
+      } else {
+        stopVoidDrone();
+      }
+    }
     if (s.ui.screen === 'fail' && prev.ui.screen !== 'fail') {
       audioEngine.enterFail();
       sfxModule.sfxPlay('bust');
@@ -363,6 +375,15 @@ export function startAudioBridge(): () => void {
       if (stage) stage.removeAttribute('data-score-warmth');
     }
   });
+
+  // Boot-time void-drone sync. The store.subscribe callback only fires on
+  // state transitions — if the persisted state already has mode === 'void'
+  // (e.g. user refreshed mid-void-run), the subscription would never see
+  // a normal->void edge and the drone would stay silent. Kick it on here
+  // so the load resumes with the drone audible.
+  if (store.getState().run.mode === 'void') {
+    void startVoidDrone();
+  }
 
   return () => {
     subs.forEach((u) => u());
