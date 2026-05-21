@@ -25,6 +25,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'face', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Cracked',
+    description: '+15 chips on One Pair or Two Pair',
     flavorTags: ['decay'],
     effect: (ctx) => {
       if (ctx.hand.comboId === 'one_pair' || ctx.hand.comboId === 'two_pair') {
@@ -40,6 +41,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Sundered',
+    description: '+20 chips on Three/Four/Five of a Kind',
     flavorTags: ['decay', 'void'],
     effect: (ctx) => {
       if (ctx.hand.comboId === 'three_kind' || ctx.hand.comboId === 'four_kind' || ctx.hand.comboId === 'five_kind') {
@@ -55,6 +57,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'timing'],
     weight: 1.0,
     nameTemplate: 'Eternal',
+    description: '+1 mult per hand played this trial',
     flavorTags: ['memory'],
     effect: (ctx) => {
       // +1 mult per hand played this trial (scratch bumps each fire).
@@ -70,6 +73,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Hollow',
+    description: '+10 chips when hand contains a 1',
     flavorTags: ['void'],
     effect: (ctx) => {
       if (ctx.hand.diceValues.includes(1)) {
@@ -85,6 +89,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 0.8,
     nameTemplate: 'Twilit',
+    description: '+6 mult on Small or Large Straight',
     flavorTags: ['cold', 'paradox'],
     effect: (ctx) => {
       if (ctx.hand.comboId === 'sm_straight' || ctx.hand.comboId === 'lg_straight') {
@@ -100,6 +105,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['utility', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Burning',
+    description: '+1 mult per discard remaining',
     flavorTags: ['heat'],
     effect: (ctx) => {
       ctx.multBonus += ctx.run.discardsRemaining;
@@ -113,6 +119,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Hungering',
+    description: '+2 chips per gold above 10',
     flavorTags: ['decay'],
     effect: (ctx) => {
       const over = Math.max(0, ctx.run.goldHeld - 10);
@@ -127,6 +134,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'mods'],
     weight: 0.8,
     nameTemplate: 'Frayed',
+    description: '+1 mult per catalyst owned (rounded)',
     flavorTags: ['decay', 'flux'],
     effect: (ctx) => {
       // +1 mult per catalyst owned. Synergy-adjacent scalar.
@@ -141,6 +149,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 1.0,
     nameTemplate: 'of Echoes',
+    description: '+4 chips per combo tier',
     flavorTags: ['memory', 'void'],
     effect: (ctx) => {
       // +X chips by combo tier (chance=0 ... five_kind=8 in COMBOS table).
@@ -166,6 +175,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'timing'],
     weight: 0.8,
     nameTemplate: 'of the Eclipse',
+    description: '+8 mult on boss blind',
     flavorTags: ['cold', 'void'],
     effect: (ctx) => {
       if (ctx.trial.isBossBlind) {
@@ -181,6 +191,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'scaling', 'collision'],
     weight: 1.0,
     nameTemplate: 'of the Tessellation',
+    description: '+6 chips per pair of matching dice',
     flavorTags: ['paradox', 'flux'],
     effect: (ctx) => {
       // +X chips per pair of identical dice values on the hand.
@@ -199,6 +210,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'mods'],
     weight: 1.0,
     nameTemplate: 'of Static',
+    description: '+8 chips per Wild die',
     flavorTags: ['flux', 'whisper'],
     effect: (ctx) => {
       let wilds = 0;
@@ -216,6 +228,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling', 'timing'],
     weight: 1.0,
     nameTemplate: 'of Sundering',
+    description: '+5 mult when any Wild is rolled',
     flavorTags: ['void', 'decay'],
     effect: (ctx) => {
       if (ctx.hand.isWild.some(Boolean)) {
@@ -231,6 +244,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Whispering',
+    description: 'first hand of trial: +25 mult once',
     flavorTags: ['whisper', 'memory'],
     effect: (ctx) => {
       // One-shot: first hand of the trial only.
@@ -248,6 +262,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'mods'],
     weight: 1.0,
     nameTemplate: 'Coiled',
+    description: '+4 mult; every 3rd fire doubles to +8',
     flavorTags: ['flux'],
     effect: (ctx) => {
       ctx.scratch.coiledTick = (ctx.scratch.coiledTick ?? 0) + 1;
@@ -265,6 +280,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'mods'],
     weight: 1.0,
     nameTemplate: 'Phasing',
+    description: '+25 chips when any Wild is rolled',
     flavorTags: ['flux', 'void'],
     effect: (ctx) => {
       // Bonus when at least one die is wild (blank face = -1 in pipeline).
@@ -281,6 +297,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Wandering',
+    description: 'every 5th hand of trial: +12 mult',
     flavorTags: ['memory'],
     effect: (ctx) => {
       ctx.scratch.wanderingHands = (ctx.scratch.wanderingHands ?? 0) + 1;
@@ -297,6 +314,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'utility'],
     weight: 0.8,
     nameTemplate: 'Spectral',
+    description: 'when discards remaining is 0: +10 mult',
     flavorTags: ['void', 'whisper'],
     effect: (ctx) => {
       if (ctx.run.discardsRemaining === 0) {
@@ -312,6 +330,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing'],
     weight: 1.0,
     nameTemplate: 'of Curfew',
+    description: '+30 chips on last hand of trial',
     flavorTags: ['cold', 'decay'],
     effect: (ctx) => {
       if (ctx.run.handsRemaining <= 1) {
@@ -327,6 +346,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['utility', 'timing'],
     weight: 1.0,
     nameTemplate: 'of the Lacuna',
+    description: '+7 mult when no rerolls used this trial',
     flavorTags: ['void', 'memory'],
     effect: (ctx) => {
       // No rerolls used this trial means rollsThisTrial counts only the
@@ -344,6 +364,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'risk'],
     weight: 0.6,
     nameTemplate: 'of Misplaced Light',
+    description: 'when gold = 13: doubles mult + 8',
     flavorTags: ['paradox', 'cold'],
     effect: (ctx) => {
       if (ctx.run.goldHeld === 13) {
@@ -360,6 +381,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'scaling'],
     weight: 1.0,
     nameTemplate: 'of the Late Hour',
+    description: '+20 chips after 5+ rolls this trial',
     flavorTags: ['decay', 'memory'],
     effect: (ctx) => {
       if (ctx.trial.rollsThisTrial > 5) {
@@ -375,6 +397,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face'],
     weight: 1.0,
     nameTemplate: 'of the Quiet Throat',
+    description: '+18 chips when hand contains seed digit',
     flavorTags: ['whisper'],
     effect: (ctx) => {
       if (ctx.run.seedDigit > 0 && ctx.hand.diceValues.includes(ctx.run.seedDigit)) {
@@ -390,6 +413,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['collision', 'timing'],
     weight: 1.0,
     nameTemplate: 'of the Returning Stride',
+    description: 'every even-indexed hand: +6 mult',
     flavorTags: ['flux'],
     effect: (ctx) => {
       // Fires on even-indexed hands of the trial (alternating bonus).
@@ -408,6 +432,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Echoing',
+    description: 'banks dice face-reads; pays out on Full House',
     flavorTags: ['memory'],
     effect: (ctx) => {
       // Bank 1 chip per face-read; pay out on full house.
@@ -426,6 +451,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'timing'],
     weight: 0.8,
     nameTemplate: 'Murmuring',
+    description: 'banks mult on low discards; pays out on boss',
     flavorTags: ['whisper'],
     effect: (ctx) => {
       // Bank 1 mult per discard-pressure tick (each time discards remaining is low).
@@ -446,6 +472,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'combo', 'mods'],
     weight: 1.0,
     nameTemplate: 'Bleak',
+    description: 'banks 2 chips per Wild; pays out on Full House',
     flavorTags: ['cold', 'void'],
     effect: (ctx) => {
       // Bank 2 chips per Wild on the hand; pay out on Full House.
@@ -466,6 +493,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'collision'],
     weight: 1.0,
     nameTemplate: 'Knotted',
+    description: 'banks per hand; pays 3x on Four/Five of a Kind',
     flavorTags: ['flux'],
     effect: (ctx) => {
       ctx.scratch.knottedBank = (ctx.scratch.knottedBank ?? 0) + 1;
@@ -484,6 +512,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'combo'],
     weight: 1.0,
     nameTemplate: 'of the Hollow Coin',
+    description: 'banks per Pair; pays 5x at boss blind',
     flavorTags: ['cold', 'decay'],
     effect: (ctx) => {
       // Bank 1 unit per Pair scored; pay as chip bonus at trial end (boss blind).
@@ -504,6 +533,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy'],
     weight: 1.0,
     nameTemplate: 'of the Returning Tide',
+    description: 'banks chips on even gold; pays on odd',
     flavorTags: ['flux'],
     effect: (ctx) => {
       // Bank chips when gold is even; pay out when gold becomes odd.
@@ -523,6 +553,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'timing'],
     weight: 0.8,
     nameTemplate: 'of Memory',
+    description: 'banks 2 chips per hand; every 3rd triples + pays',
     flavorTags: ['memory', 'whisper'],
     effect: (ctx) => {
       ctx.scratch.memoryTick = (ctx.scratch.memoryTick ?? 0) + 1;
@@ -542,6 +573,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 0.4,
     nameTemplate: 'That-Echoes-Backward',
+    description: 'banks per face; pays on Full House (2x if >50)',
     flavorTags: ['memory', 'paradox', 'void'],
     effect: (ctx) => {
       // Banks 1 chip per hand, fires twice when banked beyond 50.
@@ -564,6 +596,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     blockedOn: ['economy'],
     weight: 1.0,
     nameTemplate: 'of the Long Fall',
+    description: '+12 mult; disabled on Straight',
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
       // +12 mult, but disables on Straight.
@@ -579,6 +612,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'risk'],
     weight: 1.0,
     nameTemplate: 'Cracked',
+    description: '+30 mult; cannot fire on Pair or Two Pair',
     flavorTags: ['decay', 'paradox'],
     effect: (ctx) => {
       // +30 mult, but cannot fire on Pair or Two-Pair.
@@ -594,6 +628,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'risk', 'mods'],
     weight: 1.0,
     nameTemplate: 'Drowned',
+    description: '+25 chips; -10 chips per Wild',
     flavorTags: ['cold', 'decay'],
     effect: (ctx) => {
       // +25 chips, -10 chips per Wild on the hand.
@@ -610,6 +645,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'risk', 'scaling'],
     weight: 0.6,
     nameTemplate: 'Misremembered',
+    description: '+50 chips; but first hand of trial scores -50',
     flavorTags: ['memory', 'paradox'],
     effect: (ctx) => {
       // +50 chips, but the first hand of the trial scores 0.
@@ -628,6 +664,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'risk'],
     weight: 1.0,
     nameTemplate: 'of Smoke',
+    description: '+25 chips minus 1 per hand remaining',
     flavorTags: ['flux', 'decay'],
     effect: (ctx) => {
       // +25 chips, loses 1 chip per hand remaining.
@@ -642,6 +679,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'risk'],
     weight: 1.0,
     nameTemplate: 'of Wrong Numbers',
+    description: '+14 mult only when gold ≤ 5',
     flavorTags: ['paradox', 'whisper'],
     effect: (ctx) => {
       // +14 mult, but only if goldHeld is 5 or less.
@@ -658,6 +696,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'risk'],
     weight: 1.0,
     nameTemplate: 'of the Last Roll',
+    description: '+50 chips only on last hand of trial',
     flavorTags: ['void', 'cold'],
     effect: (ctx) => {
       // +50 chips, but only on the last hand of the trial.
@@ -674,6 +713,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'risk'],
     weight: 1.0,
     nameTemplate: 'of Curfew',
+    description: '+9 mult; -1 gold each fire',
     flavorTags: ['cold', 'decay'],
     effect: (ctx) => {
       // +9 mult and -1 gold sink registered on ctx.goldBonus per fire.
@@ -689,6 +729,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'collision'],
     weight: 0.5,
     nameTemplate: 'of the Ninth Door',
+    description: '+35 chips, reduced by 2 per catalyst owned',
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
       // +35 chips, scales upward with catalystsOwned but with a penalty
@@ -705,6 +746,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'scaling'],
     weight: 0.4,
     nameTemplate: 'of Hunger',
+    description: 'doubles current accrued mult (capped +40)',
     flavorTags: ['decay', 'heat'],
     effect: (ctx) => {
       // x2 mult (additive equivalent: doubles whatever mult-bonus is
@@ -724,6 +766,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling', 'utility'],
     weight: 1.0,
     nameTemplate: 'Whispering',
+    description: '+1 mult per catalyst owned',
     flavorTags: ['whisper', 'memory'],
     effect: (ctx) => {
       // +1 mult per catalyst owned.
@@ -738,6 +781,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['mods'],
     weight: 1.0,
     nameTemplate: 'Coiled',
+    description: 'when 3+ catalysts owned: +7 mult',
     flavorTags: ['flux', 'whisper'],
     effect: (ctx) => {
       // Larger payout when the owner has built a mod-heavy board
@@ -755,6 +799,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['mods', 'collision'],
     weight: 1.0,
     nameTemplate: 'Harmonic',
+    description: '+3 chips per scoring die',
     flavorTags: ['flux', 'memory'],
     effect: (ctx) => {
       // +chips per scoring die (proxy for mod-attached dice).
@@ -769,6 +814,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['collision', 'scaling'],
     weight: 1.0,
     nameTemplate: 'Kinetic',
+    description: '+1 mult per die rolled',
     flavorTags: ['heat', 'flux'],
     effect: (ctx) => {
       // +1 mult per die rolled (proxy for collision count).
@@ -783,6 +829,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['utility', 'timing'],
     weight: 1.0,
     nameTemplate: 'of the Orbit',
+    description: 'when discards + hands is even: +5 mult',
     flavorTags: ['cold', 'paradox'],
     effect: (ctx) => {
       if ((ctx.run.discardsRemaining + ctx.run.handsRemaining) % 2 === 0) {
@@ -798,6 +845,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'mods'],
     weight: 1.0,
     nameTemplate: 'of the Fold',
+    description: '+4 chips per catalyst owned',
     flavorTags: ['paradox', 'flux'],
     effect: (ctx) => {
       // +chips per catalyst owned. Approximates "per affix on this item"
@@ -813,6 +861,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['utility', 'risk'],
     weight: 1.0,
     nameTemplate: 'of the Resonance',
+    description: 'first 2 hands of trial: +8 mult',
     flavorTags: ['whisper', 'flux'],
     effect: (ctx) => {
       if (ctx.trial.rollsThisTrial <= 2) {
@@ -828,6 +877,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'risk'],
     weight: 0.8,
     nameTemplate: 'of the Pact',
+    description: 'on boss + gold < 10: +15 mult',
     flavorTags: ['void', 'whisper'],
     effect: (ctx) => {
       if (ctx.trial.isBossBlind && ctx.run.goldHeld < 10) {
@@ -843,6 +893,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'utility'],
     weight: 1.0,
     nameTemplate: 'of the Archive',
+    description: '+3 chips per catalyst owned',
     flavorTags: ['memory'],
     effect: (ctx) => {
       ctx.chipsBonus += ctx.run.catalystsOwned * 3;
@@ -856,6 +907,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'face'],
     weight: 0.8,
     nameTemplate: 'of the Keystone',
+    description: 'on Straight or better: +4 mult per Wild',
     flavorTags: ['heat', 'memory'],
     effect: (ctx) => {
       // On Straight or better, +mult per Wild face.
@@ -881,6 +933,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo'],
     weight: 0.4,
     nameTemplate: 'of the Ninth Door',
+    description: 'One Pair scores as Three of a Kind',
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
       // Treat One Pair as Three of a Kind for scoring (chips bump).
@@ -898,6 +951,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling'],
     weight: 0.4,
     nameTemplate: 'of the Inverse',
+    description: 'one hand per trial: swaps chips ↔ mult',
     flavorTags: ['paradox', 'void'],
     effect: (ctx) => {
       // For one hand per trial, swap chip and mult bonuses accumulated so far.
@@ -918,6 +972,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing'],
     weight: 0.4,
     nameTemplate: 'of the Eclipse',
+    description: 'on boss blind: +20 mult',
     flavorTags: ['cold', 'void'],
     effect: (ctx) => {
       // On boss blind, big mult payout (placeholder for future rule-skip).
@@ -934,6 +989,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo'],
     weight: 0.4,
     nameTemplate: 'of Sundering',
+    description: 'Two Pair scores as Three of a Kind',
     flavorTags: ['void', 'decay'],
     effect: (ctx) => {
       // Two-Pair scores as if it were Three-of-a-Kind.
@@ -951,6 +1007,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face'],
     weight: 0.4,
     nameTemplate: 'of the Fold',
+    description: '+3 mult per even-valued die',
     flavorTags: ['paradox', 'flux'],
     effect: (ctx) => {
       let evens = 0;
@@ -968,6 +1025,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['economy', 'utility'],
     weight: 0.4,
     nameTemplate: 'of Misplaced Light',
+    description: '+2 gold per unused discard',
     flavorTags: ['paradox', 'cold'],
     effect: (ctx) => {
       // Each unused discard refunds gold via goldBonus.
@@ -982,6 +1040,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['face', 'combo'],
     weight: 0.4,
     nameTemplate: 'Made-of-Borrowed-Hours',
+    description: '+3 mult per adjacent-face dice pair',
     flavorTags: ['memory', 'paradox', 'void'],
     effect: (ctx) => {
       // Adjacent-face heuristic: count consecutive-integer pairs in the
@@ -1002,6 +1061,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'utility'],
     weight: 0.4,
     nameTemplate: 'of the Lacuna',
+    description: 'first activation of trial fires twice',
     flavorTags: ['void', 'memory'],
     effect: (ctx) => {
       // First activation of the trial fires twice (recorded via scratch).

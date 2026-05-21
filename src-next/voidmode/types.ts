@@ -81,6 +81,12 @@ export interface AffixDef {
   // (e.g. 'Cracked', 'of Sundering'). flavorTags filter which flavor
   // lines are eligible to attach to this item.
   nameTemplate: string;
+  // One-liner human-readable description of the mechanical effect.
+  // Surfaced in catalyst-card + offer-card tooltips so players can
+  // read what an affix actually does instead of inferring from the
+  // generated name. Optional — older affixes that pre-date this
+  // field render with the family tag only.
+  description?: string;
   flavorTags: string[];
   effect: (ctx: AffixContext) => void;
   // Optional rule descriptor — only blind affixes set this. When present,

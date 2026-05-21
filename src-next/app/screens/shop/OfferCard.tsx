@@ -335,8 +335,19 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
         <span className="tip-title">{displayName}</span>
         {m.desc}
         {affixList && (
-          <span style={{ display: 'block', marginTop: 6, color: '#c4b5fd', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-            {affixList.map(a => `${a.family}`).join(' · ')}
+          <span style={{ display: 'block', marginTop: 6 }}>
+            {affixList.map((a) => (
+              <span key={a.id} style={{
+                display: 'block',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 10, lineHeight: 1.5, marginTop: 2,
+              }}>
+                <span style={{ color: '#a78bfa', fontWeight: 600 }}>{a.nameTemplate}</span>
+                <span style={{ color: '#dcd4ff', opacity: 0.85 }}>
+                  {a.description ? `: ${a.description}` : ` (${a.family})`}
+                </span>
+              </span>
+            ))}
           </span>
         )}
         {affixFlavor && <span className="tip-flavor" style={{ color: '#a78bfa' }}>{affixFlavor}</span>}

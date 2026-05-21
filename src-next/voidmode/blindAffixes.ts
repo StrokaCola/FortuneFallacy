@@ -25,6 +25,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling', 'timing'],
     weight: 1.0,
     nameTemplate: 'Hollow',
+    description: '+8 chips while this blind is active',
     flavorTags: ['void', 'memory'],
     effect: (ctx) => {
       // Each hand played in the blind earns a flat chip bump — the
@@ -42,6 +43,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling', 'timing'],
     weight: 1.0,
     nameTemplate: 'of Echoes',
+    description: '+4 chips per combo tier',
     flavorTags: ['memory', 'whisper'],
     effect: (ctx) => {
       // Combo tiers echo back as mult. Three-of-a-Kind or better only.
@@ -65,6 +67,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['timing', 'scaling', 'risk'],
     weight: 1.0,
     nameTemplate: 'of Long Silence',
+    description: 'banks per hand; pays out when blind clears',
     flavorTags: ['cold', 'memory'],
     effect: (ctx) => {
       // Banks 2 chips per hand played in this blind. Pays out on the
@@ -86,6 +89,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'scaling', 'risk'],
     weight: 1.0,
     nameTemplate: 'Spectral',
+    description: 'when discards remaining is 0: +10 mult',
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
       // +18 chips, but Pairs and Two-Pairs don't qualify — the trial
@@ -104,6 +108,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['scaling', 'combo', 'timing'],
     weight: 1.0,
     nameTemplate: 'of the Confluence',
+    description: 'on Wild dice + Pair-or-better: +10 chips',
     flavorTags: ['flux', 'memory'],
     effect: (ctx) => {
       // +1 mult per catalyst the player has invested in the run.
@@ -121,6 +126,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'combo', 'timing'],
     weight: 0.4,
     nameTemplate: 'of the Inverted Trial',
+    description: 'swaps base chips and mult once this blind',
     flavorTags: ['paradox', 'void'],
     effect: (ctx) => {
       // On the boss blind, the trial bends — chips bank as mult. Pays
@@ -158,6 +164,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'risk'],
     weight: 0.8,
     nameTemplate: 'Hollow',
+    description: 'One Pair scores 0; +4 mult on every other combo',
     flavorTags: ['void', 'memory'],
     effect: (ctx) => {
       // Compensation for the ban — base mult bump on non-banned combos.
@@ -177,6 +184,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['combo', 'risk'],
     weight: 0.6,
     nameTemplate: 'of the Broken Symmetry',
+    description: 'Two Pair scores 0 this blind',
     flavorTags: ['paradox', 'memory'],
     effect: () => {},
     rule: { kind: 'banCombo', comboId: 'two_pair' },
@@ -194,6 +202,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'timing'],
     weight: 1.0,
     nameTemplate: 'of Curfew',
+    description: 'each reroll consumes 2 from the reroll budget',
     flavorTags: ['cold', 'memory'],
     effect: () => {},
     rule: { kind: 'discardCostMultiplier', multiplier: 2 },
@@ -211,6 +220,7 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     validOn: ['risk', 'timing'],
     weight: 0.5,
     nameTemplate: 'of the Frozen River',
+    description: 'each reroll consumes 3 from the reroll budget',
     flavorTags: ['cold', 'paradox'],
     effect: () => {},
     rule: { kind: 'discardCostMultiplier', multiplier: 3 },

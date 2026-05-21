@@ -388,14 +388,19 @@ export function CatalystCard(props: CatalystCardProps) {
         <span className="tip-title">{affixed?.displayName ?? c.name}</span>
         {c.desc}
         {affixed && (
-          <span style={{
-            display: 'block', marginTop: 6,
-            color: '#c4b5fd',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
-          }}>
-            {affixed.affixes.map((a) => a.family).join(' · ')}
-          </span>
+          <div style={{ display: 'block', marginTop: 6 }}>
+            {affixed.affixes.map((a) => (
+              <div key={a.id} style={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 10, lineHeight: 1.5, marginTop: 2,
+              }}>
+                <span style={{ color: '#a78bfa', fontWeight: 600 }}>{a.nameTemplate}</span>
+                <span style={{ color: '#dcd4ff', opacity: 0.85 }}>
+                  {a.description ? `: ${a.description}` : ` (${a.family})`}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
         {affixed?.flavor
           ? <span className="tip-flavor" style={{ color: '#a78bfa' }}>{affixed.flavor}</span>
