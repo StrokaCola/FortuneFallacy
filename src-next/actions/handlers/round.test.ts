@@ -241,3 +241,55 @@ describe('START_BLIND — void mode blind affixes', () => {
       .toEqual(entryB.affixes.map((x) => x.id));
   });
 });
+
+describe('START_BLIND — Phase 2B.2 activeBlindRules', () => {
+  it('leaves activeBlindRules empty outside void mode', () => {
+    const before = { ...baseState(), round: { ...baseState().round, active: false } };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.activeBlindRules).toEqual([]);
+  });
+
+  it('extracts rule descriptors from rolled blind affixes into run.activeBlindRules', () => {
+    // Sweep many voidSeeds — at least one will roll a rule-bearing affix
+    // from the 4 introduced in Phase 2B.2. The test asserts that WHEN a
+    // rule-bearing affix lands, its rule descriptor surfaces on the
+    // run.activeBlindRules array. We don't pin a specific seed because
+    // the affix pool weights leave roll cadence to the generator.
+    let sawRule = false;
+    for (let seed = 1; seed <= 60 && !sawRule; seed++) {
+      const base = baseState();
+      const before = {
+        ...base,
+        run: { ...base.run, mode: 'void' as const, voidSeed: seed, blindAffixes: {} },
+        round: { ...base.round, active: false },
+      };
+      const r = roundHandler({ type: 'START_BLIND' }, before);
+      const id = r.state.round.blindId!;
+      const entry = r.state.run.blindAffixes[id];
+      const expectedRules = entry?.affixes
+        .map((a) => a.rule)
+        .filter((x) => x !== undefined) ?? [];
+      expect(r.state.run.activeBlindRules).toEqual(expectedRules);
+      if (expectedRules.length > 0) sawRule = true;
+    }
+    // Sanity — across 60 seeds we should hit at least one rule-bearing
+    // roll given the 4 rule-bearing entries in the 10-affix catalog.
+    expect(sawRule).toBe(true);
+  });
+
+  it('clears activeBlindRules from a previous void blind when starting a new one without rules', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      // Normal mode → the new blind shouldn't repopulate rules.
+      run: {
+        ...base.run,
+        mode: 'normal' as const,
+        activeBlindRules: [{ kind: 'banCombo' as const, comboId: 'one_pair' }],
+      },
+      round: { ...base.round, active: false },
+    };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.activeBlindRules).toEqual([]);
+  });
+});

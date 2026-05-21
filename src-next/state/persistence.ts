@@ -137,6 +137,10 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedRun.catalystAffixes = {};
   mergedRun.consumableAffixes = {};
   mergedRun.blindAffixes = {};
+  // Phase 2B.2 — activeBlindRules is a derived ephemeral cache of the
+  // current blind's rule descriptors. Always empty on rehydrate; rolled
+  // afresh on the next START_BLIND when run.mode === 'void'.
+  mergedRun.activeBlindRules = [];
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
   // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.

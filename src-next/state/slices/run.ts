@@ -1,4 +1,4 @@
-import type { AffixedItem } from '../../voidmode/types';
+import type { AffixedItem, BlindRule } from '../../voidmode/types';
 import type { CatalystMeta } from '../../data/catalysts';
 import type { ConsumableDef } from '../../core/consumables';
 import type { BlindDef } from '../../data/blinds';
@@ -33,8 +33,15 @@ export type RunSlice = {
   // applies during the active blind alongside catalyst/consumable affixes.
   // Strictly ephemeral — cleared on rehydrate (state/persistence.ts) and
   // on START_VOID_RUN / END_VOID_RUN. Phase 2B.1: scoring-side only.
-  // Phase 2B.2 will layer rule-injection affixes on top.
+  // Phase 2B.2 layers rule-injection affixes on top (see activeBlindRules).
   blindAffixes: Record<string, AffixedItem<BlindDef>>;
+  // Aggregated active rules from the blindAffixes of the currently active
+  // blind. Refreshed at START_BLIND when the affixes roll; cleared on
+  // CLEAR_BLIND / BUST_BLIND. The scoring pipeline reads this to enforce
+  // banCombo zeroing; the reroll handler reads it to scale discard cost.
+  // Strictly ephemeral — cleared on rehydrate alongside the other
+  // void-mode fields.
+  activeBlindRules: BlindRule[];
   // Display alias shown in the HUD during a void run. Deterministic from
   // voidSeed (see voidmode/nameGenerator.ts generateRunAlias). Empty
   // outside void mode; cleared when leaving void mode.
@@ -238,6 +245,7 @@ export const initialRunSlice = (): RunSlice => ({
   catalystAffixes: {},
   consumableAffixes: {},
   blindAffixes: {},
+  activeBlindRules: [],
   runAlias: '',
   dailyCertified: false,
   shards: 0,

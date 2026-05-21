@@ -17,7 +17,7 @@ import { accrueBlindCleared, isPalindrome } from './scalingHooks';
 import { lookupCatalyst, CATALYST_META } from '../../data/catalysts';
 import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
 import type { BlindDef } from '../../data/blinds';
-import type { AffixedItem } from '../../voidmode/types';
+import type { AffixedItem, BlindRule } from '../../voidmode/types';
 import { generateAffixedItem } from '../../voidmode/affixGenerator';
 import { BLIND_AFFIX_DEFS } from '../../voidmode/blindAffixes';
 import { mulberry32 } from '../rng';
@@ -468,11 +468,21 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // the same blind affix in the same slot. Stored on run.blindAffixes
   // keyed by blindId for the scoring pipeline + TopBar to read.
   // Strictly ephemeral; persistence clears the field on rehydrate.
+  //
+  // Phase 2B.2 — alongside the affix bundle, extract any rule descriptors
+  // (banCombo, discardCostMultiplier) into run.activeBlindRules so the
+  // scoring pipeline + reroll handler can consult them as gameplay-time
+  // gates. Always reset to [] when the current blind doesn't carry rules
+  // so a previous blind's rules don't leak into this one.
   let nextBlindAffixes = s.run.blindAffixes ?? {};
+  let nextActiveBlindRules: BlindRule[] = [];
   if (s.run.mode === 'void') {
     const affixed = rollBlindAffix(blindId, def, s.run.voidSeed, ante, s.run.goalIdx);
     if (affixed) {
       nextBlindAffixes = { ...nextBlindAffixes, [blindId]: affixed };
+      nextActiveBlindRules = affixed.affixes
+        .map((a) => a.rule)
+        .filter((r): r is BlindRule => r !== undefined);
     }
   }
   return {
@@ -488,6 +498,7 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         mirroredHandActive,
         upcomingBossId: isBoss ? null : s.run.upcomingBossId,
         blindAffixes: nextBlindAffixes,
+        activeBlindRules: nextActiveBlindRules,
       },
       round: {
         ...initialRoundSlice(),
@@ -722,6 +733,10 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         // Mirrors the meta.cosmicDust grant above so the two stay in sync.
         runStats: addDustToRunStats(s.run.runStats, dustGained),
         upcomingBossId: nextUpcomingBossId,
+        // Phase 2B.2 — clear active blind rules on blind end; the next
+        // START_BLIND will repopulate from whatever affixes the next
+        // blind rolls.
+        activeBlindRules: [],
       },
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
@@ -853,6 +868,9 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         // the postmortem so the player sees they made progress even on a
         // failed run.
         runStats: addDustToRunStats(s.run.runStats, dustGained),
+        // Phase 2B.2 — clear active blind rules on bust so a refresh into
+        // the fail screen doesn't carry stale rules into the next blind.
+        activeBlindRules: [],
       },
       meta: {
         ...s.meta,
