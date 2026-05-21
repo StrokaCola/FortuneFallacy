@@ -1,0 +1,464 @@
+/* VoidScene — the full 11-layer cosmic backdrop that replaces the
+   simple violet tint when run.mode === 'void'. Lifted verbatim from
+   /tmp/design-extract/falacy-bosses/project/falacy-bg/bg-void-combined.html
+   with everything scoped to `.void-scene` so the variant `--v-*` tokens
+   only apply inside the wrapper (and not to the rest of the app).
+
+   z-order inside the wrapper (bottom → top):
+     0  bg-void                 deep field
+     1  bg-streaks              tidal star-streaks (conic)
+     1  bg-stardust             far stardust speckle
+     2  void-shell × 3          spiraling dust
+     3  web-svg                 lensed lattice rings (curls inward)
+     4  accretion-halo          soft blurred disk halo
+     5  accretion-disk          sharp tilted disk ring (doppler)
+     6  photon-orbits           thin counter-rotating orbits
+     6  photon-ring             thin bright ring at horizon
+     7  event-horizon           solid black disk
+     8  bg-tension-wash         crimson multiply
+     9  bg-progress-underwash   gold screen wash
+    10  bg-progress-halo        gold bloom from centre
+
+   The `--cosmos-*` palette tokens already live in styles/index.css —
+   only the per-variant `--v-*` slots are defined here.
+*/
+
+/* Wrapper covers the viewport, ignores pointer events, and creates
+   its own stacking context for the layers below. */
+.void-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  isolation: isolate;
+
+  /* Reactive props, default values; runtime overrides via inline style. */
+  --tension: 0;
+  --progress: 0;
+  --infall-mul: calc(1 + 0.6 * var(--tension));
+  --horizon-r: calc(10vmin - 1.2vmin * var(--tension));
+  --lens-pull: calc(2 * max(0, var(--tension) - 0.5));
+
+  /* Default variant slots (lyra). Each `.void-scene[data-variant="..."]`
+     block below overrides these eight slots. */
+  --v-lattice:      #7be3ff;
+  --v-lattice-deep: #e2334a;
+  --v-orbit-a:      #f5c451;
+  --v-orbit-b:      #7be3ff;
+  --v-disk-hot:     #f5c451;
+  --v-disk-warm:    #ff7847;
+  --v-disk-cool:    #7be3ff;
+  --v-shell-a:      #7647f5;
+  --v-shell-b:      #7be3ff;
+  --v-shell-c:      #ff7847;
+  --v-rim:          rgba(245,196,81,0.6);
+}
+
+/* ── VARIANT DEFINITIONS — one block per screen ──
+   The disk doppler stays palette-coherent inside each variant (warm
+   peak through warm mid into the cool side) but the hue family shifts
+   to give each screen its own identity. */
+
+/* Hub / Lyra — cyan dominant. The "rest state" of VOID mode. */
+.void-scene[data-variant="lyra"] {
+  --v-lattice:      #7be3ff;
+  --v-lattice-deep: #e2334a;
+  --v-orbit-a:      #f5c451;
+  --v-orbit-b:      #7be3ff;
+  --v-disk-hot:     #f5c451;
+  --v-disk-warm:    #ff7847;
+  --v-disk-cool:    #7be3ff;
+  --v-shell-a:      #7647f5;
+  --v-shell-b:      #7be3ff;
+  --v-shell-c:      #ff7847;
+  --v-rim:          rgba(245,196,81,0.6);
+}
+/* Shop / Triumvirate — gold dominant, mercantile warmth. */
+.void-scene[data-variant="triumvirate"] {
+  --v-lattice:      #fbbf24;
+  --v-lattice-deep: #ff7847;
+  --v-orbit-a:      #fbbf24;
+  --v-orbit-b:      #f3f0ff;
+  --v-disk-hot:     #fff0c0;
+  --v-disk-warm:    #f5c451;
+  --v-disk-cool:    #ff7847;
+  --v-shell-a:      #b8860b;
+  --v-shell-b:      #fbbf24;
+  --v-shell-c:      #ff7847;
+  --v-rim:          rgba(255,232,180,0.65);
+}
+/* Astral Forge / Ophiuchus — violet, mystical/cosmic. */
+.void-scene[data-variant="ophiuchus"] {
+  --v-lattice:      #a78bfa;
+  --v-lattice-deep: #c084fc;
+  --v-orbit-a:      #f5c451;
+  --v-orbit-b:      #a78bfa;
+  --v-disk-hot:     #dcd4ff;
+  --v-disk-warm:    #9577ff;
+  --v-disk-cool:    #7647f5;
+  --v-shell-a:      #432896;
+  --v-shell-b:      #a78bfa;
+  --v-shell-c:      #7be3ff;
+  --v-rim:          rgba(220,212,255,0.6);
+}
+/* Forge / Fibonacci — rose/ember, smelting heat. */
+.void-scene[data-variant="fibonacci"] {
+  --v-lattice:      #fb7185;
+  --v-lattice-deep: #e2334a;
+  --v-orbit-a:      #ff7847;
+  --v-orbit-b:      #fb7185;
+  --v-disk-hot:     #fff0c0;
+  --v-disk-warm:    #ff7847;
+  --v-disk-cool:    #e2334a;
+  --v-shell-a:      #7647f5;
+  --v-shell-b:      #fb7185;
+  --v-shell-c:      #ff7847;
+  --v-rim:          rgba(255,180,140,0.65);
+}
+/* Codex / Eclipse — desaturated, study-room neutrality. */
+.void-scene[data-variant="eclipse"] {
+  --v-lattice:      #e5e7eb;
+  --v-lattice-deep: #9ca3af;
+  --v-orbit-a:      #f3f0ff;
+  --v-orbit-b:      #bba8ff;
+  --v-disk-hot:     #f3f0ff;
+  --v-disk-warm:    #bba8ff;
+  --v-disk-cool:    #6b7280;
+  --v-shell-a:      #2e1d6b;
+  --v-shell-b:      #6b7280;
+  --v-shell-c:      #bba8ff;
+  --v-rim:          rgba(243,240,255,0.55);
+}
+/* Bestiary / Argo — green, alchemical. */
+.void-scene[data-variant="argo"] {
+  --v-lattice:      #34d399;
+  --v-lattice-deep: #059669;
+  --v-orbit-a:      #34d399;
+  --v-orbit-b:      #7be3ff;
+  --v-disk-hot:     #d1fae5;
+  --v-disk-warm:    #34d399;
+  --v-disk-cool:    #7be3ff;
+  --v-shell-a:      #064e3b;
+  --v-shell-b:      #34d399;
+  --v-shell-c:      #7be3ff;
+  --v-rim:          rgba(167,243,208,0.6);
+}
+/* Boss / Crimson — danger state. Saturation cranked. */
+.void-scene[data-variant="crimson"] {
+  --v-lattice:      #fb7185;
+  --v-lattice-deep: #e2334a;
+  --v-orbit-a:      #fbbf24;
+  --v-orbit-b:      #e2334a;
+  --v-disk-hot:     #fbbf24;
+  --v-disk-warm:    #e2334a;
+  --v-disk-cool:    #7647f5;
+  --v-shell-a:      #7f1d1d;
+  --v-shell-b:      #e2334a;
+  --v-shell-c:      #ff7847;
+  --v-rim:          rgba(255,140,140,0.7);
+}
+
+/* ── BACKGROUND LAYERS ── */
+
+/* Deep void field. */
+.void-scene .bg-void {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 50%,
+    var(--void-black, #000000) 0%,
+    #030210 22%,
+    var(--cosmos-950) 55%,
+    var(--cosmos-900) 100%
+  );
+}
+
+/* Tidal star streaks — same conic spokes as the singularity. */
+.void-scene .bg-streaks {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    conic-gradient(from 0deg at 50% 50%,
+      transparent 0deg,        rgba(243,240,255,0.10) 0.3deg, transparent 0.6deg,
+      transparent 18deg,       rgba(220,212,255,0.08) 18.2deg, transparent 18.5deg,
+      transparent 41deg,       rgba(123,227,255,0.09) 41.3deg, transparent 41.6deg,
+      transparent 67deg,       rgba(243,240,255,0.07) 67.2deg, transparent 67.5deg,
+      transparent 92deg,       rgba(245,196,81,0.06)  92.3deg, transparent 92.6deg,
+      transparent 118deg,      rgba(220,212,255,0.08) 118.2deg, transparent 118.5deg,
+      transparent 144deg,      rgba(243,240,255,0.09) 144.3deg, transparent 144.6deg,
+      transparent 171deg,      rgba(123,227,255,0.07) 171.2deg, transparent 171.5deg,
+      transparent 199deg,      rgba(243,240,255,0.08) 199.3deg, transparent 199.6deg,
+      transparent 226deg,      rgba(245,196,81,0.05)  226.2deg, transparent 226.5deg,
+      transparent 252deg,      rgba(220,212,255,0.09) 252.3deg, transparent 252.6deg,
+      transparent 278deg,      rgba(243,240,255,0.08) 278.2deg, transparent 278.5deg,
+      transparent 304deg,      rgba(123,227,255,0.07) 304.3deg, transparent 304.6deg,
+      transparent 331deg,      rgba(243,240,255,0.10) 331.2deg, transparent 331.5deg,
+      transparent 360deg
+    );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 13%, black 28%, black 78%, transparent 100%);
+          mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 13%, black 28%, black 78%, transparent 100%);
+  opacity: calc(0.55 + 0.35 * var(--tension));
+}
+
+/* Far-field stardust. */
+.void-scene .bg-stardust {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background-image:
+    radial-gradient(circle 1px at 18% 22%, rgba(243,240,255,0.5), transparent 60%),
+    radial-gradient(circle 0.8px at 62% 78%, rgba(243,240,255,0.4), transparent 60%),
+    radial-gradient(circle 1.2px at 86% 14%, rgba(123,227,255,0.55), transparent 60%),
+    radial-gradient(circle 0.6px at 38% 56%, rgba(243,240,255,0.35), transparent 60%),
+    radial-gradient(circle 0.9px at 12% 84%, rgba(243,240,255,0.4), transparent 60%),
+    radial-gradient(circle 1.1px at 72% 32%, rgba(220,212,255,0.45), transparent 60%),
+    radial-gradient(circle 0.7px at 8% 48%, rgba(245,196,81,0.3), transparent 60%);
+  background-size: 320px 320px, 280px 280px, 360px 360px, 240px 240px, 300px 300px, 340px 340px, 260px 260px;
+  background-position: 0 0, 60px 40px, 120px 80px, 0 160px, 180px 0, 80px 220px, 220px 140px;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 30%, black 55%, black 100%);
+          mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 30%, black 55%, black 100%);
+  opacity: 0.6;
+}
+
+/* Spiraling dust shells — three layers, each consumes a variant
+   shell color so screen themes can repaint the dust. */
+.void-scene .void-shell {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  will-change: transform, opacity;
+  filter: blur(38px);
+  transform-origin: 50% 50%;
+  transition: background 800ms var(--ease-savor);
+}
+.void-scene .void-shell.back {
+  background: radial-gradient(ellipse 38% 22% at 50% 50%,
+    transparent 0%, transparent 28%,
+    color-mix(in oklab, var(--v-shell-a) 60%, transparent) 38%,
+    color-mix(in oklab, var(--v-shell-a) 22%, transparent) 52%,
+    transparent 70%);
+  animation: void-spiral-back calc(140s / var(--infall-mul)) linear infinite;
+  opacity: calc(0.42 + 0.28 * var(--tension));
+}
+.void-scene .void-shell.mid {
+  background: radial-gradient(ellipse 30% 28% at 50% 50%,
+    transparent 0%, transparent 22%,
+    color-mix(in oklab, var(--v-shell-b) 50%, transparent) 32%,
+    color-mix(in oklab, var(--v-shell-b) 18%, transparent) 48%,
+    transparent 68%);
+  animation: void-spiral-mid calc(90s / var(--infall-mul)) linear infinite reverse;
+  opacity: calc(0.48 + 0.30 * var(--tension));
+}
+.void-scene .void-shell.front {
+  background: radial-gradient(ellipse 22% 18% at 50% 50%,
+    transparent 0%, transparent 18%,
+    color-mix(in oklab, var(--v-shell-c) 50%, transparent) 26%,
+    color-mix(in oklab, var(--v-shell-c) 16%, transparent) 42%,
+    transparent 60%);
+  animation: void-spiral-front calc(60s / var(--infall-mul)) linear infinite;
+  opacity: calc(0.40 + 0.32 * var(--tension));
+}
+@keyframes void-spiral-back  { 0%{transform:rotate(0deg)   scale(1.05)} 50%{transform:rotate(180deg) scale(0.95)} 100%{transform:rotate(360deg) scale(1.05)} }
+@keyframes void-spiral-mid   { 0%{transform:rotate(0deg)   scale(0.98)} 50%{transform:rotate(180deg) scale(1.08)} 100%{transform:rotate(360deg) scale(0.98)} }
+@keyframes void-spiral-front { 0%{transform:rotate(0deg)   scale(1.02)} 50%{transform:rotate(180deg) scale(0.92)} 100%{transform:rotate(360deg) scale(1.02)} }
+
+/* ── Lensed lattice SVG — sits BETWEEN the dust shells and the
+      accretion disk so it reads as gravitationally-bound stars
+      captured around the hole. Rings curl inward as tension
+      climbs. ── */
+.void-scene .web-svg {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  width: 100%; height: 100%;
+  /* Lattice sits subordinate to the disk + horizon — the rings are
+     there to support the gravitational-capture read, not to compete
+     with the accretion structure. */
+  opacity: 0.62;
+}
+.void-scene .web-rotator {
+  transform-origin: 50% 50%;
+  animation: web-rotate 220s linear infinite;
+  will-change: transform;
+}
+@keyframes web-rotate { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+.void-scene .ring-1 { transform-origin: 50% 50%; transform: scale(1); transition: transform 1200ms var(--ease-savor); }
+.void-scene .ring-2 { transform-origin: 50% 50%; transform: scale(calc(1 - 0.08 * var(--lens-pull))); transition: transform 1200ms var(--ease-savor); }
+.void-scene .ring-3 { transform-origin: 50% 50%; transform: scale(calc(1 - 0.22 * var(--lens-pull))); transition: transform 1200ms var(--ease-savor); }
+.void-scene .web-line {
+  stroke: var(--v-lattice);
+  stroke-width: 0.16;
+  stroke-linecap: round;
+  fill: none;
+  opacity: calc(0.32 + 0.42 * var(--tension));
+  transition: opacity 600ms var(--ease-savor), stroke 800ms var(--ease-savor);
+  filter: drop-shadow(0 0 0.5px var(--v-lattice));
+}
+.void-scene .web-line.redshifted {
+  stroke: var(--v-lattice-deep);
+  opacity: calc(0.22 + 0.55 * var(--tension));
+  filter: drop-shadow(0 0 0.6px var(--v-lattice-deep));
+}
+.void-scene .web-node {
+  fill: var(--v-lattice);
+  opacity: calc(0.65 + 0.30 * var(--tension));
+  transition: opacity 600ms var(--ease-savor), fill 800ms var(--ease-savor);
+  filter: drop-shadow(0 0 1px var(--v-lattice));
+}
+.void-scene .web-node.redshifted {
+  fill: var(--v-lattice-deep);
+  filter: drop-shadow(0 0 1.4px var(--v-lattice-deep));
+}
+.void-scene .web-node-bright {
+  fill: var(--cosmos-50);
+  opacity: 0.92;
+  filter: drop-shadow(0 0 2px var(--v-lattice));
+}
+
+/* ── Accretion structure ── */
+.void-scene .accretion-halo {
+  position: absolute; left: 50%; top: 50%;
+  width: 140vmin; height: 140vmin;
+  transform: translate(-50%, -50%) rotateX(72deg);
+  z-index: 4; pointer-events: none;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg at 50% 50%,
+    transparent 0%,
+    color-mix(in oklab, var(--v-disk-cool) 40%, transparent) 10%,
+    color-mix(in oklab, var(--v-disk-hot) 50%, transparent) 22%,
+    color-mix(in oklab, var(--v-disk-hot) 55%, transparent) 32%,
+    color-mix(in oklab, var(--v-disk-warm) 50%, transparent) 48%,
+    color-mix(in oklab, var(--v-lattice-deep) 38%, transparent) 62%,
+    color-mix(in oklab, var(--v-shell-a) 30%, transparent) 78%,
+    transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 28%, black 42%, black 60%, transparent 78%);
+          mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 28%, black 42%, black 60%, transparent 78%);
+  filter: blur(22px) saturate(1.1);
+  animation: disk-rotate calc(80s / var(--infall-mul)) linear infinite;
+  opacity: calc(0.55 + 0.30 * var(--tension));
+  transition: background 800ms var(--ease-savor);
+}
+.void-scene .accretion-disk {
+  position: absolute; left: 50%; top: 50%;
+  width: 120vmin; height: 120vmin;
+  transform: translate(-50%, -50%) rotateX(72deg);
+  z-index: 5; pointer-events: none;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg at 50% 50%,
+    transparent 0%,
+    color-mix(in oklab, var(--v-disk-cool) 70%, transparent) 8%,
+    var(--cosmos-50) 18%,
+    var(--v-disk-hot) 30%,
+    color-mix(in oklab, var(--v-disk-warm) 75%, transparent) 45%,
+    color-mix(in oklab, var(--v-lattice-deep) 50%, transparent) 60%,
+    color-mix(in oklab, var(--v-shell-a) 35%, transparent) 75%,
+    color-mix(in oklab, var(--v-shell-a) 12%, transparent) 88%,
+    transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 33%, black 38%, black 47%, transparent 52%, transparent 100%);
+          mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 33%, black 38%, black 47%, transparent 52%, transparent 100%);
+  filter: blur(2px) saturate(1.15);
+  animation: disk-rotate calc(80s / var(--infall-mul)) linear infinite;
+  will-change: transform;
+  opacity: calc(0.80 + 0.20 * var(--tension));
+  transition: background 800ms var(--ease-savor);
+}
+@keyframes disk-rotate {
+  0%   { transform: translate(-50%, -50%) rotateX(72deg) rotateZ(0deg); }
+  100% { transform: translate(-50%, -50%) rotateX(72deg) rotateZ(360deg); }
+}
+
+/* Photon ring — uses variant rim color. */
+.void-scene .photon-ring {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--horizon-r) * 2.8);
+  height: calc(var(--horizon-r) * 2.8);
+  transform: translate(-50%, -50%);
+  z-index: 6; pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    transparent 0%, transparent 64%,
+    var(--v-rim) 70%,
+    var(--v-disk-hot) 73%,
+    rgba(243, 240, 255, 0.45) 76%,
+    transparent 82%);
+  filter: blur(1px);
+  transition: width 800ms var(--ease-savor), height 800ms var(--ease-savor), background 800ms var(--ease-savor);
+}
+
+/* Inner photon orbits — two thin counter-rotating rings just
+   outside the horizon, lifted from the lensed-lattice variant. */
+.void-scene .photon-orbits {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--horizon-r) * 3.4);
+  height: calc(var(--horizon-r) * 3.4);
+  transform: translate(-50%, -50%);
+  z-index: 6; pointer-events: none;
+  border-radius: 50%;
+  border: 0.5px solid var(--v-orbit-a);
+  box-shadow:
+    inset 0 0 6px var(--v-orbit-a),
+    0 0 8px color-mix(in oklab, var(--v-orbit-a) 50%, transparent);
+  opacity: calc(0.45 + 0.35 * var(--tension));
+  animation: orbit-spin 40s linear infinite;
+  transition: opacity 600ms var(--ease-savor), border-color 800ms var(--ease-savor);
+}
+.void-scene .photon-orbits.alt {
+  width: calc(var(--horizon-r) * 4.0);
+  height: calc(var(--horizon-r) * 4.0);
+  border: 0.5px solid var(--v-orbit-b);
+  box-shadow:
+    inset 0 0 6px var(--v-orbit-b),
+    0 0 8px color-mix(in oklab, var(--v-orbit-b) 50%, transparent);
+  animation: orbit-spin 60s linear infinite reverse;
+}
+@keyframes orbit-spin { 0%{transform:translate(-50%,-50%) rotate(0deg)} 100%{transform:translate(-50%,-50%) rotate(360deg)} }
+
+/* Event horizon. */
+.void-scene .event-horizon {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--horizon-r) * 2);
+  height: calc(var(--horizon-r) * 2);
+  transform: translate(-50%, -50%);
+  z-index: 7; pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    var(--void-black, #000000) 0%,
+    var(--void-black, #000000) 80%,
+    rgba(0,0,0,0.85) 95%,
+    transparent 100%);
+  transition: width 800ms var(--ease-savor), height 800ms var(--ease-savor);
+}
+
+/* Reactive washes. */
+.void-scene .bg-tension-wash {
+  position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  background: radial-gradient(circle at center,
+    transparent 35%,
+    rgba(226,51,74,0.85) 75%,
+    rgba(226,51,74,1) 100%);
+  mix-blend-mode: multiply;
+  opacity: calc(max(0, var(--tension) - 0.3) * 0.357);
+  transition: opacity 600ms ease;
+}
+.void-scene .bg-progress-underwash {
+  position: absolute; inset: 0; z-index: 9; pointer-events: none;
+  background: radial-gradient(ellipse 60% 40% at 50% 50%,
+    transparent 22%,
+    rgba(245, 196, 81, 0.42) 38%,
+    rgba(245, 196, 81, 0.14) 55%,
+    transparent 75%);
+  mix-blend-mode: screen;
+  opacity: calc(max(0, var(--progress) - 0.6) * 0.55);
+  transition: opacity 1200ms var(--ease-savor);
+}
+.void-scene .bg-progress-halo {
+  position: absolute; inset: 0; z-index: 10; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255, 232, 180, 0.90) 0%,
+    rgba(255, 232, 180, 0.50) 14%,
+    rgba(255, 232, 180, 0.10) 28%,
+    transparent 48%);
+  mix-blend-mode: screen;
+  opacity: calc(max(0, var(--progress) - 1.0) * 0.7);
+  transition: opacity 800ms var(--ease-savor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .void-scene .void-shell,
+  .void-scene .accretion-disk,
+  .void-scene .accretion-halo,
+  .void-scene .web-rotator,
+  .void-scene .photon-orbits { animation: none !important; }
+}
