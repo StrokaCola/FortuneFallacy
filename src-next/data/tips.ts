@@ -53,6 +53,12 @@ export const TIPS: readonly string[] = [
   'Three sevens still mean something at a slot machine.',
   'The first three dice of a brand-new run sometimes spell a constant.',
   'Two names that read the same forward and back tie a knot at the start of every blind.',
+  // Void-mode hints — cryptic, never naming the portal directly.
+  'Stare at the corner of the title long enough and the corner stares back.',
+  'Below the lattice of stars there is a hole the stars do not cross.',
+  'The dice are rolled. The table sometimes is too.',
+  'Something at the edge of the table is not looking at the dice.',
+  'A name you have not chosen waits for you somewhere past the curtain.',
 
   // Fiction nudges
   'The gambler\'s fallacy says the next roll knows the last. The dice do not.',
