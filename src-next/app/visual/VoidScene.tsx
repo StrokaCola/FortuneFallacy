@@ -22,6 +22,7 @@
 // media query at the bottom of VoidScene.css.
 
 import type { CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import './VoidScene.css';
 
 export type VoidVariant =
@@ -172,7 +173,15 @@ export function VoidScene({ active, variant, tension, progress }: Props) {
   const t = Number.isFinite(tension) ? Math.max(0, Math.min(1, tension)) : 0;
   const p = Number.isFinite(progress) ? Math.max(0, Math.min(2, progress)) : 0;
 
-  return (
+  // Portal target: <div id="void-root"> in index.html, a sibling of
+  // #cosmos-root and #three-next inside #stage-root. Rendering here
+  // (instead of inside #next-root) lets the scene sit BETWEEN the
+  // cosmos background and the 3D dice canvas in the stage stacking
+  // order — dice + UI both paint above the scene as designed.
+  const host = typeof document !== 'undefined' ? document.getElementById('void-root') : null;
+  if (!host) return null;
+
+  const scene = (
     <div
       data-testid="void-scene"
       className="void-scene"
@@ -204,4 +213,6 @@ export function VoidScene({ active, variant, tension, progress }: Props) {
       <div className="bg-progress-halo" aria-hidden="true" />
     </div>
   );
+
+  return createPortal(scene, host);
 }

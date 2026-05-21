@@ -1,22 +1,34 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { VoidScene } from './VoidScene';
 
-afterEach(() => cleanup());
+// VoidScene portals into #void-root (a static node in index.html
+// alongside #cosmos-root / #three-next / #next-root). Tests provision
+// the same host on document.body and query against it.
+beforeEach(() => {
+  const root = document.createElement('div');
+  root.id = 'void-root';
+  document.body.appendChild(root);
+});
+
+afterEach(() => {
+  cleanup();
+  document.getElementById('void-root')?.remove();
+});
+
+function getScene(): HTMLElement | null {
+  return document.querySelector('#void-root [data-testid="void-scene"]') as HTMLElement | null;
+}
 
 describe('<VoidScene />', () => {
   it('renders nothing when active is false', () => {
-    const { container } = render(
-      <VoidScene active={false} variant="lyra" tension={0} progress={0} />,
-    );
-    expect(container.querySelector('[data-testid="void-scene"]')).toBeFalsy();
+    render(<VoidScene active={false} variant="lyra" tension={0} progress={0} />);
+    expect(getScene()).toBeFalsy();
   });
 
   it('renders the layer stack when active', () => {
-    const { container } = render(
-      <VoidScene active={true} variant="lyra" tension={0} progress={0} />,
-    );
-    const scene = container.querySelector('[data-testid="void-scene"]');
+    render(<VoidScene active={true} variant="lyra" tension={0} progress={0} />);
+    const scene = getScene();
     expect(scene).toBeTruthy();
     // 11 named cosmetic layers from the design — confirm they all mount.
     expect(scene?.querySelector('.bg-void')).toBeTruthy();
@@ -35,28 +47,27 @@ describe('<VoidScene />', () => {
   });
 
   it('applies the variant via data-variant', () => {
-    const { container } = render(
-      <VoidScene active={true} variant="crimson" tension={0.5} progress={0.5} />,
-    );
-    const scene = container.querySelector('[data-testid="void-scene"]');
-    expect(scene?.getAttribute('data-variant')).toBe('crimson');
+    render(<VoidScene active={true} variant="crimson" tension={0.5} progress={0.5} />);
+    expect(getScene()?.getAttribute('data-variant')).toBe('crimson');
   });
 
   it('forwards tension + progress as CSS custom properties', () => {
-    const { container } = render(
-      <VoidScene active={true} variant="lyra" tension={0.7} progress={1.2} />,
-    );
-    const scene = container.querySelector('[data-testid="void-scene"]') as HTMLElement | null;
+    render(<VoidScene active={true} variant="lyra" tension={0.7} progress={1.2} />);
+    const scene = getScene();
     expect(scene?.style.getPropertyValue('--tension')).toBe('0.7');
     expect(scene?.style.getPropertyValue('--progress')).toBe('1.2');
   });
 
   it('clamps out-of-range tension to [0,1] and progress to [0,2]', () => {
-    const { container } = render(
-      <VoidScene active={true} variant="lyra" tension={5} progress={-3} />,
-    );
-    const scene = container.querySelector('[data-testid="void-scene"]') as HTMLElement | null;
+    render(<VoidScene active={true} variant="lyra" tension={5} progress={-3} />);
+    const scene = getScene();
     expect(scene?.style.getPropertyValue('--tension')).toBe('1');
     expect(scene?.style.getPropertyValue('--progress')).toBe('0');
+  });
+
+  it('returns null when #void-root is absent', () => {
+    document.getElementById('void-root')?.remove();
+    render(<VoidScene active={true} variant="lyra" tension={0} progress={0} />);
+    expect(getScene()).toBeFalsy();
   });
 });

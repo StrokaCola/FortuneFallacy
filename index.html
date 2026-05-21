@@ -76,6 +76,14 @@
 <div id="stage-root">
   <div id="cosmos-root"></div>
   <canvas id="three-next"></canvas>
+  <!-- Void Mode background-scene host. Sits between cosmos and the
+       dice canvas so the procgen black-hole scene replaces the
+       cosmos backdrop while the 3D dice still render above it. The
+       React app portals <VoidScene /> into this node when run.mode
+       === 'void'; outside void it stays empty. Same z as cosmos
+       (z=0) — document order puts it above cosmos but the dice
+       canvas (z=1) and #next-root (z=2) paint above. -->
+  <div id="void-root" style="position:absolute;inset:0;z-index:0;pointer-events:none;"></div>
   <div id="next-root"></div>
 </div>
 <script src="./portal.js"></script>
