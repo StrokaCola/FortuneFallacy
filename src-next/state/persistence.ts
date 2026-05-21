@@ -93,6 +93,11 @@ export function applySavedToInitial(s: GameState): GameState {
     // don't get the tour prompt out of nowhere — they can replay via
     // Settings if they want it.
     firstLaunch: savedOnb.firstLaunch ?? false,
+    // seenVoidEasterEgg (added 2026-05-20) gates the one-shot Void Mode
+    // onboarding modal. Legacy saves predating the field default to
+    // false so existing players see the easter-egg explainer once on
+    // their next void run.
+    seenVoidEasterEgg: savedOnb.seenVoidEasterEgg ?? false,
   };
   const savedDisc = mergedMeta.discovered ?? {};
   // Galaxies (Celestial Pack contents) are seeded as discovered for
