@@ -24,11 +24,16 @@
 */
 
 /* Wrapper covers the viewport, ignores pointer events, and creates
-   its own stacking context for the layers below. */
+   its own stacking context for the layers below. z-index -2 places
+   the scene BELOW the screen-content wrapper (which is positioned
+   with z=auto and paints at stacking step 6 per CSS 2.1) while still
+   sitting ABOVE the CosmosBackground at z=-5. App.tsx hides
+   HorizonBackdrop in void mode so the scene's deep-field layer is
+   the only background visible. */
 .void-scene {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -2;
   pointer-events: none;
   isolation: isolate;
 

@@ -293,8 +293,22 @@ export function App() {
             cosmos-first: 18% horizon + 82% sky, smaller architecture
             accents with glowing auras + orbital sparkles. Iframe owns
             its own RAF + ResizeObserver. ScreenSilhouette stays
-            imported as a quick rollback fallback. */}
-        <HorizonBackdrop screen={screen} />
+            imported as a quick rollback fallback.
+            Suppressed in void mode — VoidScene's bg-void layer owns
+            the deep field there, and HorizonBackdrop's z=0 would
+            paint over the scene's negative-z wrapper. */}
+        {!voidMode && <HorizonBackdrop screen={screen} />}
+        {/* Void Mode background scene. Mounted BEFORE the screen
+            wrapper so screens (which paint at stacking step 6 as
+            positioned z=auto descendants) sit above the scene's
+            z=-2 wrapper. Modals, badge, and onboarding stay later
+            in the tree so they paint above screens + scene. */}
+        <VoidScene
+          active={voidMode}
+          variant={voidVariant}
+          tension={cosmosTension}
+          progress={cosmosProgress}
+        />
 
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>
@@ -370,19 +384,10 @@ export function App() {
         <TutorialController />
         <TutorialOptInModal />
         <AfterglowOverlay />
-        {/* Void Mode global scene + onboarding + HUD badge. Spans every
-            in-run screen (Round, Shop, Hub, Forge, etc.) — mode flips back
-            to 'normal' on END_VOID_RUN which routes to Title, so these
-            unmount naturally when the player leaves the run. The scene
-            picks its color variant per screen (boss rounds override to
-            crimson) and reactives to the same tension/progress signals
-            that drive CosmosBackground. */}
-        <VoidScene
-          active={voidMode}
-          variant={voidVariant}
-          tension={cosmosTension}
-          progress={cosmosProgress}
-        />
+        {/* VoidScene mounted earlier in the tree (above the screen
+            wrapper) so screens paint above its negative-z background.
+            VoidOnboarding stays here as a modal layer so it sits
+            above everything including the scene + screen content. */}
         <VoidOnboarding />
         {voidMode && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
         {import.meta.env.DEV && <DevConsole />}
