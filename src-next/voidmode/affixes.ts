@@ -27,7 +27,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     nameTemplate: 'Cracked',
     flavorTags: ['decay'],
     effect: (ctx) => {
-      if (ctx.hand.comboId === 'pair' || ctx.hand.comboId === 'two_pair') {
+      if (ctx.hand.comboId === 'one_pair' || ctx.hand.comboId === 'two_pair') {
         ctx.chipsBonus += 15;
       }
     },
@@ -567,7 +567,7 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
       // +12 mult, but disables on Straight.
-      if (ctx.hand.comboId === 'straight' || ctx.hand.comboId === 'straight_flush') return;
+      if (ctx.hand.comboId === 'sm_straight' || ctx.hand.comboId === 'lg_straight') return;
       ctx.multBonus += 12;
     },
   },
@@ -883,9 +883,9 @@ export const AFFIX_DEFS: ReadonlyArray<AffixDef> = [
     nameTemplate: 'of the Ninth Door',
     flavorTags: ['void', 'paradox'],
     effect: (ctx) => {
-      // Treat Pair as Three of a Kind for scoring (chips bump).
-      if (ctx.hand.comboId === 'pair') {
-        ctx.chipsBonus += 30;  // delta between Pair and Three of a Kind base chips
+      // Treat One Pair as Three of a Kind for scoring (chips bump).
+      if (ctx.hand.comboId === 'one_pair') {
+        ctx.chipsBonus += 30;  // delta between One Pair and Three of a Kind base chips
         ctx.multBonus += 1;
       }
     },
