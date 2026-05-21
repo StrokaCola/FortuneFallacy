@@ -58,9 +58,17 @@ function rarityTierFor(rarity: ItemRarity, affixCount: number): AffixedItem['rar
   return 'normal';
 }
 
+export interface GenerateAffixedItemOptions {
+  // Override the affix pool the generator picks from. Defaults to the
+  // catalyst-side AFFIX_DEFS so existing callers keep their behaviour;
+  // blind affixes pass BLIND_AFFIX_DEFS to roll trial-flavored variants.
+  pool?: ReadonlyArray<AffixDef>;
+}
+
 export function generateAffixedItem<T extends AffixGeneratorBase>(
   rng: SeededRng,
   base: T,
+  opts: GenerateAffixedItemOptions = {},
 ): AffixedItem<T> {
   const tags = base.archetypeTags ?? [];
   if (tags.length === 0) {
@@ -80,7 +88,8 @@ export function generateAffixedItem<T extends AffixGeneratorBase>(
   const taken: AffixDef[] = [];
 
   const isMythic = rarity === 'mythic';
-  const pool = AFFIX_DEFS.filter(a => isMythic || a.slot !== 'mid');
+  const sourcePool = opts.pool ?? AFFIX_DEFS;
+  const pool = sourcePool.filter(a => isMythic || a.slot !== 'mid');
 
   for (let i = 0; i < 5; i++) {
     const eligible = pool.filter(a => affixFits(a, tags, taken, budget));

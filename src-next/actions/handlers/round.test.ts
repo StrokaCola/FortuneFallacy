@@ -198,3 +198,46 @@ describe('SKIP_BLIND', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('START_BLIND — void mode blind affixes', () => {
+  it('does not populate blindAffixes outside void mode', () => {
+    const before = { ...baseState(), round: { ...baseState().round, active: false } };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.blindAffixes).toEqual({});
+  });
+
+  it('populates blindAffixes[blindId] when run.mode === "void"', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      run: { ...base.run, mode: 'void' as const, voidSeed: 7777, blindAffixes: {} },
+      round: { ...base.round, active: false },
+    };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    const id = r.state.round.blindId!;
+    expect(id).toBeTruthy();
+    const entry = r.state.run.blindAffixes[id];
+    expect(entry).toBeDefined();
+    expect(entry!.displayName.length).toBeGreaterThan(0);
+    expect(entry!.baseId).toBe(id);
+  });
+
+  it('is deterministic — same voidSeed + slot rolls the same affix', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      run: { ...base.run, mode: 'void' as const, voidSeed: 4242, blindAffixes: {} },
+      round: { ...base.round, active: false },
+    };
+    const a = roundHandler({ type: 'START_BLIND' }, before);
+    const b = roundHandler({ type: 'START_BLIND' }, before);
+    const idA = a.state.round.blindId!;
+    const idB = b.state.round.blindId!;
+    expect(idA).toBe(idB);
+    const entryA = a.state.run.blindAffixes[idA]!;
+    const entryB = b.state.run.blindAffixes[idB]!;
+    expect(entryA.displayName).toBe(entryB.displayName);
+    expect(entryA.affixes.map((x) => x.id))
+      .toEqual(entryB.affixes.map((x) => x.id));
+  });
+});
