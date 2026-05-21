@@ -88,6 +88,7 @@ export function App() {
   const voidSeed = useStore((s) => s.run.voidSeed);
   const voidAlias = useStore((s) => s.run.runAlias);
   const voidCertified = useStore((s) => s.run.dailyCertified);
+  const paused = useStore((s) => s.ui.paused);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
   // Wave T+1 (2026-05-19) reactive environment pass — track theater
@@ -389,7 +390,7 @@ export function App() {
             VoidOnboarding stays here as a modal layer so it sits
             above everything including the scene + screen content. */}
         <VoidOnboarding />
-        {voidMode && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
+        {voidMode && paused && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
         {import.meta.env.DEV && <SpawnOverlay />}
