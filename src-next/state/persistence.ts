@@ -136,6 +136,7 @@ export function applySavedToInitial(s: GameState): GameState {
   mergedRun.dailyCertified = false;
   mergedRun.catalystAffixes = {};
   mergedRun.consumableAffixes = {};
+  mergedRun.blindAffixes = {};
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
   // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.

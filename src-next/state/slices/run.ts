@@ -1,6 +1,7 @@
 import type { AffixedItem } from '../../voidmode/types';
 import type { CatalystMeta } from '../../data/catalysts';
 import type { ConsumableDef } from '../../core/consumables';
+import type { BlindDef } from '../../data/blinds';
 
 export type RunSlice = {
   seed: number;
@@ -26,6 +27,14 @@ export type RunSlice = {
   // applyAffixesPhase shape can read consumable affixes later by
   // extending `collectAffixedItems` in voidmode/voidRun.ts.
   consumableAffixes: Record<string, AffixedItem<ConsumableDef>>;
+  // Per-blind rolled affixes (void mode only). Keyed by blind id (boss
+  // blind id, or the trial slug like 'lesser_trial'/'greater_trial'). Each
+  // entry is the procgen-generated affix bundle the scoring pipeline
+  // applies during the active blind alongside catalyst/consumable affixes.
+  // Strictly ephemeral — cleared on rehydrate (state/persistence.ts) and
+  // on START_VOID_RUN / END_VOID_RUN. Phase 2B.1: scoring-side only.
+  // Phase 2B.2 will layer rule-injection affixes on top.
+  blindAffixes: Record<string, AffixedItem<BlindDef>>;
   // Display alias shown in the HUD during a void run. Deterministic from
   // voidSeed (see voidmode/nameGenerator.ts generateRunAlias). Empty
   // outside void mode; cleared when leaving void mode.
@@ -228,6 +237,7 @@ export const initialRunSlice = (): RunSlice => ({
   voidSeed: 0,
   catalystAffixes: {},
   consumableAffixes: {},
+  blindAffixes: {},
   runAlias: '',
   dailyCertified: false,
   shards: 0,

@@ -114,6 +114,7 @@ describe('applySavedToInitial', () => {
         dailyCertified: true,
         catalystAffixes: { burst_card: { base: {} as never, baseId: 'burst_card', affixes: [], displayName: 'x', flavor: '', budgetSpent: 0, rarityTier: 'normal' as const } },
         consumableAffixes: { andromeda: { base: {} as never, baseId: 'andromeda', affixes: [], displayName: 'x', flavor: '', budgetSpent: 0, rarityTier: 'normal' as const } },
+        blindAffixes: { lesser_trial: { base: {} as never, baseId: 'lesser_trial', affixes: [], displayName: 'x', flavor: '', budgetSpent: 0, rarityTier: 'normal' as const } },
       },
       meta: initialMetaSlice(),
       round: initialRoundSlice(),
@@ -128,6 +129,7 @@ describe('applySavedToInitial', () => {
     expect(result.run.dailyCertified).toBe(false);
     expect(result.run.catalystAffixes).toEqual({});
     expect(result.run.consumableAffixes).toEqual({});
+    expect(result.run.blindAffixes).toEqual({});
   });
 
   it('does NOT restore an active round (handInProgress reset to false)', () => {
