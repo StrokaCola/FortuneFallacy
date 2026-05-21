@@ -126,6 +126,16 @@ export function applySavedToInitial(s: GameState): GameState {
   // any save that predates the field.
   mergedMeta.easterEggs = mergedMeta.easterEggs ?? [];
   const mergedRun = { ...s.run, ...saved.run };
+  // Void Mode is strictly ephemeral per spec — never rehydrate void state.
+  // If a player closed the browser mid-void-run (or even just clicked the
+  // black hole then refreshed), they restart in normal mode. Without this,
+  // the audioBridge boot-sync would re-start the void drone on every load.
+  mergedRun.mode = 'normal';
+  mergedRun.voidSeed = 0;
+  mergedRun.runAlias = '';
+  mergedRun.dailyCertified = false;
+  mergedRun.catalystAffixes = {};
+  mergedRun.consumableAffixes = {};
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
   // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.

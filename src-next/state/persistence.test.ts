@@ -100,6 +100,36 @@ describe('applySavedToInitial', () => {
     expect(result.meta.playerName).toBe('Bob');
   });
 
+  it('forces void-mode fields back to defaults on rehydrate (strictly ephemeral)', () => {
+    // Spec: nothing persists between Void runs. If a player closed mid-void
+    // (or just clicked the black hole then refreshed), the rehydrated state
+    // must drop them back into normal mode — otherwise the audioBridge boot
+    // sync would re-start the void drone on every reload.
+    const snapshot = {
+      run: {
+        ...initialRunSlice(),
+        mode: 'void' as const,
+        voidSeed: 12345,
+        runAlias: 'Echo 17',
+        dailyCertified: true,
+        catalystAffixes: { burst_card: { base: {} as never, baseId: 'burst_card', affixes: [], displayName: 'x', flavor: '', budgetSpent: 0, rarityTier: 'normal' as const } },
+        consumableAffixes: { andromeda: { base: {} as never, baseId: 'andromeda', affixes: [], displayName: 'x', flavor: '', budgetSpent: 0, rarityTier: 'normal' as const } },
+      },
+      meta: initialMetaSlice(),
+      round: initialRoundSlice(),
+      ui: initialUiSlice(),
+    };
+    safeWriteJSON(KEY, snapshot);
+
+    const result = applySavedToInitial(makeInitialState());
+    expect(result.run.mode).toBe('normal');
+    expect(result.run.voidSeed).toBe(0);
+    expect(result.run.runAlias).toBe('');
+    expect(result.run.dailyCertified).toBe(false);
+    expect(result.run.catalystAffixes).toEqual({});
+    expect(result.run.consumableAffixes).toEqual({});
+  });
+
   it('does NOT restore an active round (handInProgress reset to false)', () => {
     const snapshot = {
       run: initialRunSlice(),
