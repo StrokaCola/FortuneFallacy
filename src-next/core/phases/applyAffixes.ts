@@ -5,13 +5,12 @@
 // invoked).
 
 import type { AffixContext, AffixedItem } from '../../voidmode/types';
-import type { CatalystMeta } from '../../data/catalysts';
 import type { PhaseFn } from '../pipeline/types';
-import { collectAffixedItems, buildAffixContext } from '../../voidmode/voidRun';
+import { collectAffixedItems, collectActiveBlindAffixed, buildAffixContext } from '../../voidmode/voidRun';
 
 export function applyAffixes(
   ctx: AffixContext,
-  items: ReadonlyArray<AffixedItem<CatalystMeta>>,
+  items: ReadonlyArray<AffixedItem<unknown>>,
 ): void {
   for (const item of items) {
     for (const affix of item.affixes) {
@@ -31,7 +30,11 @@ export function applyAffixes(
 // a gold counter.
 export const applyAffixesPhase: PhaseFn = (ctx) => {
   if (ctx.state.run.mode !== 'void') return ctx;
-  const items = collectAffixedItems(ctx.state);
+  const catalystItems = collectAffixedItems(ctx.state);
+  const blindAffixed = collectActiveBlindAffixed(ctx.state);
+  const items: AffixedItem<unknown>[] = blindAffixed
+    ? [...catalystItems, blindAffixed]
+    : [...catalystItems];
   if (items.length === 0) return ctx;
 
   const comboId = ctx.combo?.id ?? '';

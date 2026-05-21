@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { applyAffixes } from './applyAffixes';
 import { mulberry32 } from '../rng';
 import { generateAffixedItem } from '../../voidmode/affixGenerator';
+import { BLIND_AFFIX_DEFS } from '../../voidmode/blindAffixes';
 import type { CatalystMeta } from '../../data/catalysts';
+import type { BlindDef } from '../../data/blinds';
 import type { AffixContext } from '../../voidmode/types';
 
 const BASE: CatalystMeta = {
@@ -64,5 +66,33 @@ describe('applyAffixes', () => {
       const ctx = makeCtx();
       expect(() => applyAffixes(ctx, [item])).not.toThrow();
     }
+  });
+
+  it('applies a blind affix alongside catalyst affixes', () => {
+    // Blind affix is the same shape (AffixedItem), so applyAffixes
+    // iterates it identically. We confirm a blind-pool roll produces
+    // non-zero deltas across some seeds — parallel to the catalyst case.
+    const FAKE_BLIND: BlindDef & { id: string } = {
+      id: 'lesser_trial',
+      index: 0,
+      name: 'Lesser Trial',
+      targetMult: 1.0,
+      isBoss: false,
+      skipReward: 3,
+      archetypeTags: ['timing', 'combo'],
+    };
+    let anyChanged = false;
+    for (let s = 0; s < 30; s++) {
+      const item = generateAffixedItem(mulberry32(s), FAKE_BLIND, { pool: BLIND_AFFIX_DEFS });
+      const ctx = makeCtx({
+        hand: { comboId: 'three_kind', diceValues: [3, 3, 3, 2, 4], isWild: [false, false, false, false, false] },
+      });
+      applyAffixes(ctx, [item]);
+      if (ctx.chipsBonus !== 0 || ctx.multBonus !== 0 || ctx.goldBonus !== 0) {
+        anyChanged = true;
+        break;
+      }
+    }
+    expect(anyChanged).toBe(true);
   });
 });

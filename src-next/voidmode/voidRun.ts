@@ -21,6 +21,27 @@ export function collectAffixedItems(state: GameState): AffixedItem<CatalystMeta>
   return out;
 }
 
+// Returns the affixed-item record for the BLIND currently being scored
+// (if any). Phase 2B.1 — the scoring pipeline reads this alongside
+// collectAffixedItems so blind affixes fire through the same
+// applyAffixes phase as catalyst affixes. Returns null outside void
+// mode, when no blind is active, or when the blind has no rolled
+// affix (e.g. blinds without archetypeTags, or a save that predates
+// the field). Generic over `unknown` so the existing applyAffixes
+// signature (AffixedItem<CatalystMeta>) accepts the result via the
+// shared shape — the effect function only touches the shared context,
+// not base-typed fields.
+export function collectActiveBlindAffixed(state: GameState): AffixedItem<unknown> | null {
+  if (state.run.mode !== 'void') return null;
+  const blindId = state.round.blindId;
+  if (!blindId) return null;
+  const affixed = (state.run.blindAffixes ?? {})[blindId];
+  if (!affixed) return null;
+  // Skip noop entries — applyAffixes would just iterate an empty array.
+  if (affixed.affixes.length === 0) return null;
+  return affixed as AffixedItem<unknown>;
+}
+
 // Build an AffixContext from the live scoring context. The shape of the
 // scoring context is codebase-specific — you may need to expand fields
 // here once Phase 5 (shop integration) wires real combo/hand state.
