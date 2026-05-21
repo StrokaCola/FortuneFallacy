@@ -1,15 +1,24 @@
+import type { ArchetypeTag } from '../voidmode/types';
+
 export type BlindDef = {
   index: number;
   name: string;
   targetMult: number;
   isBoss: boolean;
   skipReward: number;
+  // Tags used by the void-mode affix generator to gate which affix
+  // families can attach to this blind. Mirrors CatalystMeta.archetypeTags.
+  // Optional — blinds without tags get no procgen affixes.
+  archetypeTags?: ArchetypeTag[];
 };
 
 export const BLIND_DEFS: BlindDef[] = [
-  { index: 0, name: 'Lesser Trial',  targetMult: 1.0, isBoss: false, skipReward: 3 },
-  { index: 1, name: 'Greater Trial', targetMult: 1.5, isBoss: false, skipReward: 5 },
-  { index: 2, name: 'Final Trial',   targetMult: 2.0, isBoss: true,  skipReward: 0 },
+  { index: 0, name: 'Lesser Trial',  targetMult: 1.0, isBoss: false, skipReward: 3,
+    archetypeTags: ['timing', 'combo'] },
+  { index: 1, name: 'Greater Trial', targetMult: 1.5, isBoss: false, skipReward: 5,
+    archetypeTags: ['timing', 'combo', 'scaling'] },
+  { index: 2, name: 'Final Trial',   targetMult: 2.0, isBoss: true,  skipReward: 0,
+    archetypeTags: ['risk', 'combo', 'scaling', 'timing'] },
 ];
 
 // 2026-05-08 balance pass — sim showed 0% Spark A4 clear-rate at every
