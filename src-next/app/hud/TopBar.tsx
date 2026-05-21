@@ -368,7 +368,7 @@ export function TopBar({
           ante {String(ante).padStart(2, '0')} · {blind.toLowerCase()}
         </div>
         {renderBigBlind && (
-          <div className="f-display" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
+          <div className="f-display" data-testid="blind-name" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
         )}
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
           hands {handsDisplay} · rerolls {rerollsDisplay}

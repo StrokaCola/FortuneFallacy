@@ -81,7 +81,20 @@ export function Round() {
   // Three.js + Rapier chunks are still streaming in (see app/perf/roundBundle).
   const ready = useRoundBundleReady();
 
-  const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
+  // Void mode — if the active blind has rolled procgen affixes, prefer
+  // the affixed displayName over the base ("Lesser Trial" → "Hollow
+  // Lesser Trial of Echoes"). Outside void mode the lookup returns null
+  // and the base name flows through unchanged.
+  const blindAffixedDisplay = useStore((s) => {
+    if (s.run.mode !== 'void') return null;
+    const id = s.round.blindId;
+    if (!id) return null;
+    const entry = (s.run.blindAffixes ?? {})[id];
+    if (!entry || entry.affixes.length === 0) return null;
+    return entry.displayName;
+  });
+  const baseBlindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
+  const blindName = blindAffixedDisplay ?? baseBlindName;
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <ScoringVFX />
