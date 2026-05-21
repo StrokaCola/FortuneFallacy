@@ -63,7 +63,8 @@ import { TutorialController } from './onboarding/tutorial/TutorialController';
 import { TutorialOptInModal } from './onboarding/tutorial/TutorialOptInModal';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { AfterglowOverlay } from './visual/AfterglowOverlay';
-import { VoidOverlay } from './visual/VoidOverlay';
+import { VoidScene, type VoidVariant } from './visual/VoidScene';
+import { VoidOnboarding } from './visual/VoidOnboarding';
 import { VoidHudBadge } from './hud/VoidHudBadge';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { ScreenSilhouette } from './visual/ScreenSilhouette';
@@ -266,6 +267,23 @@ export function App() {
     screen === 'win'   ? 1.5 :
     0;
 
+  // Void Mode scene variant per screen. Picks the design's seven
+  // color tokens (lyra/triumvirate/fibonacci/ophiuchus/argo/eclipse/
+  // crimson) so each game surface gets its own identity inside the
+  // void palette. Boss rounds override to crimson so the danger read
+  // dominates the screen-driven theme.
+  const voidVariant: VoidVariant = (() => {
+    if (screen === 'round' && isBoss) return 'crimson';
+    if (screen === 'hub' || screen === 'round') return 'lyra';
+    if (screen === 'shop') return 'triumvirate';
+    if (screen === 'forge') return 'fibonacci';
+    if (screen === 'astral_forge') return 'ophiuchus';
+    if (screen === 'codex') return 'eclipse';
+    if (screen === 'scores' || screen === 'fail') return 'eclipse';
+    if (screen === 'win') return 'lyra';
+    return 'lyra';
+  })();
+
   return (
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
@@ -352,11 +370,20 @@ export function App() {
         <TutorialController />
         <TutorialOptInModal />
         <AfterglowOverlay />
-        {/* Void Mode global overlay + HUD badge. Spans every in-run
-            screen (Round, Shop, Hub, Forge, etc.) — mode flips back to
-            'normal' on END_VOID_RUN which routes to Title, so these
-            unmount naturally when the player leaves the run. */}
-        <VoidOverlay active={voidMode} />
+        {/* Void Mode global scene + onboarding + HUD badge. Spans every
+            in-run screen (Round, Shop, Hub, Forge, etc.) — mode flips back
+            to 'normal' on END_VOID_RUN which routes to Title, so these
+            unmount naturally when the player leaves the run. The scene
+            picks its color variant per screen (boss rounds override to
+            crimson) and reactives to the same tension/progress signals
+            that drive CosmosBackground. */}
+        <VoidScene
+          active={voidMode}
+          variant={voidVariant}
+          tension={cosmosTension}
+          progress={cosmosProgress}
+        />
+        <VoidOnboarding />
         {voidMode && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
