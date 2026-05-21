@@ -569,6 +569,34 @@ export function RunPostmortem({ mode }: { mode: 'win' | 'fail' }) {
           </button>
         </div>
         {mode === 'win' && <PortalGate size={72} label="Travel" />}
+        {/* Cryptic void-mode hint. Only surfaces while the player
+            has not yet found the title-screen black hole; once they
+            do, the easter-egg flag flips and this line stops showing.
+            Wording lifts the player's eye to "START" and "BLACK HOLE"
+            via capitalization, an oblique nudge to where the new
+            dimension actually lives. */}
+        {!meta.onboarding?.seenVoidEasterEgg && (
+          <div
+            className="f-mono"
+            aria-hidden="true"
+            style={{
+              marginTop: 18,
+              opacity: 0,
+              animation: 'fadein 1200ms ease-out 1400ms both',
+              fontSize: 10,
+              letterSpacing: '0.16em',
+              color: '#9577ff',
+              textShadow: '0 0 8px rgba(149,119,255,0.35)',
+              fontStyle: 'italic',
+              maxWidth: 420,
+              textAlign: 'center',
+              lineHeight: 1.5,
+            }}
+          >
+            at the <strong style={{ color: '#dcd4ff', letterSpacing: '0.22em', fontStyle: 'normal' }}>START</strong> of a{' '}
+            <strong style={{ color: '#dcd4ff', letterSpacing: '0.22em', fontStyle: 'normal' }}>BLACK HOLE</strong> there is a new dimension
+          </div>
+        )}
       </div>
     </div>
   );
