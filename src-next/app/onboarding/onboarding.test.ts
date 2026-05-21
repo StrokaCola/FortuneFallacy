@@ -48,10 +48,43 @@ describe('SKIP_ONBOARDING', () => {
 describe('RESET_ONBOARDING', () => {
   it('clears seen, dismissed, and re-arms firstLaunch for the guided tour', () => {
     const dirty = baseState({
-      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll', 'shop_offers'], dismissed: true, firstLaunch: false } },
+      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll', 'shop_offers'], dismissed: true, firstLaunch: false, seenVoidEasterEgg: false } },
     });
     const r = metaHandler({ type: 'RESET_ONBOARDING' }, dirty);
-    expect(r.state.meta.onboarding).toEqual({ seen: [], dismissed: false, firstLaunch: true });
+    expect(r.state.meta.onboarding).toEqual({ seen: [], dismissed: false, firstLaunch: true, seenVoidEasterEgg: false });
+  });
+
+  it('preserves seenVoidEasterEgg so the easter-egg modal does not re-fire', () => {
+    const dirty = baseState({
+      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll'], dismissed: true, firstLaunch: false, seenVoidEasterEgg: true } },
+    });
+    const r = metaHandler({ type: 'RESET_ONBOARDING' }, dirty);
+    expect(r.state.meta.onboarding.seenVoidEasterEgg).toBe(true);
+  });
+});
+
+describe('DISMISS_VOID_ONBOARDING', () => {
+  it('flips seenVoidEasterEgg to true', () => {
+    const r = metaHandler({ type: 'DISMISS_VOID_ONBOARDING' }, baseState());
+    expect(r.state.meta.onboarding.seenVoidEasterEgg).toBe(true);
+  });
+
+  it('is idempotent — a second dismiss is a no-op', () => {
+    const after1 = metaHandler({ type: 'DISMISS_VOID_ONBOARDING' }, baseState()).state;
+    const after2 = metaHandler({ type: 'DISMISS_VOID_ONBOARDING' }, after1);
+    expect(after2.state).toBe(after1);
+    expect(after2.state.meta.onboarding.seenVoidEasterEgg).toBe(true);
+  });
+
+  it('preserves the rest of the onboarding shape', () => {
+    const seeded = baseState({
+      meta: { ...initialMetaSlice(), onboarding: { seen: ['round_roll'], dismissed: false, firstLaunch: true, seenVoidEasterEgg: false } },
+    });
+    const r = metaHandler({ type: 'DISMISS_VOID_ONBOARDING' }, seeded);
+    expect(r.state.meta.onboarding.seen).toEqual(['round_roll']);
+    expect(r.state.meta.onboarding.dismissed).toBe(false);
+    expect(r.state.meta.onboarding.firstLaunch).toBe(true);
+    expect(r.state.meta.onboarding.seenVoidEasterEgg).toBe(true);
   });
 });
 

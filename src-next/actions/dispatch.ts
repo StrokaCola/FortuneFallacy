@@ -49,6 +49,7 @@ const ROUTING: Record<Action['type'], ActionHandler> = {
   NEW_RUN: roundHandler,
   START_VOID_RUN: roundHandler,
   END_VOID_RUN: roundHandler,
+  DISMISS_VOID_ONBOARDING: metaHandler,
   OPEN_SHOP: shopHandler,
   CLOSE_SHOP: shopHandler,
   BUY_OFFER: shopHandler,

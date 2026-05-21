@@ -87,10 +87,41 @@ export const metaHandler: ActionHandler = (a, s) => {
       // and `firstLaunch` (re-queues the guided-tour opt-in modal on
       // the next constellation-select submit). Settings → Replay
       // guided tour is the player-facing trigger.
+      //
+      // seenVoidEasterEgg is intentionally preserved: it isn't part of
+      // the guided-tour rotation, and resetting it would re-fire the
+      // easter-egg modal on the next void run for a player who's
+      // already discovered it.
       return {
-        state: { ...s, meta: { ...s.meta, onboarding: { seen: [], dismissed: false, firstLaunch: true } } },
+        state: {
+          ...s,
+          meta: {
+            ...s.meta,
+            onboarding: {
+              seen: [],
+              dismissed: false,
+              firstLaunch: true,
+              seenVoidEasterEgg: s.meta.onboarding?.seenVoidEasterEgg ?? false,
+            },
+          },
+        },
         events: [],
       };
+    case 'DISMISS_VOID_ONBOARDING': {
+      // Idempotent — already-seen state is a silent no-op so the modal's
+      // three exit paths (button / Escape / backdrop click) can't double-
+      // fire and write the same value twice. Once set, the easter-egg
+      // modal never shows again across runs.
+      const onb = s.meta.onboarding ?? { seen: [], dismissed: false };
+      if (onb.seenVoidEasterEgg) return { state: s, events: [] };
+      return {
+        state: {
+          ...s,
+          meta: { ...s.meta, onboarding: { ...onb, seenVoidEasterEgg: true } },
+        },
+        events: [],
+      };
+    }
     case 'RESOLVE_AUDIT': {
       // Mid-run risk event at start of ante 3. 'gamble' is a 50/50
       // coin flip: win → +shards (double current), lose → -shards

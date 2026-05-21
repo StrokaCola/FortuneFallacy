@@ -69,6 +69,11 @@ export type Action =
   // voidmode/voidRun.startVoidRun. END returns the run slice to normal
   // mode and clears all void-specific fields.
   | { type: 'START_VOID_RUN'; seed: number; voidSeed: number; runAlias: string; dailyCertified: boolean }
-  | { type: 'END_VOID_RUN' };
+  | { type: 'END_VOID_RUN' }
+  // Void Mode — one-shot easter-egg modal dismissal. Sets
+  // meta.onboarding.seenVoidEasterEgg = true so the modal never
+  // re-shows after the player has acknowledged the discovery. Dispatched
+  // by the modal's three exit paths (button click, Escape, backdrop click).
+  | { type: 'DISMISS_VOID_ONBOARDING' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;
