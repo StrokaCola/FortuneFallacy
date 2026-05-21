@@ -16,6 +16,7 @@ import type { RunSlice } from '../../state/slices/run';
 import { accrueScalingStacks, checkEasterEggs } from '../../core/round/scalingHooks';
 import { facesForStep, applyScriptedFaces, isTutorialActive } from '../../app/onboarding/tutorial/deterministicScript';
 import type { GameState } from '../../state/store';
+import { effectiveDiscardCost } from '../../core/run/discardCost';
 
 // Tutorial: override predeterminedFaces for unlocked dice on the next
 // roll. Locked dice always preserve their face. No-op when the tour is
@@ -107,7 +108,14 @@ export const rollHandler: ActionHandler = (a, s) => {
       };
     }
     case 'REROLL_REQUESTED': {
-      if (s.round.rerollsLeft <= 0) return { state: s, events: [] };
+      // Phase 2B.2 — discardCostMultiplier blind rules can scale the
+      // per-reroll cost. Outside void (or with no rule active) cost
+      // resolves to 1, matching the prior fixed-cost behaviour. Refuse
+      // the reroll if the budget can't cover the scaled cost so a 3×
+      // rule on a 2-reroll budget locks the player out of rerolling
+      // mid-hand without further state mutation.
+      const rerollCost = effectiveDiscardCost(s.run.activeBlindRules ?? []);
+      if (s.round.rerollsLeft < rerollCost) return { state: s, events: [] };
       if (hasDebuff(s, 'no_rerolls')) return { state: s, events: [] };
       // Defensive: refuse the reroll if a prior hand is still scoring
       // or if the dice physics is mid-tumble. The UI also disables the
@@ -135,7 +143,7 @@ export const rollHandler: ActionHandler = (a, s) => {
           round: {
             ...advanced.round,
             handInProgress: true,
-            rerollsLeft: advanced.round.rerollsLeft - 1,
+            rerollsLeft: advanced.round.rerollsLeft - rerollCost,
             rollsWithoutLock: (advanced.round.rollsWithoutLock ?? 0) + 1,
             banishTriggersByDie: banish.nextTally,
             // Wave T (Batch E) — cumulative reroll count for Sunk Cost.
