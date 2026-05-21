@@ -1,6 +1,10 @@
 import type { Phase } from '../core/pipeline/types';
 import type { Beat, ScoreSequence } from '../core/scoring/types';
 import type { DieShape } from '../data/dice';
+import type { CatalystEdition } from '../state/slices/run';
+import type { AffixedItem } from '../voidmode/types';
+import type { CatalystMeta } from '../data/catalysts';
+import type { ConsumableDef } from '../core/consumables';
 
 export type DieSnapshot = {
   id: number;
@@ -70,7 +74,15 @@ export type ShopOffer = {
   price: number;
   // Catalyst-only: foil/holo/poly/void stamp rolled at offer time. Carried
   // through BUY_OFFER into run.catalystEditions. See state/slices/run.ts.
-  edition?: 'foil' | 'holo' | 'poly' | 'void';
+  edition?: CatalystEdition;
+  // Void Mode only: procgen affixes rolled at offer time. Populated by
+  // catalystDraw / consumable draw when `state.run.mode === 'void'`.
+  // BUY_OFFER persists this onto run.catalystAffixes / consumableAffixes so
+  // the scoring pipeline (applyAffixesPhase) can apply effects on each
+  // score. Catalysts carry CatalystMeta-shaped affixed payloads; consumables
+  // carry ConsumableDef-shaped payloads. The union keeps the type honest
+  // without forcing per-kind offer subtypes.
+  affixed?: AffixedItem<CatalystMeta> | AffixedItem<ConsumableDef>;
 };
 
 export type GameEventMap = {

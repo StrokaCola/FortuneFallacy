@@ -198,3 +198,98 @@ describe('SKIP_BLIND', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('START_BLIND — void mode blind affixes', () => {
+  it('does not populate blindAffixes outside void mode', () => {
+    const before = { ...baseState(), round: { ...baseState().round, active: false } };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.blindAffixes).toEqual({});
+  });
+
+  it('populates blindAffixes[blindId] when run.mode === "void"', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      run: { ...base.run, mode: 'void' as const, voidSeed: 7777, blindAffixes: {} },
+      round: { ...base.round, active: false },
+    };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    const id = r.state.round.blindId!;
+    expect(id).toBeTruthy();
+    const entry = r.state.run.blindAffixes[id];
+    expect(entry).toBeDefined();
+    expect(entry!.displayName.length).toBeGreaterThan(0);
+    expect(entry!.baseId).toBe(id);
+  });
+
+  it('is deterministic — same voidSeed + slot rolls the same affix', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      run: { ...base.run, mode: 'void' as const, voidSeed: 4242, blindAffixes: {} },
+      round: { ...base.round, active: false },
+    };
+    const a = roundHandler({ type: 'START_BLIND' }, before);
+    const b = roundHandler({ type: 'START_BLIND' }, before);
+    const idA = a.state.round.blindId!;
+    const idB = b.state.round.blindId!;
+    expect(idA).toBe(idB);
+    const entryA = a.state.run.blindAffixes[idA]!;
+    const entryB = b.state.run.blindAffixes[idB]!;
+    expect(entryA.displayName).toBe(entryB.displayName);
+    expect(entryA.affixes.map((x) => x.id))
+      .toEqual(entryB.affixes.map((x) => x.id));
+  });
+});
+
+describe('START_BLIND — Phase 2B.2 activeBlindRules', () => {
+  it('leaves activeBlindRules empty outside void mode', () => {
+    const before = { ...baseState(), round: { ...baseState().round, active: false } };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.activeBlindRules).toEqual([]);
+  });
+
+  it('extracts rule descriptors from rolled blind affixes into run.activeBlindRules', () => {
+    // Sweep many voidSeeds — at least one will roll a rule-bearing affix
+    // from the 4 introduced in Phase 2B.2. The test asserts that WHEN a
+    // rule-bearing affix lands, its rule descriptor surfaces on the
+    // run.activeBlindRules array. We don't pin a specific seed because
+    // the affix pool weights leave roll cadence to the generator.
+    let sawRule = false;
+    for (let seed = 1; seed <= 60 && !sawRule; seed++) {
+      const base = baseState();
+      const before = {
+        ...base,
+        run: { ...base.run, mode: 'void' as const, voidSeed: seed, blindAffixes: {} },
+        round: { ...base.round, active: false },
+      };
+      const r = roundHandler({ type: 'START_BLIND' }, before);
+      const id = r.state.round.blindId!;
+      const entry = r.state.run.blindAffixes[id];
+      const expectedRules = entry?.affixes
+        .map((a) => a.rule)
+        .filter((x) => x !== undefined) ?? [];
+      expect(r.state.run.activeBlindRules).toEqual(expectedRules);
+      if (expectedRules.length > 0) sawRule = true;
+    }
+    // Sanity — across 60 seeds we should hit at least one rule-bearing
+    // roll given the 4 rule-bearing entries in the 10-affix catalog.
+    expect(sawRule).toBe(true);
+  });
+
+  it('clears activeBlindRules from a previous void blind when starting a new one without rules', () => {
+    const base = baseState();
+    const before = {
+      ...base,
+      // Normal mode → the new blind shouldn't repopulate rules.
+      run: {
+        ...base.run,
+        mode: 'normal' as const,
+        activeBlindRules: [{ kind: 'banCombo' as const, comboId: 'one_pair' }],
+      },
+      round: { ...base.round, active: false },
+    };
+    const r = roundHandler({ type: 'START_BLIND' }, before);
+    expect(r.state.run.activeBlindRules).toEqual([]);
+  });
+});

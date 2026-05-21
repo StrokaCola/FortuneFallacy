@@ -62,6 +62,18 @@ export type Action =
   | { type: 'DISMISS_OPT_IN' }
   | { type: 'START_TUTORIAL' }
   | { type: 'ADVANCE_TUTORIAL' }
-  | { type: 'END_TUTORIAL'; reason: 'completed' | 'skipped' };
+  | { type: 'END_TUTORIAL'; reason: 'completed' | 'skipped' }
+  // Void Mode — alt-mode entered via the title-screen black hole. Mirrors
+  // NEW_RUN's reset behavior (round, shop, run slice) but flips run.mode
+  // to 'void' and seeds the procgen affix generator. START dispatched from
+  // voidmode/voidRun.startVoidRun. END returns the run slice to normal
+  // mode and clears all void-specific fields.
+  | { type: 'START_VOID_RUN'; seed: number; voidSeed: number; runAlias: string; dailyCertified: boolean }
+  | { type: 'END_VOID_RUN' }
+  // Void Mode — one-shot easter-egg modal dismissal. Sets
+  // meta.onboarding.seenVoidEasterEgg = true so the modal never
+  // re-shows after the player has acknowledged the discovery. Dispatched
+  // by the modal's three exit paths (button click, Escape, backdrop click).
+  | { type: 'DISMISS_VOID_ONBOARDING' };
 
 export type ActionOf<T extends Action['type']> = Extract<Action, { type: T }>;

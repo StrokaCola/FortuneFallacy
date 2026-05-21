@@ -1,6 +1,7 @@
 import { bus } from '../events/bus';
 import { store } from '../state/store';
 import pkg from '../../package.json';
+import { voidLeaderboardMode } from '../voidmode/dailySeed';
 
 // URL is intentionally a public Realtime DB; the *real* security lives in
 // the Firebase Realtime DB security rules - see
@@ -82,9 +83,17 @@ export async function fetchOnlineScores(force = false): Promise<OnlineScore[]> {
 // Mode partitions the leaderboard. 'run' is the default standard run.
 // 'daily-YYYY-MM-DD' is a daily-challenge entry; 'endless' is reserved for
 // post-win endless mode; 'lap-N' partitions endless runs by lap so deep
-// runs aren't drowned in shallow-endless noise. The Scores screen
-// filters by mode prefix to show the right cohort.
-export type LeaderboardMode = 'run' | 'endless' | `daily-${string}` | `lap-${number}`;
+// runs aren't drowned in shallow-endless noise. 'void-YYYY-MM-DD' is a
+// certified void-mode run on today's pre-balance-validated seed — wild
+// void runs are intentionally leaderboard-ineligible and skip submission
+// at the run-end handler below. The Scores screen filters by mode prefix
+// to show the right cohort.
+export type LeaderboardMode =
+  | 'run'
+  | 'endless'
+  | `daily-${string}`
+  | `lap-${number}`
+  | `void-${string}`;
 
 export async function submitOnlineScore(
   name: string,
@@ -121,6 +130,17 @@ export function startLeaderboard(): () => void {
     if (score <= 0) return;
     const s = store.getState();
     const name = s.meta.playerName || 'Wanderer';
+    // Void runs partition off the standard ladder. Certified runs (those
+    // on today's balance-validated seed from dailyCertified.json) submit
+    // under 'void-YYYY-MM-DD' so the daily void cohort ranks separately
+    // from regular runs. Wild void runs are leaderboard-ineligible —
+    // voidLeaderboardMode returns null and we skip submission entirely.
+    if (s.run.mode === 'void') {
+      const voidMode = voidLeaderboardMode(s.run.dailyCertified);
+      if (voidMode === null) return;
+      void submitOnlineScore(name, score, constellation, voidMode as LeaderboardMode);
+      return;
+    }
     // Daily runs submit under their dated mode so the global daily ladder
     // and the all-time ladder don't collide. One run can only land in one
     // bucket — daily wins the partition when both apply, otherwise:

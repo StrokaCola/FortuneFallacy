@@ -1,5 +1,56 @@
+import type { AffixedItem, BlindRule } from '../../voidmode/types';
+import type { CatalystMeta } from '../../data/catalysts';
+import type { ConsumableDef } from '../../core/consumables';
+import type { BlindDef } from '../../data/blinds';
+
 export type RunSlice = {
   seed: number;
+  // Void Mode flag. 'normal' is the standard game. 'void' enables the
+  // procgen-affixed-upgrade alt-mode entered via the title-screen black
+  // hole. Strictly ephemeral — does not persist across runs.
+  mode: 'normal' | 'void';
+  // Seed used to drive the void-mode affix generator. Distinct from
+  // `seed` (which drives the physics/scoring pipeline) so daily-certified
+  // void seeds can be substituted independently of the base seed.
+  voidSeed: number;
+  // Per-catalyst rolled affixes (void mode only). Keyed by catalyst id —
+  // each entry holds the procgen-generated affix bundle that's applied
+  // during the scoring pipeline's applyAffixes phase. Empty in normal
+  // mode; populated by the shop hook when a catalyst is bought during
+  // a void run.
+  catalystAffixes: Record<string, AffixedItem<CatalystMeta>>;
+  // Per-consumable rolled affixes (void mode only). Keyed by consumable
+  // id — each entry holds the procgen-generated affix bundle attached
+  // when the consumable was acquired (pack pick, skip bounty). Empty
+  // outside void mode. v1 stores these for UI surfacing; the scoring
+  // pipeline currently reads only `catalystAffixes`, but the same
+  // applyAffixesPhase shape can read consumable affixes later by
+  // extending `collectAffixedItems` in voidmode/voidRun.ts.
+  consumableAffixes: Record<string, AffixedItem<ConsumableDef>>;
+  // Per-blind rolled affixes (void mode only). Keyed by blind id (boss
+  // blind id, or the trial slug like 'lesser_trial'/'greater_trial'). Each
+  // entry is the procgen-generated affix bundle the scoring pipeline
+  // applies during the active blind alongside catalyst/consumable affixes.
+  // Strictly ephemeral — cleared on rehydrate (state/persistence.ts) and
+  // on START_VOID_RUN / END_VOID_RUN. Phase 2B.1: scoring-side only.
+  // Phase 2B.2 layers rule-injection affixes on top (see activeBlindRules).
+  blindAffixes: Record<string, AffixedItem<BlindDef>>;
+  // Aggregated active rules from the blindAffixes of the currently active
+  // blind. Refreshed at START_BLIND when the affixes roll; cleared on
+  // CLEAR_BLIND / BUST_BLIND. The scoring pipeline reads this to enforce
+  // banCombo zeroing; the reroll handler reads it to scale discard cost.
+  // Strictly ephemeral — cleared on rehydrate alongside the other
+  // void-mode fields.
+  activeBlindRules: BlindRule[];
+  // Display alias shown in the HUD during a void run. Deterministic from
+  // voidSeed (see voidmode/nameGenerator.ts generateRunAlias). Empty
+  // outside void mode; cleared when leaving void mode.
+  runAlias: string;
+  // True when the current void run is using today's certified seed (the
+  // pre-balance-validated daily). Only certified runs are leaderboard-eligible.
+  // Phase 8 introduces dailySeed.getTodayCertified — Phase 6 defaults
+  // to false.
+  dailyCertified: boolean;
   shards: number;
   ante: number;
   goalIdx: number;
@@ -189,6 +240,14 @@ export type ModEdition = 'foil' | 'holo' | 'poly';
 
 export const initialRunSlice = (): RunSlice => ({
   seed: Math.floor(Math.random() * 0xFFFFFFFF),
+  mode: 'normal',
+  voidSeed: 0,
+  catalystAffixes: {},
+  consumableAffixes: {},
+  blindAffixes: {},
+  activeBlindRules: [],
+  runAlias: '',
+  dailyCertified: false,
   shards: 0,
   ante: 1,
   goalIdx: 0,

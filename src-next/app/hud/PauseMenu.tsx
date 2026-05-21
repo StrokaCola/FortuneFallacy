@@ -16,6 +16,11 @@ import { playHaptic } from '../haptics/haptics';
 const selectPaused = (s: GameState) => s.ui.paused;
 const selectRunActive = (s: GameState) =>
   s.run.goalIdx > 0 || s.round.score > 0 || s.run.catalysts.length > 0 || s.round.active;
+// Void Mode pause-menu surface — when active, "Back to Title" becomes
+// "Leave the Void" and dispatches END_VOID_RUN so the affix state +
+// alias + mode flag all reset cleanly. Outside void it stays a plain
+// screen-change to title.
+const selectVoidMode = (s: GameState) => s.run.mode === 'void';
 
 type Sliders = { master: number; music: number; sfx: number };
 type Tab = 'menu' | 'info';
@@ -47,6 +52,7 @@ const selectCatalystChipsForPause = (s: GameState) => s.run.runStats?.catalystCh
 export function PauseMenu() {
   const paused = useStore(selectPaused);
   const runActive = useStore(selectRunActive);
+  const voidMode = useStore(selectVoidMode);
   const tight = useIsTightStage();
   const [sliders, setSliders] = useState<Sliders>(readSliders);
   const [tab, setTab] = useState<Tab>('menu');
@@ -75,7 +81,15 @@ export function PauseMenu() {
   const onResume = () => dispatch({ type: 'TOGGLE_PAUSE' });
   const onBackToTitle = () => {
     dispatch({ type: 'TOGGLE_PAUSE' });
-    dispatch({ type: 'SET_SCREEN', screen: 'title' });
+    if (voidMode) {
+      // END_VOID_RUN resets run + round + shop slices, clears all void
+      // state (mode, voidSeed, runAlias, dailyCertified, affix records),
+      // and routes back to Title. SET_SCREEN alone would leave the
+      // player in void mode on the Title screen.
+      dispatch({ type: 'END_VOID_RUN' });
+    } else {
+      dispatch({ type: 'SET_SCREEN', screen: 'title' });
+    }
   };
   const onHowToPlay = () => {
     // Routes into the Codex with the Primer tab as the default. Pause
@@ -194,7 +208,7 @@ export function PauseMenu() {
               style={{ width: tight ? 180 : 220 }}
               onClick={onBackToTitle}
             >
-              ← Back to Title
+              {voidMode ? '↩ Leave the Void' : '← Back to Title'}
             </button>
           </>
         )}

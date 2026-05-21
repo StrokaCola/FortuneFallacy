@@ -11,6 +11,7 @@ import { triggerShake } from '../visual/screenShake';
 import { audioEngine } from '../../audio/AudioEngine';
 import { DUCK_PRESETS } from '../../audio/duckEnvelope';
 import { useStore, type GameState } from '../../state/store';
+import { proceduralSigilSeed } from '../../voidmode/proceduralSigil';
 import { Z } from './zLayers';
 
 // Aurora Sigils cosmetic palette — when the player has unlocked
@@ -30,6 +31,13 @@ const AURORA_PALETTE: Record<string, string> = {
 
 const EMPTY_COSMETICS: string[] = [];
 const selectCosmetics = (s: GameState) => s.meta.cosmeticsUnlocked ?? EMPTY_COSMETICS;
+
+// Void Mode selectors — used to swap the catalog sigil for a procgen
+// silhouette during a void run. Outside void mode these return defaults
+// that cause BossReveal to pass `undefined` for proceduralSeed, so the
+// hand-authored sigil renders unchanged.
+const selectVoidMode = (s: GameState) => s.run.mode === 'void';
+const selectVoidSeed = (s: GameState) => s.run.voidSeed;
 
 // Wave L — per-run skip memory. The boss sting eats 1.1s + reveal animation
 // (~2.4s total). On a re-encounter within the same run the player has
@@ -134,6 +142,11 @@ export function BossReveal() {
   // via useStore so a purchase mid-session takes effect on the next
   // boss without a reload.
   const cosmetics = useStore(selectCosmetics);
+  // Void Mode — engage the procedural sigil override when active. The
+  // per-boss-per-ante seed is computed below once `reveal` is known so
+  // boss id + ante are stable.
+  const voidMode = useStore(selectVoidMode);
+  const voidSeed = useStore(selectVoidSeed);
   // Hold every timer so the auto-dismiss + secondary stings can be
   // cleared if the player taps to skip or the component unmounts.
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -216,6 +229,15 @@ export function BossReveal() {
     ? { ...baseDef, color: AURORA_PALETTE[baseDef.id]! }
     : baseDef;
 
+  // Void Mode — derive a stable per-boss-per-ante seed so the procedural
+  // sigil is the same shape across the dread + reveal phases of the
+  // same encounter, and reproducible on subsequent encounters with the
+  // same boss + ante in the same void run. Outside void mode this is
+  // undefined and BossSigil falls back to the catalog path.
+  const proceduralSeed = voidMode
+    ? proceduralSigilSeed(voidSeed, def.id, reveal.ante)
+    : undefined;
+
   // Phase 1: dread. Edges darken inward; sigil silhouettes faintly in
   // the center. Player can still tap to skip ahead to the panel.
   if (reveal.phase === 'dread') {
@@ -286,7 +308,7 @@ export function BossReveal() {
           opacity: 0.18,
           filter: `drop-shadow(0 0 24px ${def.color}88)`,
         }}>
-          <BossSigil boss={def} size={240} animate="none" glow />
+          <BossSigil boss={def} size={240} animate="none" glow proceduralSeed={proceduralSeed} />
         </div>
         {/* Per-boss bespoke flourish — adds a unique visual layer
             above the sigil silhouette so each boss reveal feels
@@ -384,7 +406,7 @@ export function BossReveal() {
                   placeItems: 'center',
                 }}>
                 <BossAura bossId={def.id} color={def.color} size={180} />
-                <BossSigil boss={def} size={180} animate="both" glow />
+                <BossSigil boss={def} size={180} animate="both" glow proceduralSeed={proceduralSeed} />
               </div>
 
               {/* Wave L — typewriter reveal. Letter-by-letter drop at

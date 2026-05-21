@@ -84,6 +84,11 @@ const COMBO_GALAXIES: ConsumableDef[] = GALAXY_META.map((meta) => {
     requiresTarget: false,
     comboId: meta.comboId,
     levels: 1,
+    // Void Mode affix shape: galaxies are scaling consumables (they grow
+    // combo levels permanently). Uncommon rarity matches consumableRarity()
+    // and gives the affix budget room to attach a meaningful effect.
+    rarity: 'uncommon',
+    archetypeTags: ['scaling', 'combo'],
     apply: (s) => {
       const next = bumpCombo(s, meta.comboId, 1);
       const events: GameEventEmission[] = [
@@ -110,6 +115,10 @@ const QUASAR: ConsumableDef = {
   requiresTarget: false,
   comboId: 'all',
   levels: 1,
+  // Quasar is the ultra-rare splash. Rare-tier affix budget rewards
+  // a roll on it more meaningfully than the combo-specific galaxies.
+  rarity: 'rare',
+  archetypeTags: ['scaling', 'combo'],
   apply: (s) => {
     let next = s;
     const levelsAdded: Record<string, number> = {};

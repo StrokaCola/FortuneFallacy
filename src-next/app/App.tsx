@@ -63,6 +63,9 @@ import { TutorialController } from './onboarding/tutorial/TutorialController';
 import { TutorialOptInModal } from './onboarding/tutorial/TutorialOptInModal';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { AfterglowOverlay } from './visual/AfterglowOverlay';
+import { VoidScene, type VoidVariant } from './visual/VoidScene';
+import { VoidOnboarding } from './visual/VoidOnboarding';
+import { VoidHudBadge } from './hud/VoidHudBadge';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { ScreenSilhouette } from './visual/ScreenSilhouette';
 import { HorizonBackdrop } from './visual/HorizonBackdrop';
@@ -77,6 +80,14 @@ export function App() {
   useMotion();
   useScoreSequenceController();
   const screen = useStore(selectScreen);
+  // Void Mode global aesthetic. Mounted at App-level so the tint +
+  // accretion ring + HUD badge persist across Round/Shop/Hub/Forge,
+  // not just the play scene. Selectors return primitives so the
+  // store's Object.is snapshot comparison stays stable across renders.
+  const voidMode = useStore((s) => s.run.mode === 'void');
+  const voidSeed = useStore((s) => s.run.voidSeed);
+  const voidAlias = useStore((s) => s.run.runAlias);
+  const voidCertified = useStore((s) => s.run.dailyCertified);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
   // Wave T+1 (2026-05-19) reactive environment pass — track theater
@@ -256,6 +267,23 @@ export function App() {
     screen === 'win'   ? 1.5 :
     0;
 
+  // Void Mode scene variant per screen. Picks the design's seven
+  // color tokens (lyra/triumvirate/fibonacci/ophiuchus/argo/eclipse/
+  // crimson) so each game surface gets its own identity inside the
+  // void palette. Boss rounds override to crimson so the danger read
+  // dominates the screen-driven theme.
+  const voidVariant: VoidVariant = (() => {
+    if (screen === 'round' && isBoss) return 'crimson';
+    if (screen === 'hub' || screen === 'round') return 'lyra';
+    if (screen === 'shop') return 'triumvirate';
+    if (screen === 'forge') return 'fibonacci';
+    if (screen === 'astral_forge') return 'ophiuchus';
+    if (screen === 'codex') return 'eclipse';
+    if (screen === 'scores' || screen === 'fail') return 'eclipse';
+    if (screen === 'win') return 'lyra';
+    return 'lyra';
+  })();
+
   return (
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
@@ -265,8 +293,22 @@ export function App() {
             cosmos-first: 18% horizon + 82% sky, smaller architecture
             accents with glowing auras + orbital sparkles. Iframe owns
             its own RAF + ResizeObserver. ScreenSilhouette stays
-            imported as a quick rollback fallback. */}
-        <HorizonBackdrop screen={screen} />
+            imported as a quick rollback fallback.
+            Suppressed in void mode — VoidScene's bg-void layer owns
+            the deep field there, and HorizonBackdrop's z=0 would
+            paint over the scene's negative-z wrapper. */}
+        {!voidMode && <HorizonBackdrop screen={screen} />}
+        {/* Void Mode background scene. Mounted BEFORE the screen
+            wrapper so screens (which paint at stacking step 6 as
+            positioned z=auto descendants) sit above the scene's
+            z=-2 wrapper. Modals, badge, and onboarding stay later
+            in the tree so they paint above screens + scene. */}
+        <VoidScene
+          active={voidMode}
+          variant={voidVariant}
+          tension={cosmosTension}
+          progress={cosmosProgress}
+        />
 
         <div className="absolute inset-0 pointer-events-none">
           <ScreenTransition screenKey={screen}>
@@ -342,6 +384,12 @@ export function App() {
         <TutorialController />
         <TutorialOptInModal />
         <AfterglowOverlay />
+        {/* VoidScene mounted earlier in the tree (above the screen
+            wrapper) so screens paint above its negative-z background.
+            VoidOnboarding stays here as a modal layer so it sits
+            above everything including the scene + screen content. */}
+        <VoidOnboarding />
+        {voidMode && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
         {import.meta.env.DEV && <SpawnOverlay />}

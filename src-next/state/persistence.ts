@@ -93,6 +93,11 @@ export function applySavedToInitial(s: GameState): GameState {
     // don't get the tour prompt out of nowhere — they can replay via
     // Settings if they want it.
     firstLaunch: savedOnb.firstLaunch ?? false,
+    // seenVoidEasterEgg (added 2026-05-20) gates the one-shot Void Mode
+    // onboarding modal. Legacy saves predating the field default to
+    // false so existing players see the easter-egg explainer once on
+    // their next void run.
+    seenVoidEasterEgg: savedOnb.seenVoidEasterEgg ?? false,
   };
   const savedDisc = mergedMeta.discovered ?? {};
   // Galaxies (Celestial Pack contents) are seeded as discovered for
@@ -126,6 +131,21 @@ export function applySavedToInitial(s: GameState): GameState {
   // any save that predates the field.
   mergedMeta.easterEggs = mergedMeta.easterEggs ?? [];
   const mergedRun = { ...s.run, ...saved.run };
+  // Void Mode is strictly ephemeral per spec — never rehydrate void state.
+  // If a player closed the browser mid-void-run (or even just clicked the
+  // black hole then refreshed), they restart in normal mode. Without this,
+  // the audioBridge boot-sync would re-start the void drone on every load.
+  mergedRun.mode = 'normal';
+  mergedRun.voidSeed = 0;
+  mergedRun.runAlias = '';
+  mergedRun.dailyCertified = false;
+  mergedRun.catalystAffixes = {};
+  mergedRun.consumableAffixes = {};
+  mergedRun.blindAffixes = {};
+  // Phase 2B.2 — activeBlindRules is a derived ephemeral cache of the
+  // current blind's rule descriptors. Always empty on rehydrate; rolled
+  // afresh on the next START_BLIND when run.mode === 'void'.
+  mergedRun.activeBlindRules = [];
   mergedRun.stakeId = mergedRun.stakeId ?? 'spark';
   mergedRun.challengeId = mergedRun.challengeId ?? '';
   // dailyDate (added 2026-05) marks a run as a daily-challenge attempt.

@@ -1,4 +1,7 @@
-import { CATALYST_META, type CatalystMeta, type CatalystArchetype } from '../../data/catalysts';
+import { CATALYST_META, lookupCatalyst, type CatalystMeta, type CatalystArchetype } from '../../data/catalysts';
+import type { SeededRng } from '../rng';
+import type { AffixedItem } from '../../voidmode/types';
+import { generateAffixedItem } from '../../voidmode/affixGenerator';
 
 // Legendary catalysts are gated by run-meta unlock conditions. Each
 // legendary stores its unlock state in `meta.unlocks` under this prefix.
@@ -205,6 +208,27 @@ export function drawWeightedCatalysts(
     // Carry forward: the next offer in this draw should cohere with what
     // we've already shown, even if the player owns nothing yet.
     preferred = archetypesOf([...ownedCatalysts, ...out]);
+  }
+  return out;
+}
+
+// Void Mode: roll a procgen affix bundle for each catalyst id. Returns a
+// parallel array (same length & order as `ids`) of AffixedItem entries
+// keyed by catalyst id. Pure helper — the caller passes a SeededRng so
+// the same void seed reproduces the same affix bundles.
+//
+// Catalysts whose meta has no `archetypeTags` still produce an entry
+// (the generator returns a base-only AffixedItem in that case), so the
+// shop offer can always attach a payload when in void mode.
+export function rollCatalystAffixes(
+  ids: readonly string[],
+  voidRng: SeededRng,
+): AffixedItem<CatalystMeta>[] {
+  const out: AffixedItem<CatalystMeta>[] = [];
+  for (const id of ids) {
+    const meta = lookupCatalyst(id);
+    if (!meta) continue;
+    out.push(generateAffixedItem(voidRng, meta));
   }
   return out;
 }

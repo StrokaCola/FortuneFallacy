@@ -8,6 +8,7 @@
 import type React from 'react';
 import { lookupCatalyst, awakeningThreshold, isAwakened } from '../../../data/catalysts';
 import { editionColor } from '../../../core/upgrades/editions';
+import type { CatalystEdition } from '../../../state/slices/run';
 import { KindFrame } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { SellButton } from '../SellButton';
@@ -16,6 +17,7 @@ import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlouri
 import { MythicFrame } from '../../visual/MythicFrame';
 import type { FloaterRecord, RingRecord, PulseKind } from './types';
 import { CATALYST_ANIM } from './useCatalystEvents';
+import { useStore } from '../../../state/store';
 
 const BADGE_BUMP_DURATION_MS = 360;
 
@@ -28,7 +30,7 @@ export type CatalystCardProps = {
   id: string;
   index: number;
   pulseKind: PulseKind | undefined;
-  edition: string | undefined;
+  edition: CatalystEdition | undefined;
   isLinked: boolean;
   showLastThrowWarn: boolean;
   // Stack values that drive corner-badge text per catalyst id.
@@ -63,6 +65,18 @@ export function CatalystCard(props: CatalystCardProps) {
   } = props;
 
   const c = lookupCatalyst(id);
+  // Void-mode procgen affix lookup for THIS owned catalyst. Returns the
+  // rolled bundle (displayName + affixes[] + generated flavor) when one
+  // is stored on the run; null in normal mode or when no roll attached.
+  // Cards still render the base short-name on the card face (64px is
+  // too tight for "Cracked Solar Flare of Sundering"); the tooltip
+  // gets the full affixed name + flavor + family chip below.
+  const affixed = useStore((s) => {
+    if (s.run.mode !== 'void') return null;
+    const entry = s.run.catalystAffixes?.[id];
+    if (!entry || entry.affixes.length === 0) return null;
+    return entry;
+  });
   if (!c) return null;
 
   const animation = showLastThrowWarn
@@ -371,9 +385,26 @@ export function CatalystCard(props: CatalystCardProps) {
           the popover lands in the play area instead of covering the
           next card in the vertical rail. */}
       <div className={tight ? 'tip tip-above' : wide ? 'tip tip-right' : 'tip'}>
-        <span className="tip-title">{c.name}</span>
+        <span className="tip-title">{affixed?.displayName ?? c.name}</span>
         {c.desc}
-        {c.flavor && <span className="tip-flavor">{c.flavor}</span>}
+        {affixed && (
+          <div style={{ display: 'block', marginTop: 6 }}>
+            {affixed.affixes.map((a) => (
+              <div key={a.id} style={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 10, lineHeight: 1.5, marginTop: 2,
+              }}>
+                <span style={{ color: '#a78bfa', fontWeight: 600 }}>{a.nameTemplate}</span>
+                <span style={{ color: '#dcd4ff', opacity: 0.85 }}>
+                  {a.description ? `: ${a.description}` : ` (${a.family})`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {affixed?.flavor
+          ? <span className="tip-flavor" style={{ color: '#a78bfa' }}>{affixed.flavor}</span>
+          : c.flavor && <span className="tip-flavor">{c.flavor}</span>}
         {/* Live "currently" line for the 2026-05-11 scaling pack so
             the player can see what they've accrued without doing the
             math in their head. */}

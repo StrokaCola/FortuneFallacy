@@ -529,3 +529,128 @@ describe('Mod editions — buy + sell parallel-array sync', () => {
     expect(r.state.run.ownedModEditions).toEqual(['holo']);
   });
 });
+
+describe('Void Mode — catalyst affix offer → purchase → run.catalystAffixes', () => {
+  // Helper: build a void-mode state so OPEN_SHOP threads a voidRng and
+  // catalyst offers carry the rolled `affixed` payload.
+  const voidState = (overrides: Overrides = {}): GameState => {
+    const base = baseState({ shards: 100, open: false, ...overrides });
+    return {
+      ...base,
+      run: { ...base.run, mode: 'void', voidSeed: 4242 },
+    } as GameState;
+  };
+
+  it('OPEN_SHOP in void mode attaches `affixed` to catalyst offers', () => {
+    const s = voidState();
+    const r = shopHandler({ type: 'OPEN_SHOP' }, s);
+    const catalystOffers = r.state.shop.offers.filter((o) => o.kind === 'catalyst');
+    expect(catalystOffers.length).toBeGreaterThan(0);
+    // At least one catalyst offer must carry an `affixed` payload whose
+    // base.id matches the offer's catalyst id.
+    const affixedCount = catalystOffers.filter((o) => o.affixed).length;
+    expect(affixedCount).toBe(catalystOffers.length);
+    for (const o of catalystOffers) {
+      expect(o.affixed!.baseId).toBe(o.id);
+    }
+  });
+
+  it('OPEN_SHOP outside void mode does NOT attach `affixed` to offers', () => {
+    const s = baseState({ open: false });
+    const r = shopHandler({ type: 'OPEN_SHOP' }, s);
+    for (const o of r.state.shop.offers) {
+      expect(o.affixed).toBeUndefined();
+    }
+  });
+
+  it('BUY_OFFER on an affixed catalyst persists the bundle to run.catalystAffixes', () => {
+    const s = voidState();
+    const opened = shopHandler({ type: 'OPEN_SHOP' }, s);
+    const catalystIdx = opened.state.shop.offers.findIndex((o) => o.kind === 'catalyst' && o.affixed);
+    expect(catalystIdx).toBeGreaterThanOrEqual(0);
+    const offer = opened.state.shop.offers[catalystIdx]!;
+    const bought = shopHandler({ type: 'BUY_OFFER', offerIdx: catalystIdx }, opened.state);
+    expect(bought.state.run.catalysts).toContain(offer.id);
+    expect(bought.state.run.catalystAffixes[offer.id]).toBeDefined();
+    expect(bought.state.run.catalystAffixes[offer.id]!.baseId).toBe(offer.id);
+  });
+
+  it('SELL_UPGRADE catalyst drops the affix bundle so a re-buy rolls fresh', () => {
+    const s = voidState();
+    const opened = shopHandler({ type: 'OPEN_SHOP' }, s);
+    const catalystIdx = opened.state.shop.offers.findIndex((o) => o.kind === 'catalyst' && o.affixed);
+    const bought = shopHandler({ type: 'BUY_OFFER', offerIdx: catalystIdx }, opened.state);
+    const boughtId = opened.state.shop.offers[catalystIdx]!.id;
+    expect(bought.state.run.catalystAffixes[boughtId]).toBeDefined();
+    // Sell from the catalyst tray (index 0 — only catalyst in the run).
+    const sold = shopHandler({ type: 'SELL_UPGRADE', kind: 'catalyst', index: 0 }, bought.state);
+    expect(sold.state.run.catalystAffixes[boughtId]).toBeUndefined();
+  });
+});
+
+describe('Void Mode — consumable affix flow (PICK_FROM_PACK + SELL_UPGRADE)', () => {
+  // Helper: seed a void-mode state with a pendingPack so PICK_FROM_PACK
+  // exercises the consumable affix branch directly. We pre-roll a known
+  // galaxy_id list so the test doesn't depend on the pack-content rng.
+  const voidPackState = (galaxyIds: string[]): GameState => {
+    const base = baseState({ open: true });
+    return {
+      ...base,
+      run: { ...base.run, mode: 'void', voidSeed: 7777 },
+      shop: {
+        ...base.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds,
+          picksLeft: 1,
+          pickedSoFar: [],
+          unlockedAtOpen: [],
+        },
+      },
+    } as GameState;
+  };
+
+  it('PICK_FROM_PACK galaxy in void mode persists affixed entry on run.consumableAffixes', () => {
+    const s = voidPackState(['galaxy_milky_way']);
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, s);
+    expect(r.state.run.consumableAffixes['galaxy_milky_way']).toBeDefined();
+    expect(r.state.run.consumableAffixes['galaxy_milky_way']!.baseId).toBe('galaxy_milky_way');
+    // Galaxy still applies — combo level bumps as normal.
+    expect(r.state.run.comboLevels?.['chance']).toBeGreaterThan(0);
+  });
+
+  it('PICK_FROM_PACK maneuver in void mode persists affix + adds maneuver to consumables', () => {
+    const s = voidPackState(['burn_pass']);
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, s);
+    expect(r.state.run.consumables).toContain('burn_pass');
+    expect(r.state.run.consumableAffixes['burn_pass']).toBeDefined();
+    expect(r.state.run.consumableAffixes['burn_pass']!.baseId).toBe('burn_pass');
+  });
+
+  it('PICK_FROM_PACK outside void mode does NOT persist consumable affixes', () => {
+    const base = baseState({ open: true });
+    const s: GameState = {
+      ...base,
+      shop: {
+        ...base.shop,
+        pendingPack: {
+          kind: 'celestial',
+          galaxyIds: ['galaxy_milky_way'],
+          picksLeft: 1,
+          pickedSoFar: [],
+          unlockedAtOpen: [],
+        },
+      },
+    } as GameState;
+    const r = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, s);
+    expect(r.state.run.consumableAffixes['galaxy_milky_way']).toBeUndefined();
+  });
+
+  it('SELL_UPGRADE consumable in void drops the affix bundle when no copies remain', () => {
+    const s = voidPackState(['burn_pass']);
+    const picked = shopHandler({ type: 'PICK_FROM_PACK', galaxyIdx: 0 }, s);
+    expect(picked.state.run.consumableAffixes['burn_pass']).toBeDefined();
+    const sold = shopHandler({ type: 'SELL_UPGRADE', kind: 'consumable', index: 0 }, picked.state);
+    expect(sold.state.run.consumableAffixes['burn_pass']).toBeUndefined();
+  });
+});

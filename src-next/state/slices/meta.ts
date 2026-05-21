@@ -55,6 +55,12 @@ export type MetaSlice = {
     seen: string[];
     dismissed: boolean;
     firstLaunch?: boolean;
+    // 2026-05-20 Void Mode — flips true the first time the player
+    // enters Void mode after the one-shot easter-egg modal dismisses.
+    // Once set, the modal never shows again. Optional for back-compat
+    // with saves that predate the field; persistence rehydrates to
+    // false when missing.
+    seenVoidEasterEgg?: boolean;
   };
   // Daily Challenge history. Keyed by 'YYYY-MM-DD' (UTC), so today's
   // entry tells the Title screen whether the daily has already been
@@ -188,7 +194,7 @@ export const initialMetaSlice = (): MetaSlice => ({
   cosmicDust: 0,
   cosmicDustLifetime: 0,
   astralPerks: [],
-  onboarding: { seen: [], dismissed: false, firstLaunch: true },
+  onboarding: { seen: [], dismissed: false, firstLaunch: true, seenVoidEasterEgg: false },
   dailyHistory: {},
   achievements: { unlocked: [], unlockedAt: {} },
   dailyLogin: { lastDate: null },

@@ -136,6 +136,46 @@ describe('REROLL_REQUESTED determinism', () => {
     expect(result.state.run.rollCounter).toBe(0);
     expect(result.state.round.rerollsLeft).toBe(2);
   });
+
+  // Phase 2B.2 — discardCostMultiplier rule scales the per-reroll cost.
+  // Outside void mode (no rules) cost stays at 1. With a 2× rule, each
+  // REROLL_REQUESTED consumes 2 from rerollsLeft. With a 3× rule on a
+  // 2-reroll budget, the reroll is gated entirely.
+  describe('discardCostMultiplier rule', () => {
+    it('consumes 2 rerolls per request when a 2x rule is active', () => {
+      const base = makeState();
+      const ruled: GameState = {
+        ...base,
+        run: {
+          ...base.run,
+          activeBlindRules: [{ kind: 'discardCostMultiplier', multiplier: 2 }],
+        },
+      };
+      const result = rollHandler({ type: 'REROLL_REQUESTED' }, ruled);
+      expect(result.state.round.rerollsLeft).toBe(0); // 2 - 2
+      expect(result.state.run.rollCounter).toBe(1);
+    });
+
+    it('no-ops with a 3x rule when rerollsLeft is only 2', () => {
+      const base = makeState();
+      const ruled: GameState = {
+        ...base,
+        run: {
+          ...base.run,
+          activeBlindRules: [{ kind: 'discardCostMultiplier', multiplier: 3 }],
+        },
+      };
+      const result = rollHandler({ type: 'REROLL_REQUESTED' }, ruled);
+      expect(result.state).toBe(ruled);
+      expect(result.state.run.rollCounter).toBe(0);
+      expect(result.state.round.rerollsLeft).toBe(2);
+    });
+
+    it('still consumes only 1 reroll when no rules are active (back-compat)', () => {
+      const result = rollHandler({ type: 'REROLL_REQUESTED' }, makeState());
+      expect(result.state.round.rerollsLeft).toBe(1);
+    });
+  });
 });
 
 describe('SCORE_HAND', () => {

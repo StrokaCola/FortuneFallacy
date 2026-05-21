@@ -32,7 +32,7 @@ export function startSimRunner(): () => void {
   return bus.on('onSimulationStart', ({ request }) => {
     const end = perfBegin('runSimulation');
     let settled = false;
-    let watchdog: ReturnType<typeof setTimeout> | null = null;
+    let watchdog: number | null = null;
     const finish = (result: SimulationResult): void => {
       if (settled) return;
       settled = true;

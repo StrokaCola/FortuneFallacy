@@ -16,6 +16,11 @@ import { lookupCosmicAffliction, pickAfflictionsForLap } from '../../data/cosmic
 import { accrueBlindCleared, isPalindrome } from './scalingHooks';
 import { lookupCatalyst, CATALYST_META } from '../../data/catalysts';
 import { LEGENDARY_UNLOCK_PREFIX } from '../shop/catalystDraw';
+import type { BlindDef } from '../../data/blinds';
+import type { AffixedItem, BlindRule } from '../../voidmode/types';
+import { generateAffixedItem } from '../../voidmode/affixGenerator';
+import { BLIND_AFFIX_DEFS } from '../../voidmode/blindAffixes';
+import { mulberry32 } from '../rng';
 
 // Legendary unlock conditions tied to per-blind progression. Run from inside
 // clearBlind so the unlock lands the moment the qualifying clear happens.
@@ -281,6 +286,41 @@ function dropBrittleMods(
   return { diceMods: nextMods, diceModEditions: nextEditions };
 }
 
+// Mix two 32-bit ints into one. Used to derive a per-blind seed from
+// run.voidSeed + a hash of blindId + ante + goalIdx, so the same blind
+// in the same run-position always rolls the same affix set but each
+// blind across a run feels distinct.
+function hashStr(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** Roll a blind affix bundle keyed deterministically by the blind's
+ * (id, ante, goalIdx) coordinate. Returns null in non-void mode or
+ * when the blind has no archetypeTags. The base of the AffixedItem is
+ * a shallow copy of the BlindDef with the blind's live id stamped in
+ * (so the void mode UI can address it by id). */
+export function rollBlindAffix(
+  blindId: string,
+  blindDef: BlindDef,
+  voidSeed: number,
+  ante: number,
+  goalIdx: number,
+): AffixedItem<BlindDef & { id: string }> | null {
+  // Empty archetypeTags means the generator would short-circuit to a
+  // bare base; skip the whole pipeline to avoid storing a noop entry.
+  if (!blindDef.archetypeTags || blindDef.archetypeTags.length === 0) return null;
+  const key = `blind:${blindId}@${ante}.${goalIdx}`;
+  const seed = (voidSeed ^ hashStr(key)) >>> 0;
+  const rng = mulberry32(seed);
+  const base: BlindDef & { id: string } = { ...blindDef, id: blindId };
+  return generateAffixedItem(rng, base, { pool: BLIND_AFFIX_DEFS });
+}
+
 /** Pick a boss-blind id deterministically from the run seed + ante.
  * Two players entering the same seed see the same boss on the same
  * ante; a refresh on the hub doesn't shuffle the boss because the
@@ -423,6 +463,28 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
   // sets the player to 0 rather than rolling negative.
   const stormShardsDelta = stormBlindStart.shardsDelta ?? 0;
   const runShards = Math.max(0, s.run.shards + shardLungBonus + auditBonus + stormShardsDelta);
+  // Void Mode — roll a procgen affix for this blind. Deterministic from
+  // voidSeed + (blindId, ante, goalIdx) so a given seed always rolls
+  // the same blind affix in the same slot. Stored on run.blindAffixes
+  // keyed by blindId for the scoring pipeline + TopBar to read.
+  // Strictly ephemeral; persistence clears the field on rehydrate.
+  //
+  // Phase 2B.2 — alongside the affix bundle, extract any rule descriptors
+  // (banCombo, discardCostMultiplier) into run.activeBlindRules so the
+  // scoring pipeline + reroll handler can consult them as gameplay-time
+  // gates. Always reset to [] when the current blind doesn't carry rules
+  // so a previous blind's rules don't leak into this one.
+  let nextBlindAffixes = s.run.blindAffixes ?? {};
+  let nextActiveBlindRules: BlindRule[] = [];
+  if (s.run.mode === 'void') {
+    const affixed = rollBlindAffix(blindId, def, s.run.voidSeed, ante, s.run.goalIdx);
+    if (affixed) {
+      nextBlindAffixes = { ...nextBlindAffixes, [blindId]: affixed };
+      nextActiveBlindRules = affixed.affixes
+        .map((a) => a.rule)
+        .filter((r): r is BlindRule => r !== undefined);
+    }
+  }
   return {
     state: {
       ...s,
@@ -435,6 +497,8 @@ export function startBlind(s: GameState): { state: GameState; events: GameEventE
         shards: runShards,
         mirroredHandActive,
         upcomingBossId: isBoss ? null : s.run.upcomingBossId,
+        blindAffixes: nextBlindAffixes,
+        activeBlindRules: nextActiveBlindRules,
       },
       round: {
         ...initialRoundSlice(),
@@ -669,6 +733,10 @@ export function clearBlind(s: GameState): { state: GameState; events: GameEventE
         // Mirrors the meta.cosmicDust grant above so the two stay in sync.
         runStats: addDustToRunStats(s.run.runStats, dustGained),
         upcomingBossId: nextUpcomingBossId,
+        // Phase 2B.2 — clear active blind rules on blind end; the next
+        // START_BLIND will repopulate from whatever affixes the next
+        // blind rolls.
+        activeBlindRules: [],
       },
       round: { ...s.round, active: false },
       // Empty offers so Shop's useEffect dispatches OPEN_SHOP and rolls fresh.
@@ -800,6 +868,9 @@ export function bustBlind(s: GameState): { state: GameState; events: GameEventEm
         // the postmortem so the player sees they made progress even on a
         // failed run.
         runStats: addDustToRunStats(s.run.runStats, dustGained),
+        // Phase 2B.2 — clear active blind rules on bust so a refresh into
+        // the fail screen doesn't carry stale rules into the next blind.
+        activeBlindRules: [],
       },
       meta: {
         ...s.meta,

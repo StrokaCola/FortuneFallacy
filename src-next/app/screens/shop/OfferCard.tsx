@@ -16,7 +16,7 @@ import { lookupCatalyst, CATALYST_META } from '../../../data/catalysts';
 import { KindFrame, type UpgradeKind } from '../../visual/upgradeKindFrames';
 import { CatalystIcon } from '../../visual/CatalystIcon';
 import { RARITY_COLORS, type Rarity } from '../../visual/rarityStyles';
-import type { CatalystEdition } from '../../../state/slices/run';
+import type { ShopOffer as CanonicalShopOffer } from '../../../events/types';
 import { offerMeta, editionBonusDescription } from './offerMeta';
 import { EditionBadge } from './EditionBadge';
 import { LegendaryFlourish, LegendaryEmbers } from '../../visual/LegendaryFlourish';
@@ -34,12 +34,11 @@ const RARITY_RING_STRENGTH: Record<Rarity, number> = {
   common: 0.18, uncommon: 0.32, rare: 0.55, legendary: 0, mythic: 0,
 };
 
-export type ShopOffer = {
-  kind: string;
-  id: string;
-  price: number;
-  edition?: CatalystEdition;
-};
+// Re-export the canonical ShopOffer so callers in this folder can keep
+// importing from OfferCard. Local kind/edition fields stay aligned with
+// the events/types.ts source of truth (kind is the narrowed union;
+// edition includes 'void' for catalysts).
+export type ShopOffer = CanonicalShopOffer;
 
 export type OfferCardProps = {
   offer: ShopOffer;
@@ -54,6 +53,15 @@ export type OfferCardProps = {
 export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull, offerVersion, tight }: OfferCardProps) {
   const m = offerMeta(o.kind, o.id);
   const c = m.color;
+  // Void Mode procgen name. When the offer carries an `affixed` payload
+  // with attached affixes, swap the base catalyst name for the generated
+  // "Prefix Base of Suffix" form. Falls through to base name on normal
+  // mode or when the generator returned an unaffixed item.
+  const displayName = (o.affixed && o.affixed.affixes.length > 0)
+    ? o.affixed.displayName
+    : m.name;
+  const affixFlavor = o.affixed && o.affixed.affixes.length > 0 ? o.affixed.flavor : null;
+  const affixList = o.affixed && o.affixed.affixes.length > 0 ? o.affixed.affixes : null;
   const slotBlocked = o.kind === 'catalyst' && catalystsFull;
   const affordable = shards >= o.price && !slotBlocked;
   const refundIfBought = sellRefund(o.kind as Parameters<typeof sellRefund>[0], o.id);
@@ -208,12 +216,12 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
             trace cartouche (with this offer's name), and the orbital
             comet. The .is-mythic class on the host (above) drives the
             breathing halo + shake + displacement bursts. */}
-        {isMythic && <MythicFrame name={m.name} />}
+        {isMythic && <MythicFrame name={displayName} />}
         {/* Aliveness first-encounter reveal — only renders on the
             first time the player sees this catalyst (or this edition).
             Self-destructs after ~1.2s (or ~2s for rare editions). */}
         {showReveal && (
-          <RevealAnimation name={m.name} edition={revealRef.current.edition ?? undefined} />
+          <RevealAnimation name={displayName} edition={revealRef.current.edition ?? undefined} />
         )}
 
         <div style={{ position: 'relative', zIndex: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%' }}>
@@ -268,7 +276,7 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
             // legibility on the smallest viewports.
             textShadow: isLegendary ? `0 0 4px ${ringColor}66` : undefined,
           }}>
-            {m.name}
+            {displayName}
             {o.kind === 'catalyst' && o.edition && <EditionBadge edition={o.edition} />}
           </div>
           {/* Resonance hint — pulses gold when this offer would
@@ -324,9 +332,26 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
         </div>
       </div>
       <span className="tip">
-        <span className="tip-title">{m.name}</span>
+        <span className="tip-title">{displayName}</span>
         {m.desc}
-        {m.flavor && <span className="tip-flavor">{m.flavor}</span>}
+        {affixList && (
+          <span style={{ display: 'block', marginTop: 6 }}>
+            {affixList.map((a) => (
+              <span key={a.id} style={{
+                display: 'block',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 10, lineHeight: 1.5, marginTop: 2,
+              }}>
+                <span style={{ color: '#a78bfa', fontWeight: 600 }}>{a.nameTemplate}</span>
+                <span style={{ color: '#dcd4ff', opacity: 0.85 }}>
+                  {a.description ? `: ${a.description}` : ` (${a.family})`}
+                </span>
+              </span>
+            ))}
+          </span>
+        )}
+        {affixFlavor && <span className="tip-flavor" style={{ color: '#a78bfa' }}>{affixFlavor}</span>}
+        {!affixFlavor && m.flavor && <span className="tip-flavor">{m.flavor}</span>}
         {o.edition && (o.kind === 'catalyst' || o.kind === 'mod') && (
           <span style={{
             display: 'block', marginTop: 6,

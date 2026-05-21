@@ -1,6 +1,7 @@
 import type { ActionHandler } from './types';
 import type { GameState } from '../../state/store';
-import { lookupConsumable } from '../../core/consumables';
+import { lookupConsumable, rollConsumableAffixes } from '../../core/consumables';
+import type { ConsumableDef } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
 import { MOD_IDS } from '../../core/mods';
 import { areModsDisabled, getDiceSpec, getComboCtx } from '../../core/run/diceContext';
@@ -8,8 +9,11 @@ import { sellRefund } from '../../core/shop/sellRefund';
 import { sellTriggerFor } from '../../core/shop/sellTriggers';
 import type { GameEventEmission, ShopOffer } from '../../events/types';
 import { PACK_DEFS, lookupPack, rollPackContents, rollManeuverContents } from '../../core/consumables/galaxies';
-import { drawWeightedCatalysts, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
+import { drawWeightedCatalysts, rollCatalystAffixes, LEGENDARY_UNLOCK_PREFIX } from '../../core/shop/catalystDraw';
 import { lookupCatalyst } from '../../data/catalysts';
+import { mulberry32 } from '../../core/rng';
+import type { CatalystMeta } from '../../data/catalysts';
+import type { AffixedItem } from '../../voidmode/types';
 
 // 2026-05-19 mythic tier pricing. Every existing catalyst still costs 5
 // shards; mythic catalysts cost 20. Stake.shopPriceMult applies on top
@@ -22,6 +26,7 @@ function priceForCatalystId(id: string): number {
     : STANDARD_CATALYST_PRICE;
 }
 import { rollCatalystEdition } from '../../core/upgrades/editions';
+import type { ModEdition } from '../../state/slices/run';
 import { stakeContext } from '../../core/run/stakeContext';
 import { makeSeedRng } from '../../core/seed/rng';
 import { rerollDiscount } from '../../core/run/applyAstralPerks';
@@ -139,6 +144,18 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return a;
 }
 
+// Small 32-bit string hash used to scope void-mode affix RNG to a
+// specific consumable id. Trimmed Cyrb32 — same shape as the seed
+// helper in core/seed/rng.ts; redeclared here to avoid pulling that
+// module's encoding helpers (encodeSeed etc) into the shop handler.
+function hashId(s: string): number {
+  let h = 0xdeadbeef ^ 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 2654435761);
+  }
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 function applyShopPriceMult(offers: ShopOffer[], mult: number): ShopOffer[] {
   if (mult === 1) return offers;
   return offers.map((o) => ({ ...o, price: Math.max(1, Math.round(o.price * mult)) }));
@@ -148,7 +165,15 @@ function applyShopPriceMult(offers: ShopOffer[], mult: number): ShopOffer[] {
 // the same seed + same shopSeq always produces the same offers, and
 // each successive REROLL_SHOP advances shopSeq → fresh deterministic
 // offers. See OPEN_SHOP / REROLL_SHOP for the scope construction.
-function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
+//
+// `voidRng` (optional, void-mode only) is a SeededRng derived from
+// `run.voidSeed`. When present, each catalyst offer carries an
+// `affixed` payload generated from the affix pool; BUY_OFFER reads
+// this and persists it onto run.catalystAffixes. Outside void mode
+// (voidRng === undefined), the offer shape is unchanged — `affixed`
+// is left absent and zero affix code-paths execute, so the existing
+// shop tests behave identically.
+function rollOffers(s: GameState, rng: () => number, voidRng?: import('../../core/rng').SeededRng): ShopOffer[] {
   const offers: ShopOffer[] = [];
   const ownedVouchers = s.run.vouchers;
   const modsOff = areModsDisabled(s);
@@ -167,7 +192,10 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
     for (const id of modIds) {
       // Mod editions roll independently, same drop weights as catalysts:
       // foil 5%, holo 3%, poly 2%, otherwise plain. See editions.ts.
-      const edition = rollCatalystEdition(rng);
+      // Void editions only apply to catalysts (they save a catalyst slot),
+      // so drop a void roll back to plain for mods.
+      const rolled = rollCatalystEdition(rng);
+      const edition = rolled === 'void' ? undefined : rolled;
       offers.push({ kind: 'mod', id, price: MOD_OFFER_PRICE, ...(edition ? { edition } : {}) });
     }
   }
@@ -177,9 +205,21 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
   const catalystCount = modsOff ? 3 : 2;
   const endlessLap = s.run.endlessLap ?? 0;
   const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse), endlessLap);
-  for (const id of catalystIds) {
+  // Void Mode — pre-roll affix bundles for each catalyst id so the offer
+  // carries its rolled affixes. Outside void mode `voidRng` is undefined
+  // and `affixedRolls` stays empty.
+  const affixedRolls = voidRng ? rollCatalystAffixes(catalystIds, voidRng) : [];
+  for (let i = 0; i < catalystIds.length; i++) {
+    const id = catalystIds[i]!;
     const edition = rollCatalystEdition(rng);
-    offers.push({ kind: 'catalyst', id, price: priceForCatalystId(id), ...(edition ? { edition } : {}) });
+    const affixed = affixedRolls.find((r) => r.baseId === id);
+    offers.push({
+      kind: 'catalyst',
+      id,
+      price: priceForCatalystId(id),
+      ...(edition ? { edition } : {}),
+      ...(affixed ? { affixed } : {}),
+    });
   }
 
   // 2026-05-16 polish — Sixth Star (+1 die for the run) is the single
@@ -224,7 +264,14 @@ function rollOffers(s: GameState, rng: () => number): ShopOffer[] {
     const extra = drawWeightedCatalysts(1, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, undefined, endlessLap);
     if (extra[0]) {
       const edition = rollCatalystEdition(rng);
-      offers.push({ kind: 'catalyst', id: extra[0], price: priceForCatalystId(extra[0]), ...(edition ? { edition } : {}) });
+      const extraAffixed = voidRng ? rollCatalystAffixes([extra[0]], voidRng)[0] : undefined;
+      offers.push({
+        kind: 'catalyst',
+        id: extra[0],
+        price: priceForCatalystId(extra[0]),
+        ...(edition ? { edition } : {}),
+        ...(extraAffixed ? { affixed: extraAffixed } : {}),
+      });
     }
   }
 
@@ -308,7 +355,13 @@ export const shopHandler: ActionHandler = (a, s) => {
       // (the saved shopSeq replays the same scope).
       const seq = s.run.shopSeq ?? 0;
       const rng = makeSeedRng(s.run.seed, `shop:seq=${seq}`);
-      const offers = rollOffers(s, rng);
+      // Void Mode — affix RNG is keyed off `voidSeed + shopSeq` so the
+      // bundle rolled for an offer is stable per shop visit and survives
+      // refreshes. Not derived from the same seed as the offer rng so
+      // void seeds can be substituted independently for daily-certified
+      // runs (Phase 8).
+      const voidRng = s.run.mode === 'void' ? mulberry32(s.run.voidSeed ^ seq) : undefined;
+      const offers = rollOffers(s, rng, voidRng);
       return {
         state: {
           ...s,
@@ -332,7 +385,8 @@ export const shopHandler: ActionHandler = (a, s) => {
       if (s.run.shards < cost) return { state: s, events: [] };
       const seq = s.run.shopSeq ?? 0;
       const rng = makeSeedRng(s.run.seed, `shop:seq=${seq}`);
-      const offers = rollOffers(s, rng);
+      const voidRng = s.run.mode === 'void' ? mulberry32(s.run.voidSeed ^ seq) : undefined;
+      const offers = rollOffers(s, rng, voidRng);
       // Free Refresh voucher only makes the FIRST shop reroll free (initial
       // cost 0 via initialRerollCost). After spending that free reroll the
       // cost climbs by 1 each time, same escalation cadence as the base
@@ -386,6 +440,14 @@ export const shopHandler: ActionHandler = (a, s) => {
         offer.kind === 'catalyst' && offer.edition
           ? { ...s.run.catalystEditions, [offer.id]: offer.edition }
           : s.run.catalystEditions;
+      // Void Mode — persist the offer's rolled affix bundle so the
+      // scoring pipeline's applyAffixesPhase can apply it on every
+      // score. Catalyst offers always carry a CatalystMeta-shaped
+      // affixed payload, so the narrowing cast is safe at this branch.
+      const catalystAffixes =
+        offer.kind === 'catalyst' && offer.affixed
+          ? { ...s.run.catalystAffixes, [offer.id]: offer.affixed as AffixedItem<CatalystMeta> }
+          : s.run.catalystAffixes;
       // Mods carry their edition in a parallel array — push or keep length-
       // synced regardless of whether this offer had an edition.
       // Mods only support foil/holo/poly editions (no 'void'). Filter
@@ -406,7 +468,7 @@ export const shopHandler: ActionHandler = (a, s) => {
           : (s.run.catalystShardSpend ?? 0);
       const boughtRaw: GameState = {
         ...s,
-        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, ownedModEditions, catalystShardSpend },
+        run: { ...s.run, shards: s.run.shards - offer.price, catalysts, consumables, vouchers, ownedMods, catalystEditions, catalystAffixes, ownedModEditions, catalystShardSpend },
         shop: { ...s.shop, offers: remaining },
       };
       // Extra-die voucher: extend round.dice / run.diceMods / diceModEditions
@@ -433,21 +495,33 @@ export const shopHandler: ActionHandler = (a, s) => {
       const def = lookupConsumable(galaxyId);
       if (!def) return { state: s, events: [] };
 
+      // Void Mode — roll affixes for this consumable pick and persist
+      // the bundle on run.consumableAffixes. Galaxies apply immediately
+      // (their effect runs once on pick), but the affix bundle is still
+      // stored so the UI/postmortem can show what rolled. Maneuvers
+      // persist alongside the consumable in `run.consumables`.
+      const voidAffixed = s.run.mode === 'void'
+        ? rollConsumableAffixes([def.id], mulberry32(s.run.voidSeed ^ a.galaxyIdx ^ hashId(def.id)))[0]
+        : undefined;
+      const consumableAffixes = voidAffixed
+        ? { ...s.run.consumableAffixes, [def.id]: voidAffixed as AffixedItem<ConsumableDef> }
+        : s.run.consumableAffixes;
+
       // Galaxies apply immediately (combo level bump). Maneuvers go into the
       // consumable tray so the player can choose when to fire them. Other
       // types are rejected for safety.
       let applied: { state: GameState; events: GameEventEmission[] };
       if (def.type === 'galaxy') {
-        applied = def.apply(s, []);
+        applied = def.apply({ ...s, run: { ...s.run, consumableAffixes } }, []);
       } else if (def.type === 'maneuver') {
         if (s.run.consumables.length >= maxConsumableSlots(s)) {
           // Inventory full — skip silently. The pick still counts so the
           // player can move on; alternative is to refund a pick, but the
           // simpler flow keeps overlay logic clean.
-          applied = { state: s, events: [] };
+          applied = { state: { ...s, run: { ...s.run, consumableAffixes } }, events: [] };
         } else {
           applied = {
-            state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, def.id] } },
+            state: { ...s, run: { ...s.run, consumables: [...s.run.consumables, def.id], consumableAffixes } },
             events: [],
           };
         }
@@ -518,6 +592,10 @@ export const shopHandler: ActionHandler = (a, s) => {
         // Drop the edition stamp (if any) so a re-bought catalyst with
         // the same id doesn't inherit the prior edition.
         const { [id]: _dropped, ...remainingEditions } = s.run.catalystEditions ?? {};
+        // Void Mode — drop the affix bundle on sell so a re-bought
+        // catalyst rolls fresh affixes. Mirrors the catalystEditions
+        // cleanup directly above.
+        const { [id]: _droppedAffixed, ...remainingAffixes } = s.run.catalystAffixes ?? {};
         // Build the post-removal state first; sell-trigger effects then
         // observe and mutate THAT (so e.g. compounding-bias clears its
         // own stacks even though the catalyst is already gone).
@@ -528,6 +606,7 @@ export const shopHandler: ActionHandler = (a, s) => {
             shards: s.run.shards + refund,
             catalysts: removeAt(s.run.catalysts, a.index),
             catalystEditions: remainingEditions,
+            catalystAffixes: remainingAffixes,
           },
         };
         const trigger = sellTriggerFor(id);
@@ -554,8 +633,20 @@ export const shopHandler: ActionHandler = (a, s) => {
         const id = s.run.consumables[a.index];
         if (!id) return { state: s, events: [] };
         const refund = sellRefund('consumable', id);
+        // Void Mode — only drop the affix bundle when no other copies of
+        // this consumable remain in the inventory. Consumables CAN appear
+        // more than once (unlike catalysts), so a duplicate stack would
+        // be cleared too eagerly if we dropped on every sell.
+        const remainingConsumables = removeAt(s.run.consumables, a.index);
+        const stillHas = remainingConsumables.includes(id);
+        const consumableAffixes = stillHas
+          ? s.run.consumableAffixes
+          : (() => {
+              const { [id]: _drop, ...rest } = s.run.consumableAffixes ?? {};
+              return rest;
+            })();
         return {
-          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, consumables: removeAt(s.run.consumables, a.index) } },
+          state: { ...s, run: { ...s.run, shards: s.run.shards + refund, consumables: remainingConsumables, consumableAffixes } },
           events: [{ type: 'onUpgradeSold', payload: { kind: 'consumable', id, refund } }],
         };
       }
@@ -633,10 +724,18 @@ function resolveSkipBounty(s: GameState, optionIdx: number): { state: GameState;
         events: [],
       };
     }
+    // Void Mode — roll + persist consumable affixes alongside the
+    // acquisition. Mirrors the PICK_FROM_PACK branch.
+    const voidAffixed = cleared.run.mode === 'void'
+      ? rollConsumableAffixes([def.id], mulberry32(cleared.run.voidSeed ^ hashId(def.id)))[0]
+      : undefined;
+    const consumableAffixes = voidAffixed
+      ? { ...cleared.run.consumableAffixes, [def.id]: voidAffixed as AffixedItem<ConsumableDef> }
+      : cleared.run.consumableAffixes;
     return {
       state: {
         ...cleared,
-        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId] },
+        run: { ...cleared.run, consumables: [...cleared.run.consumables, option.consumableId], consumableAffixes },
       },
       events: [],
     };

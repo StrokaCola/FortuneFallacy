@@ -23,6 +23,9 @@ register({
   phase: Phase.UPGRADES,
   priority: 90,
   apply: (ctx) => {
+    // scoringOrder lives on the round slice (set by EVALUATION). Fall back
+    // to natural order if it hasn't been written yet (e.g. early phases /
+    // legacy code paths).
     const faces: number[] = ctx.sim?.finalFaces ?? [];
     const order: number[] = ctx.state.round.scoringOrder ?? faces.map((_, i) => i);
     const scoringFaces = order

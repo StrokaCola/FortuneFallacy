@@ -93,4 +93,60 @@ describe('BossSigil', () => {
     // jsdom does not implement getTotalLength; the effect must guard or accept the no-op.
     expect(() => render(<BossSigil boss={fakeBoss} animate="reveal" />)).not.toThrow();
   });
+
+  it('renders the procedural path when proceduralSeed is provided', () => {
+    const { container } = render(<BossSigil boss={fakeBoss} proceduralSeed={42} />);
+    // The override emits a single <g> with the orbit-main class hook and
+    // a single procedurally-generated <path> inside.
+    expect(container.querySelector('.boss-sigil__orbit-main')).toBeTruthy();
+    expect(container.querySelectorAll('path').length).toBe(1);
+    const d = container.querySelector('path')!.getAttribute('d');
+    expect(d).toMatch(/^M \d+\.\d+ \d+\.\d+/);
+    expect(d!.endsWith('Z')).toBe(true);
+  });
+
+  it('procedural override suppresses the catalog groups', () => {
+    // Catalog has body-core, satellite, mark groups; with the override
+    // they should not render at all.
+    const { container } = render(<BossSigil boss={fakeBoss} proceduralSeed={1} />);
+    expect(container.querySelector('.boss-sigil__body-core')).toBeNull();
+    expect(container.querySelector('.boss-sigil__satellite')).toBeNull();
+    expect(container.querySelector('.boss-sigil__mark')).toBeNull();
+  });
+
+  it('procedural seed is deterministic — same seed renders the same path', () => {
+    const a = render(<BossSigil boss={fakeBoss} proceduralSeed={123} />);
+    const b = render(<BossSigil boss={fakeBoss} proceduralSeed={123} />);
+    const da = a.container.querySelector('path')!.getAttribute('d');
+    const db = b.container.querySelector('path')!.getAttribute('d');
+    expect(da).toBe(db);
+  });
+
+  it('different procedural seeds render different paths', () => {
+    const a = render(<BossSigil boss={fakeBoss} proceduralSeed={1} />);
+    const b = render(<BossSigil boss={fakeBoss} proceduralSeed={2} />);
+    const da = a.container.querySelector('path')!.getAttribute('d');
+    const db = b.container.querySelector('path')!.getAttribute('d');
+    expect(da).not.toBe(db);
+  });
+
+  it('renders the hand-authored catalog groups when proceduralSeed is undefined', () => {
+    // Sanity check that the catalog path (the 4-group fakeBoss above)
+    // continues to render unchanged when the procedural override is
+    // not engaged.
+    const { container } = render(<BossSigil boss={fakeBoss} />);
+    expect(container.querySelectorAll('path').length).toBe(4);
+    expect(container.querySelector('.boss-sigil__body-core')).toBeTruthy();
+    expect(container.querySelector('.boss-sigil__satellite')).toBeTruthy();
+    expect(container.querySelector('.boss-sigil__mark')).toBeTruthy();
+  });
+
+  it('procedural override uses the 0 0 100 100 viewBox regardless of boss.sigil.viewBox', () => {
+    const oddViewBoxBoss: BossBlind = {
+      ...fakeBoss,
+      sigil: { ...fakeBoss.sigil, viewBox: '-200 -200 400 400' },
+    };
+    const { container } = render(<BossSigil boss={oddViewBoxBoss} proceduralSeed={9} />);
+    expect(container.querySelector('svg')!.getAttribute('viewBox')).toBe('0 0 100 100');
+  });
 });
