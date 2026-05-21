@@ -7,8 +7,8 @@ import type { AffixContext } from './types';
 import type { BlindDef } from '../data/blinds';
 
 describe('BLIND_AFFIX_DEFS', () => {
-  it('exposes 6 entries, one per family', () => {
-    expect(BLIND_AFFIX_DEFS.length).toBe(6);
+  it('exposes 10 entries spanning all six families (Phase 2B.2 added 4 rule-bearing drawbacks)', () => {
+    expect(BLIND_AFFIX_DEFS.length).toBe(10);
     const families = new Set(BLIND_AFFIX_DEFS.map((a) => a.family));
     expect(families.has('scalar')).toBe(true);
     expect(families.has('conditional')).toBe(true);
@@ -17,6 +17,20 @@ describe('BLIND_AFFIX_DEFS', () => {
     expect(families.has('synergy')).toBe(true);
     expect(families.has('reality-warp')).toBe(true);
     expect(families.size).toBe(6);
+  });
+
+  it('exactly 4 entries carry a rule descriptor (Phase 2B.2 rule-bearing affixes)', () => {
+    const ruleBearing = BLIND_AFFIX_DEFS.filter((a) => a.rule !== undefined);
+    expect(ruleBearing.length).toBe(4);
+    // All rules are one of the two supported kinds for Phase 2B.2.
+    for (const a of ruleBearing) {
+      expect(a.rule).toBeDefined();
+      expect(['banCombo', 'discardCostMultiplier']).toContain(a.rule!.kind);
+    }
+    // Confirm both rule kinds are represented in the catalog.
+    const kinds = new Set(ruleBearing.map((a) => a.rule!.kind));
+    expect(kinds.has('banCombo')).toBe(true);
+    expect(kinds.has('discardCostMultiplier')).toBe(true);
   });
 
   it('every entry has a unique id, slot, and weight', () => {

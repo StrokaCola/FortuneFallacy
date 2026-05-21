@@ -8,9 +8,10 @@
 // affixes when state.run.mode === 'void'.
 //
 // Phase 2B.1 scope: 6 canonical entries, one per family. Phase 2B.2
-// extends this with rule-injection affixes (combo bans, discard cost
-// changes, hand-size adjustments) — those live elsewhere because
-// rules don't fit the scoring-only effect signature.
+// adds 4 rule-bearing affixes (banCombo / discardCostMultiplier) on
+// top — those carry an additional `rule` field that the START_BLIND
+// resolver extracts into run.activeBlindRules for the scoring pipeline
+// and the reroll handler to consult as gameplay-time gates.
 
 import type { AffixDef } from './types';
 
@@ -128,6 +129,91 @@ export const BLIND_AFFIX_DEFS: ReadonlyArray<AffixDef> = [
         ctx.multBonus += 15;
       }
     },
+  },
+
+  // ── PHASE 2B.2 RULE-BEARING DRAWBACKS ──────────────────
+  // These carry a `rule` descriptor that mutates gameplay during the
+  // blind in ways the scoring-only AffixContext can't express:
+  // banned combos and scaled discard costs. Each one is in the
+  // 'drawback' family with NEGATIVE budgetCost so they expand the
+  // generator's budget to fit alongside an upside affix on the same
+  // blind. The affix `effect` still runs alongside the rule — a
+  // banCombo affix can also grant compensation chips/mult on the
+  // un-banned combos so the player isn't outright punished.
+  //
+  // NOTE: the existing 'spectral' (drawback family) blocks any other
+  // drawback from rolling on the same item (see affixGenerator's
+  // affixFits guard). That's intentional — a blind never carries more
+  // than one drawback at a time, keeping the rule-rolling cadence
+  // predictable.
+
+  // Rule: bans One Pair from scoring during this blind. Compensation —
+  // +4 mult on every non-pair combo so pair-leaning builds are pushed
+  // toward thicker shapes rather than left scoreless.
+  {
+    id: 'hollow-blind',
+    slot: 'prefix',
+    family: 'drawback',
+    budgetCost: -3,
+    validOn: ['combo', 'risk'],
+    weight: 0.8,
+    nameTemplate: 'Hollow',
+    flavorTags: ['void', 'memory'],
+    effect: (ctx) => {
+      // Compensation for the ban — base mult bump on non-banned combos.
+      if (ctx.hand.comboId !== 'one_pair') ctx.multBonus += 4;
+    },
+    rule: { kind: 'banCombo', comboId: 'one_pair' },
+  },
+
+  // Rule: bans Two Pair. Pure drawback — no compensation chip/mult on
+  // this one; the affix-name signals "your easy two-pair plays are
+  // worthless this trial" plainly without softening.
+  {
+    id: 'of-the-broken-symmetry',
+    slot: 'suffix',
+    family: 'drawback',
+    budgetCost: -3,
+    validOn: ['combo', 'risk'],
+    weight: 0.6,
+    nameTemplate: 'of the Broken Symmetry',
+    flavorTags: ['paradox', 'memory'],
+    effect: () => {},
+    rule: { kind: 'banCombo', comboId: 'two_pair' },
+  },
+
+  // Rule: 2× discard cost. Each reroll consumes 2 from the per-hand
+  // budget instead of 1, so a default 2-reroll hand has a single
+  // reroll available. Moderate constraint — still usable, just
+  // expensive.
+  {
+    id: 'of-curfew-rule',
+    slot: 'suffix',
+    family: 'drawback',
+    budgetCost: -2,
+    validOn: ['risk', 'timing'],
+    weight: 1.0,
+    nameTemplate: 'of Curfew',
+    flavorTags: ['cold', 'memory'],
+    effect: () => {},
+    rule: { kind: 'discardCostMultiplier', multiplier: 2 },
+  },
+
+  // Rule: 3× discard cost — rarer (weight 0.5), harsher. On a default
+  // 2-reroll hand the player cannot reroll at all and must commit to
+  // their first roll. Tuned as a high-stakes shape that occasionally
+  // makes the player feel the trial's pressure.
+  {
+    id: 'of-the-frozen-river',
+    slot: 'suffix',
+    family: 'drawback',
+    budgetCost: -3,
+    validOn: ['risk', 'timing'],
+    weight: 0.5,
+    nameTemplate: 'of the Frozen River',
+    flavorTags: ['cold', 'paradox'],
+    effect: () => {},
+    rule: { kind: 'discardCostMultiplier', multiplier: 3 },
   },
 ];
 
