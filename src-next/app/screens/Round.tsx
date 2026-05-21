@@ -34,15 +34,6 @@ import {
   selectAccent, selectConstellationAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS } from '../../data/blinds';
-import { VoidOverlay } from '../visual/VoidOverlay';
-import { VoidHudBadge } from '../hud/VoidHudBadge';
-
-// Void-mode flag selector. Returned as a primitive boolean so the store's
-// Object.is snapshot comparison stays stable across renders.
-const selectIsVoid = (s: { run: { mode: string } }) => s.run.mode === 'void';
-const selectVoidSeed = (s: { run: { voidSeed: number } }) => s.run.voidSeed;
-const selectRunAlias = (s: { run: { runAlias: string } }) => s.run.runAlias;
-const selectDailyCertified = (s: { run: { dailyCertified: boolean } }) => s.run.dailyCertified;
 
 export function Round() {
   const hands    = useStore(selectHandsLeft);
@@ -91,18 +82,8 @@ export function Round() {
   const ready = useRoundBundleReady();
 
   const blindName = BLIND_DEFS.find((b) => b.index === blindIndex)?.name ?? 'Trial';
-  const isVoid = useStore(selectIsVoid);
-  const voidSeed = useStore(selectVoidSeed);
-  const runAlias = useStore(selectRunAlias);
-  const dailyCertified = useStore(selectDailyCertified);
-
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      {/* Void-mode tint + accretion ambient. Sits between the 3D scene
-          and the HUD (z-30) so dice / cards stay readable but everything
-          is muted under a violet/black wash. No-op in normal mode. */}
-      <VoidOverlay active={isVoid} />
-      {isVoid && <VoidHudBadge seed={voidSeed} alias={runAlias} certified={dailyCertified} />}
       <ScoringVFX />
       <TopBar
         ante={ante}

@@ -63,6 +63,8 @@ import { TutorialController } from './onboarding/tutorial/TutorialController';
 import { TutorialOptInModal } from './onboarding/tutorial/TutorialOptInModal';
 import { installLongPressTooltips } from './ui/longPressTip';
 import { AfterglowOverlay } from './visual/AfterglowOverlay';
+import { VoidOverlay } from './visual/VoidOverlay';
+import { VoidHudBadge } from './hud/VoidHudBadge';
 import { CosmosBackground, type ThemeKey } from './visual/CosmosBackground';
 import { ScreenSilhouette } from './visual/ScreenSilhouette';
 import { HorizonBackdrop } from './visual/HorizonBackdrop';
@@ -77,6 +79,14 @@ export function App() {
   useMotion();
   useScoreSequenceController();
   const screen = useStore(selectScreen);
+  // Void Mode global aesthetic. Mounted at App-level so the tint +
+  // accretion ring + HUD badge persist across Round/Shop/Hub/Forge,
+  // not just the play scene. Selectors return primitives so the
+  // store's Object.is snapshot comparison stays stable across renders.
+  const voidMode = useStore((s) => s.run.mode === 'void');
+  const voidSeed = useStore((s) => s.run.voidSeed);
+  const voidAlias = useStore((s) => s.run.runAlias);
+  const voidCertified = useStore((s) => s.run.dailyCertified);
   const isBoss = useStore(selectIsBoss);
   const tension = useStore(selectTensionFromState);
   // Wave T+1 (2026-05-19) reactive environment pass — track theater
@@ -342,6 +352,12 @@ export function App() {
         <TutorialController />
         <TutorialOptInModal />
         <AfterglowOverlay />
+        {/* Void Mode global overlay + HUD badge. Spans every in-run
+            screen (Round, Shop, Hub, Forge, etc.) — mode flips back to
+            'normal' on END_VOID_RUN which routes to Title, so these
+            unmount naturally when the player leaves the run. */}
+        <VoidOverlay active={voidMode} />
+        {voidMode && <VoidHudBadge seed={voidSeed} alias={voidAlias} certified={voidCertified} />}
         {import.meta.env.DEV && <DevConsole />}
         {import.meta.env.DEV && <BoundsOverlay />}
         {import.meta.env.DEV && <SpawnOverlay />}
