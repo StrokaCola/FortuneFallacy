@@ -6,6 +6,8 @@ import {
   type LastScoringCtx, type Explanation,
 } from './scoreExplainData';
 import { Z } from './zLayers';
+import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 
 const LABEL_COLOR = '#bba8ff';
 const CHIPS_COLOR = '#7be3ff';
@@ -23,7 +25,14 @@ export function ScoreExplain() {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Pair the Escape dismissal with the same soft-dismiss cue
+        // the backdrop click uses (2026-05-20 responsiveness pass).
+        sfxPlay('uiHoverSoft');
+        setOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
@@ -60,6 +69,12 @@ function BreakdownModal({ lastCtx, onClose }: { lastCtx: LastScoringCtx; onClose
   return (
     <div
       onClick={onClose}
+      onPointerDown={(e) => {
+        // Backdrop tap-to-dismiss: pair with a soft cue + tap haptic so
+        // the press lands as a deliberate close (2026-05-20).
+        sfxPlay('uiHoverSoft');
+        if (e.pointerType === 'touch') playHaptic('tap');
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Score breakdown"
@@ -74,6 +89,10 @@ function BreakdownModal({ lastCtx, onClose }: { lastCtx: LastScoringCtx; onClose
       <div
         className="panel-strong"
         onClick={(e) => e.stopPropagation()}
+        // Stop pointerdown too so inner taps don't trigger the
+        // backdrop dismiss sfx in addition to the inner button's
+        // own buttonJuice cue (2026-05-20 responsiveness pass).
+        onPointerDown={(e) => e.stopPropagation()}
         style={{
           width: 540, maxWidth: 'calc(100vw - 32px)',
           // 100dvh tracks the visible viewport on mobile browsers.

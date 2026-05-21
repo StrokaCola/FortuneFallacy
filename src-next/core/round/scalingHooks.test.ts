@@ -5,7 +5,6 @@ import { describe, it, expect } from 'vitest';
 import { accrueScalingStacks, accrueBlindCleared, checkEasterEggs, isPalindrome } from './scalingHooks';
 import { initialRunSlice } from '../../state/slices/run';
 import { initialRoundSlice } from '../../state/slices/round';
-import { Phase } from '../pipeline/types';
 
 describe('accrueScalingStacks', () => {
   it('Star Chart bumps on small straight', () => {
@@ -42,7 +41,7 @@ describe('accrueScalingStacks', () => {
   });
   it('Event Horizon bumps when a big die contributes', () => {
     const run = { ...initialRunSlice(), catalysts: ['event_horizon'] };
-    const events = [{ type: 'onUpgradeTriggered' as const, payload: { id: 'mod:loaded@2', phase: Phase.UPGRADES, deltaChips: 150, deltaMult: 0 } }];
+    const events = [{ type: 'onUpgradeTriggered' as const, payload: { id: 'mod:loaded@2', phase: 5 as const, deltaChips: 150, deltaMult: 0 } }];
     const { run: diff } = accrueScalingStacks({ run, comboId: 'one_pair', events, peakHandWasNew: false });
     expect(diff.catalystStacks?.['event_horizon']).toBe(1);
   });

@@ -224,7 +224,7 @@ export const CATALYST_META: CatalystMeta[] = [
     archetypeTags: ['utility'] },
   { id: 'dust_off', name: 'Dust-Off', icon: '⤺', color: '#bba8ff',
     desc: 'Shop reroll cost −1 shard (min 0).',
-    flavor: 'A quick scrub for the bazaar dust.', rarity: 'common', archetype: 'utility',
+    flavor: 'A quick scrub for the night-market dust.', rarity: 'common', archetype: 'utility',
     archetypeTags: ['utility', 'economy'] },
 
   // Phase 5e — lifecycle catalysts (need round-state counters or hooks).

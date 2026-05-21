@@ -88,7 +88,7 @@ function tapHaptic(durationMs: number): void {
   // still preserves `this`-binding to the navigator.
   const vib = (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate;
   if (typeof vib === 'function') {
-    try { vib.call(navigator, durationMs); } catch { /* ignore */ }
+    try { (vib as (p: number | number[]) => boolean).call(navigator, durationMs); } catch { /* ignore */ }
   }
 }
 

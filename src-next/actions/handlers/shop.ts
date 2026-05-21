@@ -449,11 +449,12 @@ export const shopHandler: ActionHandler = (a, s) => {
           ? { ...s.run.catalystAffixes, [offer.id]: offer.affixed as AffixedItem<CatalystMeta> }
           : s.run.catalystAffixes;
       // Mods carry their edition in a parallel array — push or keep length-
-      // synced regardless of whether this offer had an edition. Mod offers
-      // never carry the 'void' edition (filtered out at the roll site in
-      // rollOffers), so narrow here for the ModEdition-typed array.
-      const modEdition: ModEdition | null = offer.edition && offer.edition !== 'void'
-        ? offer.edition
+      // synced regardless of whether this offer had an edition.
+      // Mods only support foil/holo/poly editions (no 'void'). Filter
+      // a 'void' offer edition down to null so the ownedModEditions
+      // array stays type-clean even if the roll generates one.
+      const modEdition = offer.kind === 'mod'
+        ? (offer.edition && offer.edition !== 'void' ? offer.edition : null)
         : null;
       const ownedModEditions =
         offer.kind === 'mod'

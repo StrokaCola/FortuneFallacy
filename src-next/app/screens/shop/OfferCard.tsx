@@ -64,7 +64,7 @@ export function OfferCard({ offer: o, index: i, shards, catalysts, catalystsFull
   const affixList = o.affixed && o.affixed.affixes.length > 0 ? o.affixed.affixes : null;
   const slotBlocked = o.kind === 'catalyst' && catalystsFull;
   const affordable = shards >= o.price && !slotBlocked;
-  const refundIfBought = sellRefund(o.kind, o.id);
+  const refundIfBought = sellRefund(o.kind as Parameters<typeof sellRefund>[0], o.id);
   const isLegendary = m.rarity === 'legendary';
   const isMythic = m.rarity === 'mythic';
   const ringColor = m.rarity ? RARITY_COLORS[m.rarity] : c;

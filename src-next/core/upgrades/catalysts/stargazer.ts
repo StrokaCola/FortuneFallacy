@@ -23,15 +23,15 @@ register({
   phase: Phase.UPGRADES,
   priority: 90,
   apply: (ctx) => {
-    const faces = ctx.sim?.finalFaces ?? [];
     // scoringOrder lives on the round slice (set by EVALUATION). Fall back
     // to natural order if it hasn't been written yet (e.g. early phases /
     // legacy code paths).
-    const order = ctx.state.round.scoringOrder ?? faces.map((_, i) => i);
+    const faces: number[] = ctx.sim?.finalFaces ?? [];
+    const order: number[] = ctx.state.round.scoringOrder ?? faces.map((_, i) => i);
     const scoringFaces = order
-      .filter((idx) => idx >= 0 && idx < faces.length)
-      .map((i) => faces[i]!)
-      .filter((f) => typeof f === 'number' && f > 0 && f <= 31);
+      .filter((idx: number) => idx >= 0 && idx < faces.length)
+      .map((i: number) => faces[i]!)
+      .filter((f: number) => typeof f === 'number' && f > 0 && f <= 31);
     const prevBitset = ctx.state.run.catalystStacks?.stargazer ?? 0;
     let nextBitset = prevBitset;
     for (const f of scoringFaces) nextBitset |= (1 << (f - 1));

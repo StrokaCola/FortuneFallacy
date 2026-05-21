@@ -25,7 +25,7 @@ const KIND_COPY: Record<Kind, { label: string; sigil: string; tip: string }> = {
   catalyst: {
     label: 'catalyst',
     sigil: '✦',
-    tip: 'Catalysts modify how your dice score. Buy them at the Bazaar between blinds; up to your slot cap can ride along on a run.',
+    tip: 'Catalysts modify how your dice score. Buy them at the Night Market between blinds; up to your slot cap can ride along on a run.',
   },
   consumable: {
     label: 'consumable',

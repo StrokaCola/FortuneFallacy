@@ -6,6 +6,7 @@ import { BossAura } from '../visual/BossAura';
 import { BossDreadFlourish } from '../visual/BossDreadFlourish';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { sfxPlay } from '../../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 import { triggerShake } from '../visual/screenShake';
 import { audioEngine } from '../../audio/AudioEngine';
 import { DUCK_PRESETS } from '../../audio/duckEnvelope';
@@ -246,6 +247,13 @@ export function BossReveal() {
           // Skipping the dread → jump to reveal phase immediately.
           setReveal((cur) => cur ? { ...cur, phase: 'reveal' } : null);
         }}
+        onPointerDown={(e) => {
+          // 2026-05-20 responsiveness pass — skip-tap had no audio or
+          // haptic. uiClick + tap haptic so the press lands as a
+          // deliberate skip.
+          sfxPlay('uiClick');
+          if (e.pointerType === 'touch') playHaptic('tap');
+        }}
         role="presentation"
         aria-hidden
         className="boss-dread-overlay"
@@ -326,6 +334,14 @@ export function BossReveal() {
   return (
     <div
       onClick={dismiss}
+      onPointerDown={(e) => {
+        // 2026-05-20 responsiveness pass — reveal-tap to dismiss had
+        // no audio or haptic; ariaLabel literally promises "tap to
+        // continue" so the press needs to feel landed. uiClick + tap
+        // haptic mirror the skip-dread pattern above.
+        sfxPlay('uiClick');
+        if (e.pointerType === 'touch') playHaptic('tap');
+      }}
       role="dialog"
       aria-modal="true"
       aria-label={`Boss revealed: ${def.name}. Tap to continue.`}

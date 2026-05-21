@@ -3,9 +3,6 @@ import { updateComboStreaks } from './comboStreak';
 import { initialRunSlice, type RunSlice } from '../../state/slices/run';
 
 function run(over: Partial<RunSlice> = {}): RunSlice {
-  // Use initialRunSlice() as the base so this fixture stays in sync with
-  // the RunSlice shape as new fields are added — the test only cares about
-  // a handful of combo/tempo fields anyway.
   return { ...initialRunSlice(), ...over };
 }
 

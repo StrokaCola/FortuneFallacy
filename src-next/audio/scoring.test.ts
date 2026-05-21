@@ -97,13 +97,12 @@ describe('installScoringRouter', () => {
     expect(mockDuck).toHaveBeenCalledWith(expect.objectContaining({ depth: 0 }));
   });
 
-  it('hold-breath beat plays a bell tone via comboChime', () => {
+  it('hold-breath beat plays sustained bell tone (Wave T+1 bespoke theater Move 5)', () => {
     const unsub = installScoringRouter();
     bus.emit('onScoreBeat', { beat: { kind: 'hold-breath', t: 0, durMs: 400 } });
     unsub();
-    // Wave T+1 (2026-05-19) bespoke theater — Move 5 added a sustained
-    // bell tone over the deep-freeze window. Non-crossed-target bell
-    // pitches lower than a crossed-target one (see scoring.ts).
+    // Bell tone holds through the deep-freeze window so audio + visual
+    // freeze duration coincide. Non-crossed defaults to 440Hz / 0.4 gain.
     expect(mockSfxPlay).toHaveBeenCalledWith('comboChime', { freq: 440, gain: 0.4 });
   });
 

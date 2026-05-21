@@ -160,7 +160,7 @@ export function Hub() {
               Tribunal of Stars
             </div>
             <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: 13, color: '#bba8ff', marginTop: -4, maxWidth: 460 }}>
-              Three trials bar your ascension. Clear them for shards and admittance to the Bazaar.
+              Three trials bar your ascension. Clear them for shards and admittance to the Night Market.
             </div>
           </>
         )}

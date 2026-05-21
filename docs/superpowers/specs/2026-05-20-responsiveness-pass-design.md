@@ -220,3 +220,57 @@ fix scope drift inline.
   prior alive-feel pass; this design respects its decisions.
 - `docs/superpowers/specs/2026-05-19-bespoke-scoring-theater-design.md`
   — recent scoring theater design; this pass only polishes residuals.
+
+## Postmortem (2026-05-20)
+
+**Branch:** `feat/responsiveness-pass-night-market`
+
+**Commits:**
+- `61983df` chore: align scoring.test.ts with Wave T+1 hold-breath bell
+- `4299ea2` ux: rename Celestial Bazaar to The Night Market
+- `1588d12` ux: wire press feedback on Round HUD .tap interactives
+- `e07d19e` ux: wire dismiss feedback on overlay backdrops + boss reveal
+
+**Tests:** 1644 / 1644 green at branch tip (was 1643 / 1644 on `main` — the failing test was Wave T+1 stale and is now corrected).
+
+**Typecheck:** 7 pre-existing errors remain on `main` (devtools inspector samples missing for new action/event types, `resonance.test.ts:95` discriminated-union narrowing, `ActionsTab.tsx:21` index type, `runSimulation.ts:43` setTimeout return type). All unrelated to UX/presentation code. User agreed to tests-only gate.
+
+**Dead spots fixed:**
+
+Round HUD `.tap` non-`.btn` interactives — buttonJuice only covers
+`.btn`; these were entirely silent:
+
+- ConsumableTray use button (uiClick + tap haptic; locked → uiDenied via aria-disabled rewrite)
+- ConsumableTray target-die dialog (uiClick + tap haptic; commit cue on apply)
+- ConsumableTray cancel + backdrop dismiss
+- SellButton 'badge' + 'inline' variants (added tap haptic alongside existing 'buy' audio; aria-disabled rewrite so cap-blocked sells fire uiDenied)
+- VoucherToast + ArrivalToast click-to-dismiss (uiHoverSoft + tap haptic)
+
+Overlay backdrop dismissals:
+
+- ScoreExplain BreakdownModal backdrop + Escape key (uiHoverSoft + tap haptic; stopPropagation on inner panel pointerdown so the X close button's own buttonJuice cue doesn't double-fire)
+- BossReveal dread-phase skip + reveal-phase dismiss (uiClick + tap haptic, mirroring the "Tap to continue" promise)
+
+**Phase 3 score theater — no actionable residuals.** Wave T+1 (commits `e77a564`, `ad81a5a`, `add319c`) landed bespoke choreography very recently: per-mod audio signatures, hold-breath bell tone, cross-target chord stack, BoomNumber pop+dissolve, counter-fill scaled by magnitude, savor-by-variant, afterglow + star-ripple + meteor shower. Voice-steal was deliberately reverted-back-to-untouched per `add319c`. Audit confirmed the theater is in its tuned, intentional state; further tweaks would risk over-working a polished surface.
+
+**Phase 4 screen transitions — already polished.** `ScreenTransition.tsx` is ~500 lines of intentional choreography: 720ms savored crossfade, direction-aware scale (forward/back/neutral by screen-depth tier), per-pair flavor overlays (vellum / coins / embers / scrollroll / dustswirl), Stellar Dive on Round entry, Stellar Drift on Round exit, Portal Warp on Hub→Round only, generic Constellation Wipe baseline, reduce-motion SNAP fallback at 120ms. No work needed.
+
+**Reduce-motion respected throughout:**
+- Existing `.reduce-motion .modal-exit-anim` rule kept.
+- New SFX wiring doesn't add CSS animations.
+- Haptic calls go through `playHaptic` which respects reduce-motion via `isHapticsActive`.
+
+**Rename verified visually** via `preview_snapshot` on the Shop screen — "ANTE 03 · NIGHT MARKET" (TopBar mono label), "Night Market" (TopBar display), "The Night Market" (Shop title), shards tooltip references "Night Market". The Title bar's `clamp(20px, 6vw, 36px)` + `whiteSpace: nowrap` fits "The Night Market" (16 chars) more comfortably than the previous 19-char "The Celestial Bazaar". `preview_screenshot` timed out repeatedly (heavy three.js cosmos backdrop) — relied on snapshot.
+
+**Residuals deferred:**
+
+- Modal `fadein` keyframe still uses a scale 0.92→1 transform under reduce-motion. Existing system; out of scope for this pass.
+- Typecheck cleanup (devtools/inspector samples + resonance discriminated union + runSimulation Timeout type). Pre-existing.
+- Dev comment `// Challenge overlays can disable the bazaar entirely;` in `src-next/core/round/transitions.ts:676` left intact — dev-only, refers to phase semantics not player-facing terminology.
+- Score theater fine-tuning beyond Wave T+1: no actionable items in this pass; revisit with telemetry once players spend time on the new theater.
+
+**Verification:**
+- `npm test` green (1644/1644).
+- Grep `-i bazaar src-next/` returns only the deferred dev comment.
+- Reduce-motion class toggled via `preview_eval` to confirm it can be set on / off.
+- All four commits land on the feature branch; branch not pushed (per spec, user decides push timing).

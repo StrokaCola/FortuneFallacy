@@ -31,10 +31,7 @@ describe('PauseMenu selectCatalystChipsForPause stability', () => {
   });
 
   it('returns the same reference on repeated calls when catalystChips is undefined', () => {
-    // runStats is present but carries no catalystChips field — exercises
-    // the `?? EMPTY_CATALYST_CHIPS` fallback. The shape matches the
-    // selector's expected `runStats?: { catalystChips?: ... }`.
-    const s = { run: { runStats: {} } };
+    const s = { run: { runStats: { peakHand: 0 } } } as Parameters<typeof selectCatalystChipsForPause>[0];
     const a = selectCatalystChipsForPause(s);
     const b = selectCatalystChipsForPause(s);
     expect(a).toBe(b);
