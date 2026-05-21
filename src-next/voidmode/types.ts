@@ -55,6 +55,18 @@ export interface AffixContext {
   scratch: Record<string, number>;
 }
 
+// Blind affixes may attach a single rule descriptor that mutates
+// gameplay during the active blind. Phase 2B.2 supports two rule
+// kinds; later phases can add more variants to the union.
+//   banCombo               — named combo doesn't count toward scoring
+//                            (chips + mult forced to 0 for the hand).
+//   discardCostMultiplier  — each in-blind reroll consumes `multiplier`
+//                            rerolls from the per-hand budget instead
+//                            of 1, making rerolls more costly.
+export type BlindRule =
+  | { kind: 'banCombo'; comboId: string }
+  | { kind: 'discardCostMultiplier'; multiplier: number };
+
 export interface AffixDef {
   id: string;
   slot: AffixSlot;
@@ -71,6 +83,12 @@ export interface AffixDef {
   nameTemplate: string;
   flavorTags: string[];
   effect: (ctx: AffixContext) => void;
+  // Optional rule descriptor — only blind affixes set this. When present,
+  // START_BLIND extracts these into run.activeBlindRules and the scoring
+  // pipeline / discard-cost selector consult them at gameplay-time. The
+  // affix's `effect` still runs alongside the rule (e.g. a banCombo affix
+  // can also grant a compensation chip/mult bonus on non-banned combos).
+  rule?: BlindRule;
 }
 
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'legendary' | 'mythic';
