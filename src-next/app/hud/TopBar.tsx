@@ -6,6 +6,8 @@ import { lookupCatalyst } from '../../data/catalysts';
 import { lookupVoidstorm } from '../../core/round/voidstorms';
 import { useStore, type GameState } from '../../state/store';
 import { selectProjectedScore } from '../../state/selectors';
+import { COMBOS } from '../../core/scoring/combos';
+import type { BlindRule } from '../../voidmode/types';
 import {
   getScorePreviewPref, subscribeScorePreviewPref,
 } from '../settings/scorePreview';
@@ -50,6 +52,27 @@ const selectBlindId = (s: GameState) => s.round.blindId;
 // for the trial lives in one well-known spot. Previously this was a
 // floating VoidstormBadge pinned to the right rail.
 const selectVoidstormId = (s: GameState) => s.round.voidstormId;
+// Phase 2B.2 — void-mode active blind rules (banCombo / discardCostMultiplier)
+// surfaced as a chip under the blind name. Empty outside void mode or
+// when no rule-bearing affix rolled. The component renders a small
+// violet chip listing each rule in plain English so the player can
+// read the constraint at a glance without opening a tooltip.
+const selectActiveBlindRules = (s: GameState): BlindRule[] => s.run.activeBlindRules ?? [];
+const selectVoidMode = (s: GameState) => s.run.mode === 'void';
+
+// Map a combo id to its display name from the canonical scoring catalog.
+// Falls back to the raw id if the combo isn't found (defensive — keeps
+// the chip readable even on a future combo the renderer doesn't know).
+function humanCombo(id: string): string {
+  return COMBOS.find((c) => c.id === id)?.name ?? id;
+}
+
+// Format a BlindRule into a human-readable single-line summary.
+function summarizeRule(r: BlindRule): string {
+  if (r.kind === 'banCombo') return `${humanCombo(r.comboId)} doesn't count`;
+  if (r.kind === 'discardCostMultiplier') return `Rerolls cost ${r.multiplier}×`;
+  return '';
+}
 
 export function TopBar({
   ante = 1,
@@ -95,6 +118,13 @@ export function TopBar({
   const blindId = useStore(selectBlindId);
   const voidstormId = useStore(selectVoidstormId);
   const voidstormDef = (roundActive && voidstormId) ? lookupVoidstorm(voidstormId) : null;
+  // Phase 2B.2 — pull active blind rules from run state. Chip below
+  // renders only when in void mode AND at least one rule is active.
+  const voidMode = useStore(selectVoidMode);
+  const activeBlindRules = useStore(selectActiveBlindRules);
+  const ruleSummaries = voidMode
+    ? activeBlindRules.map(summarizeRule).filter((s) => s.length > 0)
+    : [];
   const stake = lookupStake(stakeId);
   const challenge = challengeId ? lookupChallenge(challengeId) : null;
   const bossDef = (roundActive && isBoss && blindId)
@@ -369,6 +399,44 @@ export function TopBar({
         </div>
         {renderBigBlind && (
           <div className="f-display" data-testid="blind-name" style={{ fontSize: 22, marginTop: 4, color: '#f3f0ff' }}>{blind}</div>
+        )}
+        {/* Phase 2B.2 — void-mode active-blind-rule chips. Renders one
+            small violet chip per rule so the player can see which
+            gameplay constraint is active this trial at a glance.
+            Hidden outside void mode and when no rule-bearing affixes
+            rolled for the current blind. */}
+        {ruleSummaries.length > 0 && (
+          <div
+            data-testid="active-blind-rules"
+            style={{
+              display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
+              gap: 4, marginTop: 4,
+            }}
+          >
+            {ruleSummaries.map((text, i) => (
+              <span
+                key={i}
+                className="f-mono uc has-tip"
+                style={{
+                  fontSize: 9, letterSpacing: '0.18em',
+                  color: '#b7a5ff',
+                  padding: '2px 6px', borderRadius: 4,
+                  background: 'rgba(149,119,255,0.14)',
+                  border: '1px solid rgba(149,119,255,0.45)',
+                  textShadow: '0 0 6px rgba(149,119,255,0.45)',
+                  whiteSpace: 'nowrap',
+                  position: 'relative',
+                  cursor: 'help',
+                }}
+              >
+                {text}
+                <span className="tip">
+                  <span className="tip-title">Void Rule</span>
+                  This blind's affixes alter the rules of play — the constraint applies only for this trial.
+                </span>
+              </span>
+            ))}
+          </div>
         )}
         <div className="f-mono" style={{ fontSize: 10, color: '#9577ff', marginTop: 2 }}>
           hands {handsDisplay} · rerolls {rerollsDisplay}
