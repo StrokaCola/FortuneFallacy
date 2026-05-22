@@ -293,6 +293,59 @@ export function createHeuristicShopStrategy(): Strategy {
   };
 }
 
+// ---------------------------------------------------------------------------
+// PlaysCatalysts — the "buys catalysts first" baseline.
+//
+// EvKeep / HeuristicShop both rank vouchers above catalysts in
+// `priceWeight` / `scoreShopOffer` (vouchers are permanent, so they're
+// preferred long-run). That ranking is correct for studying long-arc
+// power but it means the smoke-sim's canonical demo never accumulates
+// enough catalysts to clear Ante 1's greater_trial — every seed busts
+// after lesser_trial with 0-1 catalysts owned.
+//
+// This strategy keeps EvKeep's locking + scoring logic but flips the
+// shop ranking: any affordable catalyst is bought before any voucher
+// is considered. Used for the smoke-sim demo so the "what does a real
+// player look like" output actually models someone building a deck.
+export function createPlaysCatalystsStrategy(): Strategy {
+  const base = createEvKeepStrategy();
+  return {
+    id: 'plays_catalysts',
+    pickDiceToLock: base.pickDiceToLock,
+    shouldScore: base.shouldScore,
+    pickFromPack: base.pickFromPack,
+    chooseShopAction(s) {
+      const offers = s.shop.offers;
+      // Pass 1: any affordable catalyst — buy it.
+      for (let i = 0; i < offers.length; i++) {
+        const o = offers[i]!;
+        if (o.kind === 'catalyst' && s.run.shards >= o.price) {
+          return { type: 'BUY_OFFER', offerIdx: i };
+        }
+      }
+      // Pass 2: affordable voucher.
+      for (let i = 0; i < offers.length; i++) {
+        const o = offers[i]!;
+        if (o.kind === 'voucher' && s.run.shards >= o.price) {
+          return { type: 'BUY_OFFER', offerIdx: i };
+        }
+      }
+      // Pass 3: affordable pack (galaxies + maneuvers are mid-value).
+      for (let i = 0; i < offers.length; i++) {
+        const o = offers[i]!;
+        if (o.kind === 'pack' && s.run.shards >= o.price) {
+          return { type: 'BUY_OFFER', offerIdx: i };
+        }
+      }
+      // Reroll if shards healthy and we haven't picked yet.
+      if (s.run.shards >= s.shop.rerollCost + 5 && offers.length > 0) {
+        return { type: 'REROLL_SHOP' };
+      }
+      return { type: 'CLOSE_SHOP' };
+    },
+  };
+}
+
 function scoreShopOffer(o: { kind: string; id: string; price: number }, s: GameState, dominantArchetype: string | undefined): number {
   let score = 0;
   if (o.kind === 'catalyst') {

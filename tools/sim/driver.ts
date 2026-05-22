@@ -26,6 +26,11 @@ export interface RunRecord {
   modsBought: number;
   packsBought: number;
   shopRerolls: number;
+  // 2026-05-21 — captured at run end so non-event-based shard grants
+  // (stipend's per-hand +1, audit's bust refund, etc.) show up in
+  // catalyst-impact studies. `totalShardsEarned` above only tracks the
+  // onBlindCleared bonus channel and misses direct grants.
+  finalShards: number;
   bustReason: string;
   combosPlayed: Record<string, number>;
   // Catalyst ids owned at run end. Captured so downstream sims (build
@@ -78,6 +83,7 @@ export function driveRun(seed: number, opts: DriveOptions): RunRecord {
     modsBought: 0,
     packsBought: 0,
     shopRerolls: 0,
+    finalShards: 0,
     bustReason: 'unknown',
     combosPlayed: {},
     finalCatalysts: [],
@@ -118,6 +124,7 @@ export function driveRun(seed: number, opts: DriveOptions): RunRecord {
       record.goalsCleared = s.run.goalIdx;
       record.bustReason = screen === 'win' ? 'won' : (record.perBlind.at(-1)?.outcome === 'bust' ? 'target_miss' : 'unknown');
       record.finalCatalysts = [...s.run.catalysts];
+      record.finalShards = s.run.shards;
       detach();
       return record;
     }
@@ -191,6 +198,7 @@ export function driveRun(seed: number, opts: DriveOptions): RunRecord {
   record.finalScore = s.round.score;
   record.finalAnte = s.run.ante;
   record.goalsCleared = s.run.goalIdx;
+  record.finalShards = s.run.shards;
   record.bustReason = 'iter_cap';
   detach();
   return record;

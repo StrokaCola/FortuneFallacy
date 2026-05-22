@@ -100,8 +100,12 @@ const ARCHETYPE_BIAS_RATE = 0.7;
 //                     but lets the player still earn it on Ophiuchus via 5s.
 //   high_roller    — scoring 5 or 6 grants bonus → dead on Eclipse only.
 //
-// six_bias is NOT gated: it transforms face 1 into face 6 on reroll, so it
-// MAKES face 6 exist where it didn't, which is a genuine Eclipse synergy.
+// six_bias is NOT face-gated because its effect ("Each 6 → +4 Pips") is
+// inert on a no-6 universe — it sits idle instead of producing strictly
+// negative value. (Prior comment claimed six_bias TRANSFORMED 1s into 6s;
+// that is `loaded` the mod, not six_bias the catalyst. The mod path is
+// handled via effectiveFaceUniverse() in actions/handlers/shop.ts which
+// augments the face universe when a face-remap mod is attached.)
 const FACE_GATED_CATALYSTS: Record<string, ReadonlyArray<number>> = {
   iron_six: [6],
   solar_flare: [5, 6],

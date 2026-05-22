@@ -3,7 +3,7 @@ import type { GameState } from '../../state/store';
 import { lookupConsumable, rollConsumableAffixes } from '../../core/consumables';
 import type { ConsumableDef } from '../../core/consumables';
 import { VOUCHERS, freeShopReroll, maxConsumableSlots, maxCatalystSlots, maxModSlots, effectiveCatalystSlotsUsed } from '../../core/vouchers';
-import { MOD_IDS } from '../../core/mods';
+import { MOD_IDS, lookupMod } from '../../core/mods';
 import { areModsDisabled, getDiceSpec, getComboCtx } from '../../core/run/diceContext';
 import { sellRefund } from '../../core/shop/sellRefund';
 import { sellTriggerFor } from '../../core/shop/sellTriggers';
@@ -61,8 +61,27 @@ const FACE_GATED_MODS: Record<string, ReadonlyArray<number>> = {
   glutton: [6],
 };
 
-function gateModsByFaceUniverse(modIds: readonly string[], s: GameState): string[] {
+// 2026-05-21 — synergy-aware face universe. The constellation's face
+// universe is augmented with `to` values from face-remap mods (currently
+// only `loaded`: 1 → 6) that the player has attached to a die. This
+// un-gates face-keyed catalysts/mods when the player has built a path
+// to the trigger face — e.g. Eclipse [0,1] + Loaded mod creates face 6,
+// so Crown / Iron Six / Risk / Glutton stop being trap picks. No-op
+// when no face-remap mods are attached (Eclipse stays gated by default).
+export function effectiveFaceUniverse(s: GameState): Set<number> {
   const universe = new Set(getComboCtx(s).faceUniverse);
+  const allMods = (s.run.diceMods ?? []).flat();
+  for (const id of allMods) {
+    const def = lookupMod(id);
+    if (def?.faceRemap && universe.has(def.faceRemap.from)) {
+      universe.add(def.faceRemap.to);
+    }
+  }
+  return universe;
+}
+
+function gateModsByFaceUniverse(modIds: readonly string[], s: GameState): string[] {
+  const universe = effectiveFaceUniverse(s);
   return modIds.filter((id) => {
     const requiredFaces = FACE_GATED_MODS[id];
     if (!requiredFaces) return true;
@@ -204,7 +223,7 @@ function rollOffers(s: GameState, rng: () => number, voidRng?: import('../../cor
   // surface a third catalyst when mods are off to keep the offer count steady.
   const catalystCount = modsOff ? 3 : 2;
   const endlessLap = s.run.endlessLap ?? 0;
-  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, new Set(getComboCtx(s).faceUniverse), endlessLap);
+  const catalystIds = drawWeightedCatalysts(catalystCount, s.run.ante, s.meta.unlocks, rng, s.run.catalysts, s.run.constellationId, effectiveFaceUniverse(s), endlessLap);
   // Void Mode — pre-roll affix bundles for each catalyst id so the offer
   // carries its rolled affixes. Outside void mode `voidRng` is undefined
   // and `affixedRolls` stays empty.

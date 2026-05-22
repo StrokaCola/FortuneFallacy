@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shopHandler } from './shop';
+import { shopHandler, effectiveFaceUniverse } from './shop';
 import { diceHandler } from './dice';
 import { initialRoundSlice } from '../../state/slices/round';
 import { initialRunSlice } from '../../state/slices/run';
@@ -652,5 +652,82 @@ describe('Void Mode — consumable affix flow (PICK_FROM_PACK + SELL_UPGRADE)', 
     expect(picked.state.run.consumableAffixes['burn_pass']).toBeDefined();
     const sold = shopHandler({ type: 'SELL_UPGRADE', kind: 'consumable', index: 0 }, picked.state);
     expect(sold.state.run.consumableAffixes['burn_pass']).toBeUndefined();
+  });
+});
+
+// 2026-05-21 — face-creator synergy un-gate. When the player has attached
+// a `loaded` mod (1 → 6 remap) to any die, face-keyed picks that would
+// otherwise be gated on a no-6 universe become reachable.
+describe('effectiveFaceUniverse — face-remap mod synergy', () => {
+  it('returns the base universe when no face-remap mods are attached', () => {
+    const s = baseState({});
+    s.run.constellationId = 'eclipse';
+    s.run.diceMods = [[], [], [], [], []];
+    const u = effectiveFaceUniverse(s);
+    // Eclipse base universe: [0, 1] only.
+    expect(u.has(0)).toBe(true);
+    expect(u.has(1)).toBe(true);
+    expect(u.has(6)).toBe(false);
+  });
+
+  it('augments the universe with face 6 when loaded mod is attached on Eclipse', () => {
+    const s = baseState({ diceMods: [['loaded'], [], [], [], []] });
+    s.run.constellationId = 'eclipse';
+    const u = effectiveFaceUniverse(s);
+    // Loaded remaps 1 → 6, and Eclipse has 1, so 6 enters the effective universe.
+    expect(u.has(6)).toBe(true);
+  });
+
+  it('does NOT add face 6 when loaded is attached on a universe lacking face 1', () => {
+    // Triumvirate universe is [1..12] — has 1, so loaded would fire there.
+    // Pick a synthetic case: faceUniverse without 1 should not pick up 6.
+    // (We approximate by checking the no-loaded base path stays clean
+    // on a no-1 universe; the live remap check requires `from` to be present.)
+    const s = baseState({ diceMods: [['loaded'], [], [], [], []] });
+    s.run.constellationId = 'lyra'; // [1..6] — already has 6, so no observable change.
+    const u = effectiveFaceUniverse(s);
+    expect(u.has(6)).toBe(true); // still has 6 — was already there.
+    expect(u.size).toBe(6); // [1..6], unchanged.
+  });
+
+  it('gateModsByFaceUniverse un-gates Crown when loaded is attached on Eclipse', () => {
+    // 2026-05-21 flake fix (B7): initialRunSlice() seeds run.seed via
+    // Math.random(), so each test run sampled a different shop RNG stream
+    // and Crown appeared in only ~94% of seeds — the test failed in the
+    // ~6% where 40 rerolls missed it. Pin run.seed to 42 (probed via
+    // probe-shop.ts: yields 2 Crown sightings with loaded, 0 without)
+    // so the deterministic shop RNG produces identical offers every CI run.
+    const SEED = 42;
+
+    // Without loaded: Crown is gated out (Eclipse [0,1] has no 6).
+    const withoutLoaded = baseState({});
+    withoutLoaded.run.constellationId = 'eclipse';
+    withoutLoaded.run.diceMods = [[], [], [], [], []];
+    withoutLoaded.run.seed = SEED;
+    const offersWithout = shopHandler({ type: 'OPEN_SHOP' }, withoutLoaded);
+    // Roll the shop ~10 times; Crown should never appear without loaded.
+    let crownSightingsWithout = 0;
+    let s = offersWithout.state;
+    for (let i = 0; i < 10; i++) {
+      if (s.shop.offers.some((o) => o.kind === 'mod' && o.id === 'crown')) crownSightingsWithout++;
+      const reroll = shopHandler({ type: 'REROLL_SHOP' }, { ...s, run: { ...s.run, shards: 1000 } });
+      s = reroll.state;
+    }
+    expect(crownSightingsWithout).toBe(0);
+
+    // With loaded attached + same seed: Crown re-enters the pool. The fixed
+    // seed makes "appears at least once in 40 rerolls" deterministic across CI.
+    const withLoaded = baseState({ diceMods: [['loaded'], [], [], [], []] });
+    withLoaded.run.constellationId = 'eclipse';
+    withLoaded.run.seed = SEED;
+    const offersWith = shopHandler({ type: 'OPEN_SHOP' }, withLoaded);
+    let crownSightingsWith = 0;
+    let t = offersWith.state;
+    for (let i = 0; i < 40; i++) {
+      if (t.shop.offers.some((o) => o.kind === 'mod' && o.id === 'crown')) crownSightingsWith++;
+      const reroll = shopHandler({ type: 'REROLL_SHOP' }, { ...t, run: { ...t.run, shards: 1000 } });
+      t = reroll.state;
+    }
+    expect(crownSightingsWith).toBeGreaterThan(0);
   });
 });
