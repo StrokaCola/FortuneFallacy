@@ -102,7 +102,16 @@ export const CONSTELLATIONS: Constellation[] = [
     // 2026-05-12 QA pass: baseChipsMult 1.3 added. Sim flagged Triumvirate
     // at 24% A4 (vs Lyra 82%); the "three colossal d12, big numbers"
     // identity needed actual chip uplift to back the flavor.
-    modifiers: { straightLenBonus: -2, baseChipsMult: 1.3 },
+    //
+    // 2026-05-21 multi-role pass: 1.3 chips alone left Triumvirate at
+    // 51% A4 (-31pp vs Lyra). Tried chainCap=6 first (cap-hit-rate had
+    // been 45% — looked like the cap was ceilinging the constellation)
+    // but lifting the cap moved A4 zero percentage points: the chain
+    // wasn't bottlenecked, the constellation just lacked raw scoring
+    // throughput from only 3 dice. Settled on stacked chip + mult
+    // multipliers: 1.4 chips × 1.2 mult lands A4 at 62%. -20pp vs Lyra,
+    // inside the 25pp parity band; no outlier flag.
+    modifiers: { straightLenBonus: -2, baseChipsMult: 1.4, baseMultMult: 1.2 },
     glyph: [{ x: 25, y: 50 }, { x: 50, y: 30 }, { x: 75, y: 50 }],
   },
   {
@@ -204,11 +213,18 @@ export const CONSTELLATIONS: Constellation[] = [
     dice: Array.from({ length: 5 }, () => dN([...OPHIUCHUS_FACES], { label: 'd5+★' })),
     // 2026-05-12 QA pass: chainStep dropped 0.25 → 0.15 to replace the
     // identity penalty Ophiuchus lost when the chain cap was unified to 4
-    // for everyone (chainCap: 4 used to be Ophiuchus-only). Wildcards
-    // already make combo tiers trivially climbable, so the offsetting
-    // drawback is now "each step of the chain pays less" — matches the
-    // "high-risk hidden sign" framing in the flavor.
-    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5, chainStep: 0.15 },
+    // for everyone (chainCap: 4 used to be Ophiuchus-only).
+    //
+    // 2026-05-21 multi-role pass: reverted chainStep back to 0.25 (the
+    // universal default). The 0.15 value over-corrected: balance.fullrun
+    // sweep at 200 runs/cell showed A4 Spark clear at 49% (0.15) → 60%
+    // (0.20) → 68% (0.25) → 73% (0.30). Ophiuchus already pays a double
+    // identity tax via baseChipsMult=0.5 AND baseMultMult=0.5; a third
+    // chainStep nerf made the constellation the weakest in the pool by
+    // -33pp vs Lyra. With chainStep at the universal 0.25, Ophiuchus sits
+    // at 68% A4 (-14pp vs Lyra), inside the 25pp parity band. The
+    // wildcard upside still pays — it just isn't punished three times.
+    modifiers: { baseChipsMult: 0.5, baseMultMult: 0.5, chainStep: 0.25 },
     glyph: [
       { x: 20, y: 55 }, { x: 38, y: 35 }, { x: 50, y: 60 },
       { x: 65, y: 35 }, { x: 85, y: 55 },

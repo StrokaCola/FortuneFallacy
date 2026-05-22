@@ -79,14 +79,29 @@ export const STAKES: Stake[] = [
     rerollsDelta: -1,
     shopPriceMult: 1.15,
   },
+  // 2026-05-21 multi-role pass: Nova/Supernova cliff smoothed. Pre-fix
+  // sim (Lyra/scaling) had Beacon→Nova→Supernova at 45%→13%→11% any-clear
+  // and 11%→0%→0% A4 — the top two stakes were effectively unwinnable for
+  // non-perfect builds, gating their achievements + daily appearances.
+  //
+  // Diagnosis: Nova stacked 4 penalties (+45% target, −1 hand, −1 reroll,
+  // +25% shop) vs Beacon's 3. The −1 hand was the dominant lever (33%
+  // fewer scoring opportunities); pure target-only tuning didn't move
+  // the needle.
+  //
+  // Fix: Nova trades the −1 hand for a target nudge (1.45→1.40), keeping
+  // the −1 reroll + shop tax. Supernova keeps the −1 hand as its identity
+  // penalty (it should still feel meaningfully harder than Nova) but drops
+  // the target to 1.40 (was 1.60). Post-fix curve: 45%→39%→14% any-clear,
+  // 11%→6%→1% A4. Synergy profile still clears 100% everywhere.
   {
     id: 'nova',
     name: 'Nova',
     color: '#cc88ff',
     flavor: 'Every choice is the choice. Every loss is final.',
-    rules: ['Targets +45%', '−1 hand', '−1 reroll', 'Shop +25%'],
-    targetMult: 1.45,
-    handsDelta: -1,
+    rules: ['Targets +40%', '−1 reroll', 'Shop +25%'],
+    targetMult: 1.40,
+    handsDelta: 0,
     rerollsDelta: -1,
     shopPriceMult: 1.25,
   },
@@ -95,8 +110,8 @@ export const STAKES: Stake[] = [
     name: 'Supernova',
     color: '#e2334a',
     flavor: 'The trial that ends trials.',
-    rules: ['Targets +60%', '−1 hand', '−1 reroll', 'Shop +50%'],
-    targetMult: 1.60,
+    rules: ['Targets +40%', '−1 hand', '−1 reroll', 'Shop +50%'],
+    targetMult: 1.40,
     handsDelta: -1,
     rerollsDelta: -1,
     shopPriceMult: 1.5,

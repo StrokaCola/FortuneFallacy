@@ -4,7 +4,7 @@
 import { bootstrapHeadless } from './bootstrap';
 import { driveRun } from './driver';
 import { attachTelemetry } from './telemetry';
-import { createRandomStrategy, createGreedyStrategy, createEvKeepStrategy, createHeuristicShopStrategy } from './strategies';
+import { createRandomStrategy, createGreedyStrategy, createEvKeepStrategy, createHeuristicShopStrategy, createPlaysCatalystsStrategy } from './strategies';
 
 function runOne(label: string, seed: number, strat: ReturnType<typeof createRandomStrategy>) {
   bootstrapHeadless(seed);
@@ -49,3 +49,12 @@ for (const s of seeds) runOne('evkeep', s, createEvKeepStrategy());
 
 console.log('\n=== HeuristicShop ===');
 for (const s of seeds) runOne('heur', s, createHeuristicShopStrategy());
+
+// 2026-05-21 — canonical "real player" baseline. Random/Greedy/EVKeep/Heuristic
+// all rank vouchers above catalysts (vouchers are permanent and that's correct
+// long-run), so the smoke output reads as 0/5 ante-1 wins. PlaysCatalysts
+// flips the ranking — affordable catalyst beats voucher — so the demo
+// actually accumulates a deck. Closer match to what a real player does at
+// the bottom of the Spark stake.
+console.log('\n=== PlaysCatalysts (canonical demo) ===');
+for (const s of seeds) runOne('plays', s, createPlaysCatalystsStrategy());

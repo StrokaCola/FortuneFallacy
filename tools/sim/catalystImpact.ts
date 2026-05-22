@@ -66,6 +66,24 @@ interface ImpactRow {
   winRateControl: number;
   winRateTreatment: number;
   deltaWinRate: number;
+  // 2026-05-21 — non-score axes. Score-delta alone misses catalysts whose
+  // value lives in shard economy (shard_lung, stipend, piggy_bank,
+  // counter_purse, economy_engine) or bust survivability (audit). These
+  // columns let CSV consumers spot "dead in score-delta but alive in shards"
+  // entries that score-only sorts would prune.
+  //
+  // Note on NoBuy strategy: it never busts strategically and never skips,
+  // so `audit` (bust refund) / `silver_tongue` (skip→consumables) /
+  // `dust_off` (reroll discount) still won't fire here. A future axis
+  // measurement pass should drive them through a SkipFirstBlind or
+  // BustOnPurpose strategy. Documented as a deferred follow-up.
+  meanShardsControl: number;
+  meanShardsTreatment: number;
+  deltaShards: number;
+  deltaShardsPct: number;
+  // Bust survivability: integer ante gap. Positive means the catalyst
+  // pushed treatment runs further into the ladder than the control.
+  bustSurvivalAnte: number;
 }
 
 function runOne(seed: number, constellation: string, stake: string, grantId: string | null): RunRecord {
@@ -116,6 +134,8 @@ for (let cidx = 0; cidx < CATALYST_META.length; cidx++) {
   const treatScores: number[] = [];
   const controlAntes: number[] = [];
   const treatAntes: number[] = [];
+  const controlShards: number[] = [];
+  const treatShards: number[] = [];
   let controlWins = 0;
   let treatWins = 0;
 
@@ -129,12 +149,22 @@ for (let cidx = 0; cidx < CATALYST_META.length; cidx++) {
     treatScores.push(t.finalScore);
     controlAntes.push(c.finalAnte);
     treatAntes.push(t.finalAnte);
+    // finalShards captures everything in the shard pool at run end —
+    // includes the event-channel rewards plus direct grants (stipend,
+    // audit refunds, etc.) that don't fire onBlindCleared. Used instead
+    // of totalShardsEarned which is event-only.
+    controlShards.push(c.finalShards);
+    treatShards.push(t.finalShards);
     if (c.won) controlWins++;
     if (t.won) treatWins++;
   }
 
   const meanCtl = controlScores.reduce((s, v) => s + v, 0) / RUNS;
   const meanTrt = treatScores.reduce((s, v) => s + v, 0) / RUNS;
+  const meanShardsCtl = controlShards.reduce((s, v) => s + v, 0) / RUNS;
+  const meanShardsTrt = treatShards.reduce((s, v) => s + v, 0) / RUNS;
+  const meanAnteCtl = controlAntes.reduce((s, v) => s + v, 0) / RUNS;
+  const meanAnteTrt = treatAntes.reduce((s, v) => s + v, 0) / RUNS;
   rows.push({
     catalystId: meta.id,
     rarity: meta.rarity,
@@ -143,28 +173,56 @@ for (let cidx = 0; cidx < CATALYST_META.length; cidx++) {
     meanScoreTreatment: Math.round(meanTrt),
     deltaScore: Math.round(meanTrt - meanCtl),
     deltaScorePct: Number((((meanTrt - meanCtl) / Math.max(1, meanCtl)) * 100).toFixed(1)),
-    meanAnteControl: Number((controlAntes.reduce((s, v) => s + v, 0) / RUNS).toFixed(2)),
-    meanAnteTreatment: Number((treatAntes.reduce((s, v) => s + v, 0) / RUNS).toFixed(2)),
-    deltaAnte: Number(((treatAntes.reduce((s, v) => s + v, 0) - controlAntes.reduce((s, v) => s + v, 0)) / RUNS).toFixed(2)),
+    meanAnteControl: Number(meanAnteCtl.toFixed(2)),
+    meanAnteTreatment: Number(meanAnteTrt.toFixed(2)),
+    deltaAnte: Number((meanAnteTrt - meanAnteCtl).toFixed(2)),
     winRateControl: Number((controlWins / RUNS).toFixed(3)),
     winRateTreatment: Number((treatWins / RUNS).toFixed(3)),
     deltaWinRate: Number(((treatWins - controlWins) / RUNS).toFixed(3)),
+    meanShardsControl: Number(meanShardsCtl.toFixed(1)),
+    meanShardsTreatment: Number(meanShardsTrt.toFixed(1)),
+    deltaShards: Number((meanShardsTrt - meanShardsCtl).toFixed(1)),
+    deltaShardsPct: Number((((meanShardsTrt - meanShardsCtl) / Math.max(1, meanShardsCtl)) * 100).toFixed(1)),
+    // Bust-survival: how much further the catalyst lets you reach. Rounded
+    // to 2 decimals so 0.05 ante-gain shows up but doesn't swamp the column.
+    bustSurvivalAnte: Number((meanAnteTrt - meanAnteCtl).toFixed(2)),
   });
 }
 
-// Sort by impact descending
+// Sort by impact descending (primary axis — score-delta)
 rows.sort((a, b) => b.deltaScorePct - a.deltaScorePct);
 
 writeCsv(OUT_PATH, rows as unknown as Record<string, unknown>[]);
 const dt = ((Date.now() - t0) / 1000).toFixed(1);
 console.log(`\nDone in ${dt}s. Wrote ${rows.length} catalysts → ${OUT_PATH}`);
-console.log('\nTop 10:');
+console.log('\nTop 10 by score delta:');
 for (const r of rows.slice(0, 10)) {
-  console.log(`  ${r.catalystId.padEnd(22)} Δ=${String(r.deltaScore).padStart(5)} (${r.deltaScorePct.toFixed(1)}%)  Δante=${r.deltaAnte}  ctl=${r.meanScoreControl}→trt=${r.meanScoreTreatment}`);
+  console.log(`  ${r.catalystId.padEnd(22)} Δscore=${String(r.deltaScore).padStart(5)} (${r.deltaScorePct.toFixed(1)}%)  Δante=${r.deltaAnte}  Δshards=${r.deltaShards}`);
 }
-console.log('\nBottom 10:');
+console.log('\nBottom 10 by score delta:');
 for (const r of rows.slice(-10)) {
-  console.log(`  ${r.catalystId.padEnd(22)} Δ=${String(r.deltaScore).padStart(5)} (${r.deltaScorePct.toFixed(1)}%)  Δante=${r.deltaAnte}`);
+  console.log(`  ${r.catalystId.padEnd(22)} Δscore=${String(r.deltaScore).padStart(5)} (${r.deltaScorePct.toFixed(1)}%)  Δante=${r.deltaAnte}  Δshards=${r.deltaShards}`);
+}
+
+// 2026-05-21 — surface catalysts that look dead in score but ARE alive
+// in shards. Any bottom-10-score entry with Δshards ≥ 2 is mis-classified
+// as dead by the legacy score-only sort.
+const sortedByShards = [...rows].sort((a, b) => b.deltaShards - a.deltaShards);
+console.log('\nTop 10 by shard delta (non-score axis):');
+for (const r of sortedByShards.slice(0, 10)) {
+  console.log(`  ${r.catalystId.padEnd(22)} Δshards=${String(r.deltaShards).padStart(5)} (${r.deltaShardsPct.toFixed(1)}%)  Δscore=${r.deltaScore}`);
+}
+
+const aliveInShards = rows
+  .filter((r) => r.deltaScorePct <= 1 && r.deltaShards >= 2)
+  .sort((a, b) => b.deltaShards - a.deltaShards);
+if (aliveInShards.length > 0) {
+  console.log('\nFalse-dead picks (≤1% score impact but ≥2 shards/run gain):');
+  for (const r of aliveInShards) {
+    console.log(`  ${r.catalystId.padEnd(22)} Δscore=${r.deltaScorePct.toFixed(1)}%  Δshards=${r.deltaShards}  rarity=${r.rarity}`);
+  }
+} else {
+  console.log('\nNo false-dead-by-score picks detected (all low-score picks also low-shard).');
 }
 // Track unused vars
 void snapshotRng; void restoreRng;
