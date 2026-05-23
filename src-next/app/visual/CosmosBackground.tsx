@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isPerfDegraded, subscribePerfMode } from '../perf/perfMode';
+import { getMotionPref, subscribeMotionPref } from '../hooks/useMotion';
 import { bus } from '../../events/bus';
 import { CosmosEvents } from './CosmosEvents';
 
@@ -14,6 +15,29 @@ function useIsPerfDegraded(): boolean {
   const [degraded, setDegraded] = useState(isPerfDegraded);
   useEffect(() => subscribePerfMode(() => setDegraded(isPerfDegraded())), []);
   return degraded;
+}
+
+// Effective reduced-motion read. Mirrors useMotion's resolution: explicit
+// 'reduce'/'allow' override the OS, otherwise defer to the media query. Used
+// to gate the void-pull breadcrumb's spawn timer so it never schedules work
+// (or DOM) when the player has motion suppressed.
+function readMotionReduced(): boolean {
+  const pref = getMotionPref();
+  if (pref === 'allow') return false;
+  if (pref === 'reduce') return true;
+  return typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function useMotionReduced(): boolean {
+  const [reduced, setReduced] = useState(readMotionReduced);
+  useEffect(() => {
+    const update = () => setReduced(readMotionReduced());
+    const offPref = subscribeMotionPref(update);
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mq.addEventListener('change', update);
+    return () => { offPref(); mq.removeEventListener('change', update); };
+  }, []);
+  return reduced;
 }
 
 const THEMES: Record<ThemeKey, {
@@ -100,8 +124,10 @@ export function CosmosBackground({
   drift = true,
   tension = 0,
   progress = 0,
-}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number; progress?: number }) {
+  cornerPull = false,
+}: { theme?: ThemeKey; density?: number; nebula?: boolean; drift?: boolean; tension?: number; progress?: number; cornerPull?: boolean }) {
   const t = THEMES[theme];
+  const motionReduced = useMotionReduced();
   // Perf-mode gate. When degraded we skip rendering the celebratory
   // gold + halo overlays AND the two stardust drift layers — those
   // three full-screen mix-blend-mode reads cost a framebuffer round-
@@ -141,6 +167,12 @@ export function CosmosBackground({
     }}>
       <Nebula theme={theme} intensity={nebula ? 1 : 0.3} />
       <Starfield density={density} theme={theme} drift={drift} tension={tensionClamped} />
+      {/* Void-mode breadcrumb (Title only). A faint mote occasionally gets
+          pulled into the bottom-right corner where the title's black-hole
+          portal sits — an ambient "things fall here" cue that names nothing.
+          Gated on perf-mode (same shed as meteors/stardust) and reduced-
+          motion. The caller eases it off once the portal has been found. */}
+      <VoidPullLayer enabled={cornerPull && !degraded && !motionReduced} />
       {/* Meteor shower — graceful shooting stars across the cosmos
           sky, triggered by mega booms via the onMeteorShowerTriggered
           bus event. Sits behind the celebratory gold/halo overlays so
@@ -304,6 +336,82 @@ function MeteorShowerLayer({ enabled }: { enabled: boolean }) {
           );
         })
       )}
+    </div>
+  );
+}
+
+// Void-mode discovery breadcrumb. Every ~22-30s spawns a single faint violet
+// mote out in the starfield that curves and accelerates into the bottom-right
+// corner — the spot where the Title screen's black-hole portal lives. It reads
+// as ambient cosmic motion (a thing being pulled in), teaching the portal's
+// LOCATION and its GRAVITY metaphor without any copy. Names nothing; the corner
+// stays a corner until the player connects the dots. Self-driven by a timer
+// (not the gameplay bus) and torn down when disabled. The caller gates it on
+// the Title screen and relaxes it once the portal has been discovered.
+//
+// Geometry: each mote anchors a zero-size "sink" at the corner and starts
+// translated up-and-left by a random (dx,dy); the keyframe pulls it back to the
+// sink with an asymmetric mid-waypoint so the path arcs rather than runs
+// straight, fading + shrinking on arrival (a light spaghettification nod).
+function VoidPullLayer({ enabled }: { enabled: boolean }) {
+  const [motes, setMotes] = useState<Array<{ id: number; dx: number; dy: number }>>([]);
+  useEffect(() => {
+    if (!enabled) { setMotes([]); return; }
+    let nextId = 1;
+    let timer = 0;
+    const spawn = () => {
+      const id = nextId++;
+      // Start offset stored at spawn time (not computed in render) so a parent
+      // re-render can't re-roll an in-flight mote's trajectory.
+      const dx = -(34 + Math.random() * 40); // vw, left of the corner sink
+      const dy = -(30 + Math.random() * 42); // vh, above the corner sink
+      setMotes((prev) => [...prev, { id, dx, dy }]);
+      window.setTimeout(() => {
+        setMotes((prev) => prev.filter((m) => m.id !== id));
+      }, 4200);
+      timer = window.setTimeout(spawn, 22000 + Math.random() * 8000);
+    };
+    // Hold off a few seconds after mount so the cue doesn't fire the instant
+    // the title paints in.
+    timer = window.setTimeout(spawn, 4000 + Math.random() * 4000);
+    return () => window.clearTimeout(timer);
+  }, [enabled]);
+
+  if (!enabled || motes.length === 0) return null;
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+    }}>
+      {motes.map((m) => (
+        <div key={m.id} style={{
+          position: 'absolute', right: '5%', bottom: '6%', width: 0, height: 0,
+        }}>
+          <span
+            className="cosmos-void-pull"
+            style={{
+              ['--dx' as string]: `${m.dx}vw`,
+              ['--dy' as string]: `${m.dy}vh`,
+            }}
+          />
+        </div>
+      ))}
+      <style>{`
+        @keyframes cosmos-void-pull {
+          0%   { transform: translate(var(--dx), var(--dy)) scale(1);   opacity: 0; }
+          18%  { opacity: 0.55; }
+          68%  { transform: translate(calc(var(--dx) * 0.16), calc(var(--dy) * 0.34)) scale(0.66); opacity: 0.5; }
+          100% { transform: translate(0, 0) scale(0.15); opacity: 0; }
+        }
+        .cosmos-void-pull {
+          position: absolute; top: 0; left: 0;
+          width: 3px; height: 3px; border-radius: 50%;
+          background: radial-gradient(circle, #d6caff 0%, #a78bfa 55%, transparent 100%);
+          box-shadow: 0 0 5px 1px rgba(167, 139, 250, 0.55);
+          /* Slow start, fast finish — reads as gravitational infall. */
+          animation: cosmos-void-pull 4000ms cubic-bezier(0.5, 0, 0.85, 0.35) forwards;
+          will-change: transform, opacity;
+        }
+      `}</style>
     </div>
   );
 }
