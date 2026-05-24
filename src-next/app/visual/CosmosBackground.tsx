@@ -167,8 +167,8 @@ export function CosmosBackground({
     }}>
       <Nebula theme={theme} intensity={nebula ? 1 : 0.3} />
       <Starfield density={density} theme={theme} drift={drift} tension={tensionClamped} />
-      {/* Void-mode breadcrumb (Title only). A faint mote occasionally gets
-          pulled into the bottom-right corner where the title's black-hole
+      {/* Void-mode breadcrumb (Title only). A continuous faint shower of motes
+          gets pulled into the bottom-right corner where the title's black-hole
           portal sits — an ambient "things fall here" cue that names nothing.
           Gated on perf-mode (same shed as meteors/stardust) and reduced-
           motion. The caller eases it off once the portal has been found. */}
@@ -340,40 +340,47 @@ function MeteorShowerLayer({ enabled }: { enabled: boolean }) {
   );
 }
 
-// Void-mode discovery breadcrumb. Every ~22-30s spawns a single faint violet
-// mote out in the starfield that curves and accelerates into the bottom-right
+// Void-mode discovery breadcrumb. A continuous faint shower of violet motes
+// drifts out of the starfield and curves + accelerates into the bottom-right
 // corner — the spot where the Title screen's black-hole portal lives. It reads
-// as ambient cosmic motion (a thing being pulled in), teaching the portal's
-// LOCATION and its GRAVITY metaphor without any copy. Names nothing; the corner
-// stays a corner until the player connects the dots. Self-driven by a timer
-// (not the gameplay bus) and torn down when disabled. The caller gates it on
-// the Title screen and relaxes it once the portal has been discovered.
+// as ambient cosmic dust being drawn in, teaching the portal's LOCATION and its
+// GRAVITY metaphor without any copy. Names nothing; the corner stays a corner
+// until the player connects the dots. Self-driven by a jittered timer (not the
+// gameplay bus) and torn down when disabled. The caller gates it on the Title
+// screen and relaxes it once the portal has been discovered.
 //
 // Geometry: each mote anchors a zero-size "sink" at the corner and starts
 // translated up-and-left by a random (dx,dy); the keyframe pulls it back to the
 // sink with an asymmetric mid-waypoint so the path arcs rather than runs
 // straight, fading + shrinking on arrival (a light spaghettification nod).
+// Per-mote size / duration / peak-opacity are randomized so the stream reads as
+// organic dust rather than a uniform conveyor.
 function VoidPullLayer({ enabled }: { enabled: boolean }) {
-  const [motes, setMotes] = useState<Array<{ id: number; dx: number; dy: number }>>([]);
+  const [motes, setMotes] = useState<Array<{ id: number; dx: number; dy: number; dur: number; peak: number; size: number }>>([]);
   useEffect(() => {
     if (!enabled) { setMotes([]); return; }
     let nextId = 1;
     let timer = 0;
     const spawn = () => {
       const id = nextId++;
-      // Start offset stored at spawn time (not computed in render) so a parent
-      // re-render can't re-roll an in-flight mote's trajectory.
-      const dx = -(34 + Math.random() * 40); // vw, left of the corner sink
-      const dy = -(30 + Math.random() * 42); // vh, above the corner sink
-      setMotes((prev) => [...prev, { id, dx, dy }]);
+      // Per-mote params stored at spawn time (not computed in render) so a
+      // parent re-render can't re-roll an in-flight mote's trajectory.
+      const dx = -(12 + Math.random() * 78); // vw, left of the corner sink
+      const dy = -(10 + Math.random() * 78); // vh, above the corner sink
+      const dur = 3000 + Math.random() * 2500; // 3-5.5s infall
+      const peak = 0.2 + Math.random() * 0.28;  // faint, varied per mote
+      const size = 1.5 + Math.random() * 2;     // 1.5-3.5px
+      setMotes((prev) => [...prev, { id, dx, dy, dur, peak, size }]);
       window.setTimeout(() => {
         setMotes((prev) => prev.filter((m) => m.id !== id));
-      }, 4200);
-      timer = window.setTimeout(spawn, 22000 + Math.random() * 8000);
+      }, dur + 200);
+      // Steady drizzle with jitter — a continuous faint shower toward the
+      // corner. ~0.4-0.9s spacing against a 3-5.5s lifetime keeps several
+      // motes in flight at once without piling up DOM.
+      timer = window.setTimeout(spawn, 360 + Math.random() * 520);
     };
-    // Hold off a few seconds after mount so the cue doesn't fire the instant
-    // the title paints in.
-    timer = window.setTimeout(spawn, 4000 + Math.random() * 4000);
+    // Brief hold so the shower doesn't erupt the instant the title paints in.
+    timer = window.setTimeout(spawn, 1400 + Math.random() * 1000);
     return () => window.clearTimeout(timer);
   }, [enabled]);
 
@@ -391,6 +398,10 @@ function VoidPullLayer({ enabled }: { enabled: boolean }) {
             style={{
               ['--dx' as string]: `${m.dx}vw`,
               ['--dy' as string]: `${m.dy}vh`,
+              ['--peak' as string]: m.peak,
+              width: `${m.size}px`,
+              height: `${m.size}px`,
+              animationDuration: `${m.dur}ms`,
             }}
           />
         </div>
@@ -398,17 +409,19 @@ function VoidPullLayer({ enabled }: { enabled: boolean }) {
       <style>{`
         @keyframes cosmos-void-pull {
           0%   { transform: translate(var(--dx), var(--dy)) scale(1);   opacity: 0; }
-          18%  { opacity: 0.55; }
-          68%  { transform: translate(calc(var(--dx) * 0.16), calc(var(--dy) * 0.34)) scale(0.66); opacity: 0.5; }
-          100% { transform: translate(0, 0) scale(0.15); opacity: 0; }
+          18%  { opacity: var(--peak); }
+          68%  { transform: translate(calc(var(--dx) * 0.16), calc(var(--dy) * 0.34)) scale(0.6); opacity: calc(var(--peak) * 0.85); }
+          100% { transform: translate(0, 0) scale(0.12); opacity: 0; }
         }
         .cosmos-void-pull {
           position: absolute; top: 0; left: 0;
-          width: 3px; height: 3px; border-radius: 50%;
+          border-radius: 50%;
           background: radial-gradient(circle, #d6caff 0%, #a78bfa 55%, transparent 100%);
-          box-shadow: 0 0 5px 1px rgba(167, 139, 250, 0.55);
+          box-shadow: 0 0 4px rgba(167, 139, 250, 0.45);
           /* Slow start, fast finish — reads as gravitational infall. */
-          animation: cosmos-void-pull 4000ms cubic-bezier(0.5, 0, 0.85, 0.35) forwards;
+          animation-name: cosmos-void-pull;
+          animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.35);
+          animation-fill-mode: forwards;
           will-change: transform, opacity;
         }
       `}</style>
