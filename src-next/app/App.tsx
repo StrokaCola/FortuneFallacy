@@ -160,9 +160,9 @@ export function App() {
   const hubBossPending = useStore((s) =>
     (s.run.goalIdx % 3) === 2 && screen === 'hub'
   );
-  // Void-portal discovery breadcrumb. The cosmos backdrop drifts a faint mote
-  // into the title's bottom-right corner (where the black hole sits) to nudge
-  // discovery. Balanced subtlety: only on the Title screen, and only until the
+  // Void-portal discovery breadcrumb. The cosmos backdrop drifts a faint shower
+  // of motes into the title's bottom-right corner (where the black hole sits) to
+  // nudge discovery. Balanced subtlety: only on the Title screen, and only until the
   // player has actually found the portal — once the `void_portal` whisper is
   // recorded, the nudge has done its job and we stop showing it.
   const voidPortalFound = useStore((s) => (s.meta.easterEggs ?? []).includes('void_portal'));
