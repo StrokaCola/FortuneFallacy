@@ -59,12 +59,21 @@ export const roundHandler: ActionHandler = (a, s) => {
         consumableAffixes: {},
         upcomingBossId: pickBossId(seed, 1),
       };
+      // Record the void-portal whisper on first entry so the Codex Whispers
+      // tab flips its card from hint-only to revealed. Done here (not via the
+      // onUpgradeTriggered bus path the other eggs use) so it stays silent —
+      // VoidOnboarding's "You found the Void" modal owns the celebration beat.
+      const eggs = s.meta.easterEggs ?? [];
+      const meta = eggs.includes('void_portal')
+        ? s.meta
+        : { ...s.meta, easterEggs: [...eggs, 'void_portal'] };
       return {
         state: {
           ...s,
           run,
           round: initialRoundSlice(),
           shop: initialShopSlice(),
+          meta,
           ui: { ...s.ui, screen: 'hub', dieTip: null },
         },
         events: [],

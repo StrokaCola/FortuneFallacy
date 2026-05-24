@@ -160,6 +160,13 @@ export function App() {
   const hubBossPending = useStore((s) =>
     (s.run.goalIdx % 3) === 2 && screen === 'hub'
   );
+  // Void-portal discovery breadcrumb. The cosmos backdrop drifts a faint mote
+  // into the title's bottom-right corner (where the black hole sits) to nudge
+  // discovery. Balanced subtlety: only on the Title screen, and only until the
+  // player has actually found the portal — once the `void_portal` whisper is
+  // recorded, the nudge has done its job and we stop showing it.
+  const voidPortalFound = useStore((s) => (s.meta.easterEggs ?? []).includes('void_portal'));
+  const cornerPull = screen === 'title' && !voidPortalFound;
 
   useEffect(() => {
     ensureAudioAfterGesture();
@@ -288,7 +295,7 @@ export function App() {
   return (
     <DiagnosticOverlay>
       <div className="relative w-full h-full overflow-hidden">
-        <CosmosBackground theme={theme} density={1} nebula drift tension={cosmosTension} progress={cosmosProgress} />
+        <CosmosBackground theme={theme} density={1} nebula drift tension={cosmosTension} progress={cosmosProgress} cornerPull={cornerPull} />
         {/* 2026-05-18 revised painted backdrop — see HorizonBackdrop
             comments + public/brand/cosmos-horizon-backdrop.html. Now
             cosmos-first: 18% horizon + 82% sky, smaller architecture

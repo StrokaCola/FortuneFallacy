@@ -13,6 +13,10 @@
 //   lucky_seven  → actions/handlers/roll.ts SCORE_HAND (3+ scoring 7s)
 //   eris_apple   → actions/handlers/roll.ts SCORE_HAND (Eris boss + all-prime hand)
 //   mirrored_hand → core/round/transitions.ts startBlind (2+ palindromic catalyst names)
+//   void_portal  → actions/handlers/round.ts START_VOID_RUN (first time the
+//                  title-screen black hole is entered; recorded in the reducer
+//                  rather than via the bus so it doesn't stack a WhisperToast on
+//                  top of the VoidOnboarding "You found the Void" modal)
 //
 // All sites emit an event:
 //   { type: 'onUpgradeTriggered', payload: { id: 'easter_egg:<id>', ... } }
@@ -66,6 +70,15 @@ export const EASTER_EGGS: EasterEggMeta[] = [
     icon: '⟁',
     hint: 'Two names that read the same forward and back tie a knot at the start of every blind.',
     revealedDesc: 'Hold two catalysts with palindromic names. The first hand of every blind retriggers once.',
+  },
+  {
+    id: 'void_portal',
+    name: 'The Hole the Stars Avoid',
+    icon: '⬤',
+    // Reuses a Tip-of-the-Day line (data/tips.ts) verbatim so a player who read
+    // the tip recognizes it here — the two surfaces point at the same secret.
+    hint: 'Below the lattice of stars there is a hole the stars do not cross.',
+    revealedDesc: 'The faint pull in the title screen\'s corner is a way through. Enter Void Mode and every catalyst and consumable rolls with procedurally generated affixes.',
   },
 ];
 
