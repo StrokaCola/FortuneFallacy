@@ -8,6 +8,7 @@ import { installScoringRouter } from './scoring';
 import { installHeatRouter } from './heat';
 import * as audioSettings from './audioSettings';
 import { triggerShake } from '../app/visual/screenShake';
+import { makeSfxScheduler } from './sfxScheduler';
 
 // Wave T (2026-05-19) — used to defer achievement audio if it would
 // collide with a still-ringing win fanfare. Set on onRunEnded(won=true).
@@ -18,6 +19,14 @@ const ACHIEVEMENT_COLLISION_WINDOW_MS = 1500;
 const { sfxSetMaster, sfxGetMaster, sfxBank } = sfxModule;
 
 export function startAudioBridge(): () => void {
+  // 2026-05-22 — round-bound SFX scheduler. Wraps setTimeouts for
+  // dice clack stagger, hot-streak ticks, storm rumble, meteor shower,
+  // and critical-shard follow-up so they all get cancelled on round end
+  // (onBlindCleared, onRunEnded, screen→fail transition). Pre-fix these
+  // were `window.setTimeout(...)` with no handle, so a clack scheduled
+  // 200ms into a roll would still fire after a bust transition.
+  const roundSched = makeSfxScheduler();
+
   const subs = [
     installScoringRouter(),
     installHeatRouter(),
@@ -26,7 +35,7 @@ export function startAudioBridge(): () => void {
       const dice = store.getState().round.dice;
       const rolling = dice.filter((d) => !d.locked).length || dice.length;
       for (let i = 0; i < rolling; i++) {
-        window.setTimeout(() => sfxModule.sfxPlay('diceClack'), i * (30 + Math.random() * 50));
+        roundSched.schedule(() => sfxModule.sfxPlay('diceClack'), i * (30 + Math.random() * 50));
       }
     }),
     bus.on('onSimulationEnd', ({ result }) => {
@@ -37,7 +46,7 @@ export function startAudioBridge(): () => void {
       const count = result?.finalFaces?.length ?? 0;
       for (let i = 0; i < count; i++) {
         const delay = 60 + i * (70 + Math.random() * 40);
-        window.setTimeout(() => sfxModule.sfxPlay('diceClack'), delay);
+        roundSched.schedule(() => sfxModule.sfxPlay('diceClack'), delay);
       }
     }),
     bus.on('onComboDetected', ({ tier }) => {
@@ -58,6 +67,10 @@ export function startAudioBridge(): () => void {
       }
     }),
     bus.on('onBlindCleared', () => {
+      // 2026-05-22 — flush any round-bound scheduled SFX (dice clack
+      // tail, hot-streak ticks, shard-threshold follow-ups) so they
+      // don't ghost into the shop transition.
+      roundSched.cancelAll();
       audioEngine.noteStability(0.25);
       sfxModule.sfxPlay('win');
     }),
@@ -177,6 +190,9 @@ export function startAudioBridge(): () => void {
     }),
     // Wave T — track win moments to defer overlapping achievement audio.
     bus.on('onRunEnded', ({ won }) => {
+      // 2026-05-22 — drain any leftover round-bound timers on run end
+      // so they don't fire into the postmortem screen.
+      roundSched.cancelAll();
       if (won) lastRunWinAt = Date.now();
     }),
     // Wave T — achievement unlock fanfare. Reuses the sell-trigger motif
@@ -207,7 +223,7 @@ export function startAudioBridge(): () => void {
     bus.on('onHotStreak', () => {
       const ticks = 3;
       for (let i = 0; i < ticks; i++) {
-        window.setTimeout(() => {
+        roundSched.schedule(() => {
           // Pitch rises across the three ticks via the freq option.
           sfxModule.sfxPlay('chipTick', { idx: i, freq: 600 + i * 200, gain: 0.7 });
         }, i * 110);
@@ -225,8 +241,8 @@ export function startAudioBridge(): () => void {
       // Sub-bass thud + slow fade. Low frequency + long sustain on
       // chipTick approximates a "something's coming" rumble.
       sfxModule.sfxPlay('chipTick', { idx: 0, freq: 60, gain: 0.5 });
-      window.setTimeout(() => sfxModule.sfxPlay('chipTick', { idx: 0, freq: 80, gain: 0.4 }), 400);
-      window.setTimeout(() => sfxModule.sfxPlay('chipTick', { idx: 0, freq: 50, gain: 0.45 }), 1100);
+      roundSched.schedule(() => sfxModule.sfxPlay('chipTick', { idx: 0, freq: 80, gain: 0.4 }), 400);
+      roundSched.schedule(() => sfxModule.sfxPlay('chipTick', { idx: 0, freq: 50, gain: 0.45 }), 1100);
     }),
     // Wave T (Batch C) — mega-boom audio accent. Meteor shower fires
     // its own downward gliss; crystalline edge catch a higher sparkle.
@@ -236,7 +252,7 @@ export function startAudioBridge(): () => void {
       // Three quick descending multSlam-like hits — sounds like
       // streaks tearing across the sky.
       for (let i = 0; i < 3; i++) {
-        window.setTimeout(() => {
+        roundSched.schedule(() => {
           sfxModule.sfxPlay('multSlam', { idx: i, gain: 0.4 - i * 0.05 });
         }, i * 90);
       }
@@ -293,6 +309,10 @@ export function startAudioBridge(): () => void {
   const POOR_THRESHOLD = 2;
   const offStore = store.subscribe((s, prev) => {
     if (s.ui.screen === 'fail' && prev.ui.screen !== 'fail') {
+      // 2026-05-22 — bust transition cancels any queued round-bound
+      // SFX before the bust sting lands. Without this a late diceClack
+      // could fire right after the bust sting and read as a stray pop.
+      roundSched.cancelAll();
       audioEngine.enterFail();
       sfxModule.sfxPlay('bust');
     }
@@ -333,7 +353,7 @@ export function startAudioBridge(): () => void {
         sfxModule.sfxPlay('comboChime', { gain: 0.55, idx: 2 });
       } else if (crossedCritical) {
         sfxModule.sfxPlay('chipTick', { freq: 65, gain: 0.55 });
-        window.setTimeout(() => sfxModule.sfxPlay('chipTick', { freq: 50, gain: 0.45 }), 220);
+        roundSched.schedule(() => sfxModule.sfxPlay('chipTick', { freq: 50, gain: 0.45 }), 220);
       } else if (crossedPoor) {
         sfxModule.sfxPlay('chipTick', { freq: 200, gain: 0.4 });
       }
@@ -367,6 +387,8 @@ export function startAudioBridge(): () => void {
   return () => {
     subs.forEach((u) => u());
     offStore();
+    // 2026-05-22 — drain leftover timers on teardown (test harness, HMR).
+    roundSched.cancelAll();
   };
 }
 

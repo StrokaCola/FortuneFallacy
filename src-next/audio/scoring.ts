@@ -9,6 +9,18 @@ import { playModAudio } from '../data/modAudio';
 const SEMI = Math.pow(2, 1 / 12);
 const BASE_HZ = 440;
 
+// 2026-05-22 — scheduled-SFX leak fix. The scoring router uses setTimeout
+// to layer arrival cues, chord stacks, and midpoint bells over the score
+// sequence (40–360ms offsets). Pre-fix, fire-and-forget timeouts kept
+// playing past round end (bust → fail screen, or clear → shop), so a die
+// could "tick" while the shop UI was already open.
+//
+// Each installScoringRouter() call owns its own scheduler — the queue is
+// drained on cast-swell (new sequence cancels prior in-flight beats),
+// onBlindCleared, onRunEnded, on a bail beat (mid-sequence bust), and on
+// router teardown (test harness / HMR).
+import { makeSfxScheduler } from './sfxScheduler';
+
 // Tipping-point tension — when the running total during scoring climbs
 // into the [80%, 100%) band relative to the active target, the music
 // dips and a low rumble plays so the moment of "is this enough?" lands
@@ -17,6 +29,10 @@ const TIPPING_POINT_LOWER = 0.80;
 const TIPPING_POINT_UPPER = 1.00;
 
 export function installScoringRouter(): () => void {
+  const sched = makeSfxScheduler();
+  const scheduleSfx = sched.schedule;
+  const cancelPendingSfx = sched.cancelAll;
+
   let tippingPointArmed = true;
   let crossedTargetThisSequence = false;
   // Wave T+1 (2026-05-19) Balatro polish — sequence-position pitch
@@ -27,7 +43,15 @@ export function installScoringRouter(): () => void {
   // gain so big deltas still feel bigger.
   let chipPopIndex = 0;
 
-  return bus.on('onScoreBeat', ({ beat }) => {
+  // 2026-05-22 — flush pending scheduled SFX whenever a hand ends, the
+  // blind clears, or the run ends. Catches both clean exits (clear →
+  // shop) and abrupt ones (bust → fail). Without these, a setTimeout
+  // queued at e.g. cross-target+150ms would still fire while the shop UI
+  // was already open and play a comboChime in the wrong context.
+  const offBlindClear = bus.on('onBlindCleared', cancelPendingSfx);
+  const offRunEnd = bus.on('onRunEnded', cancelPendingSfx);
+
+  const offScoreBeat = bus.on('onScoreBeat', ({ beat }) => {
     // Tipping-point check — runs on every beat that carries a
     // runningTotal so the duck arms on whichever beat first lands the
     // score in the [80%, 100%) band. Once armed, no re-fire this
@@ -51,6 +75,11 @@ export function installScoringRouter(): () => void {
 
     switch (beat.kind) {
       case 'cast-swell':
+        // 2026-05-22 — any prior sequence's in-flight setTimeouts get
+        // cancelled here. Handles the case where the player busted
+        // mid-sequence + the next sequence begins before previously
+        // scheduled chord/arrival cues fire.
+        cancelPendingSfx();
         sfxPlay('castSwell');
         // Reset tipping-point arming for the new sequence.
         tippingPointArmed = true;
@@ -92,7 +121,7 @@ export function installScoringRouter(): () => void {
         // visual path: launch tick low at source, arrival tick high at
         // target. Reads as directional audio without a new synth voice.
         if (beat.importance === 'major' || beat.importance === 'finale') {
-          setTimeout(() => {
+          scheduleSfx(() => {
             sfxPlay('chipTick', { freq: hz * 1.5, gain: gain * 0.45 });
           }, 360);
         }
@@ -140,8 +169,8 @@ export function installScoringRouter(): () => void {
         // crash rather than a single ping. Heavier audio signature
         // for THE biggest moment of every cleared hand.
         sfxPlay('comboChime', { gain: 0.7 });
-        setTimeout(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.5, gain: 0.55 }), 60);
-        setTimeout(() => sfxPlay('comboChime', { freq: BASE_HZ * 2.0, gain: 0.4 }), 120);
+        scheduleSfx(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.5, gain: 0.55 }), 60);
+        scheduleSfx(() => sfxPlay('comboChime', { freq: BASE_HZ * 2.0, gain: 0.4 }), 120);
         break;
       case 'hold-breath': {
         // Anticipation hush: dim the music bus over the breath duration so
@@ -160,7 +189,7 @@ export function installScoringRouter(): () => void {
         // Layer a second bell at the midpoint of the breath for
         // longer durMs values so the freeze never goes silent.
         if (beat.durMs > 500) {
-          setTimeout(() => {
+          scheduleSfx(() => {
             sfxPlay('comboChime', { freq: bellFreq * 1.5, gain: bellGain * 0.7 });
           }, Math.round(beat.durMs * 0.55));
         }
@@ -177,12 +206,15 @@ export function installScoringRouter(): () => void {
         if (beat.crossedTarget) {
           const mega = beat.megaRatio ?? 1;
           const chordGain = Math.min(1.1, 0.6 + Math.log10(Math.max(1, mega)) * 0.5);
-          setTimeout(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.26, gain: chordGain * 0.65 }), 40);
-          setTimeout(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.5, gain: chordGain * 0.55 }), 90);
-          setTimeout(() => sfxPlay('comboChime', { freq: BASE_HZ * 2.0, gain: chordGain * 0.45 }), 150);
+          scheduleSfx(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.26, gain: chordGain * 0.65 }), 40);
+          scheduleSfx(() => sfxPlay('comboChime', { freq: BASE_HZ * 1.5, gain: chordGain * 0.55 }), 90);
+          scheduleSfx(() => sfxPlay('comboChime', { freq: BASE_HZ * 2.0, gain: chordGain * 0.45 }), 150);
         }
         break;
       case 'bail':
+        // 2026-05-22 — flush pending scheduled SFX so an aborted sequence
+        // doesn't ghost a chord/arrival cue into the silence-on-bust window.
+        cancelPendingSfx();
         // Silence-on-bust: cut all music for ~1s so the failure lands in a
         // dead room, then let the fail layer ramp back in via audioBridge.
         sfxPlay('notEnough');
@@ -190,4 +222,14 @@ export function installScoringRouter(): () => void {
         break;
     }
   });
+
+  // Composite unsubscribe — also drain any in-flight timeouts so a route
+  // teardown (test harness, HMR) doesn't leave stale timers attached to a
+  // disposed sfx subsystem.
+  return () => {
+    offScoreBeat();
+    offBlindClear();
+    offRunEnd();
+    cancelPendingSfx();
+  };
 }

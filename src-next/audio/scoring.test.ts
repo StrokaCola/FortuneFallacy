@@ -135,4 +135,89 @@ describe('installScoringRouter', () => {
     // pitchSemis=12 → freq = 440 * 2^(12/12) = 440 * 2 = 880
     expect(opts.freq).toBeCloseTo(880, 0);
   });
+
+  // 2026-05-22 — scheduled-SFX leak fix coverage. Use fake timers to drive
+  // setTimeout deterministically. Verifies that scheduled chord/arrival
+  // cues are CANCELLED when the round ends (blind clear, run end, bail)
+  // or when a new sequence starts (cast-swell), instead of continuing to
+  // play into a screen the player has already transitioned away from.
+  describe('scheduled-SFX leak (round-end cancellation)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it('onBlindCleared cancels pending cross-target chord stack', () => {
+      const unsub = installScoringRouter();
+      // cross-target schedules two follow-up comboChimes at +60ms and +120ms
+      bus.emit('onScoreBeat', { beat: { kind: 'cross-target', t: 0, runningTotal: 300, target: 250 } });
+      // Immediate cues already fired (targetCross + first comboChime).
+      const immediateCallCount = mockSfxPlay.mock.calls.length;
+      // Blind cleared → flush queued.
+      bus.emit('onBlindCleared', { blindId: 'lesser_trial', ante: 1, reward: { base: 5, voucher: 0, hands: 0, interest: 0, overscore: 0, total: 5 } } as never);
+      // Advance past the +60ms and +120ms scheduled SFX.
+      vi.advanceTimersByTime(200);
+      // No new sfx since the blind cleared.
+      expect(mockSfxPlay.mock.calls.length).toBe(immediateCallCount);
+      unsub();
+      vi.useRealTimers();
+    });
+
+    it('onRunEnded cancels pending boom chord layer', () => {
+      const unsub = installScoringRouter();
+      // boom (crossed) schedules three comboChimes at +40, +90, +150ms.
+      bus.emit('onScoreBeat', { beat: { kind: 'boom', t: 0, finalTotal: 1000, crossedTarget: true, megaRatio: 2 } });
+      const immediateCallCount = mockSfxPlay.mock.calls.length;
+      bus.emit('onRunEnded', { score: 1000, won: true, ante: 4, constellation: 'lyra' } as never);
+      vi.advanceTimersByTime(200);
+      expect(mockSfxPlay.mock.calls.length).toBe(immediateCallCount);
+      unsub();
+      vi.useRealTimers();
+    });
+
+    it('cast-swell cancels prior sequence\'s pending scheduled SFX', () => {
+      const unsub = installScoringRouter();
+      // Schedule a chord stack from a cross-target beat.
+      bus.emit('onScoreBeat', { beat: { kind: 'cross-target', t: 0, runningTotal: 300, target: 250 } });
+      const immediateCallCount = mockSfxPlay.mock.calls.length;
+      // Next sequence begins — should flush prior queued timeouts.
+      bus.emit('onScoreBeat', { beat: { kind: 'cast-swell', t: 0 } });
+      const afterSwellCount = mockSfxPlay.mock.calls.length;
+      // Advance past +60ms and +120ms — only the cast-swell sfx should
+      // have fired between the cross-target and now; no prior queued
+      // comboChimes should fire after timer advance.
+      vi.advanceTimersByTime(200);
+      expect(mockSfxPlay.mock.calls.length).toBe(afterSwellCount);
+      // And immediateCallCount + 1 (the cast-swell) == afterSwellCount.
+      expect(afterSwellCount).toBe(immediateCallCount + 1);
+      unsub();
+      vi.useRealTimers();
+    });
+
+    it('bail beat flushes pending scheduled SFX so they do not leak into silence', () => {
+      const unsub = installScoringRouter();
+      // Schedule a boom chord first.
+      bus.emit('onScoreBeat', { beat: { kind: 'boom', t: 0, finalTotal: 1000, crossedTarget: true, megaRatio: 1 } });
+      const immediateCallCount = mockSfxPlay.mock.calls.length;
+      // Bail (bust) — should cancel pending + still fire notEnough.
+      bus.emit('onScoreBeat', { beat: { kind: 'bail', t: 0, runningTotal: 50, target: 300 } });
+      const afterBailCount = mockSfxPlay.mock.calls.length;
+      // notEnough should have just fired.
+      expect(afterBailCount).toBe(immediateCallCount + 1);
+      vi.advanceTimersByTime(200);
+      // No queued comboChimes ghost in.
+      expect(mockSfxPlay.mock.calls.length).toBe(afterBailCount);
+      unsub();
+      vi.useRealTimers();
+    });
+
+    it('unsubscribe flushes pending scheduled SFX', () => {
+      const unsub = installScoringRouter();
+      bus.emit('onScoreBeat', { beat: { kind: 'cross-target', t: 0, runningTotal: 300, target: 250 } });
+      const beforeUnsubCount = mockSfxPlay.mock.calls.length;
+      unsub();
+      vi.advanceTimersByTime(200);
+      expect(mockSfxPlay.mock.calls.length).toBe(beforeUnsubCount);
+      vi.useRealTimers();
+    });
+  });
 });
