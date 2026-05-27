@@ -20,6 +20,7 @@ import { useIsTightStage } from '../hooks/useIsCompactStage';
 import { useReportHudHeight } from './useReportHudHeight';
 import { bus } from '../../events/bus';
 import { useCounterTween } from '../hooks/useCounterTween';
+import { useScoreDisplay } from './useScoreDisplay';
 import { ConstellationCount } from '../visual/AstralPrimitives';
 
 // Score panels overflow once you cross ~10⁷ at 38px font. Above that
@@ -81,7 +82,6 @@ export function TopBar({
   hands = 3,
   rerolls = 2,
   target = 0,
-  score = 0,
   catalystSlots,
   catalysts = [],
   voucherCount = 0,
@@ -91,7 +91,7 @@ export function TopBar({
   tense = false,
 }: {
   ante?: number; blind?: string; shards?: number; hands?: number; rerolls?: number;
-  target?: number; score?: number;
+  target?: number;
   catalystSlots?: { used: number; max: number };
   // Wave FF — owned catalyst ids so the TopBar chip tooltip can show a
   // per-catalyst breakdown the same way vouchers already do. Optional
@@ -111,6 +111,11 @@ export function TopBar({
   // Driven from Round.tsx based on (hands === 1 && score < target).
   tense?: boolean;
 }) {
+  // Animated count-up score, owned here so the per-frame tween re-renders
+  // only TopBar — not the whole Round subtree (which mounts ~15 HUD
+  // components). Was previously called in Round.tsx and passed down as a
+  // prop, which forced every sibling to reconcile 60×/sec while scoring.
+  const score = useScoreDisplay();
   const stakeId = useStore(selectStakeId);
   const challengeId = useStore(selectChallengeId);
   const isBoss = useStore(selectIsBoss);

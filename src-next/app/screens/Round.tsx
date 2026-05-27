@@ -25,11 +25,10 @@ import { ScoreBreakdown } from '../hud/ScoreBreakdown';
 import { ScoreExplain } from '../hud/ScoreExplain';
 import { AstralHint } from '../hud/AstralHint';
 import { RoundDebugOverlay } from '../hud/RoundDebugOverlay';
-import { useScoreDisplay } from '../hud/useScoreDisplay';
 import { useRoundBundleReady } from '../perf/roundBundle';
 import {
   selectHandsLeft, selectRerollsLeft,
-  selectTarget, selectShards, selectAnte,
+  selectTarget, selectShards, selectAnte, selectScore,
   selectCatalysts, selectMaxCatalystSlots, selectVouchers,
   selectAccent, selectConstellationAccent, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
@@ -38,7 +37,10 @@ import { BLIND_DEFS } from '../../data/blinds';
 export function Round() {
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
-  const score    = useScoreDisplay();
+  // Resting committed score — drives the last-throw `tense` warning. The
+  // animated count-up readout is owned by TopBar (via useScoreDisplay) so
+  // the per-frame tween doesn't re-render this whole Round subtree.
+  const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
   const shards   = useStore(selectShards);
   const ante     = useStore(selectAnte);
@@ -105,7 +107,6 @@ export function Round() {
         hands={hands}
         rerolls={rerolls}
         target={target}
-        score={score}
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}

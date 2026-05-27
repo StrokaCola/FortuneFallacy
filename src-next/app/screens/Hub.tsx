@@ -11,7 +11,7 @@ import { currentPrestigeTier, nextPrestigeTier } from '../../data/prestigeTiers'
 import { getVoidstormForBlind } from '../../core/round/voidstorms';
 import { getEventForBlind, lookupEvent } from '../../data/events';
 import {
-  selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectScore, selectTarget,
+  selectAnte, selectGoalIdx, selectShards, selectCatalysts, selectMaxCatalystSlots, selectVouchers, selectTarget,
   selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { BLIND_DEFS, TIER_SIGILS, targetForBlind } from '../../data/blinds';
@@ -44,7 +44,6 @@ export function Hub() {
   const vouchers = useStore(selectVouchers);
   const handsLeft = useStore(selectHandsLeft);
   const rerollsLeft = useStore(selectRerollsLeft);
-  const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
   const constellationId = useStore(selectConstellationId);
   const constellation = lookupConstellation(constellationId);
@@ -116,7 +115,6 @@ export function Hub() {
         hands={handsLeft}
         rerolls={rerollsLeft}
         target={target}
-        score={score}
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}

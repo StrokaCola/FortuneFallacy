@@ -100,6 +100,9 @@ let gl: WebGLRenderingContext | null = null;
 let program: WebGLProgram | null = null;
 let uniforms: { res: WebGLUniformLocation | null; time: WebGLUniformLocation | null; mode: WebGLUniformLocation | null; flash: WebGLUniformLocation | null; vig: WebGLUniformLocation | null; progress: WebGLUniformLocation | null } = { res: null, time: null, mode: null, flash: null, vig: null, progress: null };
 let vbo: WebGLBuffer | null = null;
+// Resolved once after link — the attribute layout never changes, so
+// re-querying it every frame is pure waste.
+let posLoc = -1;
 let _canvas: HTMLCanvasElement | null = null;
 let _active = false;
 let _flash = 0;
@@ -143,6 +146,7 @@ export function initNebula(canvas: HTMLCanvasElement): boolean {
   vbo = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  posLoc = gl.getAttribLocation(program, 'a_pos');
   uniforms = {
     res: gl.getUniformLocation(program, 'u_res'),
     time: gl.getUniformLocation(program, 'u_time'),
@@ -243,7 +247,6 @@ function startLoop() {
     gl.viewport(0, 0, cw, ch);
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    const posLoc = gl.getAttribLocation(program, 'a_pos');
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniform2f(uniforms.res, cw, ch);
