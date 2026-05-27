@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { store } from '../../state/store';
 import { bus } from '../../events/bus';
 import { isPerfDegraded } from '../../app/perf/perfMode';
+import { tick as perfTick } from '../../devtools/perf';
 import { dispatch } from '../../actions/dispatch';
 import { lookupMod } from '../../core/mods';
 import { createCosmicEnv } from './MaterialEnv';
@@ -292,6 +293,16 @@ export class Dice3D {
   // count and visibility are synced in syncDice. Pool reused across rounds.
   private holdOrdinals: THREE.Sprite[] = [];
   private rafHandle: number | null = null;
+  // True while the round screen owns the visible canvas. Gates the per-frame
+  // perf sampler tick so it only feeds the frame-budget watcher on the
+  // gameplay screen — the shared renderer (Forge/shop previews) feeds it
+  // otherwise, and double-ticking the same frame would corrupt the delta.
+  private roundActive = false;
+  // Reusable scratch objects for the hot loop — avoids allocating a new
+  // Quaternion/Euler every frame (GC churn → stutter) while dice tumble or
+  // idle-wobble. Never read across frames; mutated in place per use.
+  private _scratchQuat = new THREE.Quaternion();
+  private _scratchEuler = new THREE.Euler();
   private unsubscribers: (() => void)[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -347,18 +358,25 @@ export class Dice3D {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    // Degraded devices drop antialias + a lower DPR cap — the two biggest
+    // fill-rate levers — mirroring sharedRenderer.ts. This is the main,
+    // always-on gameplay renderer, so it's where the win matters most on
+    // weak GPUs. Read once at WebGL init (like AA/DPR everywhere); takes
+    // effect on the next round-bundle load, consistent with perfMode's
+    // documented "renderer changes apply on reload" contract.
+    const degraded = isPerfDegraded();
+    this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !degraded });
     // Tier 2: drawing buffer follows the canvas's CSS size, which now
     // fills its #stage-root parent. Initial size derives from window;
     // applyViewportSize() re-runs on every resize/orientationchange.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, degraded ? 1.5 : 2));
     // Shadow tier scales with perf mode. PCFSoft (the high tier) costs
     // ~1.5 FPS on integrated Mac GPUs because of the soft-filter kernel;
     // PCFShadowMap is the basic non-filtered variant. Combined with the
     // 1024→512 mapSize drop further below, this trades a barely-visible
     // softness for ~1-2 FPS recovery on degraded devices.
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = isPerfDegraded()
+    this.renderer.shadowMap.type = degraded
       ? THREE.PCFShadowMap
       : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -394,7 +412,7 @@ export class Dice3D {
     // 1024×1024 shadow map → 512×512 on degraded. Quarter the memory
     // bandwidth + fragment shader load on each shadow pass. Visual
     // diff is minor on a sub-100px die silhouette.
-    const shadowMapSize = isPerfDegraded() ? 512 : 1024;
+    const shadowMapSize = degraded ? 512 : 1024;
     key.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     this.scene.add(key);
     const rim = new THREE.PointLight(0x7be3ff, 1.4, 24);
@@ -528,6 +546,11 @@ export class Dice3D {
       canvasObserver.observe(this.canvas);
     }
 
+    // Seed from the current screen — Dice3D is lazy-loaded on round entry,
+    // so the round-screen transition may already have fired before this
+    // subscription exists. The subscription below keeps it in sync after.
+    this.roundActive = store.getState().ui.screen === 'round';
+
     this.unsubscribers.push(
       // Window-level resize/orientationchange — triggers applyViewportSize
       // even on browsers where the canvas ResizeObserver isn't enough
@@ -549,6 +572,9 @@ export class Dice3D {
         if (s.ui.screen === 'round' && prev.ui.screen !== 'round') {
           this.applyViewportSize();
         }
+        // Track whether the round screen owns the visible canvas so the
+        // loop only feeds the perf sampler while gameplay is on screen.
+        this.roundActive = s.ui.screen === 'round';
         // Constellation can change the dice count at NEW_RUN time. Detect
         // either via diceMods length (canonical) or dice array length and
         // grow/shrink the 3D scene accordingly before any other sync runs.
@@ -1881,6 +1907,12 @@ export class Dice3D {
       // Browser-level rAF throttling already drops background tabs to ~1Hz;
       // this is belt-and-suspenders so any residual wakeup is a no-op.
       if (typeof document !== 'undefined' && document.hidden) return;
+      // Feed the FPS sampler on the gameplay screen so the frame-budget
+      // watcher (perfMode) can actually observe round-screen jank. The
+      // shared renderer's loop stops when no preview views are mounted —
+      // which is always the case here — so without this the watcher never
+      // gets samples during play and auto-degrade can't trigger.
+      if (this.roundActive) perfTick();
       const now = performance.now();
       // Drain a deferred mod rebuild as soon as no die is mid-roll/playback.
       if (this.pendingDiceMods != null
@@ -1925,8 +1957,8 @@ export class Dice3D {
         if (d.rolling) {
           // Active tumble: spin around rollAxis at rollSpeed
           const angle = d.rollSpeed * (elapsed / 1000) * (1 - tRaw * 0.6); // slows over time
-          const spin = new THREE.Quaternion().setFromAxisAngle(d.rollAxis, angle);
-          d.group.quaternion.copy(d.startQuat).multiply(spin);
+          this._scratchQuat.setFromAxisAngle(d.rollAxis, angle);
+          d.group.quaternion.copy(d.startQuat).multiply(this._scratchQuat);
 
           // Position lerp + bounce stack (3 bounces decaying)
           const easeT = 1 - Math.pow(1 - tRaw, 2);
@@ -2008,11 +2040,8 @@ export class Dice3D {
               // Subtle wobble around Y axis for "the die is questioning
               // itself" reading.
               const wobble = Math.sin(u * Math.PI * 4) * 0.18 * (1 - u);
-              const wobQ = new THREE.Quaternion().setFromAxisAngle(
-                new THREE.Vector3(0, 1, 0),
-                wobble,
-              );
-              d.group.quaternion.multiply(wobQ);
+              this._scratchQuat.setFromAxisAngle(_UP, wobble);
+              d.group.quaternion.multiply(this._scratchQuat);
             } else {
               d.banishPopStart = 0;
             }
@@ -2029,12 +2058,13 @@ export class Dice3D {
             // Slow 3-axis tilt + wobble. Frequencies are incommensurate so
             // multiple dice never sync to the same pose. Amplitudes ~4° keep
             // the lit face clearly readable.
-            const wob = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+            this._scratchEuler.set(
               Math.sin(ts * 0.45 + d.holdBobPhase)         * 0.07,   // X tilt
               Math.sin(ts * 0.60 + d.holdBobPhase + 1.0)   * 0.05,   // Y yaw
               Math.sin(ts * 0.50 + d.holdBobPhase + 2.1)   * 0.07,   // Z roll
-            ));
-            d.group.quaternion.copy(d.targetQuat).multiply(wob);
+            );
+            this._scratchQuat.setFromEuler(this._scratchEuler);
+            d.group.quaternion.copy(d.targetQuat).multiply(this._scratchQuat);
           }
         }
 

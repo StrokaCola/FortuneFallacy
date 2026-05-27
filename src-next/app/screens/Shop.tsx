@@ -22,7 +22,7 @@ import { ActionBar } from '../hud/ActionBar';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
   selectShards, selectShopOffers, selectShopRerollCost, selectAnte, selectCatalysts, selectMaxCatalystSlots, selectMaxSlots, selectVouchers,
-  selectScore, selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
+  selectTarget, selectHandsLeft, selectRerollsLeft, selectOwnedMods,
   selectComboLevels, selectEffectiveCatalystSlotsUsed,
 } from '../../state/selectors';
 import { sfxPlay } from '../../audio/sfx';
@@ -60,7 +60,6 @@ export function Shop() {
   const consumables = useStore(selectConsumables);
   const ownedMods = useStore(selectOwnedMods);
   const diceMods = useStore(selectDiceMods);
-  const score    = useStore(selectScore);
   const target   = useStore(selectTarget);
   const hands    = useStore(selectHandsLeft);
   const rerolls  = useStore(selectRerollsLeft);
@@ -118,7 +117,6 @@ export function Shop() {
         hands={hands}
         rerolls={rerolls}
         target={target}
-        score={score}
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}

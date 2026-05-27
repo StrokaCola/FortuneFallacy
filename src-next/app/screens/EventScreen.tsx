@@ -13,7 +13,7 @@ import { TopBar } from '../hud/TopBar';
 import { OrnateFrame } from '../visual/OrnateFrame';
 import { useIsTightStage } from '../hooks/useIsCompactStage';
 import {
-  selectAnte, selectGoalIdx, selectShards, selectScore, selectTarget,
+  selectAnte, selectGoalIdx, selectShards, selectTarget,
   selectMaxCatalystSlots, selectEffectiveCatalystSlotsUsed,
   selectVouchers,
 } from '../../state/selectors';
@@ -29,7 +29,6 @@ export function EventScreen() {
   const goalIdx = useStore(selectGoalIdx);
   const seed = useStore(selectSeed);
   const shards = useStore(selectShards);
-  const score = useStore(selectScore);
   const target = useStore(selectTarget);
   const handsLeft = useStore(selectHandsLeft);
   const rerollsLeft = useStore(selectRerollsLeft);
@@ -59,7 +58,6 @@ export function EventScreen() {
         hands={handsLeft}
         rerolls={rerollsLeft}
         target={target}
-        score={score}
         catalystSlots={{ used: usedCatalystSlots, max: maxCatalysts }}
         voucherCount={vouchers.length}
         vouchers={vouchers}
